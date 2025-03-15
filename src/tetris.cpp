@@ -548,20 +548,14 @@ gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data) {
             
         case GDK_KEY_p:
         case GDK_KEY_P:
-            board->togglePause();
-            if (board->isPaused()) {
-                pauseGame(app);
-            } else {
-                startGame(app);
-            }
+            // Use menu action to ensure consistent behavior
+            onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
             break;
             
         case GDK_KEY_r:
         case GDK_KEY_R:
             if (board->isGameOver()) {
-                board->restart();
-                resetUI(app);
-                startGame(app);
+                onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
             }
             break;
             
@@ -616,43 +610,11 @@ void resetUI(TetrisApp* app) {
     gtk_label_set_markup(GTK_LABEL(app->scoreLabel), "<b>Score:</b> 0");
     gtk_label_set_markup(GTK_LABEL(app->levelLabel), "<b>Level:</b> 1");
     gtk_label_set_markup(GTK_LABEL(app->linesLabel), "<b>Lines:</b> 0");
-}
-
-void startGame(TetrisApp* app) {
-    // Remove existing timer if any
-    if (app->timerId > 0) {
-        g_source_remove(app->timerId);
-        app->timerId = 0;
-    }
     
-    // Resume background music if it was playing
-    if (!app->backgroundMusicPlaying) {
-        app->board->resumeBackgroundMusic();
-        app->backgroundMusicPlaying = true;
-    }
-    
-    // Calculate drop speed based on level (faster as level increases)
-    app->dropSpeed = INITIAL_SPEED - (app->board->getLevel() - 1) * 50;
-    if (app->dropSpeed < 100) {
-        app->dropSpeed = 100;  // Set a minimum speed
-    }
-    
-    // Start a new timer
-    app->timerId = g_timeout_add(app->dropSpeed, onTimerTick, app);
-}
-
-void pauseGame(TetrisApp* app) {
-    // Remove the timer
-    if (app->timerId > 0) {
-        g_source_remove(app->timerId);
-        app->timerId = 0;
-    }
-    
-    // Pause background music
-    if (app->backgroundMusicPlaying) {
-        app->board->pauseBackgroundMusic();
-        app->backgroundMusicPlaying = false;
-    }
+    // Update menu state
+    gtk_widget_set_sensitive(app->startMenuItem, FALSE);
+    gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+    gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
 }
 
 void cleanupApp(gpointer data) {
@@ -677,19 +639,28 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     tetrisApp->board = new TetrisBoard();
     tetrisApp->timerId = 0;
     tetrisApp->dropSpeed = INITIAL_SPEED;
+    tetrisApp->difficulty = 2; // Default to Medium
     
     // Create the main window
     tetrisApp->window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(tetrisApp->window), "Tetris");
     gtk_window_set_default_size(GTK_WINDOW(tetrisApp->window), 
                               GRID_WIDTH * BLOCK_SIZE + 200, 
-                              GRID_HEIGHT * BLOCK_SIZE + 20);
+                              GRID_HEIGHT * BLOCK_SIZE + 40);
     gtk_window_set_resizable(GTK_WINDOW(tetrisApp->window), FALSE);
     
-    // Create main horizontal box
+    // Create main vertical box
+    GtkWidget* mainVBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_container_add(GTK_CONTAINER(tetrisApp->window), mainVBox);
+    
+    // Create menu
+    createMenu(tetrisApp);
+    gtk_box_pack_start(GTK_BOX(mainVBox), tetrisApp->menuBar, FALSE, FALSE, 0);
+    
+    // Create main horizontal box for game contents
     tetrisApp->mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     gtk_container_set_border_width(GTK_CONTAINER(tetrisApp->mainBox), 10);
-    gtk_container_add(GTK_CONTAINER(tetrisApp->window), tetrisApp->mainBox);
+    gtk_box_pack_start(GTK_BOX(mainVBox), tetrisApp->mainBox, TRUE, TRUE, 0);
     
     // Create the game area (drawing area)
     tetrisApp->gameArea = gtk_drawing_area_new();
@@ -731,6 +702,13 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     gtk_widget_set_halign(tetrisApp->linesLabel, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(sideBox), tetrisApp->linesLabel, FALSE, FALSE, 0);
     
+    // Add difficulty label
+    tetrisApp->difficultyLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(tetrisApp->difficultyLabel), 
+                       getDifficultyText(tetrisApp->difficulty).c_str());
+    gtk_widget_set_halign(tetrisApp->difficultyLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(sideBox), tetrisApp->difficultyLabel, FALSE, FALSE, 0);
+    
     // Add controls info
     GtkWidget* controlsLabel = gtk_label_new(NULL);
     gtk_label_set_markup(GTK_LABEL(controlsLabel), "<b>Controls</b>");
@@ -760,6 +738,10 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     // Show all widgets
     gtk_widget_show_all(tetrisApp->window);
 
+    // Initialize the menu state
+    gtk_widget_set_sensitive(tetrisApp->startMenuItem, FALSE);
+    gtk_widget_set_sensitive(tetrisApp->pauseMenuItem, TRUE);
+
     if (tetrisApp->board->initializeAudio()) {
         // Only play music if initialization was successful
         tetrisApp->board->playBackgroundMusic();
@@ -767,11 +749,391 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     }
     else {
         printf("Music failed to initialize");
+        // Disable sound menu item
+        gtk_check_menu_item_set_active(
+            GTK_CHECK_MENU_ITEM(tetrisApp->soundToggleMenuItem), FALSE);
     }
         
     // Start the game
     startGame(tetrisApp);
 }
+
+#include "tetris.h"
+#include "audiomanager.h"
+#include <iostream>
+
+// Add this to the TetrisApp struct in tetris.h
+/*
+GtkWidget* menuBar;
+GtkWidget* difficultyLabel;
+int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard
+*/
+
+// Function to create the menu bar
+void createMenu(TetrisApp* app) {
+    GtkWidget* menuBar = gtk_menu_bar_new();
+    
+    // Game menu
+    GtkWidget* gameMenu = gtk_menu_new();
+    GtkWidget* gameMenuItem = gtk_menu_item_new_with_label("Game");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(gameMenuItem), gameMenu);
+    
+    // Game menu items
+    app->startMenuItem = gtk_menu_item_new_with_label("Start");
+    app->pauseMenuItem = gtk_menu_item_new_with_label("Pause");
+    app->restartMenuItem = gtk_menu_item_new_with_label("Restart");
+    GtkWidget* quitMenuItem = gtk_menu_item_new_with_label("Quit");
+    
+    gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), app->startMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), app->pauseMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), app->restartMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), gtk_separator_menu_item_new());
+    gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), quitMenuItem);
+    
+    // Options menu
+    GtkWidget* optionsMenu = gtk_menu_new();
+    GtkWidget* optionsMenuItem = gtk_menu_item_new_with_label("Options");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(optionsMenuItem), optionsMenu);
+    
+    // Options menu items
+    app->soundToggleMenuItem = gtk_check_menu_item_new_with_label("Sound");
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), TRUE);
+    
+    // Difficulty submenu
+    GtkWidget* difficultyMenu = gtk_menu_new();
+    GtkWidget* difficultyMenuItem = gtk_menu_item_new_with_label("Difficulty");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(difficultyMenuItem), difficultyMenu);
+    
+    // Create difficulty radio menu items
+    GSList* difficultyGroup = NULL;
+    app->easyMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Easy");
+    difficultyGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->easyMenuItem));
+    
+    app->mediumMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Medium");
+    difficultyGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->mediumMenuItem));
+    
+    app->hardMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Hard");
+    
+    // Set medium as default
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), TRUE);
+    app->difficulty = 2; // Medium
+    
+    gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->easyMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->mediumMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->hardMenuItem);
+    
+    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), app->soundToggleMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), difficultyMenuItem);
+    
+    // Help menu
+    GtkWidget* helpMenu = gtk_menu_new();
+    GtkWidget* helpMenuItem = gtk_menu_item_new_with_label("Help");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(helpMenuItem), helpMenu);
+    
+    // Help menu items
+    GtkWidget* aboutMenuItem = gtk_menu_item_new_with_label("About");
+    GtkWidget* instructionsMenuItem = gtk_menu_item_new_with_label("Instructions");
+    
+    gtk_menu_shell_append(GTK_MENU_SHELL(helpMenu), instructionsMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(helpMenu), aboutMenuItem);
+    
+    // Add menus to menu bar
+    gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), gameMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), optionsMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), helpMenuItem);
+    
+    // Add menu signal handlers
+    g_signal_connect(G_OBJECT(app->startMenuItem), "activate",
+                   G_CALLBACK(onStartGame), app);
+    g_signal_connect(G_OBJECT(app->pauseMenuItem), "activate",
+                   G_CALLBACK(onPauseGame), app);
+    g_signal_connect(G_OBJECT(app->restartMenuItem), "activate",
+                   G_CALLBACK(onRestartGame), app);
+    g_signal_connect(G_OBJECT(quitMenuItem), "activate",
+                   G_CALLBACK(onQuitGame), app);
+    
+    g_signal_connect(G_OBJECT(app->soundToggleMenuItem), "toggled",
+                   G_CALLBACK(onSoundToggled), app);
+    g_signal_connect(G_OBJECT(app->easyMenuItem), "toggled",
+                   G_CALLBACK(onDifficultyChanged), app);
+    g_signal_connect(G_OBJECT(app->mediumMenuItem), "toggled",
+                   G_CALLBACK(onDifficultyChanged), app);
+    g_signal_connect(G_OBJECT(app->hardMenuItem), "toggled",
+                   G_CALLBACK(onDifficultyChanged), app);
+    
+    g_signal_connect(G_OBJECT(aboutMenuItem), "activate",
+                   G_CALLBACK(onAboutDialog), app);
+    g_signal_connect(G_OBJECT(instructionsMenuItem), "activate",
+                   G_CALLBACK(onInstructionsDialog), app);
+    
+    // Store menu bar in app structure
+    app->menuBar = menuBar;
+}
+
+// Menu callback functions
+void onStartGame(GtkMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    if (app->board->isGameOver()) {
+        app->board->restart();
+        resetUI(app);
+    }
+    app->board->setPaused(false);
+    startGame(app);
+    
+    gtk_widget_set_sensitive(app->startMenuItem, FALSE);
+    gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+    
+    gtk_widget_queue_draw(app->gameArea);
+    gtk_widget_queue_draw(app->nextPieceArea);
+    updateLabels(app);
+}
+
+void pauseGame(TetrisApp* app) {
+    // Remove the timer
+    if (app->timerId > 0) {
+        g_source_remove(app->timerId);
+        app->timerId = 0;
+    }
+    
+    // Pause background music if enabled
+    if (app->backgroundMusicPlaying && app->board->sound_enabled_) {
+        app->board->pauseBackgroundMusic();
+        app->backgroundMusicPlaying = false;
+    }
+    
+    // Update menu state
+    gtk_widget_set_sensitive(app->startMenuItem, TRUE);
+    gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Resume");
+}
+
+void onRestartGame(GtkMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    app->board->restart();
+    resetUI(app);
+    
+    if (app->board->isPaused()) {
+        app->board->togglePause();
+        gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
+    }
+    
+    gtk_widget_set_sensitive(app->startMenuItem, FALSE);
+    gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+    
+    startGame(app);
+    gtk_widget_queue_draw(app->gameArea);
+    gtk_widget_queue_draw(app->nextPieceArea);
+    updateLabels(app);
+}
+
+void onQuitGame(GtkMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    gtk_window_close(GTK_WINDOW(app->window));
+}
+
+void onSoundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    bool isSoundEnabled = gtk_check_menu_item_get_active(menuItem);
+    
+    app->board->sound_enabled_ = isSoundEnabled;
+    
+    if (isSoundEnabled) {
+        if (!app->board->isPaused() && !app->board->isGameOver()) {
+            app->board->resumeBackgroundMusic();
+            app->backgroundMusicPlaying = true;
+        }
+    } else {
+        app->board->pauseBackgroundMusic();
+        app->backgroundMusicPlaying = false;
+    }
+}
+
+void onDifficultyChanged(GtkRadioMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    // Only proceed if the item is active (selected)
+    if (!gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menuItem))) {
+        return;
+    }
+    
+    // Determine which difficulty was selected
+    if (menuItem == GTK_RADIO_MENU_ITEM(app->easyMenuItem)) {
+        app->difficulty = 1;
+    } else if (menuItem == GTK_RADIO_MENU_ITEM(app->mediumMenuItem)) {
+        app->difficulty = 2;
+    } else if (menuItem == GTK_RADIO_MENU_ITEM(app->hardMenuItem)) {
+        app->difficulty = 3;
+    }
+    
+    // Update difficulty label
+    gtk_label_set_markup(GTK_LABEL(app->difficultyLabel), 
+                       getDifficultyText(app->difficulty).c_str());
+    
+    // Recalculate drop speed based on difficulty and level
+    adjustDropSpeed(app);
+    
+    // Restart timer with new speed if game is running
+    if (!app->board->isPaused() && !app->board->isGameOver() && app->timerId > 0) {
+        g_source_remove(app->timerId);
+        app->timerId = g_timeout_add(app->dropSpeed, onTimerTick, app);
+    }
+}
+
+std::string getDifficultyText(int difficulty) {
+    switch (difficulty) {
+        case 1: return "<b>Difficulty:</b> Easy";
+        case 2: return "<b>Difficulty:</b> Medium";
+        case 3: return "<b>Difficulty:</b> Hard";
+        default: return "<b>Difficulty:</b> Medium";
+    }
+}
+
+void adjustDropSpeed(TetrisApp* app) {
+    // Base speed based on level
+    int baseSpeed = INITIAL_SPEED - (app->board->getLevel() - 1) * 50;
+    
+    // Apply difficulty modifier
+    switch (app->difficulty) {
+        case 1: // Easy
+            app->dropSpeed = baseSpeed * 1.5;
+            break;
+        case 2: // Medium
+            app->dropSpeed = baseSpeed;
+            break;
+        case 3: // Hard
+            app->dropSpeed = baseSpeed * 0.7;
+            break;
+        default:
+            app->dropSpeed = baseSpeed;
+    }
+    
+    // Enforce minimum speed
+    if (app->dropSpeed < 100) {
+        app->dropSpeed = 100;
+    }
+}
+
+void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    // Create and show about dialog
+    GtkWidget* dialog = gtk_about_dialog_new();
+    gtk_about_dialog_set_program_name(GTK_ABOUT_DIALOG(dialog), "GTK Tetris");
+    gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(dialog), "1.0");
+    gtk_about_dialog_set_copyright(GTK_ABOUT_DIALOG(dialog), "© 2025");
+    gtk_about_dialog_set_comments(GTK_ABOUT_DIALOG(dialog), 
+                                "A simple Tetris clone written using GTK+");
+    gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog), 
+                               "https://github.com/example/gtk-tetris");
+    
+    // Use app->window as the parent
+    gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(app->window));
+    
+    // Show dialog and wait for response
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    
+    // Destroy dialog when closed
+    gtk_widget_destroy(dialog);
+}
+
+void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    // Create dialog
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        "Instructions",
+        GTK_WINDOW(app->window),
+        GTK_DIALOG_MODAL,
+        "_OK", GTK_RESPONSE_OK,
+        NULL
+    );
+    
+    // Create content area
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    
+    // Create label with instructions
+    GtkWidget* label = gtk_label_new(
+        "Tetris Instructions:\n\n"
+        "Goal: Arrange falling blocks to complete lines.\n\n"
+        "Controls:\n"
+        "• Left/Right Arrow or A/D: Move block left/right\n"
+        "• Up Arrow or W: Rotate block\n"
+        "• Down Arrow or S: Move block down (soft drop)\n"
+        "• Space: Hard drop (instantly places block at bottom)\n"
+        "• P: Pause/Resume game\n"
+        "• R: Restart game when game over\n\n"
+        "Scoring:\n"
+        "• 1 line: 40 × level\n"
+        "• 2 lines: 100 × level\n"
+        "• 3 lines: 300 × level\n"
+        "• 4 lines: 1200 × level\n\n"
+        "Every 10 lines cleared increases the level and speed."
+    );
+    
+    gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
+    gtk_widget_set_margin_start(label, 20);
+    gtk_widget_set_margin_end(label, 20);
+    gtk_widget_set_margin_top(label, 20);
+    gtk_widget_set_margin_bottom(label, 20);
+    
+    gtk_container_add(GTK_CONTAINER(contentArea), label);
+    gtk_widget_show_all(dialog);
+    
+    // Set minimum width for dialog
+    gtk_widget_set_size_request(dialog, 400, -1);
+    
+    // Run dialog
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    
+    // Destroy dialog when closed
+    gtk_widget_destroy(dialog);
+}
+
+// Add to startGame function
+void startGame(TetrisApp* app) {
+    // Remove existing timer if any
+    if (app->timerId > 0) {
+        g_source_remove(app->timerId);
+        app->timerId = 0;
+    }
+    
+    // Resume background music if it was playing
+    if (!app->backgroundMusicPlaying && app->board->sound_enabled_) {
+        app->board->resumeBackgroundMusic();
+        app->backgroundMusicPlaying = true;
+    }
+    
+    // Calculate drop speed based on level and difficulty
+    adjustDropSpeed(app);
+    
+    // Start a new timer
+    app->timerId = g_timeout_add(app->dropSpeed, onTimerTick, app);
+    
+    // Update menu items
+    gtk_widget_set_sensitive(app->startMenuItem, FALSE);
+    gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+    gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
+}
+
+void onPauseGame(GtkMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    if (!app->board->isGameOver()) {
+        bool isPaused = app->board->isPaused();
+        app->board->togglePause();
+        
+        if (app->board->isPaused()) {
+            pauseGame(app);
+            gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Resume");
+            gtk_widget_set_sensitive(app->startMenuItem, TRUE);
+        } else {
+            startGame(app);
+            gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
+            gtk_widget_set_sensitive(app->startMenuItem, FALSE);
+        }
+        
+        gtk_widget_queue_draw(app->gameArea);
+    }
+}
+
 
 int main(int argc, char* argv[]) {
     GtkApplication* app;

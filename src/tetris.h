@@ -30,8 +30,6 @@ const std::vector<std::array<double, 3>> TETROMINO_COLORS = {
     {0.9, 0.5, 0.0}   // L - Orange
 };
 
-// Tetromino shapes (using 0 and 1 instead of false and true)
-// Define shapes using std::vector constructor syntax
 const std::vector<std::vector<std::vector<std::vector<int>>>> TETROMINO_SHAPES = {
     // I-piece
     {
@@ -274,6 +272,7 @@ public:
     void updateGame();
     void hardDrop();
     void togglePause() { paused = !paused; }
+    void setPaused(bool pause) { paused = pause; }
     
     bool isGameOver() const { return gameOver; }
     bool isPaused() const { return paused; }
@@ -298,7 +297,6 @@ public:
     bool extractFileFromZip(const std::string &zipFilePath,
                           const std::string &fileName,
                           std::vector<uint8_t> &fileData);
-
 };
 
 // TetrisApp structure - holds application state
@@ -311,10 +309,22 @@ struct TetrisApp {
     GtkWidget* scoreLabel;
     GtkWidget* levelLabel;
     GtkWidget* linesLabel;
+    GtkWidget* difficultyLabel;
     bool backgroundMusicPlaying = false;
     TetrisBoard* board;
     guint timerId;
     int dropSpeed;
+    
+    // Menu related widgets
+    GtkWidget* menuBar;
+    GtkWidget* startMenuItem;
+    GtkWidget* pauseMenuItem;
+    GtkWidget* restartMenuItem;
+    GtkWidget* soundToggleMenuItem;
+    GtkWidget* easyMenuItem;
+    GtkWidget* mediumMenuItem;
+    GtkWidget* hardMenuItem;
+    int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard
 };
 
 // Function declarations
@@ -328,5 +338,18 @@ void pauseGame(TetrisApp* app);
 void resetUI(TetrisApp* app);
 void cleanupApp(gpointer data);
 void onAppActivate(GtkApplication* app, gpointer userData);
+
+// Menu related functions
+void createMenu(TetrisApp* app);
+void onStartGame(GtkMenuItem* menuItem, gpointer userData);
+void onPauseGame(GtkMenuItem* menuItem, gpointer userData);
+void onRestartGame(GtkMenuItem* menuItem, gpointer userData);
+void onQuitGame(GtkMenuItem* menuItem, gpointer userData);
+void onSoundToggled(GtkCheckMenuItem* menuItem, gpointer userData);
+void onDifficultyChanged(GtkRadioMenuItem* menuItem, gpointer userData);
+void onAboutDialog(GtkMenuItem* menuItem, gpointer userData);
+void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData);
+std::string getDifficultyText(int difficulty);
+void adjustDropSpeed(TetrisApp* app);
 
 #endif // TETRIS_H
