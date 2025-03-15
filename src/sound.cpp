@@ -168,11 +168,11 @@ void TetrisBoard::playSound(GameSoundEvent event) {
   // Map GameSoundEvent to AudioManager's SoundEvent
   SoundEvent audioEvent;
   switch (event) {
-  case GameSoundEvent::BackgroundMusic:
-    audioEvent = SoundEvent::BackgroundMusic;
-    break;
-  default:
-    return;
+    case GameSoundEvent::BackgroundMusic:
+      audioEvent = SoundEvent::BackgroundMusic;
+      break;
+    default:
+      return;
   }
 
   // Play the sound asynchronously

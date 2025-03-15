@@ -1,21 +1,42 @@
+# Compiler and flags
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -g
-LDFLAGS = $(shell pkg-config --cflags --libs gtk+-3.0)
+CXXFLAGS = -Wall -std=c++17 -I.
+
+# Detect OS for platform-specific settings
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+    AUDIO_SOURCE = pulseaudioplayer.cpp
+    CXXFLAGS += -DLINUX
+    LIBS = -lgtk-3 -lgdk-3 -lpangocairo-1.0 -lpango-1.0 -lcairo -lgdk_pixbuf-2.0 \
+           -latk-1.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0 -lzip -lpulse -lpulse-simple -pthread
+    INCLUDES = $(shell pkg-config --cflags gtk+-3.0)
+else
+    AUDIO_SOURCE = windowsaudioplayer.cpp
+    CXXFLAGS += -DWIN32
+    LIBS = -lgtk-3 -lgdk-3 -lpangocairo-1.0 -lpango-1.0 -lcairo -lgdk_pixbuf-2.0 \
+           -latk-1.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0 -lzip -lwinmm
+    INCLUDES = $(shell pkg-config --cflags gtk+-3.0)
+endif
 
 # Source files
-SRC = tetris.cpp
-OBJ = $(SRC:.cpp=.o)
-EXEC = tetris
+SOURCES = tetris.cpp audiomanager.cpp sound.cpp $(AUDIO_SOURCE)
+OBJECTS = $(SOURCES:.cpp=.o)
+TARGET = tetris
 
-all: $(EXEC)
+# Main target
+all: $(TARGET)
 
-$(EXEC): $(OBJ)
-	$(CXX) $(OBJ) -o $@ $(LDFLAGS)
+# Build the executable
+$(TARGET): $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
 
-%.o: %.cpp tetris.h
-	$(CXX) -c $< -o $@ $(CXXFLAGS) $(LDFLAGS)
+# Rule for object files
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
+# Clean rule
 clean:
-	rm -f $(OBJ) $(EXEC)
+	rm -f $(OBJECTS) $(TARGET)
 
+# Phony targets
 .PHONY: all clean

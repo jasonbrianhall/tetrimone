@@ -760,9 +760,15 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     // Show all widgets
     gtk_widget_show_all(tetrisApp->window);
 
-    tetrisApp->board->playBackgroundMusic();
-    tetrisApp->backgroundMusicPlaying = true;
-    
+    if (tetrisApp->board->initializeAudio()) {
+        // Only play music if initialization was successful
+        tetrisApp->board->playBackgroundMusic();
+        tetrisApp->backgroundMusicPlaying = true;
+    }
+    else {
+        printf("Music failed to initialize");
+    }
+        
     // Start the game
     startGame(tetrisApp);
 }
