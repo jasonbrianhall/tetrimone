@@ -283,6 +283,7 @@ public:
     const Tetromino& getNextPiece() const { return *nextPiece; }
     int getGridValue(int x, int y) const;
     bool sound_enabled_ = true;
+    bool musicPaused = false;
     std::string sounds_zip_path_ = "sound.zip";
     void restart();
 
