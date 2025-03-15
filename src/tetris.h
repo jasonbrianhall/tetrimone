@@ -297,6 +297,7 @@ public:
     bool extractFileFromZip(const std::string &zipFilePath,
                           const std::string &fileName,
                           std::vector<uint8_t> &fileData);
+
 };
 
 // TetrisApp structure - holds application state
@@ -338,6 +339,8 @@ void pauseGame(TetrisApp* app);
 void resetUI(TetrisApp* app);
 void cleanupApp(gpointer data);
 void onAppActivate(GtkApplication* app, gpointer userData);
+void onMenuActivated(GtkWidget* widget, gpointer userData);
+void onMenuDeactivated(GtkWidget* widget, gpointer userData);
 
 // Menu related functions
 void createMenu(TetrisApp* app);

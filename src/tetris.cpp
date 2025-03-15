@@ -758,18 +758,7 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     startGame(tetrisApp);
 }
 
-#include "tetris.h"
-#include "audiomanager.h"
-#include <iostream>
-
-// Add this to the TetrisApp struct in tetris.h
-/*
-GtkWidget* menuBar;
-GtkWidget* difficultyLabel;
-int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard
-*/
-
-// Function to create the menu bar
+// Function to create the menu bar with pause handling
 void createMenu(TetrisApp* app) {
     GtkWidget* menuBar = gtk_menu_bar_new();
     
@@ -777,6 +766,12 @@ void createMenu(TetrisApp* app) {
     GtkWidget* gameMenu = gtk_menu_new();
     GtkWidget* gameMenuItem = gtk_menu_item_new_with_label("Game");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(gameMenuItem), gameMenu);
+    
+    // Connect signals for menu activation/deactivation
+    g_signal_connect(G_OBJECT(gameMenu), "show", 
+                   G_CALLBACK(onMenuActivated), app);
+    g_signal_connect(G_OBJECT(gameMenu), "hide", 
+                   G_CALLBACK(onMenuDeactivated), app);
     
     // Game menu items
     app->startMenuItem = gtk_menu_item_new_with_label("Start");
@@ -795,6 +790,12 @@ void createMenu(TetrisApp* app) {
     GtkWidget* optionsMenuItem = gtk_menu_item_new_with_label("Options");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(optionsMenuItem), optionsMenu);
     
+    // Connect signals for menu activation/deactivation
+    g_signal_connect(G_OBJECT(optionsMenu), "show", 
+                   G_CALLBACK(onMenuActivated), app);
+    g_signal_connect(G_OBJECT(optionsMenu), "hide", 
+                   G_CALLBACK(onMenuDeactivated), app);
+    
     // Options menu items
     app->soundToggleMenuItem = gtk_check_menu_item_new_with_label("Sound");
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), TRUE);
@@ -803,6 +804,12 @@ void createMenu(TetrisApp* app) {
     GtkWidget* difficultyMenu = gtk_menu_new();
     GtkWidget* difficultyMenuItem = gtk_menu_item_new_with_label("Difficulty");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(difficultyMenuItem), difficultyMenu);
+    
+    // Connect signals for difficulty submenu
+    g_signal_connect(G_OBJECT(difficultyMenu), "show", 
+                   G_CALLBACK(onMenuActivated), app);
+    g_signal_connect(G_OBJECT(difficultyMenu), "hide", 
+                   G_CALLBACK(onMenuDeactivated), app);
     
     // Create difficulty radio menu items
     GSList* difficultyGroup = NULL;
@@ -829,6 +836,12 @@ void createMenu(TetrisApp* app) {
     GtkWidget* helpMenu = gtk_menu_new();
     GtkWidget* helpMenuItem = gtk_menu_item_new_with_label("Help");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(helpMenuItem), helpMenu);
+    
+    // Connect signals for menu activation/deactivation
+    g_signal_connect(G_OBJECT(helpMenu), "show", 
+                   G_CALLBACK(onMenuActivated), app);
+    g_signal_connect(G_OBJECT(helpMenu), "hide", 
+                   G_CALLBACK(onMenuDeactivated), app);
     
     // Help menu items
     GtkWidget* aboutMenuItem = gtk_menu_item_new_with_label("About");
@@ -1134,6 +1147,35 @@ void onPauseGame(GtkMenuItem* menuItem, gpointer userData) {
     }
 }
 
+void onMenuActivated(GtkWidget* widget, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    // Don't pause if already paused or game over
+    if (app->board->isPaused() || app->board->isGameOver()) {
+        return;
+    }
+    
+    // Pause game while menu is open
+    app->board->setPaused(true);
+    pauseGame(app);
+    
+    // Don't change menu labels - this is temporary pause
+}
+
+void onMenuDeactivated(GtkWidget* widget, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    // Don't resume if game over or if pause was explicitly set by user
+    if (app->board->isGameOver() || 
+        (app->board->isPaused() && 
+         strcmp(gtk_menu_item_get_label(GTK_MENU_ITEM(app->pauseMenuItem)), "Resume") == 0)) {
+        return;
+    }
+    
+    // Resume game after menu is closed
+    app->board->setPaused(false);
+    startGame(app);
+}
 
 int main(int argc, char* argv[]) {
     GtkApplication* app;
