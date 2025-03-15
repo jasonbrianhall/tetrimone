@@ -7,6 +7,7 @@
 #include <random>
 #include <chrono>
 #include <memory>
+#include "audiomanager.h"
 
 // Constants
 const int GRID_WIDTH = 10;
@@ -278,8 +279,18 @@ public:
     const Tetromino& getCurrentPiece() const { return *currentPiece; }
     const Tetromino& getNextPiece() const { return *nextPiece; }
     int getGridValue(int x, int y) const;
-    
+    bool sound_enabled_ = true;
+    std::string sounds_zip_path_ = "sound.zip";
     void restart();
+
+    bool initializeAudio();
+    void playSound(GameSoundEvent event);
+    void playBackgroundMusic();
+    void pauseBackgroundMusic();
+    void resumeBackgroundMusic();
+    void cleanupAudio();
+    bool loadSoundFromZip(GameSoundEvent event, const std::string& soundFileName);
+
 };
 
 // TetrisApp structure - holds application state
@@ -292,7 +303,7 @@ struct TetrisApp {
     GtkWidget* scoreLabel;
     GtkWidget* levelLabel;
     GtkWidget* linesLabel;
-    
+    bool backgroundMusicPlaying = false;
     TetrisBoard* board;
     guint timerId;
     int dropSpeed;

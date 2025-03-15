@@ -1,6 +1,8 @@
 #include "tetris.h"
+#include "audiomanager.h"
 #include <iostream>
 #include <string>
+
 
 // Tetromino class implementation
 Tetromino::Tetromino(int type) : type(type), rotation(0) {
@@ -623,6 +625,12 @@ void startGame(TetrisApp* app) {
         app->timerId = 0;
     }
     
+    // Resume background music if it was playing
+    if (!app->backgroundMusicPlaying) {
+        app->board->resumeBackgroundMusic();
+        app->backgroundMusicPlaying = true;
+    }
+    
     // Calculate drop speed based on level (faster as level increases)
     app->dropSpeed = INITIAL_SPEED - (app->board->getLevel() - 1) * 50;
     if (app->dropSpeed < 100) {
@@ -638,6 +646,12 @@ void pauseGame(TetrisApp* app) {
     if (app->timerId > 0) {
         g_source_remove(app->timerId);
         app->timerId = 0;
+    }
+    
+    // Pause background music
+    if (app->backgroundMusicPlaying) {
+        app->board->pauseBackgroundMusic();
+        app->backgroundMusicPlaying = false;
     }
 }
 
@@ -745,10 +759,33 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     
     // Show all widgets
     gtk_widget_show_all(tetrisApp->window);
+
+    tetrisApp->board->playBackgroundMusic();
+    tetrisApp->backgroundMusicPlaying = true;
     
     // Start the game
     startGame(tetrisApp);
 }
+
+void TetrisBoard::playBackgroundMusic() {
+    if (sound_enabled_) {
+        playSound(GameSoundEvent::BackgroundMusic);
+    }
+}
+
+void TetrisBoard::pauseBackgroundMusic() {
+    // This would require additional AudioManager functionality to pause a specific sound
+    // For now, we can implement this by managing the background music state in the app
+}
+
+void TetrisBoard::resumeBackgroundMusic() {
+    // Similar to pause, this would require AudioManager extensions
+    // For now, we can just restart the music
+    if (sound_enabled_) {
+        playSound(GameSoundEvent::BackgroundMusic);
+    }
+}
+
 
 int main(int argc, char* argv[]) {
     GtkApplication* app;

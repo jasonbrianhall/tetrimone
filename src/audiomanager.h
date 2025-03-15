@@ -11,10 +11,7 @@
 
 // Sound event types for the game
 enum class SoundEvent {
-  MidiBackground,  // Background music
-  MidiGameplay,    // Gameplay music
-  MidiSuccess,     // Success jingle
-  MidiFailure      // Failure jingle  Error // Error sound
+  BackgroundMusic // Background Music
 };
 
 // Platform-independent class to handle sound playback
