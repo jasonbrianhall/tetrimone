@@ -9,6 +9,10 @@
 #include <memory>
 #include "audiomanager.h"
 
+enum class GameSoundEvent {
+  BackgroundMusic
+};
+
 // Constants
 const int GRID_WIDTH = 10;
 const int GRID_HEIGHT = 20;
@@ -290,6 +294,10 @@ public:
     void resumeBackgroundMusic();
     void cleanupAudio();
     bool loadSoundFromZip(GameSoundEvent event, const std::string& soundFileName);
+    bool setSoundsZipPath(const std::string&);
+    bool extractFileFromZip(const std::string &zipFilePath,
+                          const std::string &fileName,
+                          std::vector<uint8_t> &fileData);
 
 };
 

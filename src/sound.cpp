@@ -1,5 +1,5 @@
 #include "audiomanager.h"
-#include "solitaire.h"
+#include "tetris.h"
 #include <algorithm>
 #include <cctype> // Added for std::tolower
 #include <fstream>
@@ -99,68 +99,23 @@ bool TetrisBoard::initializeAudio() {
   }
 
   if (sounds_zip_path_.empty()) {
-    sounds_zip_path_ =
-        "sounds.zip"; // Default location, can be changed via settings
+    sounds_zip_path_ = "sound.zip"; // Default location, can be changed via settings
   }
 
   // Try to initialize the audio system
   if (AudioManager::getInstance().initialize()) {
-    // Attempt to load default sounds
+    // Attempt to load the theme music
     if (loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.wav")) {
-
-#ifdef DEBUG
       std::cout << "Sound system initialized successfully." << std::endl;
-#endif
       return true;
     } else {
-#ifdef DEBUG
-      std::cerr << "Failed to load all sound effects. Sound will be disabled."
-                << std::endl;
-#endif
+      std::cerr << "Failed to load background music. Sound will be disabled." << std::endl;
       AudioManager::getInstance().shutdown();
       sound_enabled_ = false;
-
-      // Update menu checkbox if window exists
-      if (window_) {
-        GList *menu_items = gtk_container_get_children(GTK_CONTAINER(vbox_));
-        if (menu_items) {
-          GtkWidget *menubar = GTK_WIDGET(menu_items->data);
-          GList *menus = gtk_container_get_children(GTK_CONTAINER(menubar));
-          if (menus) {
-            // First menu should be the Game menu
-            GtkWidget *game_menu_item = GTK_WIDGET(menus->data);
-            GtkWidget *game_menu =
-                gtk_menu_item_get_submenu(GTK_MENU_ITEM(game_menu_item));
-            if (game_menu) {
-              GList *game_menu_items =
-                  gtk_container_get_children(GTK_CONTAINER(game_menu));
-              // Find the sound checkbox (should be near the end)
-              for (GList *item = game_menu_items; item != NULL;
-                   item = item->next) {
-                if (GTK_IS_CHECK_MENU_ITEM(item->data)) {
-                  GtkWidget *check_item = GTK_WIDGET(item->data);
-                  const gchar *label =
-                      gtk_menu_item_get_label(GTK_MENU_ITEM(check_item));
-                  if (label && strstr(label, "Sound") != NULL) {
-                    gtk_check_menu_item_set_active(
-                        GTK_CHECK_MENU_ITEM(check_item), FALSE);
-                    break;
-                  }
-                }
-              }
-              g_list_free(game_menu_items);
-            }
-            g_list_free(menus);
-          }
-          g_list_free(menu_items);
-        }
-      }
-
       return false;
     }
   } else {
-    std::cerr << "Failed to initialize audio system. Sound will be disabled."
-              << std::endl;
+    std::cerr << "Failed to initialize audio system. Sound will be disabled." << std::endl;
     sound_enabled_ = false;
     return false;
   }
@@ -193,7 +148,7 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
   SoundEvent audioEvent;
   switch (event) {
     case GameSoundEvent::BackgroundMusic:
-        audioEvent = SoundEvent::MidiBackground;  // Map to the background music event
+        audioEvent = SoundEvent::BackgroundMusic;  // Map to the background music event
         break;
    default:
     std::cerr << "Unknown sound event" << std::endl;
@@ -213,23 +168,8 @@ void TetrisBoard::playSound(GameSoundEvent event) {
   // Map GameSoundEvent to AudioManager's SoundEvent
   SoundEvent audioEvent;
   switch (event) {
-  case GameSoundEvent::CardFlip:
-    audioEvent = SoundEvent::CardFlip;
-    break;
-  case GameSoundEvent::CardPlace:
-    audioEvent = SoundEvent::CardPlace;
-    break;
-  case GameSoundEvent::StockRefill:
-    audioEvent = SoundEvent::StockRefill;
-    break;
-  case GameSoundEvent::WinGame:
-    audioEvent = SoundEvent::WinGame; // Using CardPlace as a substitute
-    break;
-  case GameSoundEvent::DealCard:
-    audioEvent = SoundEvent::DealCard;
-    break;
-  case GameSoundEvent::Firework:
-    audioEvent = SoundEvent::Firework;
+  case GameSoundEvent::BackgroundMusic:
+    audioEvent = SoundEvent::BackgroundMusic;
     break;
   default:
     return;
@@ -266,8 +206,5 @@ bool TetrisBoard::setSoundsZipPath(const std::string &path) {
       return false;
     }
   }
-
-  // Save the new path to settings
-  saveSettings();
   return true;
 }
