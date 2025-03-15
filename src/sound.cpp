@@ -2,11 +2,13 @@
 #include "tetris.h"
 #include <algorithm>
 #include <cctype> // Added for std::tolower
+#include <chrono> // Add this for std::chrono and std::this_thread::sleep_for
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <sys/stat.h>
+#include <thread>
 #include <vector>
 #include <zip.h>
 #ifdef _WIN32
@@ -160,6 +162,35 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
                                                          format);
 }
 
+void TetrisBoard::playBackgroundMusic() {
+    if (!sound_enabled_) {
+        return;
+    }
+
+    // Create a single background thread that loops the music
+    static bool musicThreadRunning = false;
+    
+    // Only start the thread once
+    if (!musicThreadRunning) {
+        musicThreadRunning = true;
+        
+        std::thread([this]() {
+            while (sound_enabled_) {
+                // Map GameSoundEvent to AudioManager's SoundEvent
+                SoundEvent audioEvent = SoundEvent::BackgroundMusic;
+                
+                // Play the sound and wait for it to complete
+                AudioManager::getInstance().playSoundAndWait(audioEvent);
+                
+                // Short delay between loops
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            musicThreadRunning = false;
+        }).detach();
+    }
+}
+
 void TetrisBoard::playSound(GameSoundEvent event) {
   if (!sound_enabled_) {
     return;
@@ -207,4 +238,21 @@ bool TetrisBoard::setSoundsZipPath(const std::string &path) {
     }
   }
   return true;
+}
+
+void TetrisBoard::pauseBackgroundMusic() {
+    // We don't have a native way to pause the background music with the current AudioManager
+    // For now, we'll simply set a flag that the background thread can check
+    sound_enabled_ = false;
+    
+    // The background thread will see this and exit naturally
+    // When resumeBackgroundMusic is called, we'll set sound_enabled_ back to true
+    // and start a new thread
+}
+
+void TetrisBoard::resumeBackgroundMusic() {
+    if (!sound_enabled_) {
+        sound_enabled_ = true;
+        playBackgroundMusic();
+    }
 }

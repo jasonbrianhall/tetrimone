@@ -773,26 +773,6 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     startGame(tetrisApp);
 }
 
-void TetrisBoard::playBackgroundMusic() {
-    if (sound_enabled_) {
-        playSound(GameSoundEvent::BackgroundMusic);
-    }
-}
-
-void TetrisBoard::pauseBackgroundMusic() {
-    // This would require additional AudioManager functionality to pause a specific sound
-    // For now, we can implement this by managing the background music state in the app
-}
-
-void TetrisBoard::resumeBackgroundMusic() {
-    // Similar to pause, this would require AudioManager extensions
-    // For now, we can just restart the music
-    if (sound_enabled_) {
-        playSound(GameSoundEvent::BackgroundMusic);
-    }
-}
-
-
 int main(int argc, char* argv[]) {
     GtkApplication* app;
     int status;
