@@ -60,37 +60,61 @@ public:
         return true;
     }
     
-    void shutdown() override {
-        if (!initialized_) {
-            return;
-        }
-        
-        // Free all chunks and music
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            for (auto& chunk : sound_chunks_) {
-                if (chunk.second) {
-                    Mix_FreeChunk(chunk.second);
-                }
-            }
-            sound_chunks_.clear();
-            
-            if (current_music_) {
-                Mix_HaltMusic();
-                Mix_FreeMusic(current_music_);
-                current_music_ = nullptr;
-            }
-        }
-        
-        // Reset the instance pointer
-        instance_ = nullptr;
-        
-        // Quit SDL_mixer and cleanup
-        Mix_CloseAudio();
-        Mix_Quit();
-        
-        initialized_ = false;
+void shutdown() override {
+    if (!initialized_) {
+        return;
     }
+    
+    // First, set initialized_ to false to prevent new audio from playing
+    initialized_ = false;
+    
+    // Free all chunks and music
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        
+        // Halt all playing channels first
+        Mix_HaltChannel(-1);  // -1 means all channels
+        
+        // Then halt music (with a brief fade to avoid pops)
+        if (current_music_) {
+            Mix_FadeOutMusic(100);  // 100ms fade
+            
+            // Brief delay to allow the fadeout to take effect
+            SDL_Delay(150);
+            
+            Mix_HaltMusic();
+            Mix_FreeMusic(current_music_);
+            current_music_ = nullptr;
+        }
+        
+        // Free all sound chunks
+        for (auto& chunk : sound_chunks_) {
+            if (chunk.second) {
+                Mix_FreeChunk(chunk.second);
+            }
+        }
+        sound_chunks_.clear();
+        
+        // Clear all promises
+        channel_promises_.clear();
+        music_completion_promise_.reset();
+    }
+    
+    // Reset the instance pointer before quitting SDL_mixer
+    instance_ = nullptr;
+    
+    // Quit SDL_mixer and cleanup with proper sequence
+    Mix_HookMusicFinished(nullptr);  // Remove callback
+    Mix_ChannelFinished(nullptr);    // Remove callback
+    
+    Mix_CloseAudio();
+    Mix_Quit();
+    
+    // If we initialized SDL Audio ourselves, quit that subsystem
+    if (SDL_WasInit(SDL_INIT_AUDIO)) {
+        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    }
+}
     
     void playSound(const std::vector<uint8_t>& data, 
                   const std::string& format,

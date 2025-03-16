@@ -319,11 +319,38 @@ void TetrisBoard::playSound(GameSoundEvent event) {
 }
 
 void TetrisBoard::cleanupAudio() {
-
-  if (sound_enabled_) {
-    AudioManager::getInstance().shutdown();
+    // First check if we need to do anything
+    if (!sound_enabled_) {
+        return;
+    }
+    
+    // Set sound_enabled_ to false first to prevent any new sounds from playing
     sound_enabled_ = false;
-  }
+    
+    // Stop the background music thread by setting musicPaused
+    musicPaused = true;
+    
+    // Give the background music thread time to exit
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    
+    try {
+        // Tell audio manager to stop all sounds
+        AudioManager::getInstance().setMuted(true);
+        
+        // Give time for sound effects to stop
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        
+        // Shutdown the audio manager
+        AudioManager::getInstance().shutdown();
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Exception during audio cleanup: " << e.what() << std::endl;
+        // Continue with cleanup despite errors
+    }
+    catch (...) {
+        std::cerr << "Unknown exception during audio cleanup" << std::endl;
+        // Continue with cleanup despite errors
+    }
 }
 
 bool TetrisBoard::setSoundsZipPath(const std::string &path) {

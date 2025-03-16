@@ -603,6 +603,6 @@ void shutdownSDL(TetrisApp* app);
 void onBlockSizeDialog(GtkMenuItem* menuItem, gpointer userData);
 void onBlockSizeValueChanged(GtkRange* range, gpointer data);
 void onResizeWindowButtonClicked(GtkWidget* button, gpointer data);
-
+gboolean onDeleteEvent(GtkWidget* widget, GdkEvent* event, gpointer userData);
 
 #endif // TETRIS_H
