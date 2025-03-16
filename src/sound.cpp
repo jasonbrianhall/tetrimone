@@ -105,11 +105,20 @@ bool TetrisBoard::initializeAudio() {
   }
 
   // Try to initialize the audio system
-  if (AudioManager::getInstance().initialize()) {
+if (AudioManager::getInstance().initialize()) {
     // Attempt to load the theme music
-    if (loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.wav")  && loadSoundFromZip(GameSoundEvent::Gameover, "gameover.wav")) {
-      return true;
-    } else {
+    if (loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.wav")  
+        && loadSoundFromZip(GameSoundEvent::Gameover, "gameover.wav")
+        && loadSoundFromZip(GameSoundEvent::Clear, "clear.wav")
+        && loadSoundFromZip(GameSoundEvent::Drop, "drop.wav")
+        && loadSoundFromZip(GameSoundEvent::LateralMove, "lateralmove.wav")
+        && loadSoundFromZip(GameSoundEvent::LevelUp, "levelup.wav")
+        && loadSoundFromZip(GameSoundEvent::Rotate, "rotate.wav")
+        && loadSoundFromZip(GameSoundEvent::Select, "select.wav")
+        && loadSoundFromZip(GameSoundEvent::Start, "start.wav")
+        && loadSoundFromZip(GameSoundEvent::Excellent, "excellent.wav")) {
+        return true;
+    } else { 
       std::cerr << "Failed to load background music. Sound will be disabled." << std::endl;
       AudioManager::getInstance().shutdown();
       sound_enabled_ = false;

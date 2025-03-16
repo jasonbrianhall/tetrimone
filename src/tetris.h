@@ -12,7 +12,15 @@
 
 enum class GameSoundEvent {
   BackgroundMusic,
-  Gameover
+  Gameover,
+  Clear,
+  Drop,
+  LateralMove,
+  LevelUp,
+  Rotate,
+  Select,
+  Start,
+  Excellent
 };
 
 // Forward declarations (need to be at the top)
