@@ -700,56 +700,101 @@ gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data) {
     TetrisApp* app = static_cast<TetrisApp*>(data);
     TetrisBoard* board = app->board;
     
-switch (event->keyval) {
-    // Existing key handlers...
+    // Handle space to dismiss splash screen first
+    if (event->keyval == GDK_KEY_space && board->isSplashScreenActive()) {
+        board->dismissSplashScreen();
+        gtk_widget_queue_draw(app->gameArea);
+        gtk_widget_queue_draw(app->nextPieceArea);
+        updateLabels(app);
+        return TRUE;
+    }
     
-    case GDK_KEY_space:
-        if (board->isSplashScreenActive()) {
-            board->dismissSplashScreen();
-            return TRUE;
+    // Handle game control keys only when game is active
+    if (!board->isPaused() && !board->isGameOver() && !board->isSplashScreenActive()) {
+        switch (event->keyval) {
+            case GDK_KEY_Left:
+            case GDK_KEY_a:
+            case GDK_KEY_A:
+                board->movePiece(-1, 0);
+                break;
+                
+            case GDK_KEY_Right:
+            case GDK_KEY_d:
+            case GDK_KEY_D:
+                board->movePiece(1, 0);
+                break;
+                
+            case GDK_KEY_Down:
+            case GDK_KEY_s:
+            case GDK_KEY_S:
+                board->movePiece(0, 1);
+                break;
+                
+            case GDK_KEY_Up:
+            case GDK_KEY_w:
+            case GDK_KEY_W:
+                board->rotatePiece(true);
+                break;
+                
+            case GDK_KEY_z:
+            case GDK_KEY_Z:
+                board->rotatePiece(false);
+                break;
+                
+            case GDK_KEY_space:
+                board->hardDrop();
+                break;
         }
-        board->hardDrop();
-        break;
-        
-    case GDK_KEY_p:
-    case GDK_KEY_P:
-        if (!board->isSplashScreenActive()) {
-            // Use menu action to ensure consistent behavior
-            onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
-        }
-        break;
-        
-    case GDK_KEY_n:
-    case GDK_KEY_N:
-        if (board->isPaused()) {
-            onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
-        }
-        break;
-        
-    case GDK_KEY_q:
-    case GDK_KEY_Q:
-        if (board->isPaused()) {
-            onQuitGame(GTK_MENU_ITEM(NULL), app);
-        }
-        break;
-        
-    case GDK_KEY_r:
-    case GDK_KEY_R:
-        if (board->isGameOver()) {
-            onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
-        }
-        break;
-        
-    default:
-        return FALSE;
-}
+    }
     
-    // Redraw the game board
+    // Handle global control keys regardless of game state
+    switch (event->keyval) {
+        case GDK_KEY_p:
+        case GDK_KEY_P:
+            if (!board->isSplashScreenActive()) {
+                onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+            }
+            break;
+            
+        case GDK_KEY_n:
+        case GDK_KEY_N:
+            if (board->isPaused()) {
+                onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
+            }
+            break;
+            
+        case GDK_KEY_q:
+        case GDK_KEY_Q:
+            if (board->isPaused()) {
+                onQuitGame(GTK_MENU_ITEM(NULL), app);
+            }
+            break;
+            
+        case GDK_KEY_r:
+        case GDK_KEY_R:
+            if (board->isGameOver()) {
+                onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
+            }
+            break;
+            
+        case GDK_KEY_Escape:
+            // Emergency unpause if somehow stuck
+            if (board->isPaused() && !board->isGameOver()) {
+                onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+            }
+            break;
+            
+        default:
+            // Don't return FALSE here as it prevents redrawing
+            break;
+    }
+    
+    // Always redraw and update after any key press
     gtk_widget_queue_draw(app->gameArea);
     gtk_widget_queue_draw(app->nextPieceArea);
     updateLabels(app);
     
-    return TRUE;
+    return TRUE;  // Always claim we handled the key event
 }
 
 gboolean onTimerTick(gpointer data) {
@@ -945,9 +990,9 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     gtk_box_pack_start(GTK_BOX(sideBox), controlsLabel, FALSE, FALSE, 10);
     
     GtkWidget* controls = gtk_label_new(
-        "Left/Right: Move\n"
-        "Up: Rotate\n"
-        "Down: Soft Drop\n"
+        "Left/Right/A/D: Move\n"
+        "Up/W/Z: Rotate\n"
+        "Down/S: Soft Drop\n"
         "Space: Hard Drop\n"
         "P: Pause\n"
         "R: Restart"
