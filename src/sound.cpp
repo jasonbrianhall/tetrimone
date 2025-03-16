@@ -17,8 +17,8 @@
 
 // Function to extract a file from a ZIP archive into memory
 bool TetrisBoard::extractFileFromZip(const std::string &zipFilePath,
-                                       const std::string &fileName,
-                                       std::vector<uint8_t> &fileData) {
+                                     const std::string &fileName,
+                                     std::vector<uint8_t> &fileData) {
   int errCode = 0;
   zip_t *archive = zip_open(zipFilePath.c_str(), 0, &errCode);
 
@@ -101,38 +101,42 @@ bool TetrisBoard::initializeAudio() {
   }
 
   if (sounds_zip_path_.empty()) {
-    sounds_zip_path_ = "sound.zip"; // Default location, can be changed via settings
+    sounds_zip_path_ =
+        "sound.zip"; // Default location, can be changed via settings
   }
 
   // Try to initialize the audio system
-if (AudioManager::getInstance().initialize()) {
+  if (AudioManager::getInstance().initialize()) {
     // Attempt to load the theme music
-    if (loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.wav")  
-        && loadSoundFromZip(GameSoundEvent::Gameover, "gameover.wav")
-        && loadSoundFromZip(GameSoundEvent::Clear, "clear.wav")
-        && loadSoundFromZip(GameSoundEvent::Drop, "drop.wav")
-        && loadSoundFromZip(GameSoundEvent::LateralMove, "lateralmove.wav")
-        && loadSoundFromZip(GameSoundEvent::LevelUp, "levelup.wav")
-        && loadSoundFromZip(GameSoundEvent::Rotate, "rotate.wav")
-        && loadSoundFromZip(GameSoundEvent::Select, "select.wav")
-        && loadSoundFromZip(GameSoundEvent::Start, "start.wav")
-        && loadSoundFromZip(GameSoundEvent::Excellent, "excellent.wav")) {
-        return true;
-    } else { 
-      std::cerr << "Failed to load background music. Sound will be disabled." << std::endl;
+    if (loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.wav") &&
+        loadSoundFromZip(GameSoundEvent::Gameover, "gameover.wav") &&
+        loadSoundFromZip(GameSoundEvent::Clear, "clear.wav") &&
+        loadSoundFromZip(GameSoundEvent::Drop, "drop.wav") &&
+        loadSoundFromZip(GameSoundEvent::LateralMove, "lateralmove.wav") &&
+        loadSoundFromZip(GameSoundEvent::LevelUp, "levelup.wav") &&
+        loadSoundFromZip(GameSoundEvent::Rotate, "rotate.wav") &&
+        loadSoundFromZip(GameSoundEvent::Select, "select.wav") &&
+        loadSoundFromZip(GameSoundEvent::Start, "start.wav") &&
+        loadSoundFromZip(GameSoundEvent::Tetris, "tetris.wav") &&
+        loadSoundFromZip(GameSoundEvent::Excellent, "excellent.wav")) {
+      return true;
+    } else {
+      std::cerr << "Failed to load background music. Sound will be disabled."
+                << std::endl;
       AudioManager::getInstance().shutdown();
       sound_enabled_ = false;
       return false;
     }
   } else {
-    std::cerr << "Failed to initialize audio system. Sound will be disabled." << std::endl;
+    std::cerr << "Failed to initialize audio system. Sound will be disabled."
+              << std::endl;
     sound_enabled_ = false;
     return false;
   }
 }
 
 bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
-                                     const std::string &soundFileName) {
+                                   const std::string &soundFileName) {
   // Extract the sound file from the ZIP archive
   std::vector<uint8_t> soundData;
   if (!extractFileFromZip(sounds_zip_path_, soundFileName, soundData)) {
@@ -157,14 +161,15 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
   // Map GameSoundEvent to AudioManager's SoundEvent
   SoundEvent audioEvent;
   switch (event) {
-    case GameSoundEvent::BackgroundMusic:
-        audioEvent = SoundEvent::BackgroundMusic;  // Map to the background music event
-        break;
-    case GameSoundEvent::Gameover:
-        audioEvent = SoundEvent::Gameover;  // Map to the background music event
-        break;
+  case GameSoundEvent::BackgroundMusic:
+    audioEvent =
+        SoundEvent::BackgroundMusic; // Map to the background music event
+    break;
+  case GameSoundEvent::Gameover:
+    audioEvent = SoundEvent::Gameover; // Map to the background music event
+    break;
 
-   default:
+  default:
     std::cerr << "Unknown sound event" << std::endl;
     return false;
   }
@@ -175,64 +180,63 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
 }
 
 void TetrisBoard::pauseBackgroundMusic() {
-    
-    // If sound is being turned off (not just paused), we need to stop immediately
-    if (!sound_enabled_) {
-        // This will kill the thread at the next check, but we also need to
-        // tell AudioManager to stop any currently playing sound
-        AudioManager::getInstance().setMuted(true);
-        return;
-    }
-    
-    // For regular pause during gameplay, just pause
-    musicPaused = true;
+
+  // If sound is being turned off (not just paused), we need to stop immediately
+  if (!sound_enabled_) {
+    // This will kill the thread at the next check, but we also need to
+    // tell AudioManager to stop any currently playing sound
     AudioManager::getInstance().setMuted(true);
+    return;
+  }
+
+  // For regular pause during gameplay, just pause
+  musicPaused = true;
+  AudioManager::getInstance().setMuted(true);
 }
 
 void TetrisBoard::playBackgroundMusic() {
-    
-    if (!sound_enabled_) {
-        return;
-    }
-    
-    // Create a single background thread that loops the music
-    static bool musicThreadRunning = false;
-    static std::atomic<bool> stopFlag(false);
-    
-    
-    // Kill existing thread if it's running but shouldn't be
-    if (musicThreadRunning && (musicPaused || !sound_enabled_)) {
-        stopFlag = true;
-        // Give a moment for the thread to exit
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        musicThreadRunning = false;
-    }
-    
-    // Only start the thread if music should be playing and thread isn't already running
-    if (!musicThreadRunning && sound_enabled_ && !musicPaused) {
-        musicThreadRunning = true;
-        stopFlag = false;
-        
-        std::thread([this, &stopFlag]() {
-            while (sound_enabled_ && !stopFlag && !musicPaused) {
-                // Map GameSoundEvent to AudioManager's SoundEvent
-                SoundEvent audioEvent = SoundEvent::BackgroundMusic;
-                
-                bool isMuted = AudioManager::getInstance().isMuted();
-                
-                if (!isMuted) {
-                    // Play the sound and wait for it to complete
-                    AudioManager::getInstance().playSoundAndWait(audioEvent);
-                }
-                
-                // Short delay between loops
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                
-            }
-            
-            musicThreadRunning = false;
-        }).detach();
-    }
+
+  if (!sound_enabled_) {
+    return;
+  }
+
+  // Create a single background thread that loops the music
+  static bool musicThreadRunning = false;
+  static std::atomic<bool> stopFlag(false);
+
+  // Kill existing thread if it's running but shouldn't be
+  if (musicThreadRunning && (musicPaused || !sound_enabled_)) {
+    stopFlag = true;
+    // Give a moment for the thread to exit
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    musicThreadRunning = false;
+  }
+
+  // Only start the thread if music should be playing and thread isn't already
+  // running
+  if (!musicThreadRunning && sound_enabled_ && !musicPaused) {
+    musicThreadRunning = true;
+    stopFlag = false;
+
+    std::thread([this, &stopFlag]() {
+      while (sound_enabled_ && !stopFlag && !musicPaused) {
+        // Map GameSoundEvent to AudioManager's SoundEvent
+        SoundEvent audioEvent = SoundEvent::BackgroundMusic;
+
+        bool isMuted = AudioManager::getInstance().isMuted();
+
+        if (!isMuted) {
+          // Play the sound and wait for it to complete
+          AudioManager::getInstance().playSoundAndWait(audioEvent);
+        }
+
+        // Short delay between loops
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+
+      musicThreadRunning = false;
+    }).detach();
+  }
 }
 
 void TetrisBoard::playSound(GameSoundEvent event) {
@@ -243,27 +247,53 @@ void TetrisBoard::playSound(GameSoundEvent event) {
   // Map GameSoundEvent to AudioManager's SoundEvent
   SoundEvent audioEvent;
   switch (event) {
-    case GameSoundEvent::BackgroundMusic:
-      audioEvent = SoundEvent::BackgroundMusic;
-      break;
-    case GameSoundEvent::Gameover:
-      audioEvent = SoundEvent::Gameover;
-      break;
-
-    default:
-      return;
+  case GameSoundEvent::BackgroundMusic:
+    audioEvent = SoundEvent::BackgroundMusic;
+    break;
+  case GameSoundEvent::Gameover:
+    audioEvent = SoundEvent::Gameover;
+    break;
+  case GameSoundEvent::Clear:
+    audioEvent = SoundEvent::Clear;
+    break;
+  case GameSoundEvent::Drop:
+    audioEvent = SoundEvent::Drop;
+    break;
+  case GameSoundEvent::LateralMove:
+    audioEvent = SoundEvent::LateralMove;
+    break;
+  case GameSoundEvent::LevelUp:
+    audioEvent = SoundEvent::LevelUp;
+    break;
+  case GameSoundEvent::Rotate:
+    audioEvent = SoundEvent::Rotate;
+    break;
+  case GameSoundEvent::Select:
+    audioEvent = SoundEvent::Select;
+    break;
+  case GameSoundEvent::Start:
+    audioEvent = SoundEvent::Start;
+    break;
+  case GameSoundEvent::Tetris:
+    audioEvent = SoundEvent::Tetris;
+    break;
+  case GameSoundEvent::Excellent:
+    audioEvent = SoundEvent::Excellent;
+    break;
+  default:
+    std::cerr << "Unknown sound event" << std::endl;
+    return;
   }
-
   // Play the sound asynchronously
   AudioManager::getInstance().playSound(audioEvent);
 }
 
 void TetrisBoard::cleanupAudio() {
-    
-    if (sound_enabled_) {
-        AudioManager::getInstance().shutdown();
-        sound_enabled_ = false;
-    }
+
+  if (sound_enabled_) {
+    AudioManager::getInstance().shutdown();
+    sound_enabled_ = false;
+  }
 }
 
 bool TetrisBoard::setSoundsZipPath(const std::string &path) {
@@ -289,26 +319,25 @@ bool TetrisBoard::setSoundsZipPath(const std::string &path) {
   return true;
 }
 
-
 void TetrisBoard::resumeBackgroundMusic() {
-    
-    if (!sound_enabled_) {
-        // Enable sound if it was disabled
-        sound_enabled_ = true;
-        
-        // Make sure audio is initialized if we're re-enabling sound
-        if (!AudioManager::getInstance().isAvailable()) {
-            if (!initializeAudio()) {
-                return;
-            }
-        }
+
+  if (!sound_enabled_) {
+    // Enable sound if it was disabled
+    sound_enabled_ = true;
+
+    // Make sure audio is initialized if we're re-enabling sound
+    if (!AudioManager::getInstance().isAvailable()) {
+      if (!initializeAudio()) {
+        return;
+      }
     }
-    
-    // Unmute the AudioManager
-    AudioManager::getInstance().setMuted(false);
-    // Unpause playback
-    musicPaused = false;
-    
-    // Make sure music is actually playing
-    playBackgroundMusic();
+  }
+
+  // Unmute the AudioManager
+  AudioManager::getInstance().setMuted(false);
+  // Unpause playback
+  musicPaused = false;
+
+  // Make sure music is actually playing
+  playBackgroundMusic();
 }

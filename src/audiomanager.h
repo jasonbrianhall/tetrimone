@@ -11,8 +11,17 @@
 
 // Sound event types for the game
 enum class SoundEvent {
-  BackgroundMusic, // Background Music
-  Gameover
+  BackgroundMusic,
+  Gameover,
+  Clear,
+  Drop,
+  LateralMove,
+  LevelUp,
+  Rotate,
+  Select,
+  Start,
+  Tetris,
+  Excellent
 };
 
 // Platform-independent class to handle sound playback

@@ -20,6 +20,7 @@ enum class GameSoundEvent {
   Rotate,
   Select,
   Start,
+  Tetris,
   Excellent
 };
 
