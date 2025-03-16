@@ -1159,31 +1159,26 @@ void onPauseGame(GtkMenuItem* menuItem, gpointer userData) {
 void onMenuActivated(GtkWidget* widget, gpointer userData) {
     TetrisApp* app = static_cast<TetrisApp*>(userData);
     
-    // Don't pause if already paused or game over
-    if (app->board->isPaused() || app->board->isGameOver()) {
-        return;
+    // Store current menu item label
+    const char* currentLabel = gtk_menu_item_get_label(GTK_MENU_ITEM(app->pauseMenuItem));
+    
+    // Call onPauseGame to properly pause the game if it's not already paused
+    if (!app->board->isPaused() && !app->board->isGameOver()) {
+        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+        
+        // Restore the menu label so the visual state remains consistent
+        gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), currentLabel);
     }
-    
-    // Pause game while menu is open
-    app->board->setPaused(true);
-    pauseGame(app);
-    
-    // Don't change menu labels - this is temporary pause
 }
 
 void onMenuDeactivated(GtkWidget* widget, gpointer userData) {
     TetrisApp* app = static_cast<TetrisApp*>(userData);
     
-    // Don't resume if game over or if pause was explicitly set by user
-    if (app->board->isGameOver() || 
-        (app->board->isPaused() && 
-         strcmp(gtk_menu_item_get_label(GTK_MENU_ITEM(app->pauseMenuItem)), "Resume") == 0)) {
-        return;
+    // Call onPauseGame to resume if we weren't manually paused before
+    if (app->board->isPaused() && !app->board->isGameOver() && 
+        strcmp(gtk_menu_item_get_label(GTK_MENU_ITEM(app->pauseMenuItem)), "Resume") != 0) {
+        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
     }
-    
-    // Resume game after menu is closed
-    app->board->setPaused(false);
-    startGame(app);
 }
 
 int main(int argc, char* argv[]) {
