@@ -1,17 +1,21 @@
 #include "tetris.h"
 
 void initSDL(TetrisApp* app) {
+    // Make sure we initialize app values first
+    app->joystick = NULL;
+    app->joystickEnabled = false;
+    app->joystickTimerId = 0;
+    
     // Initialize SDL joystick subsystem
     if (SDL_Init(SDL_INIT_JOYSTICK) < 0) {
         printf("SDL could not initialize! SDL Error: %s\n", SDL_GetError());
-        app->joystickEnabled = false;
         return;
     }
     
     // Check for joysticks
     if (SDL_NumJoysticks() < 1) {
         printf("No joysticks connected!\n");
-        app->joystickEnabled = false;
+        SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
         return;
     }
     
@@ -19,7 +23,7 @@ void initSDL(TetrisApp* app) {
     app->joystick = SDL_JoystickOpen(0);
     if (app->joystick == NULL) {
         printf("Unable to open joystick! SDL Error: %s\n", SDL_GetError());
-        app->joystickEnabled = false;
+        SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
         return;
     }
     
@@ -35,16 +39,19 @@ void initSDL(TetrisApp* app) {
 
 // Shutdown SDL
 void shutdownSDL(TetrisApp* app) {
+    // Stop the joystick polling timer
     if (app->joystickTimerId > 0) {
         g_source_remove(app->joystickTimerId);
         app->joystickTimerId = 0;
     }
     
+    // Close the joystick
     if (app->joystick != NULL) {
         SDL_JoystickClose(app->joystick);
         app->joystick = NULL;
     }
     
+    // Quit SDL subsystem
     SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
     app->joystickEnabled = false;
 }
@@ -53,7 +60,7 @@ void shutdownSDL(TetrisApp* app) {
 gboolean pollJoystick(gpointer data) {
     TetrisApp* app = static_cast<TetrisApp*>(data);
     
-    if (!app->joystickEnabled || app->joystick == NULL) {
+    if (!app->joystickEnabled || app->joystick == NULL || app->board == NULL) {
         return FALSE;
     }
     
@@ -65,35 +72,56 @@ gboolean pollJoystick(gpointer data) {
     // Static variables to track previous state
     static int lastXDir = 0;
     static int lastYDir = 0;
+    static Uint32 lastButtonPressTime = 0;
+    static const Uint32 BUTTON_DEBOUNCE_TIME = 200; // ms between button actions
+    static Uint32 lastDpadActionTime = 0;
+    static const Uint32 DPAD_DEBOUNCE_TIME = 100; // ms between D-pad actions
     
-    // Process buttons
+    // Get current time
+    Uint32 currentTime = SDL_GetTicks();
+    
+    // Process buttons with debounce
     int numButtons = SDL_JoystickNumButtons(app->joystick);
     for (int i = 0; i < numButtons; i++) {
         if (SDL_JoystickGetButton(app->joystick, i)) {
-            switch (i) {
-                case 0:  // A button - rotate clockwise
-                    board->rotatePiece(true);  // true for clockwise
-                    break;
-                    
-                case 1:  // B button - counter-rotate
-                    board->rotatePiece(false);  // false for counter-clockwise
-                    break;
-                    
-                case 3:  // Y button - hard drop
-                    board->hardDrop();
-                    break;
-                    
-                case 7:  // Start button - pause/resume
-                    if (!board->isGameOver()) {
-                        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
-                    }
-                    break;
-                    
-                case 6:  // Select/Back button - restart if game over
-                    if (board->isGameOver()) {
-                        onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
-                    }
-                    break;
+            // Only process button if enough time has passed since last press
+            if (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE_TIME) {
+                bool buttonProcessed = true;
+                
+                switch (i) {
+                    case 0:  // A button - rotate clockwise
+                        board->rotatePiece(true);  // true for clockwise
+                        break;
+                        
+                    case 1:  // B button - counter-rotate
+                        board->rotatePiece(false);  // false for counter-clockwise
+                        break;
+                        
+                    case 3:  // Y button - hard drop
+                        board->hardDrop();
+                        break;
+                        
+                    case 7:  // Start button - pause/resume
+                        if (!board->isGameOver()) {
+                            onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+                        }
+                        break;
+                        
+                    case 6:  // Select/Back button - restart if game over
+                        if (board->isGameOver()) {
+                            onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
+                        }
+                        break;
+                        
+                    default:
+                        buttonProcessed = false;
+                        break;
+                }
+                
+                // Update the last button press time if we processed a button
+                if (buttonProcessed) {
+                    lastButtonPressTime = currentTime;
+                }
             }
         }
     }
@@ -145,21 +173,34 @@ gboolean pollJoystick(gpointer data) {
         }
     }
     
-    // Process D-pad hat if present
-    for (int i = 0; i < SDL_JoystickNumHats(app->joystick); i++) {
-        Uint8 hatState = SDL_JoystickGetHat(app->joystick, i);
+    // Process D-pad hat if present with debounce
+    if (currentTime - lastDpadActionTime > DPAD_DEBOUNCE_TIME) {
+        bool actionTaken = false;
         
-        if (hatState & SDL_HAT_LEFT) {
-            board->movePiece(-1, 0);
+        for (int i = 0; i < SDL_JoystickNumHats(app->joystick); i++) {
+            Uint8 hatState = SDL_JoystickGetHat(app->joystick, i);
+            
+            if (hatState & SDL_HAT_LEFT) {
+                board->movePiece(-1, 0);
+                actionTaken = true;
+            }
+            else if (hatState & SDL_HAT_RIGHT) {
+                board->movePiece(1, 0);
+                actionTaken = true;
+            }
+            
+            if (hatState & SDL_HAT_UP) {
+                board->rotatePiece(true);  // true for clockwise
+                actionTaken = true;
+            }
+            else if (hatState & SDL_HAT_DOWN) {
+                board->movePiece(0, 1);
+                actionTaken = true;
+            }
         }
-        if (hatState & SDL_HAT_RIGHT) {
-            board->movePiece(1, 0);
-        }
-        if (hatState & SDL_HAT_UP) {
-            board->rotatePiece(true);  // true for clockwise
-        }
-        if (hatState & SDL_HAT_DOWN) {
-            board->movePiece(0, 1);
+        
+        if (actionTaken) {
+            lastDpadActionTime = currentTime;
         }
     }
     
@@ -170,4 +211,3 @@ gboolean pollJoystick(gpointer data) {
     
     return TRUE;  // Keep the timer going
 }
-

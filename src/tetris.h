@@ -8,6 +8,7 @@
 #include <chrono>
 #include <memory>
 #include "audiomanager.h"
+#include <SDL2/SDL.h>
 
 enum class GameSoundEvent {
   BackgroundMusic
@@ -264,7 +265,7 @@ public:
     ~TetrisBoard() = default;
     
     bool movePiece(int dx, int dy);
-    bool rotatePiece();
+    bool rotatePiece(bool direction);
     bool checkCollision(const Tetromino& piece) const;
     void lockPiece();
     int clearLines();
@@ -327,6 +328,11 @@ struct TetrisApp {
     GtkWidget* mediumMenuItem;
     GtkWidget* hardMenuItem;
     int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard
+
+    SDL_Joystick* joystick;
+    bool joystickEnabled;
+    guint joystickTimerId;
+
 };
 
 // Function declarations
@@ -355,5 +361,10 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData);
 void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData);
 std::string getDifficultyText(int difficulty);
 void adjustDropSpeed(TetrisApp* app);
+
+gboolean pollJoystick(gpointer data);
+void initSDL(TetrisApp* app);
+void shutdownSDL(TetrisApp* app);
+
 
 #endif // TETRIS_H
