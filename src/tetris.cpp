@@ -3,7 +3,8 @@
 #include <iostream>
 #include <string>
 
-int BLOCK_SIZE = 50;  // Default value, will be updated at runtime
+int BLOCK_SIZE = 30;  // Default value, will be updated at runtime
+int currentThemeIndex = 0;
 
 // Tetromino class implementation
 Tetromino::Tetromino(int type) : type(type), rotation(0) {
@@ -26,7 +27,15 @@ std::vector<std::vector<int>> Tetromino::getShape() const {
 }
 
 std::array<double, 3> Tetromino::getColor() const {
-    return TETROMINO_COLORS[type];
+    // Get the current level (need to add a way to pass this info to the Tetromino)
+    int themeIndex=currentThemeIndex;
+
+    // Cap at the max theme index
+    if (themeIndex >= TETROMINO_COLOR_THEMES.size()) {
+        themeIndex = TETROMINO_COLOR_THEMES.size() - 1;
+    }
+    
+    return TETROMINO_COLOR_THEMES[themeIndex][type];
 }
 
 void Tetromino::setPosition(int newX, int newY) {
@@ -182,9 +191,12 @@ int TetrisBoard::clearLines() {
         
         // Update level every 10 lines
         level = (this->linesCleared / 10) + 1;
+
     }
     if (level>currentlevel) {
         playSound(GameSoundEvent::LevelUp);
+        currentThemeIndex=(currentThemeIndex+1)%20;
+
     }
     return linesCleared;
 }
@@ -305,8 +317,8 @@ gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data) {
             int value = board->getGridValue(x, y);
             if (value > 0) {
                 // Get color from tetromino colors (value-1 because grid values are 1-based)
-                auto color = TETROMINO_COLORS[value - 1];
-                cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+               auto color = TETROMINO_COLOR_THEMES[currentThemeIndex][value - 1];
+               cairo_set_source_rgb(cr, color[0], color[1], color[2]);
                 
                 // Draw block with a small margin
                 cairo_rectangle(cr, 
