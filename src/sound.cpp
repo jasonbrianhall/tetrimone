@@ -162,13 +162,38 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
   SoundEvent audioEvent;
   switch (event) {
   case GameSoundEvent::BackgroundMusic:
-    audioEvent =
-        SoundEvent::BackgroundMusic; // Map to the background music event
+    audioEvent = SoundEvent::BackgroundMusic;
     break;
   case GameSoundEvent::Gameover:
-    audioEvent = SoundEvent::Gameover; // Map to the background music event
+    audioEvent = SoundEvent::Gameover;
     break;
-
+  case GameSoundEvent::Clear:
+    audioEvent = SoundEvent::Clear;
+    break;
+  case GameSoundEvent::Drop:
+    audioEvent = SoundEvent::Drop;
+    break;
+  case GameSoundEvent::LateralMove:
+    audioEvent = SoundEvent::LateralMove;
+    break;
+  case GameSoundEvent::LevelUp:
+    audioEvent = SoundEvent::LevelUp;
+    break;
+  case GameSoundEvent::Rotate:
+    audioEvent = SoundEvent::Rotate;
+    break;
+  case GameSoundEvent::Select:
+    audioEvent = SoundEvent::Select;
+    break;
+  case GameSoundEvent::Start:
+    audioEvent = SoundEvent::Start;
+    break;
+  case GameSoundEvent::Tetris:
+    audioEvent = SoundEvent::Tetris;
+    break;
+  case GameSoundEvent::Excellent:
+    audioEvent = SoundEvent::Excellent;
+    break;
   default:
     std::cerr << "Unknown sound event" << std::endl;
     return false;
