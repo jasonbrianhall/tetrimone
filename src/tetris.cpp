@@ -59,13 +59,13 @@ bool TetrisBoard::movePiece(int dx, int dy) {
     return true;
 }
 
-bool TetrisBoard::rotatePiece() {
+bool TetrisBoard::rotatePiece(bool clockwise) {
     if (gameOver || paused) return false;
     
-    currentPiece->rotate();
+    currentPiece->rotate(clockwise);
     
     if (checkCollision(*currentPiece)) {
-        currentPiece->rotate(false);  // Rotate back if collision
+        currentPiece->rotate(!clockwise);  // Rotate back in opposite direction
         return false;
     }
     
@@ -539,8 +539,13 @@ gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data) {
             
         case GDK_KEY_Up:
         case GDK_KEY_w:
-            board->rotatePiece();
+            board->rotatePiece(true);
             break;
+
+        case GDK_KEY_z:
+            board->rotatePiece(false);
+            break;
+
             
         case GDK_KEY_space:
             board->hardDrop();
@@ -631,7 +636,10 @@ void cleanupApp(gpointer data) {
     
     // Delete app struct
     delete app;
+
+   shutdownSDL(app);
 }
+
 
 void onAppActivate(GtkApplication* app, gpointer userData) {
     TetrisApp* tetrisApp = new TetrisApp();
@@ -753,6 +761,13 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
         gtk_check_menu_item_set_active(
             GTK_CHECK_MENU_ITEM(tetrisApp->soundToggleMenuItem), FALSE);
     }
+
+    tetrisApp->joystick = NULL;
+    tetrisApp->joystickEnabled = false;
+    tetrisApp->joystickTimerId = 0;
+    
+    // Try to initialize SDL
+    initSDL(tetrisApp);
         
     // Start the game
     startGame(tetrisApp);
