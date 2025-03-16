@@ -29,7 +29,7 @@ endif
 # Source files
 SRCS_COMMON = src/tetris.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
-SRCS_WIN = src/windowsaudioplayer.cpp
+SRCS_WIN = src/sdlaudioplayer.cpp
 
 # Windows SDL flags
 SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2)
