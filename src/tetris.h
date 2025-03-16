@@ -263,11 +263,14 @@ private:
     bool gameOver;
     bool paused;
     std::mt19937 rng;           // Random number generator
+    bool splashScreenActive;
+
     
 public:
     TetrisBoard();
     ~TetrisBoard() = default;
-    
+    bool isSplashScreenActive() const { return splashScreenActive; }
+    void dismissSplashScreen() { splashScreenActive = false; }
     bool movePiece(int dx, int dy);
     bool rotatePiece(bool direction);
     bool checkCollision(const Tetromino& piece) const;
