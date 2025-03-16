@@ -530,6 +530,104 @@ gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data) {
     return FALSE;
 }
 
+void onBlockSizeDialog(GtkMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    // Pause the game if it's running
+    bool wasPaused = app->board->isPaused();
+    if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
+        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+    }
+    
+    // Create dialog
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        "Block Size",
+        GTK_WINDOW(app->window),
+        GTK_DIALOG_MODAL,
+        "_Close", GTK_RESPONSE_CLOSE,
+        NULL
+    );
+    
+    // Make it a reasonable size
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 150);
+    
+    // Create content area
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
+    
+    // Create a vertical box for content
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    
+    // Add a label
+    GtkWidget* label = gtk_label_new("Adjust block size:");
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+    
+    // Create a horizontal scale (slider)
+    GtkWidget* scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 
+                                             MIN_BLOCK_SIZE, MAX_BLOCK_SIZE, 1);
+    gtk_range_set_value(GTK_RANGE(scale), BLOCK_SIZE);
+    gtk_scale_set_digits(GTK_SCALE(scale), 0); // No decimal places
+    gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
+    gtk_box_pack_start(GTK_BOX(vbox), scale, FALSE, FALSE, 0);
+    
+    // Add min/max labels
+    GtkWidget* rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), rangeBox, FALSE, FALSE, 0);
+    
+    GtkWidget* minLabel = gtk_label_new("Small");
+    gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
+    
+    GtkWidget* maxLabel = gtk_label_new("Large");
+    gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
+    gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
+    
+    // Add a note about effects
+    GtkWidget* noteLabel = gtk_label_new("Changes take effect immediately.");
+    gtk_widget_set_halign(noteLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(vbox), noteLabel, FALSE, FALSE, 10);
+    
+    // Current value label that updates as the slider moves
+    GtkWidget* currentValueLabel = gtk_label_new(NULL);
+    char valueBuf[32];
+    snprintf(valueBuf, sizeof(valueBuf), "Current size: %d", BLOCK_SIZE);
+    gtk_label_set_text(GTK_LABEL(currentValueLabel), valueBuf);
+    gtk_widget_set_halign(currentValueLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(vbox), currentValueLabel, FALSE, FALSE, 0);
+    
+    // Create a static structure to pass both app and label to the callback
+    static BlockSizeCallbackData cbData;
+    cbData.app = app;
+    cbData.label = currentValueLabel;
+    
+    // Connect value-changed signal to update the current value label and resize
+    g_signal_connect(G_OBJECT(scale), "value-changed", 
+                   G_CALLBACK(onBlockSizeValueChanged), &cbData);
+    
+    // Add a button to resize the window to match the new block size
+    GtkWidget* resizeButton = gtk_button_new_with_label("Fit Window to Game");
+    gtk_box_pack_start(GTK_BOX(vbox), resizeButton, FALSE, FALSE, 10);
+    
+    // Connect signal to resize button using a standalone function
+    g_signal_connect(G_OBJECT(resizeButton), "clicked", 
+                   G_CALLBACK(onResizeWindowButtonClicked), app);
+    
+    // Show all dialog widgets
+    gtk_widget_show_all(dialog);
+    
+    // Run the dialog
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    
+    // Destroy dialog
+    gtk_widget_destroy(dialog);
+    
+    // Resume the game if it wasn't paused before
+    if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
+        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+    }
+}
 
 gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data) {
     TetrisApp* app = static_cast<TetrisApp*>(data);
@@ -969,6 +1067,13 @@ void createMenu(TetrisApp* app) {
     
     gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), app->soundToggleMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), difficultyMenuItem);
+
+GtkWidget* blockSizeMenuItem = gtk_menu_item_new_with_label("Block Size...");
+gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), blockSizeMenuItem);
+
+// Connect signal handler for block size item
+g_signal_connect(G_OBJECT(blockSizeMenuItem), "activate",
+               G_CALLBACK(onBlockSizeDialog), app);
     
     // Help menu
     GtkWidget* helpMenu = gtk_menu_new();
@@ -1342,6 +1447,45 @@ void calculateBlockSize(TetrisApp* app) {
     
 }
 
+void onBlockSizeValueChanged(GtkRange* range, gpointer data) {
+    // Extract the app pointer and label from the data
+    BlockSizeCallbackData* cbData = static_cast<BlockSizeCallbackData*>(data);
+    TetrisApp* app = cbData->app;
+    GtkWidget* label = cbData->label;
+    
+    // Get the new block size from the slider
+    int newBlockSize = (int)gtk_range_get_value(range);
+    
+    // Update the displayed value
+    char buf[32];
+    snprintf(buf, sizeof(buf), "Current size: %d", newBlockSize);
+    gtk_label_set_text(GTK_LABEL(label), buf);
+    
+    // Update the global block size
+    BLOCK_SIZE = newBlockSize;
+    
+    // Resize game area
+    gtk_widget_set_size_request(app->gameArea, 
+                              GRID_WIDTH * BLOCK_SIZE, 
+                              GRID_HEIGHT * BLOCK_SIZE);
+    
+    // Resize next piece area
+    gtk_widget_set_size_request(app->nextPieceArea, 
+                              4 * BLOCK_SIZE, 
+                              4 * BLOCK_SIZE);
+    
+    // Redraw everything
+    gtk_widget_queue_draw(app->gameArea);
+    gtk_widget_queue_draw(app->nextPieceArea);
+}
+
+void onResizeWindowButtonClicked(GtkWidget* button, gpointer data) {
+    TetrisApp* app = static_cast<TetrisApp*>(data);
+    // Resize main window to accommodate current block size
+    gtk_window_resize(GTK_WINDOW(app->window), 
+                    GRID_WIDTH * BLOCK_SIZE + 200, 
+                    GRID_HEIGHT * BLOCK_SIZE + 40);
+}
 
 int main(int argc, char* argv[]) {
     GtkApplication* app;

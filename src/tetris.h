@@ -14,6 +14,17 @@ enum class GameSoundEvent {
   BackgroundMusic
 };
 
+// Forward declarations (need to be at the top)
+class Tetromino;
+class TetrisBoard;
+struct TetrisApp;
+
+// Define the callback data structure after TetrisApp is forward declared
+struct BlockSizeCallbackData {
+    struct TetrisApp* app;
+    GtkWidget* label;
+};
+
 // Constants
 const int GRID_WIDTH = 10;
 const int GRID_HEIGHT = 20;
@@ -227,11 +238,6 @@ const std::vector<std::vector<std::vector<std::vector<int>>>> TETROMINO_SHAPES =
     }
 };
 
-// Forward declarations
-class Tetromino;
-class TetrisBoard;
-struct TetrisApp;
-
 // Class for a single tetromino piece
 class Tetromino {
 private:
@@ -249,6 +255,38 @@ public:
     int getX() const { return x; }
     int getY() const { return y; }
     void setPosition(int newX, int newY);
+};
+
+// TetrisApp structure needs to be defined before it's used in TetrisBoard
+struct TetrisApp {
+    GtkApplication* app;
+    GtkWidget* window;
+    GtkWidget* mainBox;
+    GtkWidget* gameArea;
+    GtkWidget* nextPieceArea;
+    GtkWidget* scoreLabel;
+    GtkWidget* levelLabel;
+    GtkWidget* linesLabel;
+    GtkWidget* difficultyLabel;
+    bool backgroundMusicPlaying = false;
+    TetrisBoard* board;
+    guint timerId;
+    int dropSpeed;
+    
+    // Menu related widgets
+    GtkWidget* menuBar;
+    GtkWidget* startMenuItem;
+    GtkWidget* pauseMenuItem;
+    GtkWidget* restartMenuItem;
+    GtkWidget* soundToggleMenuItem;
+    GtkWidget* easyMenuItem;
+    GtkWidget* mediumMenuItem;
+    GtkWidget* hardMenuItem;
+    int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard
+
+    SDL_Joystick* joystick;
+    bool joystickEnabled;
+    guint joystickTimerId;
 };
 
 // Class for the game board
@@ -306,40 +344,6 @@ public:
     bool extractFileFromZip(const std::string &zipFilePath,
                           const std::string &fileName,
                           std::vector<uint8_t> &fileData);
-
-};
-
-// TetrisApp structure - holds application state
-struct TetrisApp {
-    GtkApplication* app;
-    GtkWidget* window;
-    GtkWidget* mainBox;
-    GtkWidget* gameArea;
-    GtkWidget* nextPieceArea;
-    GtkWidget* scoreLabel;
-    GtkWidget* levelLabel;
-    GtkWidget* linesLabel;
-    GtkWidget* difficultyLabel;
-    bool backgroundMusicPlaying = false;
-    TetrisBoard* board;
-    guint timerId;
-    int dropSpeed;
-    
-    // Menu related widgets
-    GtkWidget* menuBar;
-    GtkWidget* startMenuItem;
-    GtkWidget* pauseMenuItem;
-    GtkWidget* restartMenuItem;
-    GtkWidget* soundToggleMenuItem;
-    GtkWidget* easyMenuItem;
-    GtkWidget* mediumMenuItem;
-    GtkWidget* hardMenuItem;
-    int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard
-
-    SDL_Joystick* joystick;
-    bool joystickEnabled;
-    guint joystickTimerId;
-
 };
 
 // Function declarations
@@ -372,6 +376,9 @@ void calculateBlockSize(TetrisApp* app);
 gboolean pollJoystick(gpointer data);
 void initSDL(TetrisApp* app);
 void shutdownSDL(TetrisApp* app);
+void onBlockSizeDialog(GtkMenuItem* menuItem, gpointer userData);
+void onBlockSizeValueChanged(GtkRange* range, gpointer data);
+void onResizeWindowButtonClicked(GtkWidget* button, gpointer data);
 
 
 #endif // TETRIS_H
