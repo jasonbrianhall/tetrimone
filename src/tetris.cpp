@@ -1041,11 +1041,11 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     GtkWidget* dialog = gtk_about_dialog_new();
     gtk_about_dialog_set_program_name(GTK_ABOUT_DIALOG(dialog), "GTK Tetris");
     gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(dialog), "1.0");
-    gtk_about_dialog_set_copyright(GTK_ABOUT_DIALOG(dialog), "© 2025");
+    gtk_about_dialog_set_copyright(GTK_ABOUT_DIALOG(dialog), "© 2025 Jason Brian Hall");
     gtk_about_dialog_set_comments(GTK_ABOUT_DIALOG(dialog), 
                                 "A simple Tetris clone written using GTK+");
     gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog), 
-                               "https://github.com/example/gtk-tetris");
+                               "https://github.com/jasonbrianhall/tetris");
     
     // Use app->window as the parent
     gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(app->window));
