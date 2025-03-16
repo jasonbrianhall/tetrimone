@@ -950,13 +950,22 @@ void onSoundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
     app->board->sound_enabled_ = isSoundEnabled;
     
     if (isSoundEnabled) {
+        // If sound is being turned on, we need to initialize the audio system
+        if (!app->board->initializeAudio()) {
+            // If initialization fails, update menu item to reflect actual state
+            gtk_check_menu_item_set_active(menuItem, false);
+            return;
+        }
+        
         if (!app->board->isPaused() && !app->board->isGameOver()) {
             app->board->resumeBackgroundMusic();
             app->backgroundMusicPlaying = true;
         }
     } else {
+        // When disabling sound, pause the music and clean up audio resources
         app->board->pauseBackgroundMusic();
         app->backgroundMusicPlaying = false;
+        app->board->cleanupAudio();
     }
 }
 
