@@ -195,8 +195,9 @@ int TetrisBoard::clearLines() {
     }
     if (level>currentlevel) {
         playSound(GameSoundEvent::LevelUp);
+        // Every Level, change theme; wrap around at 20
         currentThemeIndex=(currentThemeIndex+1)%20;
-
+       
     }
     return linesCleared;
 }
