@@ -66,7 +66,6 @@ void shutdownSDL(TetrisApp *app) {
   app->joystickEnabled = false;
 }
 
-// Add these acceleration-related data structures
 typedef struct {
   bool active;
   int direction;
@@ -114,8 +113,15 @@ gboolean pollJoystick(gpointer data) {
       if (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE_TIME) {
         bool buttonProcessed = true;
 
-        if (i == 9) { // Start button - pause/unpause/restart
-          if (app->board->isGameOver()) {
+        if (i == 9) { // Start button - pause/unpause/restart/start
+          if (app->board->isSplashScreenActive()) {
+            // If splash screen is active, dismiss it and start game
+            app->board->dismissSplashScreen();
+            startGame(app);
+            gtk_widget_queue_draw(app->gameArea);
+            gtk_widget_queue_draw(app->nextPieceArea);
+            updateLabels(app);
+          } else if (app->board->isGameOver()) {
             // If game is over, restart
             onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
           } else {
@@ -123,8 +129,7 @@ gboolean pollJoystick(gpointer data) {
             onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
           }
           buttonProcessed = true;
-        } // Game action buttons only work when game is running
-        else if (!app->board->isGameOver() && !app->board->isPaused()) {
+        } else if (!app->board->isGameOver() && !app->board->isPaused()) {
           switch (i) {
           case 0: // A button - rotate clockwise
             app->board->rotatePiece(true);
