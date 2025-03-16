@@ -1469,6 +1469,25 @@ void onMenuDeactivated(GtkWidget* widget, gpointer userData) {
     }
 }
 
+bool TetrisBoard::isGameOver() const {
+    // If this is the first time checking game over status since it became true,
+    // play the game over sound
+    static bool soundPlayed = false;
+    if (gameOver && !soundPlayed) {
+        // Cast away const to allow calling non-const member function
+        TetrisBoard* nonConstThis = const_cast<TetrisBoard*>(this);
+        nonConstThis->playSound(GameSoundEvent::Gameover);
+        soundPlayed = true;
+    }
+    
+    // If game is no longer over, reset the sound played flag
+    if (!gameOver) {
+        soundPlayed = false;
+    }
+    
+    return gameOver;
+}
+
 void calculateBlockSize(TetrisApp* app) {
     // Get the screen dimensions
     GdkRectangle workarea = {0};

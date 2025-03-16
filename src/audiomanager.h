@@ -11,7 +11,8 @@
 
 // Sound event types for the game
 enum class SoundEvent {
-  BackgroundMusic // Background Music
+  BackgroundMusic, // Background Music
+  Gameover
 };
 
 // Platform-independent class to handle sound playback

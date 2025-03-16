@@ -107,7 +107,7 @@ bool TetrisBoard::initializeAudio() {
   // Try to initialize the audio system
   if (AudioManager::getInstance().initialize()) {
     // Attempt to load the theme music
-    if (loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.wav")) {
+    if (loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.wav")  && loadSoundFromZip(GameSoundEvent::Gameover, "gameover.wav")) {
       return true;
     } else {
       std::cerr << "Failed to load background music. Sound will be disabled." << std::endl;
@@ -151,6 +151,10 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
     case GameSoundEvent::BackgroundMusic:
         audioEvent = SoundEvent::BackgroundMusic;  // Map to the background music event
         break;
+    case GameSoundEvent::Gameover:
+        audioEvent = SoundEvent::Gameover;  // Map to the background music event
+        break;
+
    default:
     std::cerr << "Unknown sound event" << std::endl;
     return false;
@@ -233,6 +237,10 @@ void TetrisBoard::playSound(GameSoundEvent event) {
     case GameSoundEvent::BackgroundMusic:
       audioEvent = SoundEvent::BackgroundMusic;
       break;
+    case GameSoundEvent::Gameover:
+      audioEvent = SoundEvent::Gameover;
+      break;
+
     default:
       return;
   }

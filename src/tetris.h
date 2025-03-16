@@ -11,7 +11,8 @@
 #include <SDL2/SDL.h>
 
 enum class GameSoundEvent {
-  BackgroundMusic
+  BackgroundMusic,
+  Gameover
 };
 
 // Forward declarations (need to be at the top)
@@ -320,7 +321,7 @@ public:
     void togglePause() { paused = !paused; }
     void setPaused(bool pause) { paused = pause; }
     
-    bool isGameOver() const { return gameOver; }
+    bool isGameOver() const;
     bool isPaused() const { return paused; }
     int getScore() const { return score; }
     int getLevel() const { return level; }
