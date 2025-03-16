@@ -101,6 +101,9 @@ void TetrisBoard::lockPiece() {
     int pieceY = currentPiece->getY();
     int pieceType = currentPiece->getType();
     
+    // Play drop sound when piece locks into place
+    playSound(GameSoundEvent::Drop);
+    
     for (size_t y = 0; y < shape.size(); ++y) {
         for (size_t x = 0; x < shape[y].size(); ++x) {
             if (shape[y][x] == 1) {
@@ -117,7 +120,7 @@ void TetrisBoard::lockPiece() {
 
 int TetrisBoard::clearLines() {
     int linesCleared = 0;
-    
+    int currentlevel = (this->linesCleared / 10) + 1;
     // Check each row from bottom to top
     for (int y = GRID_HEIGHT - 1; y >= 0; --y) {
         bool isFullLine = true;
@@ -180,7 +183,9 @@ int TetrisBoard::clearLines() {
         // Update level every 10 lines
         level = (this->linesCleared / 10) + 1;
     }
-    
+    if (level>currentlevel) {
+        playSound(GameSoundEvent::LevelUp);
+    }
     return linesCleared;
 }
 

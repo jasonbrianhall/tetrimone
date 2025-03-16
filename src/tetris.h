@@ -318,7 +318,7 @@ public:
     TetrisBoard();
     ~TetrisBoard() = default;
     bool isSplashScreenActive() const { return splashScreenActive; }
-    void dismissSplashScreen() { splashScreenActive = false; }
+    void dismissSplashScreen();
     bool movePiece(int dx, int dy);
     bool rotatePiece(bool direction);
     bool checkCollision(const Tetromino& piece) const;

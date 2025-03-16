@@ -135,6 +135,11 @@ bool TetrisBoard::initializeAudio() {
   }
 }
 
+void TetrisBoard::dismissSplashScreen() { 
+    splashScreenActive = false; 
+    playSound(GameSoundEvent::Start);
+}
+
 bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
                                    const std::string &soundFileName) {
   // Extract the sound file from the ZIP archive
