@@ -17,7 +17,11 @@ enum class GameSoundEvent {
 // Constants
 const int GRID_WIDTH = 10;
 const int GRID_HEIGHT = 20;
-const int BLOCK_SIZE = 30;
+
+extern int BLOCK_SIZE;  // This will be calculated at runtime
+const int MIN_BLOCK_SIZE = 20;  // Minimum block size to ensure visibility
+const int MAX_BLOCK_SIZE = 80;  // Maximum block size to prevent extreme scaling
+
 const int INITIAL_SPEED = 500; // milliseconds
 
 // Colors for each tetromino type (RGB)
@@ -361,7 +365,7 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData);
 void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData);
 std::string getDifficultyText(int difficulty);
 void adjustDropSpeed(TetrisApp* app);
-
+void calculateBlockSize(TetrisApp* app);
 gboolean pollJoystick(gpointer data);
 void initSDL(TetrisApp* app);
 void shutdownSDL(TetrisApp* app);

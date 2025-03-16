@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 
+int BLOCK_SIZE = 50;  // Default value, will be updated at runtime
 
 // Tetromino class implementation
 Tetromino::Tetromino(int type) : type(type), rotation(0) {
@@ -657,6 +658,26 @@ void cleanupApp(gpointer data) {
     delete app;
 }
 
+void onScreenSizeChanged(GtkWidget* widget, GdkRectangle* allocation, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    // Recalculate block size
+    calculateBlockSize(app);
+    
+    // Resize game area
+    gtk_widget_set_size_request(app->gameArea, 
+                              GRID_WIDTH * BLOCK_SIZE, 
+                              GRID_HEIGHT * BLOCK_SIZE);
+    
+    // Resize next piece area
+    gtk_widget_set_size_request(app->nextPieceArea, 
+                              4 * BLOCK_SIZE, 
+                              4 * BLOCK_SIZE);
+    
+    // Redraw everything
+    gtk_widget_queue_draw(app->gameArea);
+    gtk_widget_queue_draw(app->nextPieceArea);
+}
 
 void onAppActivate(GtkApplication* app, gpointer userData) {
     TetrisApp* tetrisApp = new TetrisApp();
@@ -666,9 +687,14 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     tetrisApp->dropSpeed = INITIAL_SPEED;
     tetrisApp->difficulty = 2; // Default to Medium
     
+    // Calculate block size based on screen resolution
+    calculateBlockSize(tetrisApp);
+    
     // Create the main window
     tetrisApp->window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(tetrisApp->window), "Tetris");
+    
+    // Use the calculated block size for window dimensions
     gtk_window_set_default_size(GTK_WINDOW(tetrisApp->window), 
                               GRID_WIDTH * BLOCK_SIZE + 200, 
                               GRID_HEIGHT * BLOCK_SIZE + 40);
@@ -686,6 +712,9 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     tetrisApp->mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     gtk_container_set_border_width(GTK_CONTAINER(tetrisApp->mainBox), 10);
     gtk_box_pack_start(GTK_BOX(mainVBox), tetrisApp->mainBox, TRUE, TRUE, 0);
+
+    g_signal_connect(G_OBJECT(tetrisApp->window), "size-allocate",
+               G_CALLBACK(onScreenSizeChanged), tetrisApp);
     
     // Create the game area (drawing area)
     tetrisApp->gameArea = gtk_drawing_area_new();
@@ -1212,6 +1241,30 @@ void onMenuDeactivated(GtkWidget* widget, gpointer userData) {
         onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
     }
 }
+
+void calculateBlockSize(TetrisApp* app) {
+    // Get the screen dimensions
+    GdkRectangle workarea = {0};
+    GdkMonitor* monitor = gdk_display_get_primary_monitor(gdk_display_get_default());
+    gdk_monitor_get_workarea(monitor, &workarea);
+    
+    // Calculate available height and width (accounting for menu and side panel)
+    int availableHeight = workarea.height - 100;  // Allow for window decorations and menu
+    int availableWidth = workarea.width - 300;    // Allow for side panel and margins
+    
+    // Calculate block size based on available space and grid dimensions
+    int heightBasedSize = availableHeight / GRID_HEIGHT;
+    int widthBasedSize = availableWidth / GRID_WIDTH;
+    
+    // Use the smaller of the two to ensure the game fits on screen
+    BLOCK_SIZE = std::min(heightBasedSize, widthBasedSize);
+    
+    // Constrain to min/max values for usability
+    BLOCK_SIZE = std::max(BLOCK_SIZE, MIN_BLOCK_SIZE);
+    BLOCK_SIZE = std::min(BLOCK_SIZE, MAX_BLOCK_SIZE);
+    
+}
+
 
 int main(int argc, char* argv[]) {
     GtkApplication* app;
