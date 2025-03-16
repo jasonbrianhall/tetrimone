@@ -444,6 +444,19 @@ public:
     bool initialize() override {
         return AudioMixer::getInstance().initialize();
     }
+
+    void stopAllSounds() override {
+        // Create a simple implementation to stop all sounds 
+        // One approach is to shut down and reinitialize the mixer
+        AudioMixer::getInstance().shutdown();
+        AudioMixer::getInstance().initialize();
+    
+        // Alternative approach would be to add a stopAll method to the AudioMixer class
+        // that would iterate through all sounds and mark them as not playing
+    }
+
+
+
     
     void shutdown() override {
         AudioMixer::getInstance().shutdown();
