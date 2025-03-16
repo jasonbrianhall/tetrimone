@@ -162,39 +162,85 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
                                                          format);
 }
 
-void TetrisBoard::playBackgroundMusic() {
+void TetrisBoard::pauseBackgroundMusic() {
+    std::cout << "DEBUG: TetrisBoard::pauseBackgroundMusic() called" << std::endl;
+    
+    // If sound is being turned off (not just paused), we need to stop immediately
     if (!sound_enabled_) {
+        std::cout << "DEBUG: Sound is being completely disabled" << std::endl;
+        // This will kill the thread at the next check, but we also need to
+        // tell AudioManager to stop any currently playing sound
+        AudioManager::getInstance().setMuted(true);
+        return;
+    }
+    
+    // For regular pause during gameplay, just pause
+    std::cout << "DEBUG: Setting musicPaused=true and calling setMuted(true)" << std::endl;
+    musicPaused = true;
+    AudioManager::getInstance().setMuted(true);
+}
+
+void TetrisBoard::playBackgroundMusic() {
+    std::cout << "DEBUG: TetrisBoard::playBackgroundMusic() called" << std::endl;
+    
+    if (!sound_enabled_) {
+        std::cout << "DEBUG: Sound not enabled, returning" << std::endl;
         return;
     }
 
     // Create a single background thread that loops the music
     static bool musicThreadRunning = false;
-    static std::atomic<bool> musicPaused(false);
+    static std::atomic<bool> stopFlag(false);
+    
+    std::cout << "DEBUG: musicThreadRunning=" << (musicThreadRunning ? "true" : "false")
+              << ", musicPaused=" << (musicPaused ? "true" : "false") << std::endl;
     
     // Only start the thread once
     if (!musicThreadRunning) {
+        std::cout << "DEBUG: Starting music thread" << std::endl;
         musicThreadRunning = true;
         musicPaused = false;
+        stopFlag = false;
         
-        std::thread([this]() {
-            while (sound_enabled_) {
+        std::thread([this, &stopFlag]() {
+            std::cout << "DEBUG: Music thread started" << std::endl;
+            while (sound_enabled_ && !stopFlag) {
                 if (!musicPaused) {
+                    std::cout << "DEBUG: About to play background music" << std::endl;
                     // Map GameSoundEvent to AudioManager's SoundEvent
                     SoundEvent audioEvent = SoundEvent::BackgroundMusic;
                     
-                    // Play the sound and wait for it to complete
-                    AudioManager::getInstance().playSoundAndWait(audioEvent);
+                    bool isMuted = AudioManager::getInstance().isMuted();
+                    std::cout << "DEBUG: AudioManager muted state: " << (isMuted ? "true" : "false") << std::endl;
+                    
+                    if (!isMuted) {
+                        std::cout << "DEBUG: Calling playSoundAndWait()" << std::endl;
+                        // Play the sound and wait for it to complete
+                        AudioManager::getInstance().playSoundAndWait(audioEvent);
+                        std::cout << "DEBUG: playSoundAndWait() returned" << std::endl;
+                    } else {
+                        std::cout << "DEBUG: AudioManager is muted, not playing" << std::endl;
+                    }
                     
                     // Short delay between loops
+                    std::cout << "DEBUG: Waiting before next loop iteration" << std::endl;
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 } else {
                     // When paused, just sleep briefly and check flags again
+                    std::cout << "DEBUG: Music paused, sleeping" << std::endl;
                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 }
+                
+                std::cout << "DEBUG: End of loop iteration - sound_enabled_=" << (sound_enabled_ ? "true" : "false") 
+                          << ", stopFlag=" << (stopFlag ? "true" : "false")
+                          << ", musicPaused=" << (musicPaused ? "true" : "false") << std::endl;
             }
             
+            std::cout << "DEBUG: Music thread exiting" << std::endl;
             musicThreadRunning = false;
         }).detach();
+    } else {
+        std::cout << "DEBUG: Music thread already running" << std::endl;
     }
 }
 
@@ -218,10 +264,15 @@ void TetrisBoard::playSound(GameSoundEvent event) {
 }
 
 void TetrisBoard::cleanupAudio() {
-  if (sound_enabled_) {
-    AudioManager::getInstance().shutdown();
-    sound_enabled_ = false;
-  }
+    std::cout << "DEBUG: TetrisBoard::cleanupAudio() called" << std::endl;
+    
+    if (sound_enabled_) {
+        std::cout << "DEBUG: Shutting down audio" << std::endl;
+        AudioManager::getInstance().shutdown();
+        sound_enabled_ = false;
+    } else {
+        std::cout << "DEBUG: Audio already disabled" << std::endl;
+    }
 }
 
 bool TetrisBoard::setSoundsZipPath(const std::string &path) {
@@ -247,18 +298,21 @@ bool TetrisBoard::setSoundsZipPath(const std::string &path) {
   return true;
 }
 
-void TetrisBoard::pauseBackgroundMusic() {
-    // Instead of stopping the thread, just pause playback
-    musicPaused = true;
-}
 
 void TetrisBoard::resumeBackgroundMusic() {
+    std::cout << "DEBUG: TetrisBoard::resumeBackgroundMusic() called" << std::endl;
+    
     if (sound_enabled_) {
+        std::cout << "DEBUG: Sound enabled, resuming playback" << std::endl;
+        // Make sure we unmute the AudioManager
+        AudioManager::getInstance().setMuted(false);
         // Unpause playback
         musicPaused = false;
     } else {
+        std::cout << "DEBUG: Sound was disabled, re-enabling" << std::endl;
         // If sound was disabled completely, re-enable and restart
         sound_enabled_ = true;
+        AudioManager::getInstance().setMuted(false);
         musicPaused = false;
         playBackgroundMusic();
     }

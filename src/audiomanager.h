@@ -33,6 +33,8 @@ public:
 
   // Set volume (0.0 - 1.0)
   virtual void setVolume(float volume) = 0;
+
+  virtual void stopAllSounds() = 0;
 };
 
 // Factory function to create the appropriate platform-specific player

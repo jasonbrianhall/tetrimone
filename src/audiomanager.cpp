@@ -202,11 +202,28 @@ void AudioManager::setVolume(float volume) {
 }
 
 void AudioManager::setMuted(bool muted) {
+  std::cout << "DEBUG: AudioManager::setMuted(" << (muted ? "true" : "false") << ") called" << std::endl;
   std::lock_guard<std::mutex> lock(mutex_);
+  
+  // If we're muting and we weren't already muted, stop all sounds
+  if (muted && !muted_ && player_) {
+    std::cout << "DEBUG: Muting - calling stopAllSounds()" << std::endl;
+    player_->stopAllSounds();
+  } else if (!muted && muted_) {
+    std::cout << "DEBUG: Unmuting" << std::endl;
+  } else {
+    std::cout << "DEBUG: Mute state unchanged: " << (muted ? "true" : "false") << std::endl;
+  }
+  
   muted_ = muted;
+  std::cout << "DEBUG: muted_ set to " << (muted_ ? "true" : "false") << std::endl;
 }
 
-bool AudioManager::isMuted() const { return muted_; }
+bool AudioManager::isMuted() const {
+  bool result = muted_;
+  std::cout << "DEBUG: AudioManager::isMuted() returning " << (result ? "true" : "false") << std::endl;
+  return result;
+}
 
 bool AudioManager::isAvailable() const { return initialized_; }
 
