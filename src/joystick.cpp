@@ -1,21 +1,30 @@
 #include "tetris.h"
 
+// Memory corruption is likely happening because of a problem with SDL cleanup
+// Let's adjust our initialization/shutdown process
+
 void initSDL(TetrisApp* app) {
-    // Make sure we initialize app values first
-    app->joystick = NULL;
-    app->joystickEnabled = false;
-    app->joystickTimerId = 0;
+    // Make sure SDL is not already initialized
+    if (app->joystickEnabled) {
+        shutdownSDL(app);
+    }
     
     // Initialize SDL joystick subsystem
     if (SDL_Init(SDL_INIT_JOYSTICK) < 0) {
         printf("SDL could not initialize! SDL Error: %s\n", SDL_GetError());
+        app->joystick = NULL;
+        app->joystickEnabled = false;
+        app->joystickTimerId = 0;
         return;
     }
     
     // Check for joysticks
     if (SDL_NumJoysticks() < 1) {
         printf("No joysticks connected!\n");
-        SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
+        SDL_Quit();
+        app->joystick = NULL;
+        app->joystickEnabled = false;
+        app->joystickTimerId = 0;
         return;
     }
     
@@ -23,7 +32,9 @@ void initSDL(TetrisApp* app) {
     app->joystick = SDL_JoystickOpen(0);
     if (app->joystick == NULL) {
         printf("Unable to open joystick! SDL Error: %s\n", SDL_GetError());
-        SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
+        SDL_Quit();
+        app->joystickEnabled = false;
+        app->joystickTimerId = 0;
         return;
     }
     
@@ -33,8 +44,10 @@ void initSDL(TetrisApp* app) {
     
     app->joystickEnabled = true;
     
-    // Start the joystick polling timer
-    app->joystickTimerId = g_timeout_add(16, pollJoystick, app);
+    // Start the joystick polling timer only if it's not already running
+    if (app->joystickTimerId == 0) {
+        app->joystickTimerId = g_timeout_add(16, pollJoystick, app);
+    }
 }
 
 // Shutdown SDL
@@ -51,17 +64,31 @@ void shutdownSDL(TetrisApp* app) {
         app->joystick = NULL;
     }
     
-    // Quit SDL subsystem
-    SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
+    // Quit SDL completely - this may fix memory issues
+    SDL_Quit();
     app->joystickEnabled = false;
 }
+
+// Add these acceleration-related data structures
+typedef struct {
+    bool active;
+    int direction;
+    Uint32 lastMoveTime;
+    Uint32 repeatDelay;
+    int moveCount;
+} DirectionalControl;
 
 // Joystick polling function (called by timer)
 gboolean pollJoystick(gpointer data) {
     TetrisApp* app = static_cast<TetrisApp*>(data);
     
-    if (!app->joystickEnabled || app->joystick == NULL || app->board == NULL) {
+    if (!app || !app->joystickEnabled || !app->joystick || !app->board) {
         return FALSE;
+    }
+    
+    // Before doing anything, check if we are in a valid state
+    if (app->board->isGameOver() || app->board->isPaused()) {
+        return TRUE;  // Keep the timer going but don't process input
     }
     
     TetrisBoard* board = app->board;
@@ -69,20 +96,20 @@ gboolean pollJoystick(gpointer data) {
     // Update joystick state
     SDL_JoystickUpdate();
     
-    // Static variables to track previous state
-    static int lastXDir = 0;
-    static int lastYDir = 0;
+    // Static variables for tracking state
     static Uint32 lastButtonPressTime = 0;
     static const Uint32 BUTTON_DEBOUNCE_TIME = 200; // ms between button actions
-    static Uint32 lastDpadActionTime = 0;
-    static const Uint32 DPAD_DEBOUNCE_TIME = 100; // ms between D-pad actions
+    
+    // Directional controls with acceleration
+    static DirectionalControl horizontalControl = {false, 0, 0, 150, 0};
+    static DirectionalControl verticalControl = {false, 0, 0, 150, 0};
     
     // Get current time
     Uint32 currentTime = SDL_GetTicks();
     
     // Process buttons with debounce
     int numButtons = SDL_JoystickNumButtons(app->joystick);
-    for (int i = 0; i < numButtons; i++) {
+    for (int i = 0; i < numButtons && i < 16; i++) {  // Add safety limit
         if (SDL_JoystickGetButton(app->joystick, i)) {
             // Only process button if enough time has passed since last press
             if (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE_TIME) {
@@ -90,11 +117,11 @@ gboolean pollJoystick(gpointer data) {
                 
                 switch (i) {
                     case 0:  // A button - rotate clockwise
-                        board->rotatePiece(true);  // true for clockwise
+                        board->rotatePiece(true);
                         break;
                         
                     case 1:  // B button - counter-rotate
-                        board->rotatePiece(false);  // false for counter-clockwise
+                        board->rotatePiece(false);
                         break;
                         
                     case 3:  // Y button - hard drop
@@ -126,81 +153,183 @@ gboolean pollJoystick(gpointer data) {
         }
     }
     
-    // Process axes
+    // Process axes with acceleration
     const int DEADZONE = 8000;
     
     if (SDL_JoystickNumAxes(app->joystick) >= 2) {
-        // X axis
+        // X axis (horizontal movement)
         int xValue = SDL_JoystickGetAxis(app->joystick, 0);
-        int xDir = 0;
+        int newDir = 0;
         
         if (xValue < -DEADZONE) {
-            xDir = -1;  // Left
+            newDir = -1;  // Left
         } else if (xValue > DEADZONE) {
-            xDir = 1;   // Right
+            newDir = 1;   // Right
         }
         
-        // Only process when direction changes
-        if (xDir != lastXDir) {
-            lastXDir = xDir;
-            
-            if (xDir == -1) {
-                board->movePiece(-1, 0);
-            } else if (xDir == 1) {
-                board->movePiece(1, 0);
+        // Handle horizontal movement with acceleration
+        if (newDir != 0) {
+            // If direction changed or movement just started
+            if (!horizontalControl.active || horizontalControl.direction != newDir) {
+                horizontalControl.active = true;
+                horizontalControl.direction = newDir;
+                horizontalControl.lastMoveTime = currentTime;
+                horizontalControl.repeatDelay = 150; // Initial delay
+                horizontalControl.moveCount = 0;
+                
+                // Immediate move
+                board->movePiece(newDir, 0);
+            }
+            // Accelerating repeat moves
+            else if (currentTime - horizontalControl.lastMoveTime > horizontalControl.repeatDelay) {
+                board->movePiece(newDir, 0);
+                horizontalControl.lastMoveTime = currentTime;
+                horizontalControl.moveCount++;
+                
+                // Gradually decrease delay for acceleration effect
+                if (horizontalControl.moveCount > 4) {
+                    horizontalControl.repeatDelay = 50; // Fast
+                } else if (horizontalControl.moveCount > 2) {
+                    horizontalControl.repeatDelay = 100; // Medium
+                }
+            }
+        } else {
+            // No direction - reset horizontal control
+            horizontalControl.active = false;
+        }
+        
+        // Y axis (vertical movement - only downward)
+        int yValue = SDL_JoystickGetAxis(app->joystick, 1);
+        newDir = 0;
+        
+        if (yValue > DEADZONE) {
+            newDir = 1;   // Down
+        } else if (yValue < -DEADZONE) {
+            // Up is for rotation, handle separately
+            if (!verticalControl.active || verticalControl.direction != -1) {
+                // Only rotate once when first pushing up
+                board->rotatePiece(true);
+                verticalControl.active = true;
+                verticalControl.direction = -1;
             }
         }
         
-        // Y axis
-        int yValue = SDL_JoystickGetAxis(app->joystick, 1);
-        int yDir = 0;
-        
-        if (yValue < -DEADZONE) {
-            yDir = -1;  // Up
-        } else if (yValue > DEADZONE) {
-            yDir = 1;   // Down
-        }
-        
-        // Only process when direction changes
-        if (yDir != lastYDir) {
-            lastYDir = yDir;
-            
-            if (yDir == -1) {
-                board->rotatePiece(true);  // true for clockwise
-            } else if (yDir == 1) {
+        // Handle vertical movement (down) with acceleration
+        if (newDir == 1) {
+            // If downward movement just started
+            if (!verticalControl.active || verticalControl.direction != newDir) {
+                verticalControl.active = true;
+                verticalControl.direction = newDir;
+                verticalControl.lastMoveTime = currentTime;
+                verticalControl.repeatDelay = 150; // Initial delay
+                verticalControl.moveCount = 0;
+                
+                // Immediate move
                 board->movePiece(0, 1);
             }
+            // Accelerating repeat moves
+            else if (currentTime - verticalControl.lastMoveTime > verticalControl.repeatDelay) {
+                board->movePiece(0, 1);
+                verticalControl.lastMoveTime = currentTime;
+                verticalControl.moveCount++;
+                
+                // Gradually decrease delay for acceleration effect
+                if (verticalControl.moveCount > 4) {
+                    verticalControl.repeatDelay = 30; // Very fast
+                } else if (verticalControl.moveCount > 2) {
+                    verticalControl.repeatDelay = 60; // Fast
+                }
+            }
+        } else if (newDir == 0 && yValue > -DEADZONE) {
+            // No downward direction - reset vertical control
+            verticalControl.active = false;
         }
     }
     
-    // Process D-pad hat if present with debounce
-    if (currentTime - lastDpadActionTime > DPAD_DEBOUNCE_TIME) {
-        bool actionTaken = false;
+    // Process D-pad hat if present with acceleration
+    static DirectionalControl dpadHorizontal = {false, 0, 0, 150, 0};
+    static DirectionalControl dpadVertical = {false, 0, 0, 150, 0};
+    
+    for (int i = 0; i < SDL_JoystickNumHats(app->joystick); i++) {
+        Uint8 hatState = SDL_JoystickGetHat(app->joystick, i);
         
-        for (int i = 0; i < SDL_JoystickNumHats(app->joystick); i++) {
-            Uint8 hatState = SDL_JoystickGetHat(app->joystick, i);
-            
-            if (hatState & SDL_HAT_LEFT) {
-                board->movePiece(-1, 0);
-                actionTaken = true;
+        // Horizontal D-pad
+        int dpadX = 0;
+        if (hatState & SDL_HAT_LEFT) dpadX = -1;
+        else if (hatState & SDL_HAT_RIGHT) dpadX = 1;
+        
+        if (dpadX != 0) {
+            // If direction changed or movement just started
+            if (!dpadHorizontal.active || dpadHorizontal.direction != dpadX) {
+                dpadHorizontal.active = true;
+                dpadHorizontal.direction = dpadX;
+                dpadHorizontal.lastMoveTime = currentTime;
+                dpadHorizontal.repeatDelay = 150; // Initial delay
+                dpadHorizontal.moveCount = 0;
+                
+                // Immediate move
+                board->movePiece(dpadX, 0);
             }
-            else if (hatState & SDL_HAT_RIGHT) {
-                board->movePiece(1, 0);
-                actionTaken = true;
+            // Accelerating repeat moves
+            else if (currentTime - dpadHorizontal.lastMoveTime > dpadHorizontal.repeatDelay) {
+                board->movePiece(dpadX, 0);
+                dpadHorizontal.lastMoveTime = currentTime;
+                dpadHorizontal.moveCount++;
+                
+                // Gradually decrease delay for acceleration effect
+                if (dpadHorizontal.moveCount > 4) {
+                    dpadHorizontal.repeatDelay = 50; // Fast
+                } else if (dpadHorizontal.moveCount > 2) {
+                    dpadHorizontal.repeatDelay = 100; // Medium
+                }
             }
-            
-            if (hatState & SDL_HAT_UP) {
-                board->rotatePiece(true);  // true for clockwise
-                actionTaken = true;
-            }
-            else if (hatState & SDL_HAT_DOWN) {
-                board->movePiece(0, 1);
-                actionTaken = true;
-            }
+        } else {
+            // No direction - reset horizontal control
+            dpadHorizontal.active = false;
         }
         
-        if (actionTaken) {
-            lastDpadActionTime = currentTime;
+        // Vertical D-pad
+        int dpadY = 0;
+        if (hatState & SDL_HAT_UP) {
+            // Up is for rotation, handle separately
+            if (!dpadVertical.active || dpadVertical.direction != -1) {
+                // Only rotate once when first pushing up
+                board->rotatePiece(true);
+                dpadVertical.active = true;
+                dpadVertical.direction = -1;
+                dpadVertical.lastMoveTime = currentTime;
+            }
+        }
+        else if (hatState & SDL_HAT_DOWN) dpadY = 1;
+        
+        if (dpadY == 1) {
+            // If downward movement just started
+            if (!dpadVertical.active || dpadVertical.direction != dpadY) {
+                dpadVertical.active = true;
+                dpadVertical.direction = dpadY;
+                dpadVertical.lastMoveTime = currentTime;
+                dpadVertical.repeatDelay = 150; // Initial delay
+                dpadVertical.moveCount = 0;
+                
+                // Immediate move
+                board->movePiece(0, 1);
+            }
+            // Accelerating repeat moves
+            else if (currentTime - dpadVertical.lastMoveTime > dpadVertical.repeatDelay) {
+                board->movePiece(0, 1);
+                dpadVertical.lastMoveTime = currentTime;
+                dpadVertical.moveCount++;
+                
+                // Gradually decrease delay for acceleration effect
+                if (dpadVertical.moveCount > 4) {
+                    dpadVertical.repeatDelay = 30; // Very fast
+                } else if (dpadVertical.moveCount > 2) {
+                    dpadVertical.repeatDelay = 60; // Fast
+                }
+            }
+        } else if (dpadY == 0 && !(hatState & SDL_HAT_UP)) {
+            // No downward direction - reset vertical control
+            dpadVertical.active = false;
         }
     }
     
