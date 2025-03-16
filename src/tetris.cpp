@@ -152,6 +152,12 @@ int TetrisBoard::clearLines() {
     
     // Update score based on lines cleared
     if (linesCleared > 0) {
+        // Play appropriate sound based on number of lines cleared
+        if (linesCleared == 4) {
+            playSound(GameSoundEvent::Excellent); // Play Tetris/Excellent sound for 4 lines
+        } else if (linesCleared > 0) {
+            playSound(GameSoundEvent::Clear); // Play normal clear sound for 1-3 lines
+        }
         // Classic Tetris scoring
         switch (linesCleared) {
             case 1:
