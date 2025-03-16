@@ -1259,11 +1259,13 @@ void onQuitGame(GtkMenuItem* menuItem, gpointer userData) {
 }
 
 gboolean onDeleteEvent(GtkWidget* widget, GdkEvent* event, gpointer userData) {
+#ifdef DEBUG
     std::cerr << "DEBUG: onDeleteEvent called" << std::endl;
-    
+#endif    
     TetrisApp* app = static_cast<TetrisApp*>(userData);
-    
+#ifdef DEBUG
     std::cerr << "DEBUG: Stopping timers" << std::endl;
+#endif
     // Stop timers first to prevent any callbacks during cleanup
     if (app->timerId > 0) {
         g_source_remove(app->timerId);
@@ -1274,35 +1276,48 @@ gboolean onDeleteEvent(GtkWidget* widget, GdkEvent* event, gpointer userData) {
         g_source_remove(app->joystickTimerId);
         app->joystickTimerId = 0;
     }
-    
+
+#ifdef DEBUG
     std::cerr << "DEBUG: Stopping audio" << std::endl;
+#endif
     // Stop and cleanup audio
     if (app->board) {
         if (app->backgroundMusicPlaying) {
+#ifdef DEBUG
             std::cerr << "DEBUG: Pausing background music" << std::endl;
+#endif
             app->board->pauseBackgroundMusic();
             app->backgroundMusicPlaying = false;
         }
+#ifdef DEBUG
         std::cerr << "DEBUG: Cleaning up audio" << std::endl;
+#endif
         app->board->cleanupAudio();
     }
-    
+#ifdef DEBUG
     std::cerr << "DEBUG: Cleaning up joystick" << std::endl;
+#endif
     // Close joystick
     if (app->joystick != NULL) {
+#ifdef DEBUG
         std::cerr << "DEBUG: Closing joystick" << std::endl;
+#endif
         SDL_JoystickClose(app->joystick);
         app->joystick = NULL;
     }
     
     // Quit SDL
     if (app->joystickEnabled) {
+#ifdef DEBUG
         std::cerr << "DEBUG: Quitting SDL" << std::endl;
+#endif
         SDL_Quit();
         app->joystickEnabled = false;
     }
     
+#ifdef DEBUG
     std::cerr << "DEBUG: Returning FALSE to let GTK handle window destruction" << std::endl;
+#endif
     // Now allow the window to close
     return FALSE;  // Let GTK handle the window destruction
 }
