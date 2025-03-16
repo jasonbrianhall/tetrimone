@@ -1,5 +1,5 @@
 # Makefile for Tetris with Windows and Linux Support
-# Similar structure to the Solitaire Makefile
+# Configurable audio backend (SDL or PulseAudio)
 
 # Compiler settings
 CXX_LINUX = g++
@@ -9,25 +9,37 @@ CXXFLAGS_COMMON = -std=c++17 -Wall -Wextra
 # Debug flags
 DEBUG_FLAGS = -g -DDEBUG
 
+# Audio backend selection - default to SDL
+AUDIO_BACKEND ?= sdl
+
+# Common SDL flags for joystick support (needed for both audio backends)
+SDL_CFLAGS_LINUX := $(shell sdl2-config --cflags)
+SDL_LIBS_LINUX := $(shell sdl2-config --libs)
+
+ifeq ($(AUDIO_BACKEND),pulse)
+  AUDIO_SRCS_LINUX = src/pulseaudioplayer.cpp
+  AUDIO_FLAGS_LINUX = -DUSE_PULSEAUDIO $(shell pkg-config --cflags libpulse libpulse-simple)
+  AUDIO_LIBS_LINUX = $(shell pkg-config --libs libpulse libpulse-simple)
+else
+  AUDIO_SRCS_LINUX = src/sdlaudioplayer.cpp
+  AUDIO_FLAGS_LINUX = -DUSE_SDL
+  AUDIO_LIBS_LINUX = -lSDL2_mixer
+endif
+
 # Source files
 SRCS_COMMON = src/tetris.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp
-SRCS_LINUX = src/sdlaudioplayer.cpp
+SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src/windowsaudioplayer.cpp
 
-# Use pkg-config for dependencies
-SDL_CFLAGS_LINUX := $(shell sdl2-config --cflags)
-SDL_LIBS_LINUX := $(shell sdl2-config --libs) -lSDL2_mixer
+# Windows SDL flags
 SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2)
 SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2 SDL2_mixer)
 
+# GTK flags
 GTK_CFLAGS_LINUX := $(shell pkg-config --cflags gtk+-3.0)
 GTK_LIBS_LINUX := $(shell pkg-config --libs gtk+-3.0)
 GTK_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags gtk+-3.0)
 GTK_LIBS_WIN := $(shell mingw64-pkg-config --libs gtk+-3.0)
-
-# PulseAudio flags for Linux
-PULSE_CFLAGS := $(shell pkg-config --cflags libpulse libpulse-simple)
-PULSE_LIBS := $(shell pkg-config --libs libpulse libpulse-simple)
 
 # ZIP library flags
 ZIP_CFLAGS_LINUX := $(shell pkg-config --cflags libzip)
@@ -36,7 +48,7 @@ ZIP_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags libzip)
 ZIP_LIBS_WIN := $(shell mingw64-pkg-config --libs libzip)
 
 # Platform-specific settings
-CXXFLAGS_LINUX = $(CXXFLAGS_COMMON) $(GTK_CFLAGS_LINUX) $(SDL_CFLAGS_LINUX) $(PULSE_CFLAGS) $(ZIP_CFLAGS_LINUX) -DLINUX
+CXXFLAGS_LINUX = $(CXXFLAGS_COMMON) $(GTK_CFLAGS_LINUX) $(SDL_CFLAGS_LINUX) $(AUDIO_FLAGS_LINUX) $(ZIP_CFLAGS_LINUX) -DLINUX
 CXXFLAGS_WIN = $(CXXFLAGS_COMMON) $(GTK_CFLAGS_WIN) $(SDL_CFLAGS_WIN) $(ZIP_CFLAGS_WIN) -DWIN32
 
 # Debug-specific flags
@@ -44,7 +56,7 @@ CXXFLAGS_LINUX_DEBUG = $(CXXFLAGS_LINUX) $(DEBUG_FLAGS)
 CXXFLAGS_WIN_DEBUG = $(CXXFLAGS_WIN) $(DEBUG_FLAGS)
 
 # Linker flags
-LDFLAGS_LINUX = $(GTK_LIBS_LINUX) $(SDL_LIBS_LINUX) $(PULSE_LIBS) $(ZIP_LIBS_LINUX) -pthread
+LDFLAGS_LINUX = $(GTK_LIBS_LINUX) $(SDL_LIBS_LINUX) $(AUDIO_LIBS_LINUX) $(ZIP_LIBS_LINUX) -pthread
 LDFLAGS_WIN = $(GTK_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) -lwinmm -lstdc++ -mwindows
 
 # Object files
@@ -73,7 +85,7 @@ DLL_SOURCE_DIR = /usr/x86_64-w64-mingw32/sys-root/mingw/bin
 $(shell mkdir -p $(BUILD_DIR_LINUX)/src $(BUILD_DIR_WIN)/src \
 	$(BUILD_DIR_LINUX_DEBUG)/src $(BUILD_DIR_WIN_DEBUG)/src)
 
-# Default target - build for Linux
+# Default target - build for Linux with SDL audio
 .PHONY: all
 all: linux
 
@@ -84,9 +96,27 @@ windows: tetris-windows
 .PHONY: linux
 linux: tetris-linux
 
+# Audio-specific builds
+.PHONY: sdl
+sdl:
+	$(MAKE) linux AUDIO_BACKEND=sdl
+
+.PHONY: pulse
+pulse:
+	$(MAKE) linux AUDIO_BACKEND=pulse
+
 # Debug targets
 .PHONY: debug
 debug: tetris-linux-debug tetris-windows-debug
+
+# Debug with specific audio backend
+.PHONY: sdl-debug
+sdl-debug:
+	$(MAKE) tetris-linux-debug AUDIO_BACKEND=sdl
+
+.PHONY: pulse-debug
+pulse-debug:
+	$(MAKE) tetris-linux-debug AUDIO_BACKEND=pulse
 
 #
 # Linux build targets
@@ -166,16 +196,19 @@ clean:
 .PHONY: help
 help:
 	@echo "Available targets:"
-	@echo "  make               - Build Tetris for Linux (default)"
-	@echo "  make linux         - Build Tetris for Linux"
+	@echo "  make               - Build Tetris for Linux with SDL audio (default)"
+	@echo "  make linux         - Build Tetris for Linux with SDL audio"
 	@echo "  make windows       - Build Tetris for Windows"
-	@echo "  make debug         - Build Tetris with debug symbols for Linux and Windows"
 	@echo ""
-	@echo "  make tetris-linux  - Build Tetris for Linux"
-	@echo "  make tetris-linux-debug  - Build Tetris for Linux with debug symbols"
+	@echo "  make sdl           - Build Tetris for Linux with SDL audio explicitly"
+	@echo "  make pulse         - Build Tetris for Linux with PulseAudio (still uses SDL for joystick)"
 	@echo ""
-	@echo "  make tetris-windows      - Build Tetris for Windows (requires MinGW)"
-	@echo "  make tetris-windows-debug - Build Tetris for Windows with debug symbols"
+	@echo "  make debug         - Build Tetris with debug symbols (using SDL for Linux)"
+	@echo "  make sdl-debug     - Build Tetris with debug symbols using SDL audio"
+	@echo "  make pulse-debug   - Build Tetris with debug symbols using PulseAudio"
+	@echo ""
+	@echo "  make tetris-linux  - Build Tetris for Linux (with current audio backend)"
+	@echo "  make tetris-windows - Build Tetris for Windows (requires MinGW)"
 	@echo ""
 	@echo "  make clean         - Remove all build files"
 	@echo "  make help          - Show this help message"
