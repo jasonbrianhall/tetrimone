@@ -625,19 +625,36 @@ void resetUI(TetrisApp* app) {
 void cleanupApp(gpointer data) {
     TetrisApp* app = static_cast<TetrisApp*>(data);
     
-    // Stop timer if running
+    // Stop timers first to prevent any race conditions
     if (app->timerId > 0) {
         g_source_remove(app->timerId);
         app->timerId = 0;
     }
     
-    // Delete board
-    delete app->board;
+    // Stop joystick timer before closing the joystick
+    if (app->joystickTimerId > 0) {
+        g_source_remove(app->joystickTimerId);
+        app->joystickTimerId = 0;
+    }
     
-    // Delete app struct
+    // Close joystick properly
+    if (app->joystick != NULL) {
+        SDL_JoystickClose(app->joystick);
+        app->joystick = NULL;
+    }
+    
+    // Quit SDL
+    if (app->joystickEnabled) {
+        SDL_Quit();
+        app->joystickEnabled = false;
+    }
+    
+    // Delete board after all timers are stopped
+    delete app->board;
+    app->board = NULL;
+    
+    // Finally delete the app struct
     delete app;
-
-   shutdownSDL(app);
 }
 
 

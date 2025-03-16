@@ -1,8 +1,5 @@
 #include "tetris.h"
 
-// Memory corruption is likely happening because of a problem with SDL cleanup
-// Let's adjust our initialization/shutdown process
-
 void initSDL(TetrisApp *app) {
   // Make sure SDL is not already initialized
   if (app->joystickEnabled) {
