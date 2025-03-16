@@ -11,14 +11,14 @@ DEBUG_FLAGS = -g -DDEBUG
 
 # Source files
 SRCS_COMMON = src/tetris.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp
-SRCS_LINUX = src/pulseaudioplayer.cpp
+SRCS_LINUX = src/sdlaudioplayer.cpp
 SRCS_WIN = src/windowsaudioplayer.cpp
 
 # Use pkg-config for dependencies
 SDL_CFLAGS_LINUX := $(shell sdl2-config --cflags)
-SDL_LIBS_LINUX := $(shell sdl2-config --libs)
+SDL_LIBS_LINUX := $(shell sdl2-config --libs) -lSDL2_mixer
 SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2)
-SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2)
+SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2 SDL2_mixer)
 
 GTK_CFLAGS_LINUX := $(shell pkg-config --cflags gtk+-3.0)
 GTK_LIBS_LINUX := $(shell pkg-config --libs gtk+-3.0)
