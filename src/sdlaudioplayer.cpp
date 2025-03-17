@@ -35,7 +35,7 @@ public:
         // Initialize SDL_mixer with higher frequency for better music quality
         // Use a smaller buffer size on Windows for better responsiveness
         #ifdef _WIN32
-        int bufferSize = 2048;
+        int bufferSize = 16384;
         #else
         int bufferSize = 4096;
         #endif
