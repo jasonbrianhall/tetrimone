@@ -22,6 +22,8 @@ public:
             return true;
         }
         
+        std::cerr << "DEBUG: Initializing SDL Audio Player" << std::endl;
+        
         // Initialize SDL audio subsystem
         if (SDL_WasInit(SDL_INIT_AUDIO) == 0) {
             if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
@@ -31,16 +33,59 @@ public:
         }
         
         // Initialize SDL_mixer with higher frequency for better music quality
-        if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096) < 0) {
+        // Use a smaller buffer size on Windows for better responsiveness
+        #ifdef _WIN32
+        int bufferSize = 2048;
+        #else
+        int bufferSize = 4096;
+        #endif
+        
+        if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, bufferSize) < 0) {
             std::cerr << "SDL_mixer init failed: " << Mix_GetError() << std::endl;
             return false;
         }
         
-        // Initialize music and sound formats
-        int flags = MIX_INIT_MP3 | MIX_INIT_OGG;
-        int initted = Mix_Init(flags);
-        if ((initted & flags) != flags) {
-            std::cerr << "Mix_Init: Failed to init required formats! " << Mix_GetError() << std::endl;
+        // Print out the actual audio specs we got
+        int frequency, channels;
+        Uint16 format;
+        if (Mix_QuerySpec(&frequency, &format, &channels) == 0) {
+            std::cerr << "DEBUG: Failed to query audio specs" << std::endl;
+        } else {
+            std::cerr << "DEBUG: Audio specs - frequency: " << frequency 
+                      << ", format: " << format << ", channels: " << channels << std::endl;
+        }
+        
+        // Initialize music and sound formats - be more explicit about what we're initializing
+        int flags = 0;
+        // Add MP3 support if available
+        #ifdef MIX_INIT_MP3
+        flags |= MIX_INIT_MP3;
+        #endif
+        // Add OGG support if available
+        #ifdef MIX_INIT_OGG
+        flags |= MIX_INIT_OGG;
+        #endif
+        // Add MOD support if available
+        #ifdef MIX_INIT_MOD
+        flags |= MIX_INIT_MOD;
+        #endif
+        // Add FLAC support if available
+        #ifdef MIX_INIT_FLAC
+        flags |= MIX_INIT_FLAC;
+        #endif
+        
+        if (flags == 0) {
+            std::cerr << "DEBUG: No audio formats to initialize" << std::endl;
+        } else {
+            int initted = Mix_Init(flags);
+            if (initted == 0) {
+                std::cerr << "DEBUG: All audio format initializations failed" << std::endl;
+            } else {
+                std::cerr << "DEBUG: Initialized audio formats: " << initted << std::endl;
+                if ((initted & flags) != flags) {
+                    std::cerr << "DEBUG: Some audio formats failed to initialize" << std::endl;
+                }
+            }
             // Continue anyway, as we might still be able to play some formats
         }
         
@@ -57,6 +102,7 @@ public:
         instance_ = this;
         
         initialized_ = true;
+        std::cerr << "DEBUG: SDL Audio Player initialized successfully" << std::endl;
         return true;
     }
     
@@ -141,6 +187,24 @@ public:
         
         std::lock_guard<std::mutex> lock(mutex_);
         
+        // Debug output to help with troubleshooting
+        std::cerr << "DEBUG: Playing sound, format: " << format << ", size: " << data.size() << " bytes" << std::endl;
+        
+        // Special handling for WAV files on Windows to ensure proper format detection
+        bool isWav = false;
+        if (format == "wav" || format == "WAV") {
+            isWav = true;
+            if (data.size() >= 12) {
+                // Check WAV header magic numbers
+                if (memcmp(data.data(), "RIFF", 4) == 0 &&
+                    memcmp(data.data() + 8, "WAVE", 4) == 0) {
+                    std::cerr << "DEBUG: Valid WAV header detected" << std::endl;
+                } else {
+                    std::cerr << "DEBUG: Invalid WAV header" << std::endl;
+                }
+            }
+        }
+        
         // Create SDL_RWops from memory
         SDL_RWops* rw = SDL_RWFromConstMem(data.data(), data.size());
         if (!rw) {
@@ -151,12 +215,31 @@ public:
             return;
         }
         
-        // Try to load as a regular sound first
-        Mix_Chunk* chunk = Mix_LoadWAV_RW(rw, 0);  // 0 means don't free RWops yet
+        // Different approach based on format to better handle Windows compatibility
+        bool tryAsMusic = false;
+        Mix_Chunk* chunk = nullptr;
         
+        // Handle WAV files directly first
+        if (isWav) {
+            chunk = Mix_LoadWAV_RW(rw, 0);  // 0 means don't free RWops yet
+            if (!chunk) {
+                std::cerr << "DEBUG: Failed to load WAV: " << Mix_GetError() << std::endl;
+            }
+        } 
+        // For MP3 and OGG, try as music first on Windows
+        else if (format == "mp3" || format == "ogg" || format == "MP3" || format == "OGG") {
+            tryAsMusic = true;
+        } 
+        // For unknown formats, try both approaches
+        else {
+            chunk = Mix_LoadWAV_RW(rw, 0);
+            if (!chunk) {
+                tryAsMusic = true;
+            }
+        }
+        
+        // If we successfully loaded a chunk, play it as a sound effect
         if (chunk) {
-            // Successfully loaded as a sound effect
-            
             // Set volume
             Mix_VolumeChunk(chunk, static_cast<int>(MIX_MAX_VOLUME * volume_));
             
@@ -172,6 +255,8 @@ public:
                 return;
             }
             
+            std::cerr << "DEBUG: Playing sound on channel " << channel << std::endl;
+            
             // Store the chunk and channel for later cleanup
             sound_chunks_[channel] = chunk;
             
@@ -185,42 +270,54 @@ public:
             return;
         }
         
-        // If we couldn't load it as a sound effect, try music
-        // Seek back to the beginning of the data
-        SDL_RWseek(rw, 0, RW_SEEK_SET);
-        
-        Mix_Music* music = Mix_LoadMUS_RW(rw, 1);  // 1 means SDL_RWops will be auto-freed
-        if (!music) {
-            std::cerr << "Failed to load audio as either sound or music: " << Mix_GetError() << std::endl;
-            SDL_RWclose(rw);  // Close if we couldn't load as music (and auto-free is 0)
-            if (completionPromise) {
-                completionPromise->set_value();
-            }
-            return;
-        }
-        
-        // Stop any currently playing music
-        if (current_music_) {
-            Mix_HaltMusic();
-            Mix_FreeMusic(current_music_);
-            current_music_ = nullptr;
-        }
-        
-        // Store the new music
-        current_music_ = music;
-        
-        // Store the completion promise for music
-        music_completion_promise_ = completionPromise;
-        
-        // Set volume
-        Mix_VolumeMusic(static_cast<int>(MIX_MAX_VOLUME * volume_));
-        
-        // Play once (not looping)
-        if (Mix_PlayMusic(current_music_, 0) == -1) {
-            std::cerr << "Failed to play music: " << Mix_GetError() << std::endl;
-            Mix_FreeMusic(current_music_);
-            current_music_ = nullptr;
+        // If we need to try as music or if the chunk loading failed
+        if (tryAsMusic) {
+            // Make sure we're at the beginning of the data
+            SDL_RWseek(rw, 0, RW_SEEK_SET);
             
+            Mix_Music* music = Mix_LoadMUS_RW(rw, 1);  // 1 means SDL_RWops will be auto-freed
+            if (!music) {
+                std::cerr << "Failed to load audio as either sound or music: " << Mix_GetError() << std::endl;
+                SDL_RWclose(rw);  // Close if we couldn't load as music (and auto-free is 0)
+                if (completionPromise) {
+                    completionPromise->set_value();
+                }
+                return;
+            }
+            
+            std::cerr << "DEBUG: Successfully loaded as music" << std::endl;
+            
+            // Stop any currently playing music
+            if (current_music_) {
+                Mix_HaltMusic();
+                Mix_FreeMusic(current_music_);
+                current_music_ = nullptr;
+            }
+            
+            // Store the new music
+            current_music_ = music;
+            
+            // Store the completion promise for music
+            music_completion_promise_ = completionPromise;
+            
+            // Set volume
+            Mix_VolumeMusic(static_cast<int>(MIX_MAX_VOLUME * volume_));
+            
+            // Play once (not looping)
+            if (Mix_PlayMusic(current_music_, 0) == -1) {
+                std::cerr << "Failed to play music: " << Mix_GetError() << std::endl;
+                Mix_FreeMusic(current_music_);
+                current_music_ = nullptr;
+                
+                if (completionPromise) {
+                    completionPromise->set_value();
+                }
+            } else {
+                std::cerr << "DEBUG: Music playback started" << std::endl;
+            }
+        } else {
+            // If we got here, WAV loading failed
+            SDL_RWclose(rw);
             if (completionPromise) {
                 completionPromise->set_value();
             }
