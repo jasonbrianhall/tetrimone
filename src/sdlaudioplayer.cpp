@@ -60,61 +60,74 @@ public:
         return true;
     }
     
-void shutdown() override {
-    if (!initialized_) {
-        return;
-    }
-    
-    // First, set initialized_ to false to prevent new audio from playing
-    initialized_ = false;
-    
-    // Free all chunks and music
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        
-        // Halt all playing channels first
-        Mix_HaltChannel(-1);  // -1 means all channels
-        
-        // Then halt music (with a brief fade to avoid pops)
-        if (current_music_) {
-            Mix_FadeOutMusic(100);  // 100ms fade
-            
-            // Brief delay to allow the fadeout to take effect
-            SDL_Delay(150);
-            
-            Mix_HaltMusic();
-            Mix_FreeMusic(current_music_);
-            current_music_ = nullptr;
+    void shutdown() override {
+        if (!initialized_) {
+            return;
         }
         
-        // Free all sound chunks
-        for (auto& chunk : sound_chunks_) {
-            if (chunk.second) {
-                Mix_FreeChunk(chunk.second);
+        // First, set initialized_ to false to prevent new audio from playing
+        initialized_ = false;
+        
+        // Remove callbacks BEFORE clearing instance to avoid race conditions
+        Mix_HookMusicFinished(nullptr);
+        Mix_ChannelFinished(nullptr);
+        
+        // Reset the instance pointer before doing any cleanup
+        // This ensures callbacks won't try to access data being cleaned up
+        SDLAudioPlayer* oldInstance = instance_;
+        instance_ = nullptr;
+        
+        // Make sure our instance check is consistent
+        if (oldInstance != this) {
+            std::cerr << "Warning: SDL Audio instance mismatch in shutdown" << std::endl;
+        }
+        
+        // Clear all channels first
+        Mix_HaltChannel(-1);
+        
+        // Free all chunks and music without holding the mutex during SDL calls
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            
+            // Store chunks in a local structure to free outside of the lock
+            std::vector<Mix_Chunk*> chunksToFree;
+            for (auto& chunk : sound_chunks_) {
+                if (chunk.second) {
+                    chunksToFree.push_back(chunk.second);
+                }
+            }
+            sound_chunks_.clear();
+            
+            // Clear all promises while we have the lock
+            channel_promises_.clear();
+            music_completion_promise_.reset();
+            
+            // Store current music to free outside the lock
+            Mix_Music* musicToFree = current_music_;
+            current_music_ = nullptr;
+            
+            // Release lock before SDL operations
+            lock.~lock_guard();
+            
+            // Now free resources outside the lock
+            if (musicToFree) {
+                Mix_FreeMusic(musicToFree);
+            }
+            
+            for (Mix_Chunk* chunk : chunksToFree) {
+                Mix_FreeChunk(chunk);
             }
         }
-        sound_chunks_.clear();
         
-        // Clear all promises
-        channel_promises_.clear();
-        music_completion_promise_.reset();
+        // Close audio and quit SDL_mixer
+        Mix_CloseAudio();
+        Mix_Quit();
+        
+        // If we initialized SDL Audio ourselves, quit that subsystem
+        if (SDL_WasInit(SDL_INIT_AUDIO)) {
+            SDL_QuitSubSystem(SDL_INIT_AUDIO);
+        }
     }
-    
-    // Reset the instance pointer before quitting SDL_mixer
-    instance_ = nullptr;
-    
-    // Quit SDL_mixer and cleanup with proper sequence
-    Mix_HookMusicFinished(nullptr);  // Remove callback
-    Mix_ChannelFinished(nullptr);    // Remove callback
-    
-    Mix_CloseAudio();
-    Mix_Quit();
-    
-    // If we initialized SDL Audio ourselves, quit that subsystem
-    if (SDL_WasInit(SDL_INIT_AUDIO)) {
-        SDL_QuitSubSystem(SDL_INIT_AUDIO);
-    }
-}
     
     void playSound(const std::vector<uint8_t>& data, 
                   const std::string& format,
@@ -128,21 +141,6 @@ void shutdown() override {
         
         std::lock_guard<std::mutex> lock(mutex_);
         
-        // Determine if this is likely a music file based on format and naming convention
-        bool isMusic = false;
-        std::string formatLower = format;
-        std::transform(formatLower.begin(), formatLower.end(), formatLower.begin(), ::tolower);
-        
-        // Check if the format or filename suggests it's music (more reliable than size)
-        if (formatLower == "mp3" || formatLower == "ogg" || formatLower == "wav") {
-            // Background music is typically a longer file
-            // The BackgroundMusic enum in SoundEvent is 0, which we can check
-            // based on data characteristics or naming pattern
-            if (data.size() > 500000) {  // Larger than 500KB is likely music
-                isMusic = true;
-            }
-        }
-        
         // Create SDL_RWops from memory
         SDL_RWops* rw = SDL_RWFromConstMem(data.data(), data.size());
         if (!rw) {
@@ -153,94 +151,79 @@ void shutdown() override {
             return;
         }
         
-        // Store the completion promise for music if needed
-        if (isMusic) {
-            music_completion_promise_ = completionPromise;
-        }
+        // Try to load as a regular sound first
+        Mix_Chunk* chunk = Mix_LoadWAV_RW(rw, 0);  // 0 means don't free RWops yet
         
-        if (isMusic) {
-            // Stop any currently playing music
-            if (current_music_) {
-                Mix_HaltMusic();
-                Mix_FreeMusic(current_music_);
-                current_music_ = nullptr;
-            }
+        if (chunk) {
+            // Successfully loaded as a sound effect
             
-            // Attempt to load as music
-            Mix_Music* music = Mix_LoadMUS_RW(rw, 1);  // 1 means SDL_RWops will be auto-freed
-            if (music) {
-                current_music_ = music;
-                Mix_VolumeMusic(static_cast<int>(MIX_MAX_VOLUME * volume_));
-                
-                // Play once (0) for sound effects, -1 for looping background music
-                int loops = 0;  // Default to playing once
-                
-                // If we're playing background music, loop it indefinitely
-                if (data.size() > 500000) {  // Larger than 500KB is likely background music
-                    loops = -1;  // Loop indefinitely
-                }
-                
-                if (Mix_PlayMusic(current_music_, loops) == -1) {
-                    std::cerr << "Failed to play music: " << Mix_GetError() << std::endl;
-                    Mix_FreeMusic(current_music_);
-                    current_music_ = nullptr;
-                    
-                    if (completionPromise) {
-                        completionPromise->set_value();
-                    }
-                }
-                
-                // If we're not looping and there's no music finished callback to handle it,
-                // we need to complete the promise now
-                if (loops == 0 && completionPromise) {
+            // Set volume
+            Mix_VolumeChunk(chunk, static_cast<int>(MIX_MAX_VOLUME * volume_));
+            
+            // Find an available channel
+            int channel = Mix_PlayChannel(-1, chunk, 0);  // 0 = no looping
+            if (channel == -1) {
+                std::cerr << "Failed to play sound: " << Mix_GetError() << std::endl;
+                Mix_FreeChunk(chunk);
+                SDL_RWclose(rw);
+                if (completionPromise) {
                     completionPromise->set_value();
                 }
-                
                 return;
-            } else {
-                std::cerr << "Failed to load music: " << Mix_GetError() << std::endl;
-                // Fall back to trying as a sound effect
-                SDL_RWclose(rw);
-                rw = SDL_RWFromConstMem(data.data(), data.size());
-                if (!rw) {
-                    if (completionPromise) {
-                        completionPromise->set_value();
-                    }
-                    return;
-                }
             }
+            
+            // Store the chunk and channel for later cleanup
+            sound_chunks_[channel] = chunk;
+            
+            // Store the completion promise for this channel if needed
+            if (completionPromise) {
+                channel_promises_[channel] = completionPromise;
+            }
+            
+            // Free the RWops now that we've loaded the sound
+            SDL_RWclose(rw);
+            return;
         }
         
-        // If we get here, load as sound effect
-        Mix_Chunk* chunk = Mix_LoadWAV_RW(rw, 1);  // 1 means SDL_RWops will be auto-freed
-        if (!chunk) {
-            std::cerr << "Failed to load sound: " << Mix_GetError() << std::endl;
+        // If we couldn't load it as a sound effect, try music
+        // Seek back to the beginning of the data
+        SDL_RWseek(rw, 0, RW_SEEK_SET);
+        
+        Mix_Music* music = Mix_LoadMUS_RW(rw, 1);  // 1 means SDL_RWops will be auto-freed
+        if (!music) {
+            std::cerr << "Failed to load audio as either sound or music: " << Mix_GetError() << std::endl;
+            SDL_RWclose(rw);  // Close if we couldn't load as music (and auto-free is 0)
             if (completionPromise) {
                 completionPromise->set_value();
             }
             return;
         }
+        
+        // Stop any currently playing music
+        if (current_music_) {
+            Mix_HaltMusic();
+            Mix_FreeMusic(current_music_);
+            current_music_ = nullptr;
+        }
+        
+        // Store the new music
+        current_music_ = music;
+        
+        // Store the completion promise for music
+        music_completion_promise_ = completionPromise;
         
         // Set volume
-        Mix_VolumeChunk(chunk, static_cast<int>(MIX_MAX_VOLUME * volume_));
+        Mix_VolumeMusic(static_cast<int>(MIX_MAX_VOLUME * volume_));
         
-        // Find an available channel
-        int channel = Mix_PlayChannel(-1, chunk, 0);  // 0 = no looping
-        if (channel == -1) {
-            std::cerr << "Failed to play sound: " << Mix_GetError() << std::endl;
-            Mix_FreeChunk(chunk);
+        // Play once (not looping)
+        if (Mix_PlayMusic(current_music_, 0) == -1) {
+            std::cerr << "Failed to play music: " << Mix_GetError() << std::endl;
+            Mix_FreeMusic(current_music_);
+            current_music_ = nullptr;
+            
             if (completionPromise) {
                 completionPromise->set_value();
             }
-            return;
-        }
-        
-        // Store the chunk and channel for later cleanup
-        sound_chunks_[channel] = chunk;
-        
-        // Store the completion promise for this channel if needed
-        if (completionPromise) {
-            channel_promises_[channel] = completionPromise;
         }
     }
     
