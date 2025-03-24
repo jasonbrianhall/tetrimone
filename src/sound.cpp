@@ -214,14 +214,6 @@ void TetrisBoard::playBackgroundMusic() {
     return;
   }
 
-#ifdef _WIN32
-  // For Windows, the AudioManager handles the threading internally
-  // so we can just play the sound once and it will handle looping
-  if (!musicPaused) {
-    AudioManager::getInstance().setMuted(false);
-    AudioManager::getInstance().playSound(SoundEvent::BackgroundMusic);
-  }
-#else
   // PulseAudio implementation - Create a background thread that loops the music
   static bool musicThreadRunning = false;
   static std::atomic<bool> stopFlag(false);
@@ -258,7 +250,6 @@ void TetrisBoard::playBackgroundMusic() {
       musicThreadRunning = false;
     }).detach();
   }
-#endif
 }
 
 void TetrisBoard::pauseBackgroundMusic() {
