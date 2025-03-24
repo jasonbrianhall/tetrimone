@@ -209,28 +209,20 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
                                                          format);
 }
 
-void TetrisBoard::pauseBackgroundMusic() {
-
-  // If sound is being turned off (not just paused), we need to stop immediately
-  if (!sound_enabled_) {
-    // This will kill the thread at the next check, but we also need to
-    // tell AudioManager to stop any currently playing sound
-    AudioManager::getInstance().setMuted(true);
-    return;
-  }
-
-  // For regular pause during gameplay, just pause
-  musicPaused = true;
-  AudioManager::getInstance().setMuted(true);
-}
-
 void TetrisBoard::playBackgroundMusic() {
-
   if (!sound_enabled_) {
     return;
   }
 
-  // Create a single background thread that loops the music
+#ifdef _WIN32
+  // For Windows, the AudioManager handles the threading internally
+  // so we can just play the sound once and it will handle looping
+  if (!musicPaused) {
+    AudioManager::getInstance().setMuted(false);
+    AudioManager::getInstance().playSound(SoundEvent::BackgroundMusic);
+  }
+#else
+  // PulseAudio implementation - Create a background thread that loops the music
   static bool musicThreadRunning = false;
   static std::atomic<bool> stopFlag(false);
 
@@ -242,8 +234,7 @@ void TetrisBoard::playBackgroundMusic() {
     musicThreadRunning = false;
   }
 
-  // Only start the thread if music should be playing and thread isn't already
-  // running
+  // Only start the thread if music should be playing and thread isn't already running
   if (!musicThreadRunning && sound_enabled_ && !musicPaused) {
     musicThreadRunning = true;
     stopFlag = false;
@@ -267,6 +258,21 @@ void TetrisBoard::playBackgroundMusic() {
       musicThreadRunning = false;
     }).detach();
   }
+#endif
+}
+
+void TetrisBoard::pauseBackgroundMusic() {
+  // If sound is being turned off (not just paused), we need to stop immediately
+  if (!sound_enabled_) {
+    // This will kill the thread at the next check, but we also need to
+    // tell AudioManager to stop any currently playing sound
+    AudioManager::getInstance().setMuted(true);
+    return;
+  }
+
+  // For regular pause during gameplay, just pause
+  musicPaused = true;
+  AudioManager::getInstance().setMuted(true);
 }
 
 void TetrisBoard::playSound(GameSoundEvent event) {
@@ -319,38 +325,59 @@ void TetrisBoard::playSound(GameSoundEvent event) {
 }
 
 void TetrisBoard::cleanupAudio() {
-    // First check if we need to do anything
-    if (!sound_enabled_) {
-        return;
-    }
+  // First check if we need to do anything
+  if (!sound_enabled_) {
+    return;
+  }
     
-    // Set sound_enabled_ to false first to prevent any new sounds from playing
-    sound_enabled_ = false;
+  // Set sound_enabled_ to false first to prevent any new sounds from playing
+  sound_enabled_ = false;
     
-    // Stop the background music thread by setting musicPaused
-    musicPaused = true;
+#ifdef _WIN32
+  // For Windows, just tell the AudioManager to stop immediately
+  try {
+    AudioManager::getInstance().setMuted(true);
     
-    // Give the background music thread time to exit
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // Give time for sound effects to stop
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     
-    try {
-        // Tell audio manager to stop all sounds
-        AudioManager::getInstance().setMuted(true);
+    // Shutdown the audio manager
+    AudioManager::getInstance().shutdown();
+  }
+  catch (const std::exception& e) {
+    std::cerr << "Exception during audio cleanup: " << e.what() << std::endl;
+  }
+  catch (...) {
+    std::cerr << "Unknown exception during audio cleanup" << std::endl;
+  }
+#else
+  // For PulseAudio, we need to handle the background music thread
+  
+  // Stop the background music thread by setting musicPaused
+  musicPaused = true;
+    
+  // Give the background music thread time to exit
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    
+  try {
+    // Tell audio manager to stop all sounds
+    AudioManager::getInstance().setMuted(true);
         
-        // Give time for sound effects to stop
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Give time for sound effects to stop
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
-        // Shutdown the audio manager
-        AudioManager::getInstance().shutdown();
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Exception during audio cleanup: " << e.what() << std::endl;
-        // Continue with cleanup despite errors
-    }
-    catch (...) {
-        std::cerr << "Unknown exception during audio cleanup" << std::endl;
-        // Continue with cleanup despite errors
-    }
+    // Shutdown the audio manager
+    AudioManager::getInstance().shutdown();
+  }
+  catch (const std::exception& e) {
+    std::cerr << "Exception during audio cleanup: " << e.what() << std::endl;
+    // Continue with cleanup despite errors
+  }
+  catch (...) {
+    std::cerr << "Unknown exception during audio cleanup" << std::endl;
+    // Continue with cleanup despite errors
+  }
+#endif
 }
 
 bool TetrisBoard::setSoundsZipPath(const std::string &path) {
@@ -377,7 +404,6 @@ bool TetrisBoard::setSoundsZipPath(const std::string &path) {
 }
 
 void TetrisBoard::resumeBackgroundMusic() {
-
   if (!sound_enabled_) {
     // Enable sound if it was disabled
     sound_enabled_ = true;
