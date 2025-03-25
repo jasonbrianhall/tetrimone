@@ -1023,6 +1023,24 @@ public:
         AUDIO_LOG("Destroying WindowsAudioPlayer instance");
         shutdown();
     }
+
+void restoreVolume() override {
+    if (!initialized_) {
+        AUDIO_LOG("WindowsAudioPlayer not initialized, ignoring restoreVolume");
+        return;
+    }
+    
+    AUDIO_LOG("WindowsAudioPlayer::restoreVolume");
+    try {
+        AudioMixer::getInstance().restoreVolume();
+    }
+    catch (const std::exception& e) {
+        AUDIO_LOG("Exception in WindowsAudioPlayer::restoreVolume: " + std::string(e.what()));
+    }
+    catch (...) {
+        AUDIO_LOG("Unknown exception in WindowsAudioPlayer::restoreVolume");
+    }
+}
     
     bool initialize() override {
         std::lock_guard<std::mutex> lock(mutex_);
