@@ -1099,27 +1099,27 @@ void restoreVolume() override {
         AudioMixer::getInstance().addSound(data, format, completionPromise, soundName);
     }
     
-    bool playBackgroundMusic(const std::vector<uint8_t>& data, 
-                            const std::string& format,
-                            bool loop = true,
-                            std::shared_ptr<std::promise<void>> completionPromise = nullptr) {
-        if (!initialized_) {
-            AUDIO_LOG("WindowsAudioPlayer not initialized, ignoring playBackgroundMusic");
-            if (completionPromise) {
-                try {
-                    completionPromise->set_value();
-                } catch (const std::exception& e) {
-                    AUDIO_LOG("Exception while completing promise: " + std::string(e.what()));
-                }
-            }
-            return false;
-        }
-        
-        AUDIO_LOG("WindowsAudioPlayer::playBackgroundMusic, format: " + format + 
-                 ", loop: " + (loop ? "yes" : "no"));
-        return AudioMixer::getInstance().playBackgroundMusic(data, format, loop, completionPromise);
+bool playBackgroundMusic(const std::vector<uint8_t>& data, 
+                                           const std::string& format,
+                                           bool loop,
+                                           std::shared_ptr<std::promise<void>> completionPromise) override {
+  if (!initialized_) {
+    AUDIO_LOG("WindowsAudioPlayer not initialized, ignoring playBackgroundMusic");
+    if (completionPromise) {
+      try {
+        completionPromise->set_value();
+      } catch (const std::exception& e) {
+        AUDIO_LOG("Exception while completing promise: " + std::string(e.what()));
+      }
     }
-    
+    return false;
+  }
+  
+  AUDIO_LOG("WindowsAudioPlayer::playBackgroundMusic, format: " + format + 
+           ", loop: " + (loop ? "yes" : "no"));
+  return AudioMixer::getInstance().playBackgroundMusic(data, format, loop, completionPromise);
+}
+
     void stopBackgroundMusic() {
         if (!initialized_) {
             AUDIO_LOG("WindowsAudioPlayer not initialized, ignoring stopBackgroundMusic");

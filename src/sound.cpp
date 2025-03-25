@@ -214,7 +214,23 @@ void TetrisBoard::playBackgroundMusic() {
     return;
   }
 
-  // PulseAudio implementation - Create a background thread that loops the music
+#ifdef _WIN32
+  // Windows implementation - Use the special playBackgroundMusic method in WindowsAudioPlayer
+  if (AudioManager::getInstance().isAvailable() && !musicPaused) {
+    // Map GameSoundEvent to AudioManager's SoundEvent
+    SoundEvent audioEvent = SoundEvent::BackgroundMusic;
+    
+    // Get the sound data
+    std::vector<uint8_t> soundData;
+    std::string format;
+    if (AudioManager::getInstance().getSoundData(audioEvent, soundData, format)) {
+      // Cast to the WindowsAudioPlayer and call its playBackgroundMusic method
+      // This will be handled in the AudioManager class
+      AudioManager::getInstance().playBackgroundMusicLooped(soundData, format);
+    }
+  }
+#else
+  // PulseAudio implementation - Keep the existing background thread approach
   static bool musicThreadRunning = false;
   static std::atomic<bool> stopFlag(false);
 
@@ -250,6 +266,7 @@ void TetrisBoard::playBackgroundMusic() {
       musicThreadRunning = false;
     }).detach();
   }
+#endif
 }
 
 void TetrisBoard::pauseBackgroundMusic() {

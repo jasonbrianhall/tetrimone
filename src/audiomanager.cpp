@@ -200,6 +200,32 @@ void AudioManager::playSoundAndWait(SoundEvent event) {
   }
 }
 
+void AudioManager::playBackgroundMusicLooped(const std::vector<uint8_t>& data, const std::string& format) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  
+  if (!initialized_ || muted_) {
+    return;
+  }
+  
+  if (player_) {
+    // Call the platform-specific background music playback method
+    player_->playBackgroundMusic(data, format, true);
+  }
+}
+
+bool AudioManager::getSoundData(SoundEvent event, std::vector<uint8_t>& data, std::string& format) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  
+  auto it = sounds_.find(event);
+  if (it == sounds_.end()) {
+    return false;
+  }
+  
+  data = it->second.data;
+  format = it->second.format;
+  return true;
+}
+
 void AudioManager::setVolume(float volume) {
   std::lock_guard<std::mutex> lock(mutex_);
   volume_ = std::max(0.0f, std::min(1.0f, volume));

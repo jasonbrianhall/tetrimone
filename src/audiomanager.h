@@ -46,6 +46,11 @@ public:
 
   virtual void stopAllSounds() = 0;
   virtual void restoreVolume() { }
+  virtual bool playBackgroundMusic(const std::vector<uint8_t>& data, 
+                                 const std::string& format,
+                                 bool loop = true,
+                                 std::shared_ptr<std::promise<void>> completionPromise = nullptr) { return false; }
+
 
 
 };
@@ -58,6 +63,12 @@ class AudioManager {
 public:
   // Get the singleton instance
   static AudioManager &getInstance();
+
+  // Play background music with looping (for Windows)
+  void playBackgroundMusicLooped(const std::vector<uint8_t>& data, const std::string& format);
+  
+  // Get sound data by event
+  bool getSoundData(SoundEvent event, std::vector<uint8_t>& data, std::string& format);
 
   // Delete copy and move constructors and operators
   AudioManager(const AudioManager &) = delete;
