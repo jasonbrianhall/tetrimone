@@ -466,100 +466,71 @@ public:
         }
     }
     
-    // Stop all sounds
-    void stopAllSounds() {
-        try {
-            AUDIO_LOG("Stopping all sounds");
-            
-            {
-                std::lock_guard<std::mutex> lock(mutex_);
-                
-                if (!initialized_) {
-                    AUDIO_LOG("Audio Mixer not initialized, ignoring stopAllSounds");
-                    return;
-                }
-                
-                // No sounds to stop
-                if (sounds_.empty() && !backgroundMusic_) {
-                    AUDIO_LOG("No sounds to stop");
-                    return;
-                }
-                
-                // Stop background music
-                if (backgroundMusic_) {
-                    AUDIO_LOG("Stopping background music");
-                    if (backgroundMusic_->sound.completionPromise) {
-                        try {
-                            backgroundMusic_->sound.completionPromise->set_value();
-                        } catch (const std::exception& e) {
-                            AUDIO_LOG("Exception while completing music promise: " + 
-                                     std::string(e.what()));
-                        }
-                    }
-                    backgroundMusic_.reset();
-                }
-                
-                // Reset the waveOut device to stop playback immediately
-                if (hWaveOut_ && !sounds_.empty()) {
-                    AUDIO_LOG("Stopping " + std::to_string(sounds_.size()) + " sound effects");
-                    
-                    // Try to gracefully fade out first
-                    for (auto& sound : sounds_) {
-                        // Quickly decrease volume
-                        sound.volume = 0.0f;
-                    }
-                    
-                    // Give a small delay for volume changes to take effect
-                    // Using thread sleep outside the lock to prevent deadlocks
-                }
-            }
-            
-            // Small delay for volume fade out (outside the lock)
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            
-            {
-                std::lock_guard<std::mutex> lock(mutex_);
-                
-                // Then reset the device to stop all sounds
-                if (hWaveOut_ && !sounds_.empty()) {
-                    AUDIO_LOG("Resetting waveOut device");
-                    MMRESULT result = waveOutReset(hWaveOut_);
-                    if (result != MMSYSERR_NOERROR) {
-                        AUDIO_LOG("WARNING: Failed to reset waveOut device, error: " + 
-                                 std::to_string(result));
-                    }
-                }
-                
-                // Mark all sounds as not playing and fulfill their promises
-                for (auto& sound : sounds_) {
-                    AUDIO_LOG("Completing promise for sound: " + sound.soundName);
-                    sound.isPlaying = false;
-                    if (sound.completionPromise) {
-                        try {
-                            sound.completionPromise->set_value();
-                        } catch (const std::exception& e) {
-                            AUDIO_LOG("Exception while completing promise: " + 
-                                     std::string(e.what()));
-                        }
-                    }
-                }
-                
-                // Clear all sounds
-                sounds_.clear();
-                
-                // Notify mixer thread to continue
-                condVar_.notify_one();
-            }
+void stopAllSounds() {
+    try {
+        AUDIO_LOG("Muting all sounds in mixer");
+        
+        std::lock_guard<std::mutex> lock(mutex_);
+        
+        if (!initialized_) {
+            AUDIO_LOG("Audio Mixer not initialized, ignoring stopAllSounds");
+            return;
         }
-        catch (const std::exception& e) {
-            AUDIO_LOG("Exception in stopAllSounds: " + std::string(e.what()));
-            // Continue execution, don't let exceptions escape
+        
+        // Store the previous volume level before muting
+        masterVolume_ = 0.0f;
+                
+        // Apply muting to all active sounds
+        for (auto& sound : sounds_) {
+            sound.volume = 0.0f;
         }
-        catch (...) {
-            AUDIO_LOG("Unknown exception in stopAllSounds");
-            // Continue execution, don't let exceptions escape
+        
+        // Mute background music as well, if it exists
+        if (backgroundMusic_) {
+            backgroundMusic_->sound.volume = 0.0f;
         }
+        
+        AUDIO_LOG("All sounds muted successfully");
     }
+    catch (const std::exception& e) {
+        AUDIO_LOG("Exception in stopAllSounds: " + std::string(e.what()));
+    }
+    catch (...) {
+        AUDIO_LOG("Unknown exception in stopAllSounds");
+    }
+}
+
+// Add a new method to restore volume
+void restoreVolume() {
+    try {
+        if (!initialized_) {
+            AUDIO_LOG("Audio Mixer not initialized, ignoring restoreVolume");
+            return;
+        }
+        
+        std::lock_guard<std::mutex> lock(mutex_);
+        
+            masterVolume_ = 1.0f;
+            
+            // Apply restored volume to all active sounds
+            for (auto& sound : sounds_) {
+                sound.volume = masterVolume_;
+            }
+            
+            // Restore background music volume as well, if it exists
+            if (backgroundMusic_) {
+                backgroundMusic_->sound.volume = masterVolume_;
+            }
+            
+            AUDIO_LOG("Volume restored successfully");
+    }
+    catch (const std::exception& e) {
+        AUDIO_LOG("Exception in restoreVolume: " + std::string(e.what()));
+    }
+    catch (...) {
+        AUDIO_LOG("Unknown exception in restoreVolume");
+    }
+}
     
     // Stop just the background music
     void stopBackgroundMusic() {

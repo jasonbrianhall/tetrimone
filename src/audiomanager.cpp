@@ -142,6 +142,14 @@ bool AudioManager::loadSoundFromMemory(SoundEvent event,
   return true;
 }
 
+void AudioManager::restoreVolume() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    if (player_) {
+        player_->restoreVolume();
+    }
+}
+
 void AudioManager::playSound(SoundEvent event) {
   if (muted_ || !initialized_) {
     return;

@@ -45,6 +45,9 @@ public:
   virtual void setVolume(float volume) = 0;
 
   virtual void stopAllSounds() = 0;
+  virtual void restoreVolume() { }
+
+
 };
 
 // Factory function to create the appropriate platform-specific player
@@ -94,6 +97,7 @@ public:
 
   // Check if audio is initialized and available
   bool isAvailable() const;
+  void restoreVolume();
 
 private:
   // Private constructor for singleton

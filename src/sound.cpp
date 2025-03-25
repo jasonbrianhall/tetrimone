@@ -395,23 +395,26 @@ bool TetrisBoard::setSoundsZipPath(const std::string &path) {
 }
 
 void TetrisBoard::resumeBackgroundMusic() {
-  if (!sound_enabled_) {
-    // Enable sound if it was disabled
-    sound_enabled_ = true;
+    if (!sound_enabled_) {
+        // Enable sound if it was disabled
+        sound_enabled_ = true;
 
-    // Make sure audio is initialized if we're re-enabling sound
-    if (!AudioManager::getInstance().isAvailable()) {
-      if (!initializeAudio()) {
-        return;
-      }
+        // Make sure audio is initialized if we're re-enabling sound
+        if (!AudioManager::getInstance().isAvailable()) {
+            if (!initializeAudio()) {
+                return;
+            }
+        }
     }
-  }
 
-  // Unmute the AudioManager
-  AudioManager::getInstance().setMuted(false);
-  // Unpause playback
-  musicPaused = false;
+    // Unmute the AudioManager
+    AudioManager::getInstance().setMuted(false);
+    // Restore volume to full
+    AudioManager::getInstance().restoreVolume();
+    
+    // Unpause playback
+    musicPaused = false;
 
-  // Make sure music is actually playing
-  playBackgroundMusic();
+    // Make sure music is actually playing
+    playBackgroundMusic();
 }
