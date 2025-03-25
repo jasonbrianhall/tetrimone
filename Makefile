@@ -33,7 +33,7 @@ SRCS_WIN = src/windowsaudioplayer.cpp
 
 # Windows SDL flags
 SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2)
-SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2 SDL2_mixer)
+SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2)
 
 # GTK flags
 GTK_CFLAGS_LINUX := $(shell pkg-config --cflags gtk+-3.0)
