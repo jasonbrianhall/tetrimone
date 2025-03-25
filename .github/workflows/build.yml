@@ -1,0 +1,189 @@
+name: Build Tetris
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - 'Makefile'
+      - '**/Makefile'
+  pull_request:
+    branches: [ master ]
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - 'Makefile'
+      - '**/Makefile'
+
+  workflow_dispatch:
+
+jobs:
+  build-mingw-gtk:
+    runs-on: ubuntu-latest
+    container: 
+      image: fedora:latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        dnf -y install mingw64-gcc mingw64-gcc-c++ mingw64-gtk3 mingw64-gtkmm30 wine wine-devel wixl binutils make zip unzip libzip-devel mingw64-libzip
+
+    - name: Build GTK Version
+      run: |
+        make windows
+
+    - name: Copy Resources and Collect DLLs
+      working-directory: build/windows
+      run: |
+        cp ../../icon.ico .
+
+    - name: Create ZIP Archive
+      working-directory: build/windows
+      run: |
+        zip -r ../../Tetris-GTK.zip ./*
+
+    - name: Create GTK MSI Installer
+      working-directory: build/windows
+      run: |
+        # Generate the DLL entries
+        DLL_ENTRIES=$(for f in *.dll; do 
+          if [ -f "$f" ]; then
+            # Create a safe ID by removing invalid characters
+            SAFE_ID=$(echo "$f" | sed 's/[^a-zA-Z0-9]/_/g')
+            echo "<File Id=\"$SAFE_ID\" Name=\"$f\" Source=\"$f\"/>"
+          fi
+        done)
+
+        # Create the WXS file with the generated DLL entries
+        cat > installer.wxs << 'EOL'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+          <Product Id="*" Name="Tetris collection" Language="1033" Version="1.0.${{ github.run_number }}" Manufacturer="Jason Hall" UpgradeCode="D7E94C12-7B38-42F6-9E1A-BB952F7D5801"> 
+            <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+            <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
+            <MediaTemplate EmbedCab="yes" />
+            <Directory Id="TARGETDIR" Name="SourceDir">
+              <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLFOLDER" Name="Tetris GTK">
+                  <Component Id="MainExecutable" Guid="93F5A218-4C3D-48E5-B85F-1E6C9D4A7B23">
+                    <File Id="MainEXE" Name="tetris.exe" Source="tetris.exe" KeyPath="yes"/>
+                   <File Id="SoundsZIP" Name="sound.zip" Source="sound.zip"/>
+                    <File Id="IconFile" Name="icon.ico" Source="icon.ico"/>
+        EOL
+
+        # Add the generated DLL entries
+        echo "$DLL_ENTRIES" >> installer.wxs
+
+        # Complete the WXS file
+        cat >> installer.wxs << 'EOL'
+                    <File Id="README" Name="README.md" Source="../../README.md"/>
+                    <File Id="LICENSE" Name="LICENSE.md" Source="../../LICENSE.md"/>
+                  </Component>
+                  <Directory Id="LibDir" Name="lib">
+                    <Directory Id="GdkPixbuf" Name="gdk-pixbuf-2.0">
+                      <Component Id="GdkPixbufDir" Guid="E5F7B982-D93A-4A42-A3B2-642D3F9E3F48">
+                        <CreateFolder />
+                      </Component>
+                    </Directory>
+                    <Directory Id="Gtk3" Name="gtk-3.0">
+                      <Component Id="Gtk3Dir" Guid="F8D4C159-8E2B-4B47-B9A3-753D2F9E4F59">
+                        <CreateFolder />
+                      </Component>
+                    </Directory>
+                  </Directory>
+                  <Directory Id="ShareDir" Name="share">
+                    <Directory Id="GLib2" Name="glib-2.0">
+                      <Directory Id="Schemas" Name="schemas">
+                        <Component Id="GtkSchemas" Guid="A7C3D845-B6E1-4C53-8D1E-864F2F9E5F60">
+                          <File Id="GSchemas" Name="gschemas.compiled" Source="share/glib-2.0/schemas/gschemas.compiled"/>
+                        </Component>
+                      </Directory>
+                    </Directory>
+                    <Directory Id="Icons" Name="icons">
+                      <Component Id="IconsDir" Guid="B9E5F371-A4C2-4D64-92F4-975E3F9E6F71">
+                        <CreateFolder />
+                      </Component>
+                    </Directory>
+                    <Directory Id="Themes" Name="themes">
+                      <Component Id="ThemesDir" Guid="C2F6G482-B5D3-4E75-A3F5-086G4F9E7F82">
+                        <CreateFolder />
+                      </Component>
+                    </Directory>
+                  </Directory>
+                </Directory>
+              </Directory>
+              <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="Tetris GTK">
+                  <Component Id="ApplicationShortcuts" Guid="C8E2D459-F6A1-4B93-9C72-E31D8FE52D47">
+                    <Shortcut Id="ApplicationStartMenuKlondike" 
+                             Name="Tetris GTK" 
+                             Target="[INSTALLFOLDER]tetris.exe" 
+                             WorkingDirectory="INSTALLFOLDER"
+                             Icon="TetrisIcon"/>
+                    <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
+                    <RegistryValue Root="HKCU" Key="Software\TetrisGTK" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+                  </Component>
+                </Directory>
+              </Directory>
+            </Directory>
+            <Feature Id="ProductFeature" Title="Tetris GTK" Level="1">
+              <ComponentRef Id="MainExecutable" />
+              <ComponentRef Id="ApplicationShortcuts" />
+              <ComponentRef Id="GtkSchemas" />
+              <ComponentRef Id="GdkPixbufDir" />
+              <ComponentRef Id="Gtk3Dir" />
+              <ComponentRef Id="IconsDir" />
+              <ComponentRef Id="ThemesDir" />
+            </Feature>
+            <Icon Id="TetrisIcon" SourceFile="icon.ico"/>
+          </Product>
+        </Wix>
+        EOL
+
+        wixl -v installer.wxs -o ../../Tetris-GTK.msi
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: tetris-artifacts
+        path: |
+          Tetris-GTK.msi
+          Tetris-GTK.zip
+
+  create-release:
+    needs: [build-mingw-gtk]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: github.event_name == 'push'
+    
+    steps:
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: tetris-artifacts
+        path: artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/Tetris-GTK.msi
+          artifacts/Tetris-GTK.zip
+        tag_name: ${{ github.ref == 'refs/heads/master' && format('v{0}', github.run_number) || format('bleedingedge-v{0}', github.run_number) }}
+        name: ${{ github.ref == 'refs/heads/master' && format('Release {0}', github.run_number) || format('Dev Build {0}', github.run_number) }}
+        draft: false
+        prerelease: ${{ github.ref != 'refs/heads/master' }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        body: |
+          ${{ github.ref == 'refs/heads/master' && 'Release build' || 'Development build' }}
+          Commit: ${{ github.sha }}
+          Build number: ${{ github.run_number }}
+          
+          This release includes:
+          - Windows GTK installer (Tetris-GTK.msi)
+          - Windows GTK portable version (Tetris-GTK.zip)
