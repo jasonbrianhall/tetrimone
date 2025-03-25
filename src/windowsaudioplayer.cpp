@@ -693,95 +693,119 @@ bool parseWavHeader(WavSound& sound) {
     }
 }    
     // Resample a sound to match the output sample rate
-    void resampleSound(const WavSound& sound, float* resampledBuffer, 
-                     size_t outputSamples, size_t startPos, size_t& endPos) {
-        try {
-            // Calculate ratio between source and target sample rates
-            double ratio = static_cast<double>(sound.sampleRate) / OUTPUT_SAMPLE_RATE;
+void resampleSound(const WavSound& sound, float* resampledBuffer, 
+                 size_t outputSamples, size_t startPos, size_t& endPos) {
+    try {
+        // Calculate ratio between source and target sample rates
+        double ratio = static_cast<double>(sound.sampleRate) / OUTPUT_SAMPLE_RATE;
+        size_t totalFrames = sound.sampleCount / sound.channels;
+        
+        // Simple linear interpolation resampling
+        for (size_t i = 0; i < outputSamples; i++) {
+            double srcPos = (startPos + i) * ratio;
+            size_t srcPosInt = static_cast<size_t>(srcPos);
+            float fraction = static_cast<float>(srcPos - srcPosInt);
             
-            // Simple linear interpolation resampling
-            for (size_t i = 0; i < outputSamples; i++) {
-                double srcPos = (startPos + i) * ratio;
-                size_t srcPosInt = static_cast<size_t>(srcPos);
-                float fraction = static_cast<float>(srcPos - srcPosInt);
-                
-                // If we've reached the end of the source data
-                if (srcPosInt >= sound.sampleCount / sound.channels - 1) {
-                    endPos = i;
-                    return;
-                }
-                
-                // For each channel
-                for (uint16_t ch = 0; ch < sound.channels; ch++) {
-                    // Get samples at position and next position
-                    int16_t sample1 = sound.samples[(srcPosInt * sound.channels) + ch];
-                    int16_t sample2 = sound.samples[((srcPosInt + 1) * sound.channels) + ch];
-                    
-                    // Linear interpolation
-                    float sample = sample1 * (1.0f - fraction) + sample2 * fraction;
-                    
-                    // Store in output buffer, normalize to float [-1.0, 1.0]
-                    resampledBuffer[(i * OUTPUT_CHANNELS) + (ch % OUTPUT_CHANNELS)] = 
-                        sample / 32768.0f;
-                }
+            // If we've reached the end of the source data
+            // Add a small buffer (2 frames) to ensure we don't cut off too early
+            if (srcPosInt >= totalFrames) {
+                endPos = i;
+                AUDIO_LOG("End of audio reached in resampleSound: pos=" + 
+                         std::to_string(srcPosInt) + ", totalFrames=" + 
+                         std::to_string(totalFrames));
+                return;
             }
             
-            endPos = outputSamples;
-        }
-        catch (const std::exception& e) {
-            AUDIO_LOG("Exception in resampleSound: " + std::string(e.what()));
-            endPos = 0;
-        }
-        catch (...) {
-            AUDIO_LOG("Unknown exception in resampleSound");
-            endPos = 0;
-        }
-    }
-    
-    // Mix all active sounds into a buffer with resampling
-    void mixSounds(int16_t* outputBuffer, size_t sampleCount) {
-        try {
-            // First clear the output buffer
-            std::memset(outputBuffer, 0, sampleCount * sizeof(int16_t));
-            
-            // Create a float buffer for mixing (to avoid clipping)
-            std::vector<float> mixBuffer(sampleCount * OUTPUT_CHANNELS, 0.0f);
-            
-            std::lock_guard<std::mutex> lock(mutex_);
-            
-            // First mix the background music if it's playing
-            if (backgroundMusic_ && backgroundMusic_->sound.isPlaying) {
-                // Create temporary buffer for resampled data
-                std::vector<float> resampledBuffer(sampleCount * OUTPUT_CHANNELS, 0.0f);
+            // For each channel
+            for (uint16_t ch = 0; ch < sound.channels; ch++) {
+                // Get samples at position and next position
+                int16_t sample1 = sound.samples[(srcPosInt * sound.channels) + ch];
                 
-                // Calculate samples considering sample rate conversion
-                size_t samplesResampled = 0;
-                resampleSound(backgroundMusic_->sound, resampledBuffer.data(), sampleCount, 
-                            backgroundMusic_->sound.position, samplesResampled);
-                
-                // Mix resampled sound to the float buffer
-                for (size_t i = 0; i < samplesResampled * OUTPUT_CHANNELS; i++) {
-                    // Apply volume - background music at half volume by default
-                    float sample = resampledBuffer[i] * backgroundMusic_->sound.volume * 0.5f;
-                    
-                    // Add to mix buffer
-                    mixBuffer[i] += sample;
+                // Get next sample safely
+                int16_t sample2;
+                if (srcPosInt + 1 < totalFrames) {
+                    sample2 = sound.samples[((srcPosInt + 1) * sound.channels) + ch];
+                } else {
+                    // At end of data, use current sample as "next"
+                    sample2 = sample1;
                 }
                 
-                // Update position 
-                backgroundMusic_->sound.position += samplesResampled;
+                // Linear interpolation
+                float sample = sample1 * (1.0f - fraction) + sample2 * fraction;
                 
-                // Check if we reached the end and need to loop
-                if (samplesResampled < sampleCount || 
-                    backgroundMusic_->sound.position >= backgroundMusic_->sound.sampleCount / backgroundMusic_->sound.channels) {
-                    
+                // Apply a gentle fade out if we're near the end (last 10 frames)
+                if (srcPosInt >= totalFrames - 10) {
+                    float fadeRatio = (totalFrames - srcPosInt) / 10.0f;
+                    sample *= std::max(0.0f, fadeRatio);
+                }
+                
+                // Store in output buffer, normalize to float [-1.0, 1.0]
+                size_t outChannel = ch % OUTPUT_CHANNELS;
+                resampledBuffer[(i * OUTPUT_CHANNELS) + outChannel] = 
+                    sample / 32768.0f;
+            }
+        }
+        
+        endPos = outputSamples;
+    }
+    catch (const std::exception& e) {
+        AUDIO_LOG("Exception in resampleSound: " + std::string(e.what()));
+        endPos = 0;
+    }
+    catch (...) {
+        AUDIO_LOG("Unknown exception in resampleSound");
+        endPos = 0;
+    }
+}
+    
+    // Mix all active sounds into a buffer with resampling
+void mixSounds(int16_t* outputBuffer, size_t sampleCount) {
+    try {
+        // First clear the output buffer
+        std::memset(outputBuffer, 0, sampleCount * sizeof(int16_t));
+        
+        // Create a float buffer for mixing (to avoid clipping)
+        std::vector<float> mixBuffer(sampleCount * OUTPUT_CHANNELS, 0.0f);
+        
+        std::lock_guard<std::mutex> lock(mutex_);
+        
+        // First mix the background music if it's playing
+        if (backgroundMusic_ && backgroundMusic_->sound.isPlaying) {
+            // Create temporary buffer for resampled data
+            std::vector<float> resampledBuffer(sampleCount * OUTPUT_CHANNELS, 0.0f);
+            
+            // Calculate samples considering sample rate conversion
+            size_t samplesResampled = 0;
+            resampleSound(backgroundMusic_->sound, resampledBuffer.data(), sampleCount, 
+                        backgroundMusic_->sound.position, samplesResampled);
+            
+            // Mix resampled sound to the float buffer
+            for (size_t i = 0; i < samplesResampled * OUTPUT_CHANNELS; i++) {
+                // Apply volume - background music at half volume by default
+                float sample = resampledBuffer[i] * backgroundMusic_->sound.volume * 0.5f;
+                
+                // Add to mix buffer
+                mixBuffer[i] += sample;
+            }
+            
+            // Update position 
+            backgroundMusic_->sound.position += samplesResampled;
+            
+            // Check if we reached the end
+            if (samplesResampled < sampleCount) {
+                // We didn't get as many samples as expected from the resampler
+                if (backgroundMusic_->sound.position >= 
+                    (backgroundMusic_->sound.sampleCount / backgroundMusic_->sound.channels) - 1) {
+                    // We're at the end of the audio
                     if (backgroundMusic_->looping) {
                         // Loop back to beginning for looping music
                         AUDIO_LOG("Looping background music back to start position");
                         backgroundMusic_->sound.position = 0;
                     } else {
                         // Music is done playing and not looping
-                        AUDIO_LOG("Background music finished playing");
+                        AUDIO_LOG("Background music finished playing (position: " + 
+                                std::to_string(backgroundMusic_->sound.position) + ", total frames: " + 
+                                std::to_string(backgroundMusic_->sound.sampleCount / backgroundMusic_->sound.channels) + ")");
                         backgroundMusic_->sound.isPlaying = false;
                         if (backgroundMusic_->sound.completionPromise) {
                             try {
@@ -790,54 +814,71 @@ bool parseWavHeader(WavSound& sound) {
                                 AUDIO_LOG("Exception while completing music promise: " + 
                                          std::string(e.what()));
                             }
-backgroundMusic_->sound.completionPromise.reset();
+                            backgroundMusic_->sound.completionPromise.reset();
                         }
                         backgroundMusic_.reset();
                     }
+                } else {
+                    // We're still playing, just had a buffer underrun
+                    AUDIO_LOG("Buffer underrun in background music, continuing");
                 }
             }
-            
-            // Now process each regular sound effect
-            auto it = sounds_.begin();
-            int activeCount = 0;
-            while (it != sounds_.end()) {
-                if (!it->isPlaying) {
-                    // Clean up completed sounds
-                    AUDIO_LOG("Sound completed: " + it->soundName);
-                    if (it->completionPromise) {
-                        try {
-                            it->completionPromise->set_value();
-                        } catch (const std::exception& e) {
-                            AUDIO_LOG("Exception while completing promise: " + std::string(e.what()));
-                        }
+        }
+        
+        // Now process each regular sound effect
+        auto it = sounds_.begin();
+        int activeCount = 0;
+        while (it != sounds_.end()) {
+            if (!it->isPlaying) {
+                // Clean up completed sounds
+                AUDIO_LOG("Sound completed: " + it->soundName);
+                if (it->completionPromise) {
+                    try {
+                        it->completionPromise->set_value();
+                    } catch (const std::exception& e) {
+                        AUDIO_LOG("Exception while completing promise: " + std::string(e.what()));
                     }
-                    it = sounds_.erase(it);
-                    continue;
                 }
+                it = sounds_.erase(it);
+                continue;
+            }
+            
+            // Create temporary buffer for resampled data
+            std::vector<float> resampledBuffer(sampleCount * OUTPUT_CHANNELS, 0.0f);
+            
+            // Calculate samples considering sample rate conversion
+            size_t samplesResampled = 0;
+            resampleSound(*it, resampledBuffer.data(), sampleCount, 
+                        it->position, samplesResampled);
+            
+            // Mix resampled sound to the float buffer
+            for (size_t i = 0; i < samplesResampled * OUTPUT_CHANNELS; i++) {
+                // Apply volume
+                float sample = resampledBuffer[i] * it->volume;
                 
-                // Create temporary buffer for resampled data
-                std::vector<float> resampledBuffer(sampleCount * OUTPUT_CHANNELS, 0.0f);
-                
-                // Calculate samples considering sample rate conversion
-                size_t samplesResampled = 0;
-                resampleSound(*it, resampledBuffer.data(), sampleCount, 
-                            it->position, samplesResampled);
-                
-                // Mix resampled sound to the float buffer
-                for (size_t i = 0; i < samplesResampled * OUTPUT_CHANNELS; i++) {
-                    // Apply volume
-                    float sample = resampledBuffer[i] * it->volume;
-                    
-                    // Add to mix buffer
-                    mixBuffer[i] += sample;
-                }
-                
-                // Update position and check if finished
-                it->position += samplesResampled;
-                activeCount++;
-                
-                if (samplesResampled < sampleCount || it->position >= it->sampleCount / it->channels) {
-                    AUDIO_LOG("Sound finished playing: " + it->soundName);
+                // Add to mix buffer
+                mixBuffer[i] += sample;
+            }
+            
+            // Update position
+            it->position += samplesResampled;
+            activeCount++;
+            
+            // Log debug information about sound status
+            AUDIO_LOG("Sound status: " + it->soundName + 
+                     " (position=" + std::to_string(it->position) + 
+                     ", total frames=" + std::to_string(it->sampleCount / it->channels) + 
+                     ", samples resampled=" + std::to_string(samplesResampled) + 
+                     ", expected=" + std::to_string(sampleCount) + ")");
+            
+            // Check if we're done with this sound
+            if (samplesResampled < sampleCount) {
+                // We didn't get as many samples as expected
+                if (it->position >= (it->sampleCount / it->channels) - 1) {
+                    // We're at the end of the audio
+                    AUDIO_LOG("Sound finished playing: " + it->soundName + 
+                             " (pos: " + std::to_string(it->position) + 
+                             ", frames: " + std::to_string(it->sampleCount / it->channels) + ")");
                     it->isPlaying = false;
                     if (it->completionPromise) {
                         try {
@@ -848,34 +889,39 @@ backgroundMusic_->sound.completionPromise.reset();
                     }
                     it = sounds_.erase(it);
                 } else {
-                    ++it;
+                    // Not at the end yet, just a buffer underrun
+                    AUDIO_LOG("Buffer underrun in sound '" + it->soundName + "', continuing");
+                    ++it; // Continue with this sound
                 }
-            }
-            
-            if (activeCount > 0) {
-                AUDIO_LOG("Mixed " + std::to_string(activeCount) + " active sound effects");
-            }
-            
-            // Convert float mix buffer back to int16_t with clipping protection
-            for (size_t i = 0; i < sampleCount * OUTPUT_CHANNELS; i++) {
-                float sample = mixBuffer[i];
-                // Clip to [-1.0, 1.0]
-                sample = std::max(-1.0f, std::min(1.0f, sample));
-                // Convert to int16_t
-                outputBuffer[i] = static_cast<int16_t>(sample * 32767.0f);
+            } else {
+                ++it; // Normal case, continue with this sound
             }
         }
-        catch (const std::exception& e) {
-            AUDIO_LOG("Exception in mixSounds: " + std::string(e.what()));
-            // Clear output buffer in case of exception
-            std::memset(outputBuffer, 0, sampleCount * sizeof(int16_t));
+        
+        if (activeCount > 0) {
+            AUDIO_LOG("Mixed " + std::to_string(activeCount) + " active sound effects");
         }
-        catch (...) {
-            AUDIO_LOG("Unknown exception in mixSounds");
-            // Clear output buffer in case of exception
-            std::memset(outputBuffer, 0, sampleCount * sizeof(int16_t));
+        
+        // Convert float mix buffer back to int16_t with clipping protection
+        for (size_t i = 0; i < sampleCount * OUTPUT_CHANNELS; i++) {
+            float sample = mixBuffer[i];
+            // Clip to [-1.0, 1.0]
+            sample = std::max(-1.0f, std::min(1.0f, sample));
+            // Convert to int16_t
+            outputBuffer[i] = static_cast<int16_t>(sample * 32767.0f);
         }
     }
+    catch (const std::exception& e) {
+        AUDIO_LOG("Exception in mixSounds: " + std::string(e.what()));
+        // Clear output buffer in case of exception
+        std::memset(outputBuffer, 0, sampleCount * sizeof(int16_t));
+    }
+    catch (...) {
+        AUDIO_LOG("Unknown exception in mixSounds");
+        // Clear output buffer in case of exception
+        std::memset(outputBuffer, 0, sampleCount * sizeof(int16_t));
+    }
+}
     
     // Thread function for the mixer
     void mixerThreadFunc() {
@@ -988,8 +1034,8 @@ backgroundMusic_->sound.completionPromise.reset();
     }
     
     // Constants
-    static constexpr int NUM_BUFFERS = 4;
-    static constexpr int BUFFER_DURATION_MS = 50;
+    static constexpr int NUM_BUFFERS = 8;
+    static constexpr int BUFFER_DURATION_MS = 10;
     static constexpr int OUTPUT_CHANNELS = 2;
     static constexpr int OUTPUT_SAMPLE_RATE = 44100;
     static constexpr int OUTPUT_BITS_PER_SAMPLE = 16;
