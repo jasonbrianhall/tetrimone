@@ -495,9 +495,6 @@ void onJoystickRescan(GtkButton* button, gpointer userData) {
     gtk_widget_destroy(dialog);
 }
 
-// First, we need to replace the lambda function with a regular callback function
-// Add this function before onJoystickConfig()
-
 // Structure to store data needed for the joystick selection callback
 typedef struct {
     TetrisApp* app;
@@ -570,7 +567,6 @@ typedef struct {
     GtkTextBuffer* buffer;
 } JoystickTestData;
 
-// Callback for updating joystick test display
 gboolean updateJoystickTestDisplay(gpointer userData) {
     JoystickTestData* data = static_cast<JoystickTestData*>(userData);
     GtkTextBuffer* buffer = data->buffer;
@@ -586,12 +582,47 @@ gboolean updateJoystickTestDisplay(gpointer userData) {
     // Build a string with joystick information
     std::string info = "Joystick: " + std::string(SDL_JoystickName(app->joystick)) + "\n\n";
     
-    // Buttons
+    // Buttons - display in three columns
     info += "Buttons:\n";
     int numButtons = SDL_JoystickNumButtons(app->joystick);
+    
+    // Calculate how many buttons per column (rounded up)
+    int buttonsPerColumn = (numButtons + 2) / 3;
+    
+    // Create a temporary vector to hold button state strings
+    std::vector<std::string> buttonStrings;
     for (int i = 0; i < numButtons; i++) {
         bool pressed = SDL_JoystickGetButton(app->joystick, i);
-        info += "Button " + std::to_string(i) + ": " + (pressed ? "PRESSED" : "released") + "\n";
+        buttonStrings.push_back("Button " + std::to_string(i) + ": " + 
+                              (pressed ? "PRESSED" : "released"));
+    }
+    
+    // Output buttons in columns
+    for (int row = 0; row < buttonsPerColumn; row++) {
+        std::string line = "";
+        
+        // Column 1
+        if (row < buttonStrings.size()) {
+            line += buttonStrings[row];
+            // Pad to fixed width
+            line += std::string(25 - buttonStrings[row].length(), ' ');
+        }
+        
+        // Column 2
+        int col2Index = row + buttonsPerColumn;
+        if (col2Index < buttonStrings.size()) {
+            line += buttonStrings[col2Index];
+            // Pad to fixed width
+            line += std::string(25 - buttonStrings[col2Index].length(), ' ');
+        }
+        
+        // Column 3
+        int col3Index = row + (2 * buttonsPerColumn);
+        if (col3Index < buttonStrings.size()) {
+            line += buttonStrings[col3Index];
+        }
+        
+        info += line + "\n";
     }
     
     // Axes
@@ -624,7 +655,7 @@ gboolean updateJoystickTestDisplay(gpointer userData) {
     return TRUE; // Keep the timer going
 }
 
-// Now modify the onJoystickConfig function to use these callbacks
+
 void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData) {
     TetrisApp* app = static_cast<TetrisApp*>(userData);
     
@@ -645,8 +676,8 @@ void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData) {
         NULL
     );
     
-    // Make it a reasonable size
-    gtk_window_set_default_size(GTK_WINDOW(dialog), 400, 300);
+    // Make it a reasonable size - INCREASED SIZE
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 600);
     
     // Create content area
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -741,6 +772,10 @@ void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData) {
     GtkWidget* textView = gtk_text_view_new();
     gtk_text_view_set_editable(GTK_TEXT_VIEW(textView), FALSE);
     gtk_container_add(GTK_CONTAINER(textScroll), textView);
+    
+    // Set minimum height for the text view and use monospace font
+    gtk_widget_set_size_request(textScroll, -1, 350);
+    gtk_text_view_set_monospace(GTK_TEXT_VIEW(textView), TRUE);
     
     // Get the buffer
     GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textView));
