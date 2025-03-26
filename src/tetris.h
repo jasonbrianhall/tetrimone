@@ -481,6 +481,17 @@ public:
     void setPosition(int newX, int newY);
 };
 
+typedef struct {
+    int rotate_cw_button;     // Button for rotate clockwise
+    int rotate_ccw_button;    // Button for rotate counter-clockwise
+    int hard_drop_button;     // Button for hard drop
+    int pause_button;         // Button for pause/unpause
+    int x_axis;               // Axis for left/right movement
+    int y_axis;               // Axis for up/down movement
+    bool invert_x;            // Whether to invert X axis
+    bool invert_y;            // Whether to invert Y axis
+} JoystickMapping;
+
 // TetrisApp structure needs to be defined before it's used in TetrisBoard
 struct TetrisApp {
     GtkApplication* app;
@@ -511,6 +522,7 @@ struct TetrisApp {
     SDL_Joystick* joystick;
     bool joystickEnabled;
     guint joystickTimerId;
+    JoystickMapping joystickMapping;
 };
 
 // Class for the game board
@@ -608,4 +620,9 @@ gboolean onDeleteEvent(GtkWidget* widget, GdkEvent* event, gpointer userData);
 void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData);
 void onJoystickRescan(GtkButton* button, gpointer userData);
 void updateJoystickInfo(GtkLabel* infoLabel, TetrisApp* app);
+void onJoystickMapApply(GtkButton* button, gpointer userData);
+void onJoystickMapReset(GtkButton* button, gpointer userData);
+void saveJoystickMapping(TetrisApp* app);
+void loadJoystickMapping(TetrisApp* app);
+
 #endif // TETRIS_H
