@@ -279,7 +279,7 @@ gboolean pollJoystick(gpointer data) {
       // Right stick rotation control (more intuitive for some players)
       if (abs(rxValue) > DEFAULT_DEADZONE || abs(ryValue) > DEFAULT_DEADZONE) {
         // Calculate the angle of the stick
-        float angle = atan2f(ryValue, rxValue) * 180.0f / M_PI;
+        float angle = atan2f(ryValue, rxValue) * 180.0f / G_PI;
         
         // Convert to a 0-360 range
         if (angle < 0) angle += 360.0f;
