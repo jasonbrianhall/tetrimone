@@ -605,4 +605,7 @@ void onBlockSizeValueChanged(GtkRange* range, gpointer data);
 void onResizeWindowButtonClicked(GtkWidget* button, gpointer data);
 gboolean onDeleteEvent(GtkWidget* widget, GdkEvent* event, gpointer userData);
 
+void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData);
+void onJoystickRescan(GtkButton* button, gpointer userData);
+void updateJoystickInfo(GtkLabel* infoLabel, TetrisApp* app);
 #endif // TETRIS_H

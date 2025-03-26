@@ -1107,6 +1107,14 @@ void createMenu(TetrisApp* app) {
     // Options menu items
     app->soundToggleMenuItem = gtk_check_menu_item_new_with_label("Sound");
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), TRUE);
+
+GtkWidget* joystickConfigMenuItem = gtk_menu_item_new_with_label("Configure Joystick...");
+gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), joystickConfigMenuItem);
+
+// Connect signal handler for joystick config item
+g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
+               G_CALLBACK(onJoystickConfig), app);
+
     
     // Difficulty submenu
     GtkWidget* difficultyMenu = gtk_menu_new();

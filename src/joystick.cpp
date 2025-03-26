@@ -15,22 +15,26 @@ void initSDL(TetrisApp *app) {
     return;
   }
 
+  // SDL initialized successfully
+  app->joystickEnabled = true;
+
   // Check for joysticks
-  if (SDL_NumJoysticks() < 1) {
+  int numJoysticks = SDL_NumJoysticks();
+  if (numJoysticks < 1) {
     printf("No joysticks connected!\n");
-    SDL_Quit();
+    // We keep SDL initialized but don't open any joystick
     app->joystick = NULL;
-    app->joystickEnabled = false;
     app->joystickTimerId = 0;
     return;
   }
 
-  // Open the first joystick
+  printf("Found %d joystick(s)\n", numJoysticks);
+  
+  // Open the first joystick by default
   app->joystick = SDL_JoystickOpen(0);
   if (app->joystick == NULL) {
     printf("Unable to open joystick! SDL Error: %s\n", SDL_GetError());
-    SDL_Quit();
-    app->joystickEnabled = false;
+    // We keep SDL initialized but don't have an active joystick
     app->joystickTimerId = 0;
     return;
   }
@@ -38,8 +42,7 @@ void initSDL(TetrisApp *app) {
   printf("Joystick connected: %s\n", SDL_JoystickName(app->joystick));
   printf("Number of buttons: %d\n", SDL_JoystickNumButtons(app->joystick));
   printf("Number of axes: %d\n", SDL_JoystickNumAxes(app->joystick));
-
-  app->joystickEnabled = true;
+  printf("Number of hats: %d\n", SDL_JoystickNumHats(app->joystick));
 
   // Start the joystick polling timer only if it's not already running
   if (app->joystickTimerId == 0) {
@@ -61,7 +64,7 @@ void shutdownSDL(TetrisApp *app) {
     app->joystick = NULL;
   }
 
-  // Quit SDL completely - this may fix memory issues
+  // Quit SDL completely
   SDL_Quit();
   app->joystickEnabled = false;
 }
@@ -74,10 +77,19 @@ typedef struct {
   int moveCount;
 } DirectionalControl;
 
-// Joystick polling function (called by timer)
+// Add these constants to the top of joystick.cpp
+
+// Configuration for joystick sensitivity
+const int DEFAULT_DEADZONE = 8000;  // Default deadzone value (about 25% of max)
+const int MAX_JOYSTICK_BUTTONS = 16; // Maximum number of buttons to check
+const Uint32 BUTTON_DEBOUNCE_TIME = 200; // ms between button actions
+
+// This enhanced version of pollJoystick allows for better handling of
+// different joystick types and provides more reliable controls
 gboolean pollJoystick(gpointer data) {
   TetrisApp *app = static_cast<TetrisApp *>(data);
 
+  // Safety checks
   if (!app || !app->joystickEnabled || !app->joystick || !app->board) {
     return FALSE;
   }
@@ -90,7 +102,6 @@ gboolean pollJoystick(gpointer data) {
 
   // Static variables for tracking state
   static Uint32 lastButtonPressTime = 0;
-  static const Uint32 BUTTON_DEBOUNCE_TIME = 200; // ms between button actions
 
   // Directional controls with acceleration
   static DirectionalControl horizontalControl = {false, 0, 0, 150, 0};
@@ -101,19 +112,18 @@ gboolean pollJoystick(gpointer data) {
   // Handle button presses even when game is paused or over
   // Process buttons with debounce
   int numButtons = SDL_JoystickNumButtons(app->joystick);
+  
   // Clamp number of buttons to avoid out-of-bounds access
-  if (numButtons > 16)
-    numButtons = 16;
+  if (numButtons > MAX_JOYSTICK_BUTTONS)
+    numButtons = MAX_JOYSTICK_BUTTONS;
 
   for (int i = 0; i < numButtons; i++) {
     if (SDL_JoystickGetButton(app->joystick, i)) {
-      // Print which button was pressed for debugging
-
       // Only process button if enough time has passed since last press
       if (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE_TIME) {
         bool buttonProcessed = true;
 
-        if (i == 9) { // Start button - pause/unpause/restart/start
+        if (i == 9 || i == 7) { // Start button (9) or Select/Back button (7) - pause/unpause/restart/start
           if (app->board->isSplashScreenActive()) {
             // If splash screen is active, dismiss it and start game
             app->board->dismissSplashScreen();
@@ -132,14 +142,17 @@ gboolean pollJoystick(gpointer data) {
         } else if (!app->board->isGameOver() && !app->board->isPaused()) {
           switch (i) {
           case 0: // A button - rotate clockwise
+          case 2: // X button - alternate rotate button on some controllers
             app->board->rotatePiece(true);
             break;
 
           case 1: // B button - counter-rotate
+          case 3: // Y button - alternate rotate button on some controllers
             app->board->rotatePiece(false);
             break;
 
-          case 3: // Y button - hard drop
+          case 6: // LB/L1 button - hard drop (additional option)
+          case 10: // RB/R1 button - hard drop (additional option)
             app->board->hardDrop();
             break;
 
@@ -163,16 +176,14 @@ gboolean pollJoystick(gpointer data) {
   }
 
   // Process axes with acceleration
-  const int DEADZONE = 8000;
-
   if (SDL_JoystickNumAxes(app->joystick) >= 2) {
     // X axis (horizontal movement)
     int xValue = SDL_JoystickGetAxis(app->joystick, 0);
     int newDir = 0;
 
-    if (xValue < -DEADZONE) {
+    if (xValue < -DEFAULT_DEADZONE) {
       newDir = -1; // Left
-    } else if (xValue > DEADZONE) {
+    } else if (xValue > DEFAULT_DEADZONE) {
       newDir = 1; // Right
     }
 
@@ -197,7 +208,9 @@ gboolean pollJoystick(gpointer data) {
         horizontalControl.moveCount++;
 
         // Gradually decrease delay for acceleration effect
-        if (horizontalControl.moveCount > 4) {
+        if (horizontalControl.moveCount > 6) {
+          horizontalControl.repeatDelay = 30; // Very fast
+        } else if (horizontalControl.moveCount > 4) {
           horizontalControl.repeatDelay = 50; // Fast
         } else if (horizontalControl.moveCount > 2) {
           horizontalControl.repeatDelay = 100; // Medium
@@ -212,9 +225,9 @@ gboolean pollJoystick(gpointer data) {
     int yValue = SDL_JoystickGetAxis(app->joystick, 1);
     newDir = 0;
 
-    if (yValue > DEADZONE) {
+    if (yValue > DEFAULT_DEADZONE) {
       newDir = 1; // Down
-    } else if (yValue < -DEADZONE) {
+    } else if (yValue < -DEFAULT_DEADZONE) {
       // Up is for rotation, handle separately
       if (!verticalControl.active || verticalControl.direction != -1) {
         // Only rotate once when first pushing up
@@ -245,15 +258,47 @@ gboolean pollJoystick(gpointer data) {
         verticalControl.moveCount++;
 
         // Gradually decrease delay for acceleration effect
-        if (verticalControl.moveCount > 4) {
-          verticalControl.repeatDelay = 30; // Very fast
+        if (verticalControl.moveCount > 6) {
+          verticalControl.repeatDelay = 20; // Very fast
+        } else if (verticalControl.moveCount > 4) {
+          verticalControl.repeatDelay = 30; // Fast
         } else if (verticalControl.moveCount > 2) {
-          verticalControl.repeatDelay = 60; // Fast
+          verticalControl.repeatDelay = 60; // Medium
         }
       }
-    } else if (newDir == 0 && yValue > -DEADZONE) {
+    } else if (newDir == 0 && yValue > -DEFAULT_DEADZONE) {
       // No downward direction - reset vertical control
       verticalControl.active = false;
+    }
+    
+    // Handle right analog stick if available (usually axes 2 and 3)
+    if (SDL_JoystickNumAxes(app->joystick) >= 4) {
+      int rxValue = SDL_JoystickGetAxis(app->joystick, 2);
+      int ryValue = SDL_JoystickGetAxis(app->joystick, 3);
+      
+      // Right stick rotation control (more intuitive for some players)
+      if (abs(rxValue) > DEFAULT_DEADZONE || abs(ryValue) > DEFAULT_DEADZONE) {
+        // Calculate the angle of the stick
+        float angle = atan2f(ryValue, rxValue) * 180.0f / M_PI;
+        
+        // Convert to a 0-360 range
+        if (angle < 0) angle += 360.0f;
+        
+        // Determine rotation direction based on stick movement
+        // Right = clockwise, Left = counter-clockwise
+        static Uint32 lastRotateTime = 0;
+        if (currentTime - lastRotateTime > 250) { // Prevent too rapid rotation
+          if (rxValue > DEFAULT_DEADZONE && abs(ryValue) < DEFAULT_DEADZONE) {
+            // Right
+            app->board->rotatePiece(true);
+            lastRotateTime = currentTime;
+          } else if (rxValue < -DEFAULT_DEADZONE && abs(ryValue) < DEFAULT_DEADZONE) {
+            // Left
+            app->board->rotatePiece(false);
+            lastRotateTime = currentTime;
+          }
+        }
+      }
     }
   }
 
@@ -289,7 +334,9 @@ gboolean pollJoystick(gpointer data) {
         dpadHorizontal.moveCount++;
 
         // Gradually decrease delay for acceleration effect
-        if (dpadHorizontal.moveCount > 4) {
+        if (dpadHorizontal.moveCount > 6) {
+          dpadHorizontal.repeatDelay = 30; // Very fast
+        } else if (dpadHorizontal.moveCount > 4) {
           dpadHorizontal.repeatDelay = 50; // Fast
         } else if (dpadHorizontal.moveCount > 2) {
           dpadHorizontal.repeatDelay = 100; // Medium
@@ -334,15 +381,46 @@ gboolean pollJoystick(gpointer data) {
         dpadVertical.moveCount++;
 
         // Gradually decrease delay for acceleration effect
-        if (dpadVertical.moveCount > 4) {
-          dpadVertical.repeatDelay = 30; // Very fast
+        if (dpadVertical.moveCount > 6) {
+          dpadVertical.repeatDelay = 20; // Very fast
+        } else if (dpadVertical.moveCount > 4) {
+          dpadVertical.repeatDelay = 30; // Fast
         } else if (dpadVertical.moveCount > 2) {
-          dpadVertical.repeatDelay = 60; // Fast
+          dpadVertical.repeatDelay = 60; // Medium
         }
       }
     } else if (dpadY == 0 && !(hatState & SDL_HAT_UP)) {
       // No downward direction - reset vertical control
       dpadVertical.active = false;
+    }
+  }
+
+  // Handle trigger buttons (usually axes 4 and 5 on many controllers)
+  if (SDL_JoystickNumAxes(app->joystick) >= 6) {
+    // Left trigger (axis 4) - soft drop
+    int leftTrigger = SDL_JoystickGetAxis(app->joystick, 4);
+    if (leftTrigger > DEFAULT_DEADZONE) {
+      // Map trigger value to drop speed
+      float triggerValue = (float)leftTrigger / 32767.0f;
+      
+      // Use trigger acceleration based on how far it's pressed
+      static Uint32 lastTriggerMoveTime = 0;
+      int triggerDelay = 150 - (int)(120 * triggerValue); // From 150ms to 30ms
+      
+      if (currentTime - lastTriggerMoveTime > triggerDelay) {
+        app->board->movePiece(0, 1);
+        lastTriggerMoveTime = currentTime;
+      }
+    }
+    
+    // Right trigger (axis 5) - hard drop
+    int rightTrigger = SDL_JoystickGetAxis(app->joystick, 5);
+    if (rightTrigger > DEFAULT_DEADZONE) {
+      static Uint32 lastHardDropTime = 0;
+      if (currentTime - lastHardDropTime > 500) { // Prevent accidental double drops
+        app->board->hardDrop();
+        lastHardDropTime = currentTime;
+      }
     }
   }
 
@@ -352,4 +430,357 @@ gboolean pollJoystick(gpointer data) {
   updateLabels(app);
 
   return TRUE; // Keep the timer going
+}
+
+
+// Function to update joystick info in the config dialog
+void updateJoystickInfo(GtkLabel* infoLabel, TetrisApp* app) {
+    std::string info;
+    
+    if (!app->joystickEnabled) {
+        info = "Joystick support is not enabled.";
+    } else {
+        int numJoysticks = SDL_NumJoysticks();
+        
+        if (numJoysticks <= 0) {
+            info = "No joysticks detected.";
+        } else {
+            info = "Detected " + std::to_string(numJoysticks) + " joystick(s):\n";
+            
+            for (int i = 0; i < numJoysticks; i++) {
+                info += "  " + std::to_string(i) + ": " + SDL_JoystickName(SDL_JoystickOpen(i)) + "\n";
+                SDL_JoystickClose(SDL_JoystickOpen(i)); // Close temp instance
+            }
+            
+            info += "\nCurrent joystick: ";
+            if (app->joystick != NULL) {
+                info += SDL_JoystickName(app->joystick);
+                info += "\nButtons: " + std::to_string(SDL_JoystickNumButtons(app->joystick));
+                info += "\nAxes: " + std::to_string(SDL_JoystickNumAxes(app->joystick));
+                info += "\nHats: " + std::to_string(SDL_JoystickNumHats(app->joystick));
+            } else {
+                info += "None (not opened)";
+            }
+        }
+    }
+    
+    gtk_label_set_text(infoLabel, info.c_str());
+}
+
+// Function to handle joystick rescan button
+void onJoystickRescan(GtkButton* button, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    GtkLabel* infoLabel = GTK_LABEL(g_object_get_data(G_OBJECT(button), "info-label"));
+    
+    // Shutdown SDL to reset joystick subsystem
+    shutdownSDL(app);
+    
+    // Re-initialize SDL
+    initSDL(app);
+    
+    // Update info
+    updateJoystickInfo(infoLabel, app);
+    
+    // Show a message with results
+    GtkWidget* dialog = gtk_message_dialog_new(
+        GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))),
+        GTK_DIALOG_MODAL,
+        GTK_MESSAGE_INFO,
+        GTK_BUTTONS_OK,
+        "Joystick rescan complete.\nFound %d joystick(s).",
+        SDL_NumJoysticks()
+    );
+    
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+}
+
+// First, we need to replace the lambda function with a regular callback function
+// Add this function before onJoystickConfig()
+
+// Structure to store data needed for the joystick selection callback
+typedef struct {
+    TetrisApp* app;
+    GtkWidget* idScale;
+    GtkWidget* infoLabel;
+    GtkWidget* dialog;
+} JoystickSelectionData;
+
+// Callback for Apply Joystick Selection button
+void onJoystickSelectionApply(GtkButton* button, gpointer userData) {
+    JoystickSelectionData* data = static_cast<JoystickSelectionData*>(userData);
+    TetrisApp* app = data->app;
+    GtkWidget* idScale = data->idScale;
+    GtkWidget* infoLabel = data->infoLabel;
+    GtkWidget* dialog = data->dialog;
+    
+    // Get the selected joystick ID
+    int joystickId = (int)gtk_range_get_value(GTK_RANGE(idScale));
+    
+    // Close current joystick if open
+    if (app->joystick != NULL) {
+        SDL_JoystickClose(app->joystick);
+        app->joystick = NULL;
+    }
+    
+    // Try to open the selected joystick
+    if (joystickId >= 0 && joystickId < SDL_NumJoysticks()) {
+        app->joystick = SDL_JoystickOpen(joystickId);
+        if (app->joystick != NULL) {
+            app->joystickEnabled = true;
+            
+            // Start the joystick polling timer if it's not already running
+            if (app->joystickTimerId == 0) {
+                app->joystickTimerId = g_timeout_add(16, pollJoystick, app);
+            }
+            
+            // Show success message
+            GtkWidget* successDialog = gtk_message_dialog_new(
+                GTK_WINDOW(dialog),
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_INFO,
+                GTK_BUTTONS_OK,
+                "Successfully opened joystick: %s",
+                SDL_JoystickName(app->joystick)
+            );
+            gtk_dialog_run(GTK_DIALOG(successDialog));
+            gtk_widget_destroy(successDialog);
+        } else {
+            // Show error message
+            GtkWidget* errorDialog = gtk_message_dialog_new(
+                GTK_WINDOW(dialog),
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_OK,
+                "Failed to open joystick: %s",
+                SDL_GetError()
+            );
+            gtk_dialog_run(GTK_DIALOG(errorDialog));
+            gtk_widget_destroy(errorDialog);
+        }
+    }
+    
+    // Update joystick info
+    updateJoystickInfo(GTK_LABEL(infoLabel), app);
+}
+
+// Structure to store data needed for the joystick test timer callback
+typedef struct {
+    TetrisApp* app;
+    GtkTextBuffer* buffer;
+} JoystickTestData;
+
+// Callback for updating joystick test display
+gboolean updateJoystickTestDisplay(gpointer userData) {
+    JoystickTestData* data = static_cast<JoystickTestData*>(userData);
+    GtkTextBuffer* buffer = data->buffer;
+    TetrisApp* app = data->app;
+    
+    if (!app->joystickEnabled || !app->joystick) {
+        return TRUE; // Keep the timer going
+    }
+    
+    // Update joystick state
+    SDL_JoystickUpdate();
+    
+    // Build a string with joystick information
+    std::string info = "Joystick: " + std::string(SDL_JoystickName(app->joystick)) + "\n\n";
+    
+    // Buttons
+    info += "Buttons:\n";
+    int numButtons = SDL_JoystickNumButtons(app->joystick);
+    for (int i = 0; i < numButtons; i++) {
+        bool pressed = SDL_JoystickGetButton(app->joystick, i);
+        info += "Button " + std::to_string(i) + ": " + (pressed ? "PRESSED" : "released") + "\n";
+    }
+    
+    // Axes
+    info += "\nAxes:\n";
+    int numAxes = SDL_JoystickNumAxes(app->joystick);
+    for (int i = 0; i < numAxes; i++) {
+        int value = SDL_JoystickGetAxis(app->joystick, i);
+        float normalizedValue = value / 32768.0f;
+        info += "Axis " + std::to_string(i) + ": " + std::to_string(value) + 
+                " (" + std::to_string(normalizedValue) + ")\n";
+    }
+    
+    // Hats
+    info += "\nHats:\n";
+    int numHats = SDL_JoystickNumHats(app->joystick);
+    for (int i = 0; i < numHats; i++) {
+        Uint8 value = SDL_JoystickGetHat(app->joystick, i);
+        std::string position = "centered";
+        if (value & SDL_HAT_UP) position = "up";
+        if (value & SDL_HAT_RIGHT) position += value & SDL_HAT_UP ? "-right" : "right";
+        if (value & SDL_HAT_DOWN) position = "down";
+        if (value & SDL_HAT_LEFT) position += value & SDL_HAT_DOWN ? "-left" : "left";
+        
+        info += "Hat " + std::to_string(i) + ": " + position + "\n";
+    }
+    
+    // Update the text buffer
+    gtk_text_buffer_set_text(buffer, info.c_str(), -1);
+    
+    return TRUE; // Keep the timer going
+}
+
+// Now modify the onJoystickConfig function to use these callbacks
+void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    (void)menuItem; // Avoid unused parameter warning
+    
+    // Pause the game if it's running
+    bool wasPaused = app->board->isPaused();
+    if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
+        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+    }
+    
+    // Create dialog
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        "Joystick Configuration",
+        GTK_WINDOW(app->window),
+        GTK_DIALOG_MODAL,
+        "_Close", GTK_RESPONSE_CLOSE,
+        NULL
+    );
+    
+    // Make it a reasonable size
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 400, 300);
+    
+    // Create content area
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
+    
+    // Create a vertical box for content
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    
+    // Status section
+    GtkWidget* statusFrame = gtk_frame_new("Joystick Status");
+    gtk_box_pack_start(GTK_BOX(vbox), statusFrame, FALSE, FALSE, 0);
+    
+    GtkWidget* statusBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_set_border_width(GTK_CONTAINER(statusBox), 10);
+    gtk_container_add(GTK_CONTAINER(statusFrame), statusBox);
+    
+    // Joystick info label
+    GtkWidget* joystickInfoLabel = gtk_label_new("");
+    gtk_widget_set_halign(joystickInfoLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(statusBox), joystickInfoLabel, FALSE, FALSE, 0);
+    
+    // Update the joystick info
+    updateJoystickInfo(GTK_LABEL(joystickInfoLabel), app);
+    
+    // Rescan button
+    GtkWidget* rescanButton = gtk_button_new_with_label("Rescan for Joysticks");
+    gtk_box_pack_start(GTK_BOX(statusBox), rescanButton, FALSE, FALSE, 5);
+    
+    // Connect signal to rescan button
+    g_object_set_data(G_OBJECT(rescanButton), "info-label", joystickInfoLabel);
+    g_signal_connect(G_OBJECT(rescanButton), "clicked", 
+                   G_CALLBACK(onJoystickRescan), app);
+    
+    // Joystick ID selection
+    GtkWidget* idFrame = gtk_frame_new("Joystick Selection");
+    gtk_box_pack_start(GTK_BOX(vbox), idFrame, FALSE, FALSE, 10);
+    
+    GtkWidget* idBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_set_border_width(GTK_CONTAINER(idBox), 10);
+    gtk_container_add(GTK_CONTAINER(idFrame), idBox);
+    
+    // Add label
+    GtkWidget* idLabel = gtk_label_new("Select joystick device ID:");
+    gtk_widget_set_halign(idLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(idBox), idLabel, FALSE, FALSE, 0);
+    
+    // Create a horizontal scale (slider) for joystick ID
+    GtkWidget* idScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 
+                                               0, SDL_NumJoysticks() > 0 ? SDL_NumJoysticks() - 1 : 0, 1);
+    gtk_range_set_value(GTK_RANGE(idScale), 0); // Default to first joystick
+    gtk_scale_set_digits(GTK_SCALE(idScale), 0); // No decimal places
+    gtk_scale_set_value_pos(GTK_SCALE(idScale), GTK_POS_RIGHT);
+    gtk_box_pack_start(GTK_BOX(idBox), idScale, FALSE, FALSE, 0);
+    
+    // Apply button for selecting joystick
+    GtkWidget* applyButton = gtk_button_new_with_label("Apply Joystick Selection");
+    gtk_box_pack_start(GTK_BOX(idBox), applyButton, FALSE, FALSE, 5);
+    
+    // Set up data for the joystick selection callback
+    JoystickSelectionData* selectionData = new JoystickSelectionData;
+    selectionData->app = app;
+    selectionData->idScale = idScale;
+    selectionData->infoLabel = joystickInfoLabel;
+    selectionData->dialog = dialog;
+    
+    // Connect signal to apply button using regular callback
+    g_signal_connect_data(G_OBJECT(applyButton), "clicked", 
+                        G_CALLBACK(onJoystickSelectionApply), selectionData, 
+                        [](gpointer data, GClosure*) { delete static_cast<JoystickSelectionData*>(data); }, 
+                        (GConnectFlags)0);
+    
+    // Testing section
+    GtkWidget* testFrame = gtk_frame_new("Test Joystick");
+    gtk_box_pack_start(GTK_BOX(vbox), testFrame, TRUE, TRUE, 10);
+    
+    GtkWidget* testBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_set_border_width(GTK_CONTAINER(testBox), 10);
+    gtk_container_add(GTK_CONTAINER(testFrame), testBox);
+    
+    // Add instruction
+    GtkWidget* testLabel = gtk_label_new("Move joystick and press buttons to test. Input will be displayed here:");
+    gtk_widget_set_halign(testLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(testBox), testLabel, FALSE, FALSE, 0);
+    
+    // Create a text view for displaying joystick input
+    GtkWidget* textScroll = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(textScroll),
+                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+    gtk_box_pack_start(GTK_BOX(testBox), textScroll, TRUE, TRUE, 0);
+    
+    GtkWidget* textView = gtk_text_view_new();
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(textView), FALSE);
+    gtk_container_add(GTK_CONTAINER(textScroll), textView);
+    
+    // Get the buffer
+    GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textView));
+    
+    // Set up data for the joystick test timer callback
+    JoystickTestData* testData = new JoystickTestData;
+    testData->app = app;
+    testData->buffer = buffer;
+    
+    // Set up a timer to update the text view with joystick info
+    guint testTimerId = g_timeout_add_full(G_PRIORITY_DEFAULT, 100, 
+                                          updateJoystickTestDisplay, 
+                                          testData, 
+                                          [](gpointer data) { delete static_cast<JoystickTestData*>(data); });
+    
+    // Help text
+    GtkWidget* helpLabel = gtk_label_new(
+        "Notes:\n"
+        "- The default joystick ID is 0 (first detected joystick)\n"
+        "- If you have multiple joysticks, use the slider to select a different one\n"
+        "- Rescanning will refresh the list of available joysticks\n"
+        "- Controller buttons used in-game: A (0), B (1), Y (3), Start (9)"
+    );
+    gtk_widget_set_halign(helpLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(vbox), helpLabel, FALSE, FALSE, 10);
+    
+    // Show all dialog widgets
+    gtk_widget_show_all(dialog);
+    
+    // Run the dialog
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    
+    // Clean up the test timer
+    g_source_remove(testTimerId);
+    
+    // Destroy dialog
+    gtk_widget_destroy(dialog);
+    
+    // Resume the game if it wasn't paused before
+    if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
+        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+    }
 }
