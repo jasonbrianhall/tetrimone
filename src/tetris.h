@@ -514,6 +514,7 @@ struct TetrisApp {
     GtkWidget* pauseMenuItem;
     GtkWidget* restartMenuItem;
     GtkWidget* soundToggleMenuItem;
+    GtkWidget* zenMenuItem;
     GtkWidget* easyMenuItem;
     GtkWidget* mediumMenuItem;
     GtkWidget* hardMenuItem;
