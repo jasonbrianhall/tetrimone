@@ -1143,6 +1143,9 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
     difficultyGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->mediumMenuItem));
     
     app->hardMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Hard");
+    app->extremeMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Extreme");
+    app->insaneMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Insane");
+
     
     // Set medium as default
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), TRUE);
@@ -1151,6 +1154,8 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->easyMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->mediumMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->hardMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->extremeMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->insaneMenuItem);
     
     gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), app->soundToggleMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), difficultyMenuItem);
@@ -1202,6 +1207,10 @@ g_signal_connect(G_OBJECT(blockSizeMenuItem), "activate",
     g_signal_connect(G_OBJECT(app->mediumMenuItem), "toggled",
                    G_CALLBACK(onDifficultyChanged), app);
     g_signal_connect(G_OBJECT(app->hardMenuItem), "toggled",
+                   G_CALLBACK(onDifficultyChanged), app);
+    g_signal_connect(G_OBJECT(app->extremeMenuItem), "toggled",
+                   G_CALLBACK(onDifficultyChanged), app);
+    g_signal_connect(G_OBJECT(app->insaneMenuItem), "toggled",
                    G_CALLBACK(onDifficultyChanged), app);
     
     g_signal_connect(G_OBJECT(aboutMenuItem), "activate",
@@ -1379,6 +1388,10 @@ void onDifficultyChanged(GtkRadioMenuItem* menuItem, gpointer userData) {
         app->difficulty = 2;
     } else if (menuItem == GTK_RADIO_MENU_ITEM(app->hardMenuItem)) {
         app->difficulty = 3;
+    } else if (menuItem == GTK_RADIO_MENU_ITEM(app->extremeMenuItem)) {
+        app->difficulty = 4;
+    } else if (menuItem == GTK_RADIO_MENU_ITEM(app->insaneMenuItem)) {
+        app->difficulty = 5;
     }
     
     // Update difficulty label
@@ -1419,13 +1432,20 @@ void adjustDropSpeed(TetrisApp* app) {
         case 3: // Hard
             app->dropSpeed = baseSpeed * 0.7;
             break;
+        case 4: // Extreme
+            app->dropSpeed = baseSpeed * 0.3;
+            break;
+        case 5: // Insane
+            app->dropSpeed = baseSpeed * 0.1;
+            break;
+
         default:
             app->dropSpeed = baseSpeed;
     }
     
     // Enforce minimum speed
-    if (app->dropSpeed < 100) {
-        app->dropSpeed = 100;
+    if(app->dropSpeed < 10) {
+        app->dropSpeed = 10;
     }
 }
 
