@@ -518,6 +518,7 @@ struct TetrisApp {
     GtkWidget* mediumMenuItem;
     GtkWidget* hardMenuItem;
     GtkWidget* extremeMenuItem;
+    GtkWidget* insaneMenuItem;
 
     int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard
 

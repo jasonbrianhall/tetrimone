@@ -1144,6 +1144,7 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
     
     app->hardMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Hard");
     app->extremeMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Extreme");
+    app->insaneMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Insane");
 
     
     // Set medium as default
@@ -1154,6 +1155,7 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->mediumMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->hardMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->extremeMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->insaneMenuItem);
     
     gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), app->soundToggleMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), difficultyMenuItem);
@@ -1207,6 +1209,8 @@ g_signal_connect(G_OBJECT(blockSizeMenuItem), "activate",
     g_signal_connect(G_OBJECT(app->hardMenuItem), "toggled",
                    G_CALLBACK(onDifficultyChanged), app);
     g_signal_connect(G_OBJECT(app->extremeMenuItem), "toggled",
+                   G_CALLBACK(onDifficultyChanged), app);
+    g_signal_connect(G_OBJECT(app->insaneMenuItem), "toggled",
                    G_CALLBACK(onDifficultyChanged), app);
     
     g_signal_connect(G_OBJECT(aboutMenuItem), "activate",
@@ -1386,7 +1390,10 @@ void onDifficultyChanged(GtkRadioMenuItem* menuItem, gpointer userData) {
         app->difficulty = 3;
     } else if (menuItem == GTK_RADIO_MENU_ITEM(app->extremeMenuItem)) {
         app->difficulty = 4;
-    }    
+    } else if (menuItem == GTK_RADIO_MENU_ITEM(app->insaneMenuItem)) {
+        app->difficulty = 5;
+    }
+    
     // Update difficulty label
     gtk_label_set_markup(GTK_LABEL(app->difficultyLabel), 
                        getDifficultyText(app->difficulty).c_str());
@@ -1427,6 +1434,9 @@ void adjustDropSpeed(TetrisApp* app) {
             break;
         case 4: // Extreme
             app->dropSpeed = baseSpeed * 0.3;
+            break;
+        case 5: // Insane
+            app->dropSpeed = baseSpeed * 0.1;
             break;
 
         default:
