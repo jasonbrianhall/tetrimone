@@ -311,6 +311,13 @@ gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data) {
     }
     
     cairo_stroke(cr);
+
+    int failureLineY = 2; // Position the line at the second row
+    cairo_set_source_rgb(cr, 1.0, 0.2, 0.2); // Bright red for visibility
+    cairo_set_line_width(cr, 1.0); 
+    cairo_move_to(cr, 0, failureLineY * BLOCK_SIZE);
+    cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, failureLineY * BLOCK_SIZE);
+    cairo_stroke(cr);
     
     // Draw placed blocks
     for (int y = 0; y < GRID_HEIGHT; ++y) {
