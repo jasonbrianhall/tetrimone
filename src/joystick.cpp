@@ -102,8 +102,6 @@ const int DEFAULT_DEADZONE = 8000;  // Default deadzone value (about 25% of max)
 const int MAX_JOYSTICK_BUTTONS = 16; // Maximum number of buttons to check
 const Uint32 BUTTON_DEBOUNCE_TIME = 200; // ms between button actions
 
-// This enhanced version of pollJoystick allows for better handling of
-// different joystick types and provides more reliable controls
 gboolean pollJoystick(gpointer data) {
   TetrisApp *app = static_cast<TetrisApp *>(data);
 
@@ -141,7 +139,8 @@ gboolean pollJoystick(gpointer data) {
       if (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE_TIME) {
         bool buttonProcessed = true;
 
-        if (i == 9 || i == 7) { // Start button (9) or Select/Back button (7) - pause/unpause/restart/start
+        // Use the custom mapping for pause/start
+        if (i == app->joystickMapping.pause_button) {
           if (app->board->isSplashScreenActive()) {
             // If splash screen is active, dismiss it and start game
             app->board->dismissSplashScreen();
@@ -158,26 +157,40 @@ gboolean pollJoystick(gpointer data) {
           }
           buttonProcessed = true;
         } else if (!app->board->isGameOver() && !app->board->isPaused()) {
-          switch (i) {
-          case 0: // A button - rotate clockwise
-          case 2: // X button - alternate rotate button on some controllers
+          // Use custom mapping for game controls
+          if (i == app->joystickMapping.rotate_cw_button) {
+            // Rotate clockwise
             app->board->rotatePiece(true);
-            break;
-
-          case 1: // B button - counter-rotate
-          case 3: // Y button - alternate rotate button on some controllers
+            buttonProcessed = true;
+          } else if (i == app->joystickMapping.rotate_ccw_button) {
+            // Counter-rotate
             app->board->rotatePiece(false);
-            break;
-
-          case 6: // LB/L1 button - hard drop (additional option)
-          case 10: // RB/R1 button - hard drop (additional option)
+            buttonProcessed = true;
+          } else if (i == app->joystickMapping.hard_drop_button) {
+            // Hard drop
             app->board->hardDrop();
-            break;
+            buttonProcessed = true;
+          } else {
+            // Legacy mappings for backward compatibility
+            switch (i) {
+            case 2: // X button - alternate rotate button on some controllers
+              app->board->rotatePiece(true);
+              buttonProcessed = true;
+              break;
 
-          default:
-            buttonProcessed = false;
-            break;
+            case 6: // LB/L1 button - hard drop (additional option)
+            case 10: // RB/R1 button - hard drop (additional option)
+              app->board->hardDrop();
+              buttonProcessed = true;
+              break;
+
+            default:
+              buttonProcessed = false;
+              break;
+            }
           }
+        } else {
+          buttonProcessed = false;
         }
 
         // Update the last button press time if we processed a button
@@ -193,12 +206,20 @@ gboolean pollJoystick(gpointer data) {
     return TRUE; // Keep the timer going but don't process movement inputs
   }
 
-  // Process axes with acceleration
+  // Process axes with acceleration using custom mapping
   if (SDL_JoystickNumAxes(app->joystick) >= 2) {
-    // X axis (horizontal movement)
-    int xValue = SDL_JoystickGetAxis(app->joystick, 0);
+    // Read X axis (horizontal movement) using the mapped axis
+    int xValue = 0;
+    if (SDL_JoystickNumAxes(app->joystick) > app->joystickMapping.x_axis) {
+      xValue = SDL_JoystickGetAxis(app->joystick, app->joystickMapping.x_axis);
+      
+      // Apply inversion if configured
+      if (app->joystickMapping.invert_x) {
+        xValue = -xValue;
+      }
+    }
+    
     int newDir = 0;
-
     if (xValue < -DEFAULT_DEADZONE) {
       newDir = -1; // Left
     } else if (xValue > DEFAULT_DEADZONE) {
@@ -239,12 +260,20 @@ gboolean pollJoystick(gpointer data) {
       horizontalControl.active = false;
     }
 
-    // Y axis (vertical movement - only downward)
-    int yValue = SDL_JoystickGetAxis(app->joystick, 1);
-    newDir = 0;
-
+    // Read Y axis (vertical movement) using the mapped axis
+    int yValue = 0;
+    if (SDL_JoystickNumAxes(app->joystick) > app->joystickMapping.y_axis) {
+      yValue = SDL_JoystickGetAxis(app->joystick, app->joystickMapping.y_axis);
+      
+      // Apply inversion if configured
+      if (app->joystickMapping.invert_y) {
+        yValue = -yValue;
+      }
+    }
+    
+    int newDirY = 0;
     if (yValue > DEFAULT_DEADZONE) {
-      newDir = 1; // Down
+      newDirY = 1; // Down
     } else if (yValue < -DEFAULT_DEADZONE) {
       // Up is for rotation, handle separately
       if (!verticalControl.active || verticalControl.direction != -1) {
@@ -256,11 +285,11 @@ gboolean pollJoystick(gpointer data) {
     }
 
     // Handle vertical movement (down) with acceleration
-    if (newDir == 1) {
+    if (newDirY == 1) {
       // If downward movement just started
-      if (!verticalControl.active || verticalControl.direction != newDir) {
+      if (!verticalControl.active || verticalControl.direction != newDirY) {
         verticalControl.active = true;
-        verticalControl.direction = newDir;
+        verticalControl.direction = newDirY;
         verticalControl.lastMoveTime = currentTime;
         verticalControl.repeatDelay = 150; // Initial delay
         verticalControl.moveCount = 0;
@@ -284,7 +313,7 @@ gboolean pollJoystick(gpointer data) {
           verticalControl.repeatDelay = 60; // Medium
         }
       }
-    } else if (newDir == 0 && yValue > -DEFAULT_DEADZONE) {
+    } else if (newDirY == 0 && yValue > -DEFAULT_DEADZONE) {
       // No downward direction - reset vertical control
       verticalControl.active = false;
     }
