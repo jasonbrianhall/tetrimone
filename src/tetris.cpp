@@ -168,7 +168,7 @@ int TetrisBoard::clearLines() {
         if (linesCleared == 4) {
             playSound(GameSoundEvent::Excellent); // Play Tetris/Excellent sound for 4 lines
         } else if (linesCleared > 0) {
-            playSound(GameSoundEvent::Clear); // Play normal clear sound for 1-3 lines
+            playSound(GameSoundEvent::Clear); // Play normal clear sound for 1-3 lines (plan to give a different sound per line like single, double, and triple)
         }
         // Classic Tetris scoring
         switch (linesCleared) {
@@ -1135,10 +1135,14 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
                    G_CALLBACK(onMenuDeactivated), app);
     
     // Create difficulty radio menu items
+
     GSList* difficultyGroup = NULL;
+    app->zenMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Zen");
+    difficultyGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->zenMenuItem));
+
     app->easyMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Easy");
-    difficultyGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->easyMenuItem));
-    
+    difficultyGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->easyMenuItem));    
+
     app->mediumMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Medium");
     difficultyGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->mediumMenuItem));
     
@@ -1151,6 +1155,7 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), TRUE);
     app->difficulty = 2; // Medium
     
+    gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->zenMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->easyMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->mediumMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->hardMenuItem);
@@ -1202,6 +1207,8 @@ g_signal_connect(G_OBJECT(blockSizeMenuItem), "activate",
     
     g_signal_connect(G_OBJECT(app->soundToggleMenuItem), "toggled",
                    G_CALLBACK(onSoundToggled), app);
+    g_signal_connect(G_OBJECT(app->zenMenuItem), "toggled",
+                   G_CALLBACK(onDifficultyChanged), app);
     g_signal_connect(G_OBJECT(app->easyMenuItem), "toggled",
                    G_CALLBACK(onDifficultyChanged), app);
     g_signal_connect(G_OBJECT(app->mediumMenuItem), "toggled",
@@ -1392,6 +1399,8 @@ void onDifficultyChanged(GtkRadioMenuItem* menuItem, gpointer userData) {
         app->difficulty = 4;
     } else if (menuItem == GTK_RADIO_MENU_ITEM(app->insaneMenuItem)) {
         app->difficulty = 5;
+    } else if (menuItem == GTK_RADIO_MENU_ITEM(app->zenMenuItem)) {
+        app->difficulty = 0;
     }
     
     // Update difficulty label
@@ -1410,9 +1419,12 @@ void onDifficultyChanged(GtkRadioMenuItem* menuItem, gpointer userData) {
 
 std::string getDifficultyText(int difficulty) {
     switch (difficulty) {
+        case 0: return "<b>Difficulty:</b> Zen";
         case 1: return "<b>Difficulty:</b> Easy";
         case 2: return "<b>Difficulty:</b> Medium";
         case 3: return "<b>Difficulty:</b> Hard";
+        case 4: return "<b>Difficulty:</b> Extreme";
+        case 5: return "<b>Difficulty:</b> Insane";
         default: return "<b>Difficulty:</b> Medium";
     }
 }
@@ -1423,6 +1435,9 @@ void adjustDropSpeed(TetrisApp* app) {
     
     // Apply difficulty modifier
     switch (app->difficulty) {
+        case 0: // Zen
+            app->dropSpeed = 1000;
+            break;
         case 1: // Easy
             app->dropSpeed = baseSpeed * 1.5;
             break;
