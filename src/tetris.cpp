@@ -2,6 +2,10 @@
 #include "audiomanager.h"
 #include <iostream>
 #include <string>
+#ifdef _WIN32
+#include <windows.h>
+#include <commdlg.h>
+#endif
 
 int BLOCK_SIZE = 30;  // Default value, will be updated at runtime
 int currentThemeIndex = 0;
@@ -1887,7 +1891,30 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
         onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
     }
     
-    // Create file chooser dialog
+    std::string filePath;
+    
+#ifdef _WIN32
+    // Use Windows native dialog
+    OPENFILENAME ofn;
+    char szFile[260] = {0};
+    
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = NULL;  // Ideally get the HWND from GTK window
+    ofn.lpstrFile = szFile;
+    ofn.nMaxFile = sizeof(szFile);
+    ofn.lpstrFilter = "PNG Images\0*.png\0All Files\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+    
+    if (GetOpenFileName(&ofn)) {
+        filePath = ofn.lpstrFile;
+    }
+#else
+    // Use GTK dialog on other platforms
     GtkWidget* dialog = gtk_file_chooser_dialog_new(
         "Select PNG Background Image",
         GTK_WINDOW(app->window),
@@ -1904,35 +1931,39 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
     gtk_file_filter_add_mime_type(filter, "image/png");
     gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
     
-    // Show dialog and process result
+    // Run the dialog
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
         char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-        
-        // Try to load the image
-        if (app->board->loadBackgroundImage(filename)) {
-            // If successful, enable the background toggle
+        filePath = filename;
+        g_free(filename);
+    }
+    
+    gtk_widget_destroy(dialog);
+#endif
+    
+    // Process the selected file path
+    if (!filePath.empty()) {
+        if (app->board->loadBackgroundImage(filePath)) {
             gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
             
-            // Show opacity dialog after selecting image
-            gtk_widget_destroy(dialog);
+            // Process any pending events before showing opacity dialog
+            while (gtk_events_pending())
+                gtk_main_iteration();
+                
+            // Now show the opacity dialog
             onBackgroundOpacityDialog(NULL, app);
         } else {
-            // Show error message if loading fails
             GtkWidget* errorDialog = gtk_message_dialog_new(
                 GTK_WINDOW(app->window),
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_OK,
-                "Failed to load PNG image: %s", filename
+                "Failed to load PNG image: %s", filePath.c_str()
             );
             gtk_dialog_run(GTK_DIALOG(errorDialog));
             gtk_widget_destroy(errorDialog);
         }
-        
-        g_free(filename);
     }
-    
-    gtk_widget_destroy(dialog);
     
     // Redraw the game area
     gtk_widget_queue_draw(app->gameArea);
@@ -2017,15 +2048,28 @@ void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData) {
     gtk_widget_destroy(dialog);
 }
 
-// Add implementation of opacity value changed callback
 void onOpacityValueChanged(GtkRange* range, gpointer userData) {
     TetrisApp* app = static_cast<TetrisApp*>(userData);
     
     // Update the opacity in the board
     double opacity = gtk_range_get_value(range);
+    
+    // Early return if the background image isn't valid
+    if (!app->board->isUsingBackgroundImage() || app->board->getBackgroundImage() == nullptr) {
+        return;
+    }
+    
+    // Check surface status before attempting to draw
+    cairo_status_t status = cairo_surface_status(app->board->getBackgroundImage());
+    if (status != CAIRO_STATUS_SUCCESS) {
+        std::cerr << "Invalid background image surface during opacity change: " 
+                  << cairo_status_to_string(status) << std::endl;
+        return;
+    }
+    
     app->board->setBackgroundOpacity(opacity);
     
-    // Redraw the game area
+    // Queue a redraw rather than forcing immediate redraw
     gtk_widget_queue_draw(app->gameArea);
 }
 
