@@ -650,6 +650,8 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData);
 void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData);
 void onOpacityValueChanged(GtkRange* range, gpointer userData);
+void rebuildGameUI(TetrisApp* app);
+void updateSizeValueLabel(GtkRange* range, gpointer data);
 
 #endif // TETRIS_H
 
