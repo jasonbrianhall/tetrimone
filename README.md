@@ -39,14 +39,14 @@ Prepare for a block-stacking adventure that'll make your neurons dance! GTK Tetr
 
 ### Required Libraries
 - GTK+ 3.0
-- SDL2
-- SDL2_mixer
-- PulseAudio (optional)
+- SDL2 (for joystick support)
+- SDL2_mixer (optional for Linux; Windows uses winmm; must use SDL Mixer or pulse)
+- PulseAudio (optional; see above)
 - libzip
 
 ### Compilation Arsenal
 - CMake or Make
-- C++11 or later compiler
+- C++17 or later compiler
 
 ## Build Instructions
 
@@ -103,9 +103,12 @@ make
 
 ## Difficulty Levels: Choose Your Destiny
 
+- **Zen**: For those who are about to rock but aren't ready yet
 - **Easy**: For the block-dropping novice
 - **Medium**: The classic Tetris experience
 - **Hard**: For those who laugh in the face of falling blocks
+- **Extreme**: Brace yourself
+- **Instance**: A good way to lose in less then a minute
 
 ## Sound Configuration
 Sounds loaded from `sound.zip`. Dare to customize? Replace the audio files and make the game your own sonic playground!
@@ -145,6 +148,11 @@ MIT License - Spread the Tetris love freely!
 
 ## Credits
 - **Developer**: Jason Brian Hall - Tetris Mastermind
-- **Libraries**: GTK+, SDL2, PulseAudio/SDL2 Audio, libzip
+- **Libraries**: GTK+, SDL2, PulseAudio/SDL2 Audio, libzip, winmm
 
 **May your blocks always fall true, and your lines always clear!** 🕹️✨
+
+This game is based on Tetris®, created by Alexey Pajitnov in 1984.
+Tetris® is a registered trademark of The Tetris Company, LLC.
+
+Original game published by ELORG (also, go watch the Tetris movie on AppleTV)
