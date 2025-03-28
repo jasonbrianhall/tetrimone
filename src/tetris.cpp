@@ -1522,23 +1522,88 @@ void adjustDropSpeed(TetrisApp* app) {
 void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     TetrisApp* app = static_cast<TetrisApp*>(userData);
     
-    // Create and show about dialog
-    GtkWidget* dialog = gtk_about_dialog_new();
-    gtk_about_dialog_set_program_name(GTK_ABOUT_DIALOG(dialog), "GTK Tetris");
-    gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(dialog), "1.0");
-    gtk_about_dialog_set_copyright(GTK_ABOUT_DIALOG(dialog), "© 2025 Jason Brian Hall");
-    gtk_about_dialog_set_comments(GTK_ABOUT_DIALOG(dialog), 
-                                "A simple Tetris clone written using GTK+");
-    gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog), 
-                               "https://github.com/jasonbrianhall/tetris");
+    // Create a custom dialog
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        "About GTK Tetris",
+        GTK_WINDOW(app->window),
+        GTK_DIALOG_MODAL,
+        "_OK", GTK_RESPONSE_OK,
+        NULL
+    );
     
-    // Use app->window as the parent
-    gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(app->window));
+    // Get the content area
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
     
-    // Show dialog and wait for response
+    // Create a vertical box for layout
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    
+    // Add an image (optional)
+    GtkWidget* image = gtk_image_new_from_icon_name("applications-games", GTK_ICON_SIZE_DIALOG);
+    gtk_box_pack_start(GTK_BOX(vbox), image, FALSE, FALSE, 0);
+    
+    // Add program name
+    GtkWidget* nameLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(nameLabel), "<span size='x-large' weight='bold'>GTK Tetris</span>");
+    gtk_box_pack_start(GTK_BOX(vbox), nameLabel, FALSE, FALSE, 5);
+    
+    // Add version
+    GtkWidget* versionLabel = gtk_label_new("Version 1.0");
+    gtk_box_pack_start(GTK_BOX(vbox), versionLabel, FALSE, FALSE, 0);
+    
+    // Add description
+    GtkWidget* descLabel = gtk_label_new(
+        "A feature-rich Tetris implementation with advanced graphics,\n"
+        "multiple difficulty levels, theme progression, and comprehensive\n"
+        "control options including joystick support."
+    );
+    gtk_box_pack_start(GTK_BOX(vbox), descLabel, FALSE, FALSE, 10);
+    
+    // Add license info
+    GtkWidget* licenseLabel = gtk_label_new("This software is released under the MIT License.");
+    gtk_box_pack_start(GTK_BOX(vbox), licenseLabel, FALSE, FALSE, 5);
+    
+    // Add acknowledgment heading
+    GtkWidget* ackHeadingLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(ackHeadingLabel), "<span weight='bold'>Acknowledgments:</span>");
+    gtk_widget_set_halign(ackHeadingLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(vbox), ackHeadingLabel, FALSE, FALSE, 5);
+    
+    // Add acknowledgment text
+    GtkWidget* ackLabel = gtk_label_new(
+        "This game is based on Tetris®, created by Alexey Pajitnov in 1984.\n"
+        "Tetris® is a registered trademark of The Tetris Company, LLC.\n"
+        "Original game published by ELORG."
+    );
+    gtk_box_pack_start(GTK_BOX(vbox), ackLabel, FALSE, FALSE, 0);
+    
+    // Add website button
+    GtkWidget* websiteButton = gtk_link_button_new_with_label(
+        "https://github.com/jasonbrianhall/tetris", 
+        "Website"
+    );
+    gtk_box_pack_start(GTK_BOX(vbox), websiteButton, FALSE, FALSE, 10);
+    
+    // Add copyright
+    GtkWidget* copyrightLabel = gtk_label_new("© 2025 Jason Brian Hall");
+    gtk_box_pack_start(GTK_BOX(vbox), copyrightLabel, FALSE, FALSE, 5);
+    
+    // Add no warranty disclaimer
+    GtkWidget* disclaimerLabel = gtk_label_new("This program comes with absolutely no warranty.");
+    gtk_box_pack_start(GTK_BOX(vbox), disclaimerLabel, FALSE, FALSE, 0);
+    
+    GtkWidget* licenseInfoLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(licenseInfoLabel), "See the <a href='https://opensource.org/licenses/MIT'>MIT License</a> for details.");
+    gtk_box_pack_start(GTK_BOX(vbox), licenseInfoLabel, FALSE, FALSE, 0);
+    
+    // Show all content
+    gtk_widget_show_all(dialog);
+    
+    // Run the dialog
     gtk_dialog_run(GTK_DIALOG(dialog));
     
-    // Destroy dialog when closed
+    // Destroy the dialog when closed
     gtk_widget_destroy(dialog);
 }
 
@@ -1563,19 +1628,37 @@ void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData) {
         "Goal: Arrange falling blocks to complete lines.\n\n"
         "Controls:\n"
         "• Left/Right Arrow or A/D: Move block left/right\n"
-        "• Up Arrow or W: Rotate block\n"
+        "• Up Arrow or W: Rotate block clockwise\n"
+        "• Z: Rotate block counter-clockwise\n"
         "• Down Arrow or S: Move block down (soft drop)\n"
         "• Space: Hard drop (instantly places block at bottom)\n"
         "• P: Pause/Resume game\n"
-        "• R: Restart game when game over\n\n"
+        "• R: Restart game when game over\n"
+        "• N: New game (when paused)\n"
+        "• Q: Quit game (when paused)\n\n"
+        "Controller Support:\n"
+        "• D-pad/Analog: Move piece\n"
+        "• A/B buttons: Rotate piece\n"
+        "• X button: Hard drop\n"
+        "• Start: Pause/Resume\n"
+        "• Custom mapping available in Options menu\n\n"
         "Scoring:\n"
         "• 1 line: 40 × level\n"
         "• 2 lines: 100 × level\n"
         "• 3 lines: 300 × level\n"
-        "• 4 lines: 1200 × level\n\n"
-        "Every 10 lines cleared increases the level and speed."
-    );
-    
+        "• 4 lines: 1200 × level\n"
+        "• Hard drops: 2 points per cell\n\n"
+        "Levels:\n"
+        "• Every 10 lines cleared increases the level\n"
+        "• Higher levels increase speed and points\n"
+        "• Color themes change with level progression\n"
+        "• Difficulty can be adjusted in Options menu\n\n"
+        "Tips:\n"
+        "• Keep the stack low and even\n"
+        "• Save I-pieces for Tetris clears (4 lines)\n"
+        "• Watch the preview for the next piece\n"
+        "• Red line indicates the game over zone"
+    );    
     gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
     gtk_widget_set_margin_start(label, 20);
     gtk_widget_set_margin_end(label, 20);
