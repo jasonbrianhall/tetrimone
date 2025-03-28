@@ -1443,32 +1443,117 @@ void onDifficultyChanged(GtkRadioMenuItem* menuItem, gpointer userData) {
         return;
     }
     
+    // Store the current difficulty level
+    int previousDifficulty = app->difficulty;
+    int newDifficulty = previousDifficulty; // Default to no change
+    
     // Determine which difficulty was selected
     if (menuItem == GTK_RADIO_MENU_ITEM(app->easyMenuItem)) {
-        app->difficulty = 1;
+        newDifficulty = 1;
     } else if (menuItem == GTK_RADIO_MENU_ITEM(app->mediumMenuItem)) {
-        app->difficulty = 2;
+        newDifficulty = 2;
     } else if (menuItem == GTK_RADIO_MENU_ITEM(app->hardMenuItem)) {
-        app->difficulty = 3;
+        newDifficulty = 3;
     } else if (menuItem == GTK_RADIO_MENU_ITEM(app->extremeMenuItem)) {
-        app->difficulty = 4;
+        newDifficulty = 4;
     } else if (menuItem == GTK_RADIO_MENU_ITEM(app->insaneMenuItem)) {
-        app->difficulty = 5;
+        newDifficulty = 5;
     } else if (menuItem == GTK_RADIO_MENU_ITEM(app->zenMenuItem)) {
-        app->difficulty = 0;
+        newDifficulty = 0;
     }
     
-    // Update difficulty label
-    gtk_label_set_markup(GTK_LABEL(app->difficultyLabel), 
-                       getDifficultyText(app->difficulty).c_str());
-    
-    // Recalculate drop speed based on difficulty and level
-    adjustDropSpeed(app);
-    
-    // Restart timer with new speed if game is running
-    if (!app->board->isPaused() && !app->board->isGameOver() && app->timerId > 0) {
-        g_source_remove(app->timerId);
-        app->timerId = g_timeout_add(app->dropSpeed, onTimerTick, app);
+    // Only prompt if the difficulty actually changed
+    if (newDifficulty != previousDifficulty) {
+        // Don't prompt if we're at the splash screen or game over
+        if (!app->board->isSplashScreenActive() && !app->board->isGameOver()) {
+            // Create confirmation dialog
+            GtkWidget* dialog = gtk_message_dialog_new(
+                GTK_WINDOW(app->window),
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_QUESTION,
+                GTK_BUTTONS_YES_NO,
+                "Changing difficulty will start a new game. Continue?"
+            );
+            
+            // Run dialog and get response
+            gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            
+            // If user clicked "No", revert to original radio button and return
+            if (response != GTK_RESPONSE_YES) {
+                // Block signals to avoid recursion
+                g_signal_handlers_block_by_func(G_OBJECT(menuItem), 
+                                             (gpointer)onDifficultyChanged, app);
+                
+                // Reselect the previous difficulty menu item
+                switch (previousDifficulty) {
+                    case 0:
+                        gtk_check_menu_item_set_active(
+                            GTK_CHECK_MENU_ITEM(app->zenMenuItem), TRUE);
+                        break;
+                    case 1:
+                        gtk_check_menu_item_set_active(
+                            GTK_CHECK_MENU_ITEM(app->easyMenuItem), TRUE);
+                        break;
+                    case 2:
+                        gtk_check_menu_item_set_active(
+                            GTK_CHECK_MENU_ITEM(app->mediumMenuItem), TRUE);
+                        break;
+                    case 3:
+                        gtk_check_menu_item_set_active(
+                            GTK_CHECK_MENU_ITEM(app->hardMenuItem), TRUE);
+                        break;
+                    case 4:
+                        gtk_check_menu_item_set_active(
+                            GTK_CHECK_MENU_ITEM(app->extremeMenuItem), TRUE);
+                        break;
+                    case 5:
+                        gtk_check_menu_item_set_active(
+                            GTK_CHECK_MENU_ITEM(app->insaneMenuItem), TRUE);
+                        break;
+                }
+                
+                // Unblock signals
+                g_signal_handlers_unblock_by_func(G_OBJECT(menuItem), 
+                                               (gpointer)onDifficultyChanged, app);
+                
+                return;
+            }
+        }
+        
+        // Apply the new difficulty level
+        app->difficulty = newDifficulty;
+        
+        // Update difficulty label
+        gtk_label_set_markup(GTK_LABEL(app->difficultyLabel), 
+                           getDifficultyText(app->difficulty).c_str());
+        
+        // Recalculate drop speed based on difficulty and level
+        adjustDropSpeed(app);
+        
+        // Restart the game with new difficulty
+        app->board->restart();
+        resetUI(app);
+        
+        // Start game with new settings
+        if (app->board->isPaused()) {
+            app->board->togglePause();
+            gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
+        }
+        
+        gtk_widget_set_sensitive(app->startMenuItem, FALSE);
+        gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+        
+        startGame(app);
+        gtk_widget_queue_draw(app->gameArea);
+        gtk_widget_queue_draw(app->nextPieceArea);
+        updateLabels(app);
+    } else {
+        // If difficulty didn't change, just restart timer with new speed if game is running
+        if (!app->board->isPaused() && !app->board->isGameOver() && app->timerId > 0) {
+            g_source_remove(app->timerId);
+            app->timerId = g_timeout_add(app->dropSpeed, onTimerTick, app);
+        }
     }
 }
 
