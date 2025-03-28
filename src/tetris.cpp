@@ -44,12 +44,22 @@ void Tetromino::setPosition(int newX, int newY) {
 }
 
 // TetrisBoard class implementation
-TetrisBoard::TetrisBoard() : score(0), level(1), linesCleared(0), gameOver(false), paused(false), splashScreenActive(true) {
-    // Existing initialization code...
+TetrisBoard::TetrisBoard() : score(0), level(1), linesCleared(0), gameOver(false), 
+                            paused(false), splashScreenActive(true),
+                            backgroundImage(nullptr), useBackgroundImage(false),
+                            backgroundOpacity(0.3) {
     rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
     grid.resize(GRID_HEIGHT, std::vector<int>(GRID_WIDTH, 0));
     generateNewPiece();
     generateNewPiece();
+}
+
+
+TetrisBoard::~TetrisBoard() {
+    if (backgroundImage != nullptr) {
+        cairo_surface_destroy(backgroundImage);
+        backgroundImage = nullptr;
+    }
 }
 
 bool TetrisBoard::movePiece(int dx, int dy) {
@@ -293,6 +303,38 @@ gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data) {
     cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
     cairo_rectangle(cr, 0, 0, allocation.width, allocation.height);
     cairo_fill(cr);
+
+    // Draw background image if enabled
+    if (board->isUsingBackgroundImage() && board->getBackgroundImage() != nullptr) {
+        // Save the current state
+        cairo_save(cr);
+        
+        // Get the image dimensions
+        int imgWidth = cairo_image_surface_get_width(board->getBackgroundImage());
+        int imgHeight = cairo_image_surface_get_height(board->getBackgroundImage());
+        
+        // Calculate scaling to fill the game area while maintaining aspect ratio
+        double scaleX = static_cast<double>(allocation.width) / imgWidth;
+        double scaleY = static_cast<double>(allocation.height) / imgHeight;
+        double scale = std::max(scaleX, scaleY);
+        
+        // Calculate position to center the image
+        double x = (allocation.width - imgWidth * scale) / 2;
+        double y = (allocation.height - imgHeight * scale) / 2;
+        
+        // Apply the transformation
+        cairo_translate(cr, x, y);
+        cairo_scale(cr, scale, scale);
+        
+        // Draw the image with opacity
+        cairo_set_source_surface(cr, board->getBackgroundImage(), 0, 0);
+        cairo_paint_with_alpha(cr, board->getBackgroundOpacity());
+        
+        // Restore the original state
+        cairo_restore(cr);
+    }
+    
+
     
     // Draw grid lines
     cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
@@ -1122,6 +1164,19 @@ gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), joystickConfigMenuItem);
 g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
                G_CALLBACK(onJoystickConfig), app);
 
+    // Add background image menu items
+    GtkWidget* backgroundMenuItem = gtk_menu_item_new_with_label("Set Background Image...");
+    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), backgroundMenuItem);
+    g_signal_connect(G_OBJECT(backgroundMenuItem), "activate",
+                  G_CALLBACK(onBackgroundImageDialog), app);
+    
+    // Add background toggle checkbox
+    app->backgroundToggleMenuItem = gtk_check_menu_item_new_with_label("Use Background Image");
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), FALSE);
+    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), app->backgroundToggleMenuItem);
+    g_signal_connect(G_OBJECT(app->backgroundToggleMenuItem), "toggled",
+                  G_CALLBACK(onBackgroundToggled), app);
+
     
     // Difficulty submenu
     GtkWidget* difficultyMenu = gtk_menu_new();
@@ -1691,6 +1746,183 @@ void onResizeWindowButtonClicked(GtkWidget* button, gpointer data) {
     gtk_window_resize(GTK_WINDOW(app->window), 
                     GRID_WIDTH * BLOCK_SIZE + 200, 
                     GRID_HEIGHT * BLOCK_SIZE + 40);
+}
+
+bool TetrisBoard::loadBackgroundImage(const std::string& imagePath) {
+    // Clean up previous image if it exists
+    if (backgroundImage != nullptr) {
+        cairo_surface_destroy(backgroundImage);
+        backgroundImage = nullptr;
+    }
+    
+    // Try to load the new image
+    backgroundImage = cairo_image_surface_create_from_png(imagePath.c_str());
+    
+    // Check if image loaded successfully
+    cairo_status_t status = cairo_surface_status(backgroundImage);
+    if (status != CAIRO_STATUS_SUCCESS) {
+        std::cerr << "Failed to load background image: " 
+                  << cairo_status_to_string(status) << std::endl;
+        cairo_surface_destroy(backgroundImage);
+        backgroundImage = nullptr;
+        return false;
+    }
+    
+    // Store the path of successfully loaded image
+    backgroundImagePath = imagePath;
+    useBackgroundImage = true;
+    return true;
+}
+
+void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    // Pause the game if it's running
+    bool wasPaused = app->board->isPaused();
+    if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
+        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+    }
+    
+    // Create file chooser dialog
+    GtkWidget* dialog = gtk_file_chooser_dialog_new(
+        "Select Background Image",
+        GTK_WINDOW(app->window),
+        GTK_FILE_CHOOSER_ACTION_OPEN,
+        "_Cancel", GTK_RESPONSE_CANCEL,
+        "_Open", GTK_RESPONSE_ACCEPT,
+        NULL
+    );
+    
+    // Add filters for image files
+    GtkFileFilter* filter = gtk_file_filter_new();
+    gtk_file_filter_set_name(filter, "Image Files");
+    gtk_file_filter_add_mime_type(filter, "image/png");
+    gtk_file_filter_add_mime_type(filter, "image/jpeg");
+    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+    
+    // Show dialog and process result
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+        
+        // Try to load the image
+        if (app->board->loadBackgroundImage(filename)) {
+            // If successful, enable the background toggle
+            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+            
+            // Show opacity dialog after selecting image
+            gtk_widget_destroy(dialog);
+            onBackgroundOpacityDialog(NULL, app);
+        } else {
+            // Show error message if loading fails
+            GtkWidget* errorDialog = gtk_message_dialog_new(
+                GTK_WINDOW(app->window),
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_OK,
+                "Failed to load image: %s", filename
+            );
+            gtk_dialog_run(GTK_DIALOG(errorDialog));
+            gtk_widget_destroy(errorDialog);
+        }
+        
+        g_free(filename);
+    }
+    
+    gtk_widget_destroy(dialog);
+    
+    // Redraw the game area
+    gtk_widget_queue_draw(app->gameArea);
+    
+    // Resume the game if it wasn't paused before
+    if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
+        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+    }
+}
+
+// Add implementation of background toggle callback
+void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    bool useBackground = gtk_check_menu_item_get_active(menuItem);
+    
+    app->board->setUseBackgroundImage(useBackground);
+    
+    // Redraw the game area
+    gtk_widget_queue_draw(app->gameArea);
+}
+
+// Add implementation of opacity dialog
+void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    // Create dialog
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        "Background Opacity",
+        GTK_WINDOW(app->window),
+        GTK_DIALOG_MODAL,
+        "_OK", GTK_RESPONSE_OK,
+        NULL
+    );
+    
+    // Make it a reasonable size
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 150);
+    
+    // Create content area
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
+    
+    // Create a vertical box for content
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    
+    // Add a label
+    GtkWidget* label = gtk_label_new("Adjust background opacity:");
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+    
+    // Create a horizontal scale (slider)
+    GtkWidget* scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 
+                                             0.0, 1.0, 0.05);
+    gtk_range_set_value(GTK_RANGE(scale), app->board->getBackgroundOpacity());
+    gtk_scale_set_digits(GTK_SCALE(scale), 2); // 2 decimal places
+    gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
+    gtk_box_pack_start(GTK_BOX(vbox), scale, FALSE, FALSE, 0);
+    
+    // Add min/max labels
+    GtkWidget* rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), rangeBox, FALSE, FALSE, 0);
+    
+    GtkWidget* minLabel = gtk_label_new("Transparent");
+    gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
+    
+    GtkWidget* maxLabel = gtk_label_new("Opaque");
+    gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
+    gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
+    
+    // Connect value-changed signal to update the opacity in real-time
+    g_signal_connect(G_OBJECT(scale), "value-changed", 
+                   G_CALLBACK(onOpacityValueChanged), app);
+    
+    // Show all dialog widgets
+    gtk_widget_show_all(dialog);
+    
+    // Run the dialog
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    
+    // Destroy dialog
+    gtk_widget_destroy(dialog);
+}
+
+// Add implementation of opacity value changed callback
+void onOpacityValueChanged(GtkRange* range, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    // Update the opacity in the board
+    double opacity = gtk_range_get_value(range);
+    app->board->setBackgroundOpacity(opacity);
+    
+    // Redraw the game area
+    gtk_widget_queue_draw(app->gameArea);
 }
 
 int main(int argc, char* argv[]) {

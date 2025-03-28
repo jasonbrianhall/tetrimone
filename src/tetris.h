@@ -507,7 +507,7 @@ struct TetrisApp {
     TetrisBoard* board;
     guint timerId;
     int dropSpeed;
-    
+    GtkWidget* backgroundToggleMenuItem;
     // Menu related widgets
     GtkWidget* menuBar;
     GtkWidget* startMenuItem;
@@ -543,10 +543,15 @@ private:
     std::mt19937 rng;           // Random number generator
     bool splashScreenActive;
 
+    // Background image handling
+    cairo_surface_t* backgroundImage;
+    bool useBackgroundImage;
+    std::string backgroundImagePath;
+    double backgroundOpacity; // 0.0 to 1.0
     
 public:
     TetrisBoard();
-    ~TetrisBoard() = default;
+    ~TetrisBoard();
     bool isSplashScreenActive() const { return splashScreenActive; }
     void dismissSplashScreen();
     bool movePiece(int dx, int dy);
@@ -584,6 +589,18 @@ public:
     bool extractFileFromZip(const std::string &zipFilePath,
                           const std::string &fileName,
                           std::vector<uint8_t> &fileData);
+
+    bool loadBackgroundImage(const std::string& imagePath);
+    void setUseBackgroundImage(bool use) { useBackgroundImage = use; }
+    bool isUsingBackgroundImage() const { return useBackgroundImage; }
+    void setBackgroundOpacity(double opacity) { 
+        backgroundOpacity = std::max(0.0, std::min(1.0, opacity)); 
+    }
+    double getBackgroundOpacity() const { return backgroundOpacity; }
+    const std::string& getBackgroundImagePath() const { return backgroundImagePath; }
+    cairo_surface_t* getBackgroundImage() const { return backgroundImage; }
+
+
 };
 
 // Function declarations
@@ -629,4 +646,11 @@ void onJoystickMapReset(GtkButton* button, gpointer userData);
 void saveJoystickMapping(TetrisApp* app);
 void loadJoystickMapping(TetrisApp* app);
 
+void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData);
+void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData);
+void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData);
+void onOpacityValueChanged(GtkRange* range, gpointer userData);
+
 #endif // TETRIS_H
+
+
