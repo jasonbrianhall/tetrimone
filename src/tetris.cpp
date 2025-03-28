@@ -1165,7 +1165,7 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
                G_CALLBACK(onJoystickConfig), app);
 
     // Add background image menu items
-    GtkWidget* backgroundMenuItem = gtk_menu_item_new_with_label("Set Background Image...");
+    GtkWidget* backgroundMenuItem = gtk_menu_item_new_with_label("Set Background Image (only supports PNG)...");
     gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), backgroundMenuItem);
     g_signal_connect(G_OBJECT(backgroundMenuItem), "activate",
                   G_CALLBACK(onBackgroundImageDialog), app);
@@ -1785,7 +1785,7 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Create file chooser dialog
     GtkWidget* dialog = gtk_file_chooser_dialog_new(
-        "Select Background Image",
+        "Select PNG Background Image",
         GTK_WINDOW(app->window),
         GTK_FILE_CHOOSER_ACTION_OPEN,
         "_Cancel", GTK_RESPONSE_CANCEL,
@@ -1793,11 +1793,11 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
         NULL
     );
     
-    // Add filters for image files
+    // Add filter for PNG files only
     GtkFileFilter* filter = gtk_file_filter_new();
-    gtk_file_filter_set_name(filter, "Image Files");
+    gtk_file_filter_set_name(filter, "PNG Images");
+    gtk_file_filter_add_pattern(filter, "*.png");
     gtk_file_filter_add_mime_type(filter, "image/png");
-    gtk_file_filter_add_mime_type(filter, "image/jpeg");
     gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
     
     // Show dialog and process result
@@ -1819,7 +1819,7 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_OK,
-                "Failed to load image: %s", filename
+                "Failed to load PNG image: %s", filename
             );
             gtk_dialog_run(GTK_DIALOG(errorDialog));
             gtk_widget_destroy(errorDialog);
