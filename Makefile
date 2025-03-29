@@ -81,6 +81,10 @@ BUILD_DIR_WIN_DEBUG = $(BUILD_DIR)/windows_debug
 # Windows DLL settings
 DLL_SOURCE_DIR = /usr/x86_64-w64-mingw32/sys-root/mingw/bin
 
+# Background image settings
+BACKGROUNDS_DIR = images/Tetris_backgrounds
+BACKGROUND_ZIP = background.zip
+
 # Create necessary directories
 $(shell mkdir -p $(BUILD_DIR_LINUX)/src $(BUILD_DIR_WIN)/src \
 	$(BUILD_DIR_LINUX_DEBUG)/src $(BUILD_DIR_WIN_DEBUG)/src)
@@ -122,7 +126,7 @@ pulse-debug:
 # Linux build targets
 #
 .PHONY: tetris-linux
-tetris-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX)
+tetris-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX) pack-backgrounds-linux
 
 $(BUILD_DIR_LINUX)/$(TARGET_LINUX): $(addprefix $(BUILD_DIR_LINUX)/,$(OBJS_LINUX))
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
@@ -135,7 +139,7 @@ $(BUILD_DIR_LINUX)/%.o: %.cpp
 # Linux debug targets
 #
 .PHONY: tetris-linux-debug
-tetris-linux-debug: $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG)
+tetris-linux-debug: $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG) pack-backgrounds-linux-debug
 
 $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG): $(addprefix $(BUILD_DIR_LINUX_DEBUG)/,$(OBJS_LINUX_DEBUG))
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
@@ -148,7 +152,7 @@ $(BUILD_DIR_LINUX_DEBUG)/%.debug.o: %.cpp
 # Windows build targets
 #
 .PHONY: tetris-windows
-tetris-windows: $(BUILD_DIR_WIN)/$(TARGET_WIN) tetris-collect-dlls
+tetris-windows: $(BUILD_DIR_WIN)/$(TARGET_WIN) tetris-collect-dlls pack-backgrounds-windows
 
 $(BUILD_DIR_WIN)/$(TARGET_WIN): $(addprefix $(BUILD_DIR_WIN)/,$(OBJS_WIN))
 	$(CXX_WIN) $^ -o $@ $(LDFLAGS_WIN)
@@ -161,7 +165,7 @@ $(BUILD_DIR_WIN)/%.win.o: %.cpp
 # Windows debug targets
 #
 .PHONY: tetris-windows-debug
-tetris-windows-debug: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) tetris-collect-debug-dlls
+tetris-windows-debug: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) tetris-collect-debug-dlls pack-backgrounds-windows-debug
 
 $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG): $(addprefix $(BUILD_DIR_WIN_DEBUG)/,$(OBJS_WIN_DEBUG))
 	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) $^ -o $@ $(LDFLAGS_WIN)
@@ -183,12 +187,43 @@ tetris-collect-debug-dlls: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG)
 	@echo "Collecting Debug DLLs for Tetris..."
 	@build/windows/collect_dlls.sh $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) $(DLL_SOURCE_DIR) $(BUILD_DIR_WIN_DEBUG)
 
+#
+# Background image packing
+#
+.PHONY: pack-backgrounds-linux
+pack-backgrounds-linux:
+	@echo "Packing background images for Linux build..."
+	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.png
+	@echo "Background images packed to $(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP)"
+
+.PHONY: pack-backgrounds-linux-debug
+pack-backgrounds-linux-debug:
+	@echo "Packing background images for Linux debug build..."
+	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP) *.png
+	@echo "Background images packed to $(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP)"
+
+.PHONY: pack-backgrounds-windows
+pack-backgrounds-windows:
+	@echo "Packing background images for Windows build..."
+	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN)/$(BACKGROUND_ZIP) *.png
+	@echo "Background images packed to $(BUILD_DIR_WIN)/$(BACKGROUND_ZIP)"
+
+.PHONY: pack-backgrounds-windows-debug
+pack-backgrounds-windows-debug:
+	@echo "Packing background images for Windows debug build..."
+	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP) *.png
+	@echo "Background images packed to $(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP)"
+
+.PHONY: pack-backgrounds-all
+pack-backgrounds-all: pack-backgrounds-linux pack-backgrounds-linux-debug pack-backgrounds-windows pack-backgrounds-windows-debug
+
 # Clean target
 .PHONY: clean
 clean:
 	find $(BUILD_DIR) -type f -name "*.o" -delete
 	find $(BUILD_DIR) -type f -name "*.dll" -delete
 	find $(BUILD_DIR) -type f -name "*.exe" -delete
+	find $(BUILD_DIR) -type f -name "$(BACKGROUND_ZIP)" -delete
 	rm -f $(BUILD_DIR_LINUX)/$(TARGET_LINUX)
 	rm -f $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG)
 
@@ -209,6 +244,10 @@ help:
 	@echo ""
 	@echo "  make tetris-linux  - Build Tetris for Linux (with current audio backend)"
 	@echo "  make tetris-windows - Build Tetris for Windows (requires MinGW)"
+	@echo ""
+	@echo "  make pack-backgrounds-all - Pack background images for all build targets"
+	@echo "  make pack-backgrounds-linux - Pack background images for Linux build"
+	@echo "  make pack-backgrounds-windows - Pack background images for Windows build"
 	@echo ""
 	@echo "  make clean         - Remove all build files"
 	@echo "  make help          - Show this help message"
