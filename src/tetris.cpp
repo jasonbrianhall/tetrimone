@@ -51,7 +51,8 @@ void Tetromino::setPosition(int newX, int newY) {
 TetrisBoard::TetrisBoard() : score(0), level(1), linesCleared(0), gameOver(false), 
                             paused(false), splashScreenActive(true),
                             backgroundImage(nullptr), useBackgroundImage(false),
-                            backgroundOpacity(0.3) {
+                            backgroundOpacity(0.3), useBackgroundZip(false), 
+                            currentBackgroundIndex(0) {
     rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
     grid.resize(GRID_HEIGHT, std::vector<int>(GRID_WIDTH, 0));
     generateNewPiece();
@@ -64,6 +65,9 @@ TetrisBoard::~TetrisBoard() {
         cairo_surface_destroy(backgroundImage);
         backgroundImage = nullptr;
     }
+    
+    // Clean up any background images from ZIP
+    cleanupBackgroundImages();
 }
 
 bool TetrisBoard::movePiece(int dx, int dy) {
@@ -182,7 +186,7 @@ int TetrisBoard::clearLines() {
         if (linesCleared == 4) {
             playSound(GameSoundEvent::Excellent); // Play Tetris/Excellent sound for 4 lines
         } else if (linesCleared > 0) {
-            playSound(GameSoundEvent::Clear); // Play normal clear sound for 1-3 lines (plan to give a different sound per line like single, double, and triple)
+            playSound(GameSoundEvent::Clear); // Play normal clear sound for 1-3 lines
         }
         // Classic Tetris scoring
         switch (linesCleared) {
@@ -205,14 +209,20 @@ int TetrisBoard::clearLines() {
         
         // Update level every 10 lines
         level = (this->linesCleared / 10) + 1;
-
     }
-    if (level>currentlevel) {
+    
+    if (level > currentlevel) {
         playSound(GameSoundEvent::LevelUp);
         // Every Level, change theme; wrap around at 20
-        currentThemeIndex=(currentThemeIndex+1)%20;
-       
+        currentThemeIndex = (currentThemeIndex + 1) % 20;
+        
+        // Add this section to change background on level up
+        if (useBackgroundZip && !backgroundImages.empty()) {
+            // Change to a random background on level up if using background zip
+            selectRandomBackground();
+        }
     }
+    
     return linesCleared;
 }
 
@@ -309,7 +319,7 @@ gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data) {
     cairo_fill(cr);
 
     // Draw background image if enabled
-    if (board->isUsingBackgroundImage() && board->getBackgroundImage() != nullptr) {
+    if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) && board->getBackgroundImage() != nullptr) {
         // Save the current state
         cairo_save(cr);
         
@@ -1169,6 +1179,11 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
     gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), backgroundMenuItem);
     g_signal_connect(G_OBJECT(backgroundMenuItem), "activate",
                   G_CALLBACK(onBackgroundImageDialog), app);
+
+    GtkWidget* backgroundZipMenuItem = gtk_menu_item_new_with_label("Set Background Images from ZIP...");
+    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), backgroundZipMenuItem);
+    g_signal_connect(G_OBJECT(backgroundZipMenuItem), "activate",
+                  G_CALLBACK(onBackgroundZipDialog), app);
     
     // Add background toggle checkbox
     app->backgroundToggleMenuItem = gtk_check_menu_item_new_with_label("Use Background Image");
@@ -2050,110 +2065,6 @@ bool TetrisBoard::loadBackgroundImage(const std::string& imagePath) {
     return true;
 }
 
-void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
-    
-    // Pause the game if it's running
-    bool wasPaused = app->board->isPaused();
-    if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
-        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
-    }
-    
-    std::string filePath;
-    
-#ifdef _WIN32
-    // Use Windows native dialog
-    OPENFILENAME ofn;
-    char szFile[260] = {0};
-    
-    ZeroMemory(&ofn, sizeof(ofn));
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = NULL;  // Ideally get the HWND from GTK window
-    ofn.lpstrFile = szFile;
-    ofn.nMaxFile = sizeof(szFile);
-    ofn.lpstrFilter = "PNG Images\0*.png\0All Files\0*.*\0";
-    ofn.nFilterIndex = 1;
-    ofn.lpstrFileTitle = NULL;
-    ofn.nMaxFileTitle = 0;
-    ofn.lpstrInitialDir = NULL;
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
-    
-    if (GetOpenFileName(&ofn)) {
-        filePath = ofn.lpstrFile;
-    }
-#else
-    // Use GTK dialog on other platforms
-    GtkWidget* dialog = gtk_file_chooser_dialog_new(
-        "Select PNG Background Image",
-        GTK_WINDOW(app->window),
-        GTK_FILE_CHOOSER_ACTION_OPEN,
-        "_Cancel", GTK_RESPONSE_CANCEL,
-        "_Open", GTK_RESPONSE_ACCEPT,
-        NULL
-    );
-    
-    // Add filter for PNG files only
-    GtkFileFilter* filter = gtk_file_filter_new();
-    gtk_file_filter_set_name(filter, "PNG Images");
-    gtk_file_filter_add_pattern(filter, "*.png");
-    gtk_file_filter_add_mime_type(filter, "image/png");
-    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
-    
-    // Run the dialog
-    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-        char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-        filePath = filename;
-        g_free(filename);
-    }
-    
-    gtk_widget_destroy(dialog);
-#endif
-    
-    // Process the selected file path
-    if (!filePath.empty()) {
-        if (app->board->loadBackgroundImage(filePath)) {
-            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
-            
-            // Process any pending events before showing opacity dialog
-            while (gtk_events_pending())
-                gtk_main_iteration();
-                
-            // Now show the opacity dialog
-            onBackgroundOpacityDialog(NULL, app);
-        } else {
-            GtkWidget* errorDialog = gtk_message_dialog_new(
-                GTK_WINDOW(app->window),
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_OK,
-                "Failed to load PNG image: %s", filePath.c_str()
-            );
-            gtk_dialog_run(GTK_DIALOG(errorDialog));
-            gtk_widget_destroy(errorDialog);
-        }
-    }
-    
-    // Redraw the game area
-    gtk_widget_queue_draw(app->gameArea);
-    
-    // Resume the game if it wasn't paused before
-    if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
-        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
-    }
-}
-
-// Add implementation of background toggle callback
-void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
-    bool useBackground = gtk_check_menu_item_get_active(menuItem);
-    
-    app->board->setUseBackgroundImage(useBackground);
-    
-    // Redraw the game area
-    gtk_widget_queue_draw(app->gameArea);
-}
-
-// Add implementation of opacity dialog
 void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData) {
     TetrisApp* app = static_cast<TetrisApp*>(userData);
     

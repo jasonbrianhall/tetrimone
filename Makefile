@@ -27,7 +27,7 @@ else
 endif
 
 # Source files
-SRCS_COMMON = src/tetris.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp
+SRCS_COMMON = src/tetris.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src/windowsaudioplayer.cpp
 

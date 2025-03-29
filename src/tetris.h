@@ -548,6 +548,11 @@ private:
     bool useBackgroundImage;
     std::string backgroundImagePath;
     double backgroundOpacity; // 0.0 to 1.0
+    std::vector<cairo_surface_t*> backgroundImages;
+    std::string backgroundZipPath;
+    bool useBackgroundZip;
+    int currentBackgroundIndex;
+
     
 public:
     TetrisBoard();
@@ -599,8 +604,11 @@ public:
     double getBackgroundOpacity() const { return backgroundOpacity; }
     const std::string& getBackgroundImagePath() const { return backgroundImagePath; }
     cairo_surface_t* getBackgroundImage() const { return backgroundImage; }
-
-
+    bool loadBackgroundImagesFromZip(const std::string& zipPath);
+    void selectRandomBackground();
+    void cleanupBackgroundImages();
+    bool isUsingBackgroundZip() const { return useBackgroundZip; }
+    void setUseBackgroundZip(bool use) { useBackgroundZip = use; }
 };
 
 // Function declarations
@@ -652,6 +660,7 @@ void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData);
 void onOpacityValueChanged(GtkRange* range, gpointer userData);
 void rebuildGameUI(TetrisApp* app);
 void updateSizeValueLabel(GtkRange* range, gpointer data);
+void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData);
 
 #endif // TETRIS_H
 
