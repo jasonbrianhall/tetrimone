@@ -11,7 +11,8 @@
 
 class SDLAudioPlayer : public AudioPlayer {
 public:
-    SDLAudioPlayer() : initialized_(false), volume_(1.0f), current_music_(nullptr) {}
+    SDLAudioPlayer() : initialized_(false), volume_(1.0f), current_music_(nullptr), 
+                      previousVolume_(1.0f), isMuted_(false) {}
     
     ~SDLAudioPlayer() override {
         shutdown();
@@ -248,8 +249,9 @@ public:
         
         // If we successfully loaded a chunk, play it as a sound effect
         if (chunk) {
-            // Set volume
-            Mix_VolumeChunk(chunk, static_cast<int>(MIX_MAX_VOLUME * volume_));
+            // Set volume - account for mute state
+            float effectiveVolume = isMuted_ ? 0.0f : volume_;
+            Mix_VolumeChunk(chunk, static_cast<int>(MIX_MAX_VOLUME * effectiveVolume));
             
             // Find an available channel
             int channel = Mix_PlayChannel(-1, chunk, 0);  // 0 = no looping
@@ -310,8 +312,9 @@ public:
             // Store the completion promise for music
             music_completion_promise_ = completionPromise;
             
-            // Set volume
-            Mix_VolumeMusic(static_cast<int>(MIX_MAX_VOLUME * volume_));
+            // Set volume - account for mute state
+            float effectiveVolume = isMuted_ ? 0.0f : volume_;
+            Mix_VolumeMusic(static_cast<int>(MIX_MAX_VOLUME * effectiveVolume));
             
             // Play once (not looping)
             if (Mix_PlayMusic(current_music_, 0) == -1) {
@@ -336,50 +339,69 @@ public:
         }
     }
     
-void stopAllSounds() override {
-    if (!initialized_) {
-        return;
+    // Instead of stopping audio, just mute it
+    void stopAllSounds() override {
+        if (!initialized_) {
+            return;
+        }
+        
+        try {
+            std::lock_guard<std::mutex> lock(mutex_);
+            
+            // Store the current volume before muting
+            previousVolume_ = volume_;
+            
+            // Set muted flag
+            isMuted_ = true;
+            
+            // Mute all channels and music
+            Mix_Volume(-1, 0);  // Set all channels to volume 0
+            Mix_VolumeMusic(0); // Set music volume to 0
+            
+#ifdef DEBUG
+            std::cerr << "DEBUG: All sounds muted instead of stopped" << std::endl;
+#endif
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Exception in stopAllSounds: " << e.what() << std::endl;
+        }
+        catch (...) {
+            std::cerr << "Unknown exception in stopAllSounds" << std::endl;
+        }
     }
     
-    try {
-        std::lock_guard<std::mutex> lock(mutex_);
-        
-        // First, safely stop music playback
-        if (current_music_) {
-            // FadeOut is much safer than an immediate halt
-            Mix_FadeOutMusic(100); // Fade out over 100ms
+    // Restore audio volume
+    void restoreVolume() override {
+        if (!initialized_) {
+            return;
         }
         
-        // Create a local copy of active channels
-        std::vector<int> active_channels;
-        for (const auto& pair : sound_chunks_) {
-            active_channels.push_back(pair.first);
+        try {
+            std::lock_guard<std::mutex> lock(mutex_);
+            
+            // Unmute by setting the flag
+            isMuted_ = false;
+            
+            // Restore previous volume
+            volume_ = previousVolume_;
+            
+            // Restore volume for all channels
+            Mix_Volume(-1, static_cast<int>(MIX_MAX_VOLUME * volume_));
+            
+            // Restore music volume
+            Mix_VolumeMusic(static_cast<int>(MIX_MAX_VOLUME * volume_));
+            
+#ifdef DEBUG
+            std::cerr << "DEBUG: Volume restored to " << volume_ << std::endl;
+#endif
         }
-        
-        // Individually halt each channel to avoid a mass channel halt
-        // which can cause race conditions and crashes
-        for (int channel : active_channels) {
-            if (Mix_Playing(channel)) {
-                Mix_FadeOutChannel(channel, 50); // Fade out over 50ms
-            }
+        catch (const std::exception& e) {
+            std::cerr << "Exception in restoreVolume: " << e.what() << std::endl;
         }
-        
-        // Give SDL a brief moment to process the stop commands
-        // This prevents race conditions with callbacks
-        SDL_Delay(10);
-        
-        // We don't immediately free the chunks here - they'll be cleaned up
-        // by the channel finished callbacks
+        catch (...) {
+            std::cerr << "Unknown exception in restoreVolume" << std::endl;
+        }
     }
-    catch (const std::exception& e) {
-        std::cerr << "Exception in stopAllSounds: " << e.what() << std::endl;
-        // Continue execution, don't let exceptions escape
-    }
-    catch (...) {
-        std::cerr << "Unknown exception in stopAllSounds" << std::endl;
-        // Continue execution, don't let exceptions escape
-    }
-}
     
     void setVolume(float volume) override {
         volume_ = std::max(0.0f, std::min(1.0f, volume));
@@ -387,16 +409,22 @@ void stopAllSounds() override {
         if (initialized_) {
             std::lock_guard<std::mutex> lock(mutex_);
             
-            // Set master volume for channels
-            Mix_Volume(-1, static_cast<int>(MIX_MAX_VOLUME * volume_));
-            
-            // Set music volume
-            Mix_VolumeMusic(static_cast<int>(MIX_MAX_VOLUME * volume_));
-            
-            // Also update individual chunk volumes
-            for (auto& chunk : sound_chunks_) {
-                Mix_VolumeChunk(chunk.second, static_cast<int>(MIX_MAX_VOLUME * volume_));
+            // Only update actual volumes if not muted
+            if (!isMuted_) {
+                // Set master volume for channels
+                Mix_Volume(-1, static_cast<int>(MIX_MAX_VOLUME * volume_));
+                
+                // Set music volume
+                Mix_VolumeMusic(static_cast<int>(MIX_MAX_VOLUME * volume_));
+                
+                // Also update individual chunk volumes
+                for (auto& chunk : sound_chunks_) {
+                    Mix_VolumeChunk(chunk.second, static_cast<int>(MIX_MAX_VOLUME * volume_));
+                }
             }
+            
+            // Always store the non-muted volume for later restoration
+            previousVolume_ = volume_;
         }
     }
     
@@ -447,6 +475,8 @@ private:
     
     bool initialized_;
     float volume_;
+    float previousVolume_;  // Store volume level for restoration after mute
+    bool isMuted_;          // Track mute state
     Mix_Music* current_music_;
     std::map<int, Mix_Chunk*> sound_chunks_;
     std::map<int, std::shared_ptr<std::promise<void>>> channel_promises_;
