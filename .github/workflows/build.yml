@@ -72,7 +72,7 @@ jobs:
                 <Directory Id="INSTALLFOLDER" Name="Tetris GTK">
                   <Component Id="MainExecutable" Guid="A47D52C8-3E95-48F6-B25F-1E6C9D4A8D34">
                     <File Id="MainEXE" Name="tetris.exe" Source="tetris.exe" KeyPath="yes"/>
-                   <File Id="SoundsZIP" Name="sound.zip" Source="sound.zip"/>
+                    <File Id="SoundsZIP" Name="sound.zip" Source="sound.zip"/>
                     <File Id="IconFile" Name="icon.ico" Source="icon.ico"/>
         EOL
 
@@ -83,6 +83,7 @@ jobs:
         cat >> installer.wxs << 'EOL'
                     <File Id="README" Name="README.md" Source="../../README.md"/>
                     <File Id="LICENSE" Name="LICENSE.md" Source="../../LICENSE.md"/>
+                    <File Id="background" Name="background.zip" Source="background.zip"/>
                   </Component>
                   <Directory Id="LibDir" Name="lib">
                     <Directory Id="GdkPixbuf" Name="gdk-pixbuf-2.0">

@@ -548,6 +548,11 @@ private:
     bool useBackgroundImage;
     std::string backgroundImagePath;
     double backgroundOpacity; // 0.0 to 1.0
+    std::vector<cairo_surface_t*> backgroundImages;
+    std::string backgroundZipPath;
+    bool useBackgroundZip;
+    int currentBackgroundIndex;
+
     
 public:
     TetrisBoard();
@@ -599,7 +604,25 @@ public:
     double getBackgroundOpacity() const { return backgroundOpacity; }
     const std::string& getBackgroundImagePath() const { return backgroundImagePath; }
     cairo_surface_t* getBackgroundImage() const { return backgroundImage; }
+    bool loadBackgroundImagesFromZip(const std::string& zipPath);
+    void selectRandomBackground();
+    void cleanupBackgroundImages();
+    bool isUsingBackgroundZip() const { return useBackgroundZip; }
+    void setUseBackgroundZip(bool use) { useBackgroundZip = use; }
 
+    bool isTransitioning;           // Whether a background transition is in progress
+    double transitionOpacity;       // Current opacity during transition
+    int transitionDirection;        // 1 for fade in, -1 for fade out
+    cairo_surface_t* oldBackground; // Store the previous background during transition
+    guint transitionTimerId;        // Timer ID for the transition effect
+
+    void startBackgroundTransition();
+    void updateBackgroundTransition();
+    void cancelBackgroundTransition();
+    bool isInBackgroundTransition() const { return isTransitioning; }
+    double getTransitionOpacity() const { return transitionOpacity; }
+    cairo_surface_t* getOldBackground() const { return oldBackground; }
+    int getTransitionDirection() const { return transitionDirection; }
 
 };
 
@@ -652,6 +675,7 @@ void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData);
 void onOpacityValueChanged(GtkRange* range, gpointer userData);
 void rebuildGameUI(TetrisApp* app);
 void updateSizeValueLabel(GtkRange* range, gpointer data);
+void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData);
 
 #endif // TETRIS_H
 
