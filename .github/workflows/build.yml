@@ -63,7 +63,7 @@ jobs:
         cat > installer.wxs << 'EOL'
         <?xml version="1.0" encoding="UTF-8"?>
         <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-          <Product Id="*" Name="Tetris collection" Language="1033" Version="1.0.${{ github.run_number }}" Manufacturer="Jason Hall" UpgradeCode="15F96C34-8D42-417A-9E1B-CC952F7D6713"> 
+          <Product Id="*" Name="Tetris GTK" Language="1033" Version="1.0.${{ github.run_number }}" Manufacturer="Jason Hall" UpgradeCode="15F96C34-8D42-417A-9E1B-CC952F7D6713"> 
             <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
             <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
             <MediaTemplate EmbedCab="yes" />
