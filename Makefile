@@ -85,6 +85,10 @@ DLL_SOURCE_DIR = /usr/x86_64-w64-mingw32/sys-root/mingw/bin
 BACKGROUNDS_DIR = images/Tetris_backgrounds
 BACKGROUND_ZIP = background.zip
 
+# Sound file settings
+SOUND_DIR = sound
+SOUND_ZIP = sound.zip
+
 # Create necessary directories
 $(shell mkdir -p $(BUILD_DIR_LINUX)/src $(BUILD_DIR_WIN)/src \
 	$(BUILD_DIR_LINUX_DEBUG)/src $(BUILD_DIR_WIN_DEBUG)/src)
@@ -126,7 +130,7 @@ pulse-debug:
 # Linux build targets
 #
 .PHONY: tetris-linux
-tetris-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX) pack-backgrounds-linux
+tetris-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX) pack-backgrounds-linux pack-sounds
 
 $(BUILD_DIR_LINUX)/$(TARGET_LINUX): $(addprefix $(BUILD_DIR_LINUX)/,$(OBJS_LINUX))
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
@@ -139,7 +143,7 @@ $(BUILD_DIR_LINUX)/%.o: %.cpp
 # Linux debug targets
 #
 .PHONY: tetris-linux-debug
-tetris-linux-debug: $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG) pack-backgrounds-linux-debug
+tetris-linux-debug: $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG) pack-backgrounds-linux-debug pack-sounds link-sound-linux-debug
 
 $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG): $(addprefix $(BUILD_DIR_LINUX_DEBUG)/,$(OBJS_LINUX_DEBUG))
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
@@ -152,7 +156,7 @@ $(BUILD_DIR_LINUX_DEBUG)/%.debug.o: %.cpp
 # Windows build targets
 #
 .PHONY: tetris-windows
-tetris-windows: $(BUILD_DIR_WIN)/$(TARGET_WIN) tetris-collect-dlls pack-backgrounds-windows
+tetris-windows: $(BUILD_DIR_WIN)/$(TARGET_WIN) tetris-collect-dlls pack-backgrounds-windows pack-sounds link-sound-windows
 
 $(BUILD_DIR_WIN)/$(TARGET_WIN): $(addprefix $(BUILD_DIR_WIN)/,$(OBJS_WIN))
 	$(CXX_WIN) $^ -o $@ $(LDFLAGS_WIN)
@@ -165,7 +169,7 @@ $(BUILD_DIR_WIN)/%.win.o: %.cpp
 # Windows debug targets
 #
 .PHONY: tetris-windows-debug
-tetris-windows-debug: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) tetris-collect-debug-dlls pack-backgrounds-windows-debug
+tetris-windows-debug: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) tetris-collect-debug-dlls pack-backgrounds-windows-debug pack-sounds link-sound-windows-debug
 
 $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG): $(addprefix $(BUILD_DIR_WIN_DEBUG)/,$(OBJS_WIN_DEBUG))
 	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) $^ -o $@ $(LDFLAGS_WIN)
@@ -217,6 +221,39 @@ pack-backgrounds-windows-debug:
 .PHONY: pack-backgrounds-all
 pack-backgrounds-all: pack-backgrounds-linux pack-backgrounds-linux-debug pack-backgrounds-windows pack-backgrounds-windows-debug
 
+#
+# Sound file packing and linking
+#
+.PHONY: pack-sounds
+pack-sounds:
+	@echo "Creating sound.zip in sound directory..."
+	cd $(SOUND_DIR) && zip -r $(SOUND_ZIP) *.wav
+	@echo "Sound files packed to $(SOUND_DIR)/$(SOUND_ZIP)"
+	@$(MAKE) link-sound-linux
+
+.PHONY: link-sound-linux
+link-sound-linux:
+	@echo "Linking sound.zip to Linux build directory..."
+	ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_LINUX)/$(SOUND_ZIP)
+
+.PHONY: link-sound-linux-debug
+link-sound-linux-debug:
+	@echo "Linking sound.zip to Linux debug build directory..."
+	ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_LINUX_DEBUG)/$(SOUND_ZIP)
+
+.PHONY: link-sound-windows
+link-sound-windows:
+	@echo "Linking sound.zip to Windows build directory..."
+	ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_WIN)/$(SOUND_ZIP)
+
+.PHONY: link-sound-windows-debug
+link-sound-windows-debug:
+	@echo "Linking sound.zip to Windows debug build directory..."
+	ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_WIN_DEBUG)/$(SOUND_ZIP)
+
+.PHONY: link-sound-all
+link-sound-all: link-sound-linux link-sound-linux-debug link-sound-windows link-sound-windows-debug
+
 # Clean target
 .PHONY: clean
 clean:
@@ -226,6 +263,7 @@ clean:
 	find $(BUILD_DIR) -type f -name "$(BACKGROUND_ZIP)" -delete
 	rm -f $(BUILD_DIR_LINUX)/$(TARGET_LINUX)
 	rm -f $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG)
+	rm -f $(SOUND_DIR)/$(SOUND_ZIP)
 
 # Help target
 .PHONY: help
@@ -248,6 +286,9 @@ help:
 	@echo "  make pack-backgrounds-all - Pack background images for all build targets"
 	@echo "  make pack-backgrounds-linux - Pack background images for Linux build"
 	@echo "  make pack-backgrounds-windows - Pack background images for Windows build"
+	@echo ""
+	@echo "  make pack-sounds   - Pack sound files and create symbolic links"
+	@echo "  make link-sound-all - Create symbolic links to sound.zip in all build directories"
 	@echo ""
 	@echo "  make clean         - Remove all build files"
 	@echo "  make help          - Show this help message"
