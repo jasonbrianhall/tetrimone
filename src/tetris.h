@@ -12,6 +12,10 @@
 
 enum class GameSoundEvent {
   BackgroundMusic,
+  BackgroundMusic2,
+  BackgroundMusic3,
+  BackgroundMusic4,
+  BackgroundMusic5,
   Gameover,
   Clear,
   Drop,
