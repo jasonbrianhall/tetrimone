@@ -12,6 +12,10 @@
 // Sound event types for the game
 enum class SoundEvent {
   BackgroundMusic,
+  BackgroundMusic2,
+  BackgroundMusic3,
+  BackgroundMusic4,
+  BackgroundMusic5,
   Gameover,
   Clear,
   Drop,

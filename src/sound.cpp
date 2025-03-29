@@ -109,6 +109,10 @@ bool TetrisBoard::initializeAudio() {
   if (AudioManager::getInstance().initialize()) {
     // Attempt to load the theme music
     if (loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.wav") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic2, "ThemeA.wav") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic3, "ThemeB.wav") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic4, "ThemeC.wav") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic5, "futuristic.wav") &&
         loadSoundFromZip(GameSoundEvent::Gameover, "gameover.wav") &&
         loadSoundFromZip(GameSoundEvent::Clear, "clear.wav") &&
         loadSoundFromZip(GameSoundEvent::Drop, "drop.wav") &&
@@ -293,6 +297,18 @@ void TetrisBoard::playSound(GameSoundEvent event) {
   switch (event) {
   case GameSoundEvent::BackgroundMusic:
     audioEvent = SoundEvent::BackgroundMusic;
+    break;
+  case GameSoundEvent::BackgroundMusic2:
+    audioEvent = SoundEvent::BackgroundMusic2;
+    break;
+  case GameSoundEvent::BackgroundMusic3:
+    audioEvent = SoundEvent::BackgroundMusic3;
+    break;
+  case GameSoundEvent::BackgroundMusic4:
+    audioEvent = SoundEvent::BackgroundMusic4;
+    break;
+  case GameSoundEvent::BackgroundMusic5:
+    audioEvent = SoundEvent::BackgroundMusic5;
     break;
   case GameSoundEvent::Gameover:
     audioEvent = SoundEvent::Gameover;
