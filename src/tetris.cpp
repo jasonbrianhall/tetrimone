@@ -59,6 +59,13 @@ TetrisBoard::TetrisBoard() : score(0), level(1), linesCleared(0), gameOver(false
     grid.resize(GRID_HEIGHT, std::vector<int>(GRID_WIDTH, 0));
     generateNewPiece();
     generateNewPiece();
+    
+    // Try to load background.zip by default
+    if (loadBackgroundImagesFromZip("background.zip")) {
+        std::cout << "Successfully loaded background images from background.zip" << std::endl;
+    } else {
+        std::cout << "Could not load background.zip, backgrounds will need to be loaded manually" << std::endl;
+    }
 }
 
 TetrisBoard::~TetrisBoard() {
