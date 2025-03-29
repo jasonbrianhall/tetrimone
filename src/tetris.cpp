@@ -52,15 +52,19 @@ TetrisBoard::TetrisBoard() : score(0), level(1), linesCleared(0), gameOver(false
                             paused(false), splashScreenActive(true),
                             backgroundImage(nullptr), useBackgroundImage(false),
                             backgroundOpacity(0.3), useBackgroundZip(false), 
-                            currentBackgroundIndex(0) {
+                            currentBackgroundIndex(0), isTransitioning(false),
+                            transitionOpacity(0.0), transitionDirection(0),
+                            oldBackground(nullptr), transitionTimerId(0) {
     rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
     grid.resize(GRID_HEIGHT, std::vector<int>(GRID_WIDTH, 0));
     generateNewPiece();
     generateNewPiece();
 }
 
-
 TetrisBoard::~TetrisBoard() {
+    // Cancel any ongoing transition and clean up resources
+    cancelBackgroundTransition();
+    
     if (backgroundImage != nullptr) {
         cairo_surface_destroy(backgroundImage);
         backgroundImage = nullptr;
@@ -219,7 +223,7 @@ int TetrisBoard::clearLines() {
         // Add this section to change background on level up
         if (useBackgroundZip && !backgroundImages.empty()) {
             // Change to a random background on level up if using background zip
-            selectRandomBackground();
+            startBackgroundTransition();
         }
     }
     
@@ -319,10 +323,63 @@ gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data) {
     cairo_fill(cr);
 
     // Draw background image if enabled
-    if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) && board->getBackgroundImage() != nullptr) {
-        // Save the current state
-        cairo_save(cr);
-        
+if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) && board->getBackgroundImage() != nullptr) {
+    // Save the current state
+    cairo_save(cr);
+    
+    // Check if we're in a transition
+    if (board->isInBackgroundTransition()) {
+        // If fading out, draw old background first
+        if (board->getTransitionDirection() == -1 && board->getOldBackground() != nullptr) {
+            // Get the image dimensions
+            int imgWidth = cairo_image_surface_get_width(board->getOldBackground());
+            int imgHeight = cairo_image_surface_get_height(board->getOldBackground());
+            
+            // Calculate scaling to fill the game area while maintaining aspect ratio
+            double scaleX = static_cast<double>(allocation.width) / imgWidth;
+            double scaleY = static_cast<double>(allocation.height) / imgHeight;
+            double scale = std::max(scaleX, scaleY);
+            
+            // Calculate position to center the image
+            double x = (allocation.width - imgWidth * scale) / 2;
+            double y = (allocation.height - imgHeight * scale) / 2;
+            
+            // Apply the transformation
+            cairo_translate(cr, x, y);
+            cairo_scale(cr, scale, scale);
+            
+            // Draw the old image with current transition opacity
+            cairo_set_source_surface(cr, board->getOldBackground(), 0, 0);
+            cairo_paint_with_alpha(cr, board->getTransitionOpacity());
+            
+            // Reset transformation for next drawing
+            cairo_restore(cr);
+            cairo_save(cr);
+        } else if (board->getTransitionDirection() == 1) {
+            // Fading in - draw new background with transition opacity
+            // Get the image dimensions
+            int imgWidth = cairo_image_surface_get_width(board->getBackgroundImage());
+            int imgHeight = cairo_image_surface_get_height(board->getBackgroundImage());
+            
+            // Calculate scaling to fill the game area while maintaining aspect ratio
+            double scaleX = static_cast<double>(allocation.width) / imgWidth;
+            double scaleY = static_cast<double>(allocation.height) / imgHeight;
+            double scale = std::max(scaleX, scaleY);
+            
+            // Calculate position to center the image
+            double x = (allocation.width - imgWidth * scale) / 2;
+            double y = (allocation.height - imgHeight * scale) / 2;
+            
+            // Apply the transformation
+            cairo_translate(cr, x, y);
+            cairo_scale(cr, scale, scale);
+            
+            // Draw the new image with transition opacity
+            cairo_set_source_surface(cr, board->getBackgroundImage(), 0, 0);
+            cairo_paint_with_alpha(cr, board->getTransitionOpacity());
+        }
+    } else {
+        // Normal drawing (no transition)
         // Get the image dimensions
         int imgWidth = cairo_image_surface_get_width(board->getBackgroundImage());
         int imgHeight = cairo_image_surface_get_height(board->getBackgroundImage());
@@ -340,13 +397,14 @@ gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data) {
         cairo_translate(cr, x, y);
         cairo_scale(cr, scale, scale);
         
-        // Draw the image with opacity
+        // Draw the image with normal opacity
         cairo_set_source_surface(cr, board->getBackgroundImage(), 0, 0);
         cairo_paint_with_alpha(cr, board->getBackgroundOpacity());
-        
-        // Restore the original state
-        cairo_restore(cr);
     }
+    
+    // Restore the original state
+    cairo_restore(cr);
+}
     
 
     

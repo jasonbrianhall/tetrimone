@@ -376,3 +376,131 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
         onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
     }
 }
+
+void TetrisBoard::startBackgroundTransition() {
+    if (!useBackgroundZip || backgroundImages.empty() || !useBackgroundImage) {
+        return; // Only perform transitions when using background images from ZIP
+    }
+    
+    // If already transitioning, cancel the current transition
+    if (isTransitioning && transitionTimerId > 0) {
+        g_source_remove(transitionTimerId);
+        transitionTimerId = 0;
+    }
+    
+    // Store the current background for the fade out effect
+    if (oldBackground != nullptr) {
+        cairo_surface_destroy(oldBackground);
+    }
+    
+    // Clone the current background
+    if (backgroundImage != nullptr) {
+        int width = cairo_image_surface_get_width(backgroundImage);
+        int height = cairo_image_surface_get_height(backgroundImage);
+        
+        oldBackground = cairo_image_surface_create(
+            cairo_image_surface_get_format(backgroundImage),
+            width, height);
+        
+        cairo_t* cr = cairo_create(oldBackground);
+        cairo_set_source_surface(cr, backgroundImage, 0, 0);
+        cairo_paint(cr);
+        cairo_destroy(cr);
+    }
+    
+    // Start with the current opacity
+    transitionOpacity = backgroundOpacity;
+    
+    // Set up transition state
+    isTransitioning = true;
+    transitionDirection = -1; // Start by fading out
+    
+    // Select the next background but don't display it yet
+    // We'll wait until fully faded out
+    int oldIndex = currentBackgroundIndex;
+    
+    // Select a new random background that's different from the current one
+    if (backgroundImages.size() > 1) {
+        std::uniform_int_distribution<int> dist(0, backgroundImages.size() - 1);
+        do {
+            currentBackgroundIndex = dist(rng);
+        } while (currentBackgroundIndex == oldIndex);
+    }
+    
+    // Start the transition timer - update 20 times per second
+    transitionTimerId = g_timeout_add(50, 
+        [](gpointer data) -> gboolean {
+            TetrisBoard* board = static_cast<TetrisBoard*>(data);
+            board->updateBackgroundTransition();
+            return TRUE; // Keep the timer running
+        }, 
+        this);
+}
+
+void TetrisBoard::updateBackgroundTransition() {
+    if (!isTransitioning) {
+        return;
+    }
+    
+    // Update opacity based on direction
+    const double TRANSITION_SPEED = 0.02; // Change this to adjust fade speed
+    transitionOpacity += transitionDirection * TRANSITION_SPEED;
+    
+    // Check for direction change (from fade-out to fade-in)
+    if (transitionDirection == -1 && transitionOpacity <= 0.0) {
+        transitionOpacity = 0.0;
+        transitionDirection = 1; // Change to fade in
+        
+        // Update the actual background image with the new selection
+        if (backgroundImage != nullptr) {
+            cairo_surface_destroy(backgroundImage);
+        }
+        
+        // Create a new background from the selected image
+        cairo_surface_t* selectedSurface = backgroundImages[currentBackgroundIndex];
+        int width = cairo_image_surface_get_width(selectedSurface);
+        int height = cairo_image_surface_get_height(selectedSurface);
+        
+        backgroundImage = cairo_image_surface_create(
+            cairo_image_surface_get_format(selectedSurface),
+            width, height);
+        
+        cairo_t* cr = cairo_create(backgroundImage);
+        cairo_set_source_surface(cr, selectedSurface, 0, 0);
+        cairo_paint(cr);
+        cairo_destroy(cr);
+    }
+    
+    // Check if transition is complete
+    if (transitionDirection == 1 && transitionOpacity >= backgroundOpacity) {
+        transitionOpacity = backgroundOpacity;
+        isTransitioning = false;
+        
+        // Clean up the old background
+        if (oldBackground != nullptr) {
+            cairo_surface_destroy(oldBackground);
+            oldBackground = nullptr;
+        }
+        
+        // Clean up the timer
+        if (transitionTimerId > 0) {
+            g_source_remove(transitionTimerId);
+            transitionTimerId = 0;
+        }
+    }
+}
+
+void TetrisBoard::cancelBackgroundTransition() {
+    if (isTransitioning && transitionTimerId > 0) {
+        g_source_remove(transitionTimerId);
+        transitionTimerId = 0;
+    }
+    
+    isTransitioning = false;
+    
+    // Clean up the old background
+    if (oldBackground != nullptr) {
+        cairo_surface_destroy(oldBackground);
+        oldBackground = nullptr;
+    }
+}

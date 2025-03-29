@@ -609,6 +609,21 @@ public:
     void cleanupBackgroundImages();
     bool isUsingBackgroundZip() const { return useBackgroundZip; }
     void setUseBackgroundZip(bool use) { useBackgroundZip = use; }
+
+    bool isTransitioning;           // Whether a background transition is in progress
+    double transitionOpacity;       // Current opacity during transition
+    int transitionDirection;        // 1 for fade in, -1 for fade out
+    cairo_surface_t* oldBackground; // Store the previous background during transition
+    guint transitionTimerId;        // Timer ID for the transition effect
+
+    void startBackgroundTransition();
+    void updateBackgroundTransition();
+    void cancelBackgroundTransition();
+    bool isInBackgroundTransition() const { return isTransitioning; }
+    double getTransitionOpacity() const { return transitionOpacity; }
+    cairo_surface_t* getOldBackground() const { return oldBackground; }
+    int getTransitionDirection() const { return transitionDirection; }
+
 };
 
 // Function declarations
