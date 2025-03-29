@@ -22,8 +22,9 @@ public:
             return true;
         }
         
+#ifdef DEBUG
         std::cerr << "DEBUG: Initializing SDL Audio Player" << std::endl;
-        
+#endif        
         // Initialize SDL audio subsystem
         if (SDL_WasInit(SDL_INIT_AUDIO) == 0) {
             if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
@@ -48,12 +49,14 @@ public:
         // Print out the actual audio specs we got
         int frequency, channels;
         Uint16 format;
+#ifdef DEBUG
         if (Mix_QuerySpec(&frequency, &format, &channels) == 0) {
             std::cerr << "DEBUG: Failed to query audio specs" << std::endl;
         } else {
             std::cerr << "DEBUG: Audio specs - frequency: " << frequency 
                       << ", format: " << format << ", channels: " << channels << std::endl;
         }
+#endif
         
         // Initialize music and sound formats - be more explicit about what we're initializing
         int flags = 0;
@@ -102,7 +105,9 @@ public:
         instance_ = this;
         
         initialized_ = true;
+#ifdef DEBUG
         std::cerr << "DEBUG: SDL Audio Player initialized successfully" << std::endl;
+#endif
         return true;
     }
     
@@ -188,8 +193,9 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         
         // Debug output to help with troubleshooting
+#ifdef DEBUG
         std::cerr << "DEBUG: Playing sound, format: " << format << ", size: " << data.size() << " bytes" << std::endl;
-        
+#endif        
         // Special handling for WAV files on Windows to ensure proper format detection
         bool isWav = false;
         if (format == "wav" || format == "WAV") {
@@ -198,7 +204,9 @@ public:
                 // Check WAV header magic numbers
                 if (memcmp(data.data(), "RIFF", 4) == 0 &&
                     memcmp(data.data() + 8, "WAVE", 4) == 0) {
+#ifdef DEBUG
                     std::cerr << "DEBUG: Valid WAV header detected" << std::endl;
+#endif
                 } else {
                     std::cerr << "DEBUG: Invalid WAV header" << std::endl;
                 }
@@ -255,8 +263,9 @@ public:
                 return;
             }
             
+#ifdef DEBUG
             std::cerr << "DEBUG: Playing sound on channel " << channel << std::endl;
-            
+#endif            
             // Store the chunk and channel for later cleanup
             sound_chunks_[channel] = chunk;
             
@@ -285,8 +294,9 @@ public:
                 return;
             }
             
+#ifdef DEBUG
             std::cerr << "DEBUG: Successfully loaded as music" << std::endl;
-            
+#endif            
             // Stop any currently playing music
             if (current_music_) {
                 Mix_HaltMusic();
@@ -313,7 +323,9 @@ public:
                     completionPromise->set_value();
                 }
             } else {
+#ifdef DEBUG
                 std::cerr << "DEBUG: Music playback started" << std::endl;
+#endif
             }
         } else {
             // If we got here, WAV loading failed
