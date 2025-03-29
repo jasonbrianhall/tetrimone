@@ -228,6 +228,7 @@ bool TetrisBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
     
     // Set the current background to a random one
     useBackgroundZip = true;
+    useBackgroundImage = true;
     selectRandomBackground();
     
     std::cout << "Successfully loaded " << pngCount << " background images from ZIP" << std::endl;
@@ -273,12 +274,12 @@ void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
     TetrisApp* app = static_cast<TetrisApp*>(userData);
     bool useBackground = gtk_check_menu_item_get_active(menuItem);
     
-    // If using ZIP mode, update that setting
+    // The toggle should control visibility, regardless of background mode
+    app->board->setUseBackgroundImage(useBackground);
+    
+    // Also update ZIP mode flag to match if using backgrounds from ZIP
     if (app->board->isUsingBackgroundZip()) {
         app->board->setUseBackgroundZip(useBackground);
-    } else {
-        // Otherwise use the single image mode
-        app->board->setUseBackgroundImage(useBackground);
     }
     
     // Redraw the game area

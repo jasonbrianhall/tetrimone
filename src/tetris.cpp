@@ -63,6 +63,9 @@ TetrisBoard::TetrisBoard() : score(0), level(1), linesCleared(0), gameOver(false
     // Try to load background.zip by default
     if (loadBackgroundImagesFromZip("background.zip")) {
         std::cout << "Successfully loaded background images from background.zip" << std::endl;
+        // Background should be enabled by default if successfully loaded
+        useBackgroundImage = true;
+        useBackgroundZip = true;
     } else {
         std::cout << "Could not load background.zip, backgrounds will need to be loaded manually" << std::endl;
     }
