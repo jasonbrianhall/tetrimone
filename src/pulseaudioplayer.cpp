@@ -11,11 +11,12 @@
 // Global atomic flag to signal stopping playback
 namespace {
   std::atomic<bool> g_shouldStopPlayback(false);
+  std::atomic<bool> g_isMuted(false);
 }
 
 class PulseAudioPlayer : public AudioPlayer {
 public:
-  PulseAudioPlayer() : volume_(1.0f) {
+  PulseAudioPlayer() : volume_(1.0f), isMuted_(false) {
     // Set default sample specification
     sampleSpec_.format = PA_SAMPLE_S16LE;
     sampleSpec_.rate = 44100;
@@ -59,15 +60,28 @@ public:
     g_shouldStopPlayback = false;
   }
 
+  // Instead of stopping all sounds, just mute them temporarily
   void stopAllSounds() override {
-    // Set the global flag to signal stopping
-    g_shouldStopPlayback = true;
+    // Instead of setting the global flag to signal stopping,
+    // just mute all audio so that it continues playing silently in the background
+    g_isMuted = true;
+  }
+
+  // Method to mute/unmute our application's audio only
+  void muteAudio(bool mute) {
+    isMuted_ = mute;
+    g_isMuted = mute;
     
-    // Give threads a moment to exit
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // This only affects our app's audio output, not system volume
+    // We're using our own mute flag to control audio output during playback
     
-    // Reset the flag for future playback
-    g_shouldStopPlayback = false;
+    std::cout << "App audio " << (mute ? "muted" : "unmuted") << std::endl;
+  }
+
+  // Allow restoring volume - unmutes if muted
+  void restoreVolume() override {
+    g_isMuted = false;
+    isMuted_ = false;
   }
 
   void playSound(const std::vector<uint8_t> &data, const std::string &format,
@@ -185,6 +199,9 @@ public:
         return;
       }
       
+      // Create a buffer for potentially muted audio
+      std::vector<uint8_t> processedData;
+      
       // Write data in chunks to allow stopping mid-playback
       const size_t CHUNK_SIZE = 32 * 1024; // 32KB chunks
       const uint8_t* audioData = data.data() + dataOffset;
@@ -195,9 +212,23 @@ public:
       while (remaining > 0 && !g_shouldStopPlayback) {
         size_t chunkSize = std::min(remaining, CHUNK_SIZE);
         
-        if (pa_simple_write(s, audioData + offset, chunkSize, &error) < 0) {
-          std::cerr << "DEBUG: Failed to write audio data: " << pa_strerror(error) << std::endl;
-          break;
+        // If muted, prepare silent audio of the same format
+        if (g_isMuted) {
+          // Create a buffer of zeros (silence) with the same size as our chunk
+          processedData.resize(chunkSize);
+          std::memset(processedData.data(), 0, chunkSize);
+          
+          // Write the silent data instead
+          if (pa_simple_write(s, processedData.data(), chunkSize, &error) < 0) {
+            std::cerr << "DEBUG: Failed to write muted audio data: " << pa_strerror(error) << std::endl;
+            break;
+          }
+        } else {
+          // Write the actual audio data when not muted
+          if (pa_simple_write(s, audioData + offset, chunkSize, &error) < 0) {
+            std::cerr << "DEBUG: Failed to write audio data: " << pa_strerror(error) << std::endl;
+            break;
+          }
         }
         
         offset += chunkSize;
@@ -234,13 +265,13 @@ public:
   void setVolume(float volume) override {
     volume_ = volume;
 
-    // Note: PulseAudio volume control is more complex and would require
-    // using the PulseAudio context API instead of the simple API
-    // For a basic implementation, we don't modify system volume here
+    // For a more complete implementation, you would use the PulseAudio Context API
+    // to set the stream volume here
   }
 
 private:
   float volume_;
+  bool isMuted_;
   pa_sample_spec sampleSpec_;
 };
 
