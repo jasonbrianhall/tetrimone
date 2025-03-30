@@ -5,7 +5,7 @@
 
 # MIDI Conversion
 FLUIDSYNTH = fluidsynth
-SOUNDFONT = /usr/share/sounds/sf2/FluidR3_GM.sf2  # Default soundfont path, adjust as needed
+SOUNDFONT = /usr/share/sounds/sf2/default.sf2  # Default soundfont path, adjust as needed
 FLUIDSYNTH_OPTS = -ni -g 1 -F
 
 # Compiler settings
