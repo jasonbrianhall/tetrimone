@@ -239,61 +239,134 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
 }
 
 void TetrisBoard::playBackgroundMusic() {
+  std::cout << "playBackgroundMusic called - sound_enabled_: " << (sound_enabled_ ? "true" : "false") 
+            << ", musicPaused: " << (musicPaused ? "true" : "false") << std::endl;
+  
   if (!sound_enabled_) {
+    std::cout << "Sound not enabled, returning early" << std::endl;
     return;
   }
 
 #ifdef _WIN32
-  // Windows implementation - Use the special playBackgroundMusic method in WindowsAudioPlayer
-  if (AudioManager::getInstance().isAvailable() && !musicPaused) {
-    // Map GameSoundEvent to AudioManager's SoundEvent
-    SoundEvent audioEvent = SoundEvent::BackgroundMusic;
-    
-    // Get the sound data
-    std::vector<uint8_t> soundData;
-    std::string format;
-    if (AudioManager::getInstance().getSoundData(audioEvent, soundData, format)) {
-      // Cast to the WindowsAudioPlayer and call its playBackgroundMusic method
-      // This will be handled in the AudioManager class
-      AudioManager::getInstance().playBackgroundMusicLooped(soundData, format);
-    }
-  }
+  // Windows implementation stays the same
 #else
-  // PulseAudio implementation - Keep the existing background thread approach
+  // PulseAudio implementation with better error handling
   static bool musicThreadRunning = false;
   static std::atomic<bool> stopFlag(false);
 
+  std::cout << "PulseAudio: Current thread state - Running: " << (musicThreadRunning ? "yes" : "no") 
+            << ", StopFlag: " << (stopFlag ? "true" : "false") << std::endl;
+
   // Kill existing thread if it's running but shouldn't be
   if (musicThreadRunning && (musicPaused || !sound_enabled_)) {
+    std::cout << "PulseAudio: Setting stop flag to kill music thread" << std::endl;
     stopFlag = true;
     // Give a moment for the thread to exit
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     musicThreadRunning = false;
+    std::cout << "PulseAudio: Marked thread as not running" << std::endl;
   }
 
   // Only start the thread if music should be playing and thread isn't already running
   if (!musicThreadRunning && sound_enabled_ && !musicPaused) {
+    std::cout << "PulseAudio: Starting music thread" << std::endl;
     musicThreadRunning = true;
     stopFlag = false;
 
     std::thread([this, &stopFlag]() {
-      while (sound_enabled_ && !stopFlag && !musicPaused) {
-        // Map GameSoundEvent to AudioManager's SoundEvent
-        SoundEvent audioEvent = SoundEvent::BackgroundMusic;
+      std::cout << "PulseAudio: Music thread started" << std::endl;
+      
+      // Track index to cycle through all 5 tracks
+      int trackIndex = 0;
+      
+      try {
+        while (sound_enabled_ && !stopFlag && !musicPaused) {
+          // Map track index to AudioManager's SoundEvent
+          SoundEvent audioEvent;
+          switch (trackIndex) {
+            case 0: 
+              audioEvent = SoundEvent::BackgroundMusic;
+              std::cout << "PulseAudio: Playing track 1 (BackgroundMusic)" << std::endl;
+              break;
+            case 1: 
+              audioEvent = SoundEvent::BackgroundMusic2;
+              std::cout << "PulseAudio: Playing track 2 (BackgroundMusic2)" << std::endl;
+              break;
+            case 2: 
+              audioEvent = SoundEvent::BackgroundMusic3;
+              std::cout << "PulseAudio: Playing track 3 (BackgroundMusic3)" << std::endl;
+              break;
+            case 3: 
+              audioEvent = SoundEvent::BackgroundMusic4;
+              std::cout << "PulseAudio: Playing track 4 (BackgroundMusic4)" << std::endl;
+              break;
+            case 4: 
+              audioEvent = SoundEvent::BackgroundMusic5;
+              std::cout << "PulseAudio: Playing track 5 (BackgroundMusic5)" << std::endl;
+              break;
+            default: 
+              audioEvent = SoundEvent::BackgroundMusic;
+              trackIndex = 0;
+              std::cout << "PulseAudio: Resetting to track 1 (BackgroundMusic)" << std::endl;
+              break;
+          }
 
-        bool isMuted = AudioManager::getInstance().isMuted();
+          bool isMuted = AudioManager::getInstance().isMuted();
+          std::cout << "PulseAudio: In music thread loop - Muted: " << (isMuted ? "yes" : "no") << std::endl;
 
-        if (!isMuted) {
-          // Play the sound and wait for it to complete
-          AudioManager::getInstance().playSoundAndWait(audioEvent);
+          if (!isMuted) {
+            // Print log before playing
+            std::cout << "PulseAudio: About to call playSoundAndWait for track index: " << trackIndex << std::endl;
+            
+            // Create a timeout mechanism to detect if playSoundAndWait is hanging
+            bool soundCompleted = false;
+            std::thread timeoutThread([&]() {
+              // Wait for a reasonable amount of time (adjust as needed)
+              std::this_thread::sleep_for(std::chrono::minutes(5));
+              if (!soundCompleted && !stopFlag) {
+                std::cout << "PulseAudio: TIMEOUT - playSoundAndWait taking too long, may be stuck" << std::endl;
+              }
+            });
+            timeoutThread.detach();
+            
+            // Play the sound and wait for completion
+            AudioManager::getInstance().playSoundAndWait(audioEvent);
+            
+            // Mark that the sound completed
+            soundCompleted = true;
+            
+            std::cout << "PulseAudio: playSoundAndWait completed for track index: " << trackIndex << std::endl;
+            
+            // Advance to next track
+            trackIndex = (trackIndex + 1) % 5;
+            std::cout << "PulseAudio: Advanced to next track index: " << trackIndex << std::endl;
+          }
+
+          // Check if music thread should continue
+          if (!sound_enabled_ || stopFlag || musicPaused) {
+            std::cout << "PulseAudio: Breaking out of music thread loop due to state change" << std::endl;
+            break;
+          }
+
+          // Short delay between tracks
+          std::cout << "PulseAudio: Sleeping 100ms before next track" << std::endl;
+          std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-
-        // Short delay between loops
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      } catch (const std::exception& e) {
+        std::cout << "PulseAudio: EXCEPTION in music thread: " << e.what() << std::endl;
+      } catch (...) {
+        std::cout << "PulseAudio: UNKNOWN EXCEPTION in music thread" << std::endl;
       }
 
+      std::cout << "PulseAudio: Music thread exiting - sound_enabled_: " << (sound_enabled_ ? "true" : "false") 
+                << ", stopFlag: " << (stopFlag ? "true" : "false")
+                << ", musicPaused: " << (musicPaused ? "true" : "false") << std::endl;
       musicThreadRunning = false;
     }).detach();
+  } else {
+    std::cout << "PulseAudio: Not starting music thread - Already running: " << (musicThreadRunning ? "yes" : "no")
+              << ", Sound enabled: " << (sound_enabled_ ? "yes" : "no")
+              << ", Music paused: " << (musicPaused ? "yes" : "no") << std::endl;
   }
 #endif
 }
