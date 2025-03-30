@@ -205,7 +205,7 @@ convert-midi: $(WAV_FROM_MIDI)
 # Rule to convert .mid to .wav files
 %.wav: %.mid
 	@echo "Converting $< to $@ using FluidSynth..."
-	@$(FLUIDSYNTH) $(FLUIDSYNTH_OPTS) $@ $(SOUNDFONT) $
+	@$(FLUIDSYNTH) $(FLUIDSYNTH_OPTS) $@ $(SOUNDFONT) $<
 
 #
 # WAV to MP3 conversion
