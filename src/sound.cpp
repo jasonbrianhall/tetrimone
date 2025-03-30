@@ -83,16 +83,48 @@ bool TetrisBoard::extractFileFromZip(const std::string &zipFilePath,
 }
 
 // Custom Audio Manager function to load sound from memory
-bool loadSoundFromMemory(SoundEvent event, const std::vector<uint8_t> &data,
-                         const std::string &format) {
-  // Get file extension to determine format
-  if (format != "wav" && format != "mp3") {
-    std::cerr << "Unsupported audio format: " << format << std::endl;
+bool AudioManager::loadSoundFromMemory(SoundEvent event, 
+                                       const std::vector<uint8_t> &data,
+                                       const std::string &format,
+                                       size_t length) {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  if (!initialized_) {
     return false;
   }
 
+  // Check if format is supported
+  std::string formatLower = format;
+  std::transform(formatLower.begin(), formatLower.end(), formatLower.begin(),
+                 ::tolower);
+
+  if (formatLower != "wav" && formatLower != "mp3") {
+#ifdef DEBUG
+    std::cerr << "Unsupported audio format: " << format << std::endl;
+#endif
+    return false;
+  }
+
+  // Create sound data
+  SoundData soundData;
+  soundData.format = formatLower;
+  soundData.data = data; // Copy the data
+  soundData.length = length; // Store the length
+
   // Store the sound data
-  return AudioManager::getInstance().loadSoundFromMemory(event, data, format);
+  sounds_[event] = std::move(soundData);
+  return true;
+}
+
+size_t AudioManager::getSoundLength(SoundEvent event) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  
+  auto it = sounds_.find(event);
+  if (it == sounds_.end()) {
+    return 0;
+  }
+  
+  return it->second.length;
 }
 
 bool TetrisBoard::initializeAudio() {
@@ -168,6 +200,9 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
         return false;
     }
 
+    // Track the length of the audio file
+    size_t audioLength = soundData.size();
+
     // Check if it's an MP3 and convert to WAV
     if (format == "mp3") {
         std::vector<uint8_t> wavData;
@@ -175,6 +210,9 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
             // Replace the original data with the converted WAV data
             soundData = std::move(wavData);
             format = "wav";
+            
+            // Update audio length after conversion
+            audioLength = soundData.size();
         } else {
             std::cerr << "Failed to convert MP3 to WAV: " << soundFileName << std::endl;
             return false;
@@ -234,8 +272,13 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
         return false;
     }
 
-    // Load the sound data into the audio manager
-    return AudioManager::getInstance().loadSoundFromMemory(audioEvent, soundData, format);
+    // Load the sound data into the audio manager with its length
+    AudioManager &audioManager = AudioManager::getInstance();
+    if (audioManager.loadSoundFromMemory(audioEvent, soundData, format, audioLength)) {
+        return true;
+    }
+
+    return false;
 }
 
 void TetrisBoard::playBackgroundMusic() {
