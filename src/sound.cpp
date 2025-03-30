@@ -82,51 +82,6 @@ bool TetrisBoard::extractFileFromZip(const std::string &zipFilePath,
   return true;
 }
 
-// Custom Audio Manager function to load sound from memory
-bool AudioManager::loadSoundFromMemory(SoundEvent event, 
-                                       const std::vector<uint8_t> &data,
-                                       const std::string &format,
-                                       size_t length) {
-  std::lock_guard<std::mutex> lock(mutex_);
-
-  if (!initialized_) {
-    return false;
-  }
-
-  // Check if format is supported
-  std::string formatLower = format;
-  std::transform(formatLower.begin(), formatLower.end(), formatLower.begin(),
-                 ::tolower);
-
-  if (formatLower != "wav" && formatLower != "mp3") {
-#ifdef DEBUG
-    std::cerr << "Unsupported audio format: " << format << std::endl;
-#endif
-    return false;
-  }
-
-  // Create sound data
-  SoundData soundData;
-  soundData.format = formatLower;
-  soundData.data = data; // Copy the data
-  soundData.length = length; // Store the length
-
-  // Store the sound data
-  sounds_[event] = std::move(soundData);
-  return true;
-}
-
-size_t AudioManager::getSoundLength(SoundEvent event) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  
-  auto it = sounds_.find(event);
-  if (it == sounds_.end()) {
-    return 0;
-  }
-  
-  return it->second.length;
-}
-
 bool TetrisBoard::initializeAudio() {
   // Don't do anything if sound is disabled
   if (!sound_enabled_) {
@@ -287,22 +242,7 @@ void TetrisBoard::playBackgroundMusic() {
   }
 
 #ifdef _WIN32
-  // Windows implementation - Use the special playBackgroundMusic method in WindowsAudioPlayer
-  if (AudioManager::getInstance().isAvailable() && !musicPaused) {
-    // Map GameSoundEvent to AudioManager's SoundEvent
-    SoundEvent audioEvent = SoundEvent::BackgroundMusic;
-    
-    // Get the sound data
-    std::vector<uint8_t> soundData;
-    std::string format;
-    if (AudioManager::getInstance().getSoundData(audioEvent, soundData, format)) {
-      // Cast to the WindowsAudioPlayer and call its playBackgroundMusic method
-      // This will be handled in the AudioManager class
-      AudioManager::getInstance().playBackgroundMusicLooped(soundData, format);
-    }
-  }
-#else
-  // PulseAudio implementation - Keep the existing background thread approach
+  // Windows implementation - Background music cycling with thread
   static bool musicThreadRunning = false;
   static std::atomic<bool> stopFlag(false);
 
@@ -320,18 +260,105 @@ void TetrisBoard::playBackgroundMusic() {
     stopFlag = false;
 
     std::thread([this, &stopFlag]() {
-      while (sound_enabled_ && !stopFlag && !musicPaused) {
-        // Map GameSoundEvent to AudioManager's SoundEvent
-        SoundEvent audioEvent = SoundEvent::BackgroundMusic;
+      // Background music tracks to cycle through
+      const std::vector<SoundEvent> backgroundMusicTracks = {
+        SoundEvent::BackgroundMusic,
+        SoundEvent::BackgroundMusic2,
+        SoundEvent::BackgroundMusic3,
+        SoundEvent::BackgroundMusic4,
+        SoundEvent::BackgroundMusic5
+      };
 
-        bool isMuted = AudioManager::getInstance().isMuted();
+      AudioManager& audioManager = AudioManager::getInstance();
+      size_t currentTrackIndex = 0;
+
+      while (sound_enabled_ && !stopFlag && !musicPaused) {
+        // Get the current background music track
+        SoundEvent currentTrack = backgroundMusicTracks[currentTrackIndex];
+
+        // Check if not muted
+        bool isMuted = audioManager.isMuted();
+
+        if (!isMuted) {
+          // Get the sound data and format
+          std::vector<uint8_t> soundData;
+          std::string format;
+          if (audioManager.getSoundData(currentTrack, soundData, format)) {
+            // Get the track length
+            size_t trackLength = audioManager.getSoundLength(currentTrack);
+
+            // Cast to the WindowsAudioPlayer and call its playBackgroundMusic method
+            audioManager.playBackgroundMusicLooped(soundData, format);
+
+            // Wait for the track length (or a reasonable default if length is 0)
+            if (trackLength > 0) {
+              std::this_thread::sleep_for(std::chrono::milliseconds(trackLength));
+            } else {
+              // Default to 3 minutes if length is unknown
+              std::this_thread::sleep_for(std::chrono::minutes(3));
+            }
+
+            // Move to next track, wrapping around if at the end
+            currentTrackIndex = (currentTrackIndex + 1) % backgroundMusicTracks.size();
+          } else {
+            // If sound data retrieval fails, wait a bit before trying again
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+          }
+        } else {
+          // If muted, just wait a bit
+          std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+      }
+
+      musicThreadRunning = false;
+    }).detach();
+  }
+#else
+  // PulseAudio implementation - Background music cycling with thread
+  static bool musicThreadRunning = false;
+  static std::atomic<bool> stopFlag(false);
+
+  // Kill existing thread if it's running but shouldn't be
+  if (musicThreadRunning && (musicPaused || !sound_enabled_)) {
+    stopFlag = true;
+    // Give a moment for the thread to exit
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    musicThreadRunning = false;
+  }
+
+  // Only start the thread if music should be playing and thread isn't already running
+  if (!musicThreadRunning && sound_enabled_ && !musicPaused) {
+    musicThreadRunning = true;
+    stopFlag = false;
+
+    std::thread([this, &stopFlag]() {
+      // Background music tracks to cycle through
+      const std::vector<SoundEvent> backgroundMusicTracks = {
+        SoundEvent::BackgroundMusic,
+        SoundEvent::BackgroundMusic2,
+        SoundEvent::BackgroundMusic3,
+        SoundEvent::BackgroundMusic4,
+        SoundEvent::BackgroundMusic5
+      };
+
+      AudioManager& audioManager = AudioManager::getInstance();
+      size_t currentTrackIndex = 0;
+
+      while (sound_enabled_ && !stopFlag && !musicPaused) {
+        // Get the current background music track
+        SoundEvent audioEvent = backgroundMusicTracks[currentTrackIndex];
+
+        bool isMuted = audioManager.isMuted();
 
         if (!isMuted) {
           // Play the sound and wait for it to complete
-          AudioManager::getInstance().playSoundAndWait(audioEvent);
+          audioManager.playSoundAndWait(audioEvent);
+
+          // Move to next track, wrapping around if at the end
+          currentTrackIndex = (currentTrackIndex + 1) % backgroundMusicTracks.size();
         }
 
-        // Short delay between loops
+        // Short delay between loops to prevent tight looping
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
       }
 
