@@ -3,6 +3,11 @@
 # Extended with FFMPEG support for MIDI to WAV conversion
 # Modified to convert WAV to MP3 and only pack MP3 files
 
+# MIDI Conversion
+FLUIDSYNTH = fluidsynth
+SOUNDFONT = /usr/share/sounds/sf2/FluidR3_GM.sf2  # Default soundfont path, adjust as needed
+FLUIDSYNTH_OPTS = -ni -g 1 -F
+
 # Compiler settings
 CXX_LINUX = g++
 CXX_WIN = x86_64-w64-mingw32-gcc
@@ -199,8 +204,8 @@ convert-midi: $(WAV_FROM_MIDI)
 
 # Rule to convert .mid to .wav files
 %.wav: %.mid
-	@echo "Converting $< to $@..."
-	@$(FFMPEG) $(FFMPEG_OPTS) $< $@
+	@echo "Converting $< to $@ using FluidSynth..."
+	@$(FLUIDSYNTH) $(FLUIDSYNTH_OPTS) $@ $(SOUNDFONT) $
 
 #
 # WAV to MP3 conversion
