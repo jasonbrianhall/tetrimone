@@ -111,9 +111,22 @@ bool AudioManager::loadSound(SoundEvent event, const std::string &filePath) {
   return true;
 }
 
-bool AudioManager::loadSoundFromMemory(SoundEvent event,
+size_t AudioManager::getSoundLength(SoundEvent event) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  
+  auto it = sounds_.find(event);
+  if (it == sounds_.end()) {
+    return 0;
+  }
+  
+  return it->second.length;
+}
+
+// Custom Audio Manager function to load sound from memory
+bool AudioManager::loadSoundFromMemory(SoundEvent event, 
                                        const std::vector<uint8_t> &data,
-                                       const std::string &format) {
+                                       const std::string &format,
+                                       size_t length) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   if (!initialized_) {
@@ -136,6 +149,7 @@ bool AudioManager::loadSoundFromMemory(SoundEvent event,
   SoundData soundData;
   soundData.format = formatLower;
   soundData.data = data; // Copy the data
+  soundData.length = length; // Store the length
 
   // Store the sound data
   sounds_[event] = std::move(soundData);

@@ -68,6 +68,8 @@ public:
   // Get the singleton instance
   static AudioManager &getInstance();
 
+  size_t getSoundLength(SoundEvent event);
+
   // Play background music with looping (for Windows)
   void playBackgroundMusicLooped(const std::vector<uint8_t>& data, const std::string& format);
   
@@ -93,7 +95,7 @@ public:
 
   // Load a sound from memory
   bool loadSoundFromMemory(SoundEvent event, const std::vector<uint8_t> &data,
-                           const std::string &format);
+                           const std::string &format, size_t);
 
   // Play a sound asynchronously
   void playSound(SoundEvent event);
@@ -125,6 +127,7 @@ private:
   struct SoundData {
     std::vector<uint8_t> data;
     std::string format;
+    size_t length = 0;
   };
 
   std::unordered_map<SoundEvent, SoundData> sounds_;
