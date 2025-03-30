@@ -1,6 +1,7 @@
 # Makefile for Tetris with Windows and Linux Support
 # Configurable audio backend (SDL or PulseAudio)
 # Extended with FFMPEG support for MIDI to WAV conversion
+# Modified to convert WAV to MP3 and only pack MP3 files
 
 # Compiler settings
 CXX_LINUX = g++
@@ -28,7 +29,7 @@ else
 endif
 
 # Source files
-SRCS_COMMON = src/tetris.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp
+SRCS_COMMON = src/tetris.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src/windowsaudioplayer.cpp
 
@@ -57,7 +58,7 @@ CXXFLAGS_LINUX_DEBUG = $(CXXFLAGS_LINUX) $(DEBUG_FLAGS)
 CXXFLAGS_WIN_DEBUG = $(CXXFLAGS_WIN) $(DEBUG_FLAGS)
 
 # Linker flags
-LDFLAGS_LINUX = $(GTK_LIBS_LINUX) $(SDL_LIBS_LINUX) $(AUDIO_LIBS_LINUX) $(ZIP_LIBS_LINUX) -pthread
+LDFLAGS_LINUX = $(GTK_LIBS_LINUX) $(SDL_LIBS_LINUX) $(AUDIO_LIBS_LINUX) $(ZIP_LIBS_LINUX) -pthread -lmpg123 -lsndfile
 LDFLAGS_WIN = $(GTK_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) -lwinmm -lstdc++ -mwindows
 
 # Object files
@@ -90,13 +91,16 @@ BACKGROUND_ZIP = background.zip
 SOUND_DIR = sound
 SOUND_ZIP = sound.zip
 
-# MIDI to WAV conversion settings
+# Audio conversion settings
+WAV_FILES := $(wildcard $(SOUND_DIR)/*.wav)
 MIDI_FILES := $(wildcard $(SOUND_DIR)/*.mid)
 WAV_FROM_MIDI := $(MIDI_FILES:.mid=.wav)
+MP3_FROM_WAV := $(WAV_FILES:.wav=.mp3) $(WAV_FROM_MIDI:.wav=.mp3)
 
-# FFmpeg command for MIDI to WAV conversion
+# FFmpeg command for audio conversion
 FFMPEG = ffmpeg
 FFMPEG_OPTS = -y -loglevel error -i
+FFMPEG_MP3_OPTS = -codec:a libmp3lame -qscale:a 2
 
 # Create necessary directories
 $(shell mkdir -p $(BUILD_DIR_LINUX)/src $(BUILD_DIR_WIN)/src \
@@ -139,7 +143,7 @@ pulse-debug:
 # Linux build targets
 #
 .PHONY: tetris-linux
-tetris-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX) pack-backgrounds-linux convert-midi pack-sounds
+tetris-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX) pack-backgrounds-linux convert-midi convert-wav-to-mp3 pack-sounds
 
 $(BUILD_DIR_LINUX)/$(TARGET_LINUX): $(addprefix $(BUILD_DIR_LINUX)/,$(OBJS_LINUX))
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
@@ -152,7 +156,7 @@ $(BUILD_DIR_LINUX)/%.o: %.cpp
 # Linux debug targets
 #
 .PHONY: tetris-linux-debug
-tetris-linux-debug: $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG) pack-backgrounds-linux-debug convert-midi pack-sounds link-sound-linux-debug
+tetris-linux-debug: $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG) pack-backgrounds-linux-debug convert-midi convert-wav-to-mp3 pack-sounds link-sound-linux-debug
 
 $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG): $(addprefix $(BUILD_DIR_LINUX_DEBUG)/,$(OBJS_LINUX_DEBUG))
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
@@ -165,7 +169,7 @@ $(BUILD_DIR_LINUX_DEBUG)/%.debug.o: %.cpp
 # Windows build targets
 #
 .PHONY: tetris-windows
-tetris-windows: $(BUILD_DIR_WIN)/$(TARGET_WIN) tetris-collect-dlls pack-backgrounds-windows convert-midi pack-sounds link-sound-windows
+tetris-windows: $(BUILD_DIR_WIN)/$(TARGET_WIN) tetris-collect-dlls pack-backgrounds-windows convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows
 
 $(BUILD_DIR_WIN)/$(TARGET_WIN): $(addprefix $(BUILD_DIR_WIN)/,$(OBJS_WIN))
 	$(CXX_WIN) $^ -o $@ $(LDFLAGS_WIN)
@@ -178,7 +182,7 @@ $(BUILD_DIR_WIN)/%.win.o: %.cpp
 # Windows debug targets
 #
 .PHONY: tetris-windows-debug
-tetris-windows-debug: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) tetris-collect-debug-dlls pack-backgrounds-windows-debug convert-midi pack-sounds link-sound-windows-debug
+tetris-windows-debug: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) tetris-collect-debug-dlls pack-backgrounds-windows-debug convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows-debug
 
 $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG): $(addprefix $(BUILD_DIR_WIN_DEBUG)/,$(OBJS_WIN_DEBUG))
 	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) $^ -o $@ $(LDFLAGS_WIN)
@@ -197,6 +201,17 @@ convert-midi: $(WAV_FROM_MIDI)
 %.wav: %.mid
 	@echo "Converting $< to $@..."
 	@$(FFMPEG) $(FFMPEG_OPTS) $< $@
+
+#
+# WAV to MP3 conversion
+#
+.PHONY: convert-wav-to-mp3
+convert-wav-to-mp3: convert-midi $(MP3_FROM_WAV)
+
+# Rule to convert .wav to .mp3 files
+%.mp3: %.wav
+	@echo "Converting $< to $@..."
+	@$(FFMPEG) $(FFMPEG_OPTS) $< $(FFMPEG_MP3_OPTS) $@
 
 #
 # DLL collection for Windows builds
@@ -245,10 +260,10 @@ pack-backgrounds-all: pack-backgrounds-linux pack-backgrounds-linux-debug pack-b
 # Sound file packing and linking
 #
 .PHONY: pack-sounds
-pack-sounds:
-	@echo "Creating sound.zip in sound directory..."
-	cd $(SOUND_DIR) && zip -r $(SOUND_ZIP) *.wav
-	@echo "Sound files packed to $(SOUND_DIR)/$(SOUND_ZIP)"
+pack-sounds: convert-wav-to-mp3
+	@echo "Creating sound.zip with MP3 files in sound directory..."
+	cd $(SOUND_DIR) && zip -r $(SOUND_ZIP) *.mp3
+	@echo "MP3 files packed to $(SOUND_DIR)/$(SOUND_ZIP)"
 	@$(MAKE) link-sound-linux
 
 .PHONY: link-sound-linux
@@ -285,21 +300,33 @@ clean:
 	rm -f $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG)
 	rm -f $(SOUND_DIR)/$(SOUND_ZIP)
 
-# Clean converted MIDI files
-.PHONY: clean-midi
-clean-midi:
-	@echo "Cleaning converted MIDI files..."
+# Clean converted audio files
+.PHONY: clean-audio
+clean-audio:
+	@echo "Cleaning converted audio files..."
 	@for midi in $(MIDI_FILES); do \
 		wav_file="$${midi%.mid}.wav"; \
+		mp3_file="$${midi%.mid}.mp3"; \
 		if [ -f "$$wav_file" ]; then \
 			echo "Removing $$wav_file"; \
 			rm -f "$$wav_file"; \
 		fi; \
+		if [ -f "$$mp3_file" ]; then \
+			echo "Removing $$mp3_file"; \
+			rm -f "$$mp3_file"; \
+		fi; \
+	done
+	@for wav in $(WAV_FILES); do \
+		mp3_file="$${wav%.wav}.mp3"; \
+		if [ -f "$$mp3_file" ]; then \
+			echo "Removing $$mp3_file"; \
+			rm -f "$$mp3_file"; \
+		fi; \
 	done
 
-# Full clean including converted MIDI files
+# Full clean including converted audio files
 .PHONY: clean-all
-clean-all: clean clean-midi
+clean-all: clean clean-audio
 
 # Help target
 .PHONY: help
@@ -320,15 +347,16 @@ help:
 	@echo "  make tetris-windows - Build Tetris for Windows (requires MinGW)"
 	@echo ""
 	@echo "  make convert-midi  - Convert MIDI files to WAV format using ffmpeg"
+	@echo "  make convert-wav-to-mp3 - Convert WAV files to MP3 format using ffmpeg"
 	@echo ""
 	@echo "  make pack-backgrounds-all - Pack background images for all build targets"
 	@echo "  make pack-backgrounds-linux - Pack background images for Linux build"
 	@echo "  make pack-backgrounds-windows - Pack background images for Windows build"
 	@echo ""
-	@echo "  make pack-sounds   - Pack sound files and create symbolic links"
+	@echo "  make pack-sounds   - Pack MP3 sound files and create symbolic links"
 	@echo "  make link-sound-all - Create symbolic links to sound.zip in all build directories"
 	@echo ""
 	@echo "  make clean         - Remove all build files"
-	@echo "  make clean-midi    - Remove all converted MIDI files"
-	@echo "  make clean-all     - Remove all build files and converted MIDI files"
+	@echo "  make clean-audio   - Remove all converted MIDI and MP3 files"
+	@echo "  make clean-all     - Remove all build files and converted audio files"
 	@echo "  make help          - Show this help message"

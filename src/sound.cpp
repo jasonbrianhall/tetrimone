@@ -14,6 +14,7 @@
 #ifdef _WIN32
 #include <direct.h>
 #endif
+#include "audioconverter.h"
 
 // Function to extract a file from a ZIP archive into memory
 bool TetrisBoard::extractFileFromZip(const std::string &zipFilePath,
@@ -108,21 +109,21 @@ bool TetrisBoard::initializeAudio() {
   // Try to initialize the audio system
   if (AudioManager::getInstance().initialize()) {
     // Attempt to load the theme music
-    if (loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.wav") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusic2, "TetrisA.wav") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusic3, "TetrisB.wav") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusic4, "TetrisC.wav") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusic5, "futuristic.wav") &&
-        loadSoundFromZip(GameSoundEvent::Gameover, "gameover.wav") &&
-        loadSoundFromZip(GameSoundEvent::Clear, "clear.wav") &&
-        loadSoundFromZip(GameSoundEvent::Drop, "drop.wav") &&
-        loadSoundFromZip(GameSoundEvent::LateralMove, "lateralmove.wav") &&
-        loadSoundFromZip(GameSoundEvent::LevelUp, "levelup.wav") &&
-        loadSoundFromZip(GameSoundEvent::Rotate, "rotate.wav") &&
-        loadSoundFromZip(GameSoundEvent::Select, "select.wav") &&
-        loadSoundFromZip(GameSoundEvent::Start, "start.wav") &&
-        loadSoundFromZip(GameSoundEvent::Tetris, "tetris.wav") &&
-        loadSoundFromZip(GameSoundEvent::Excellent, "excellent.wav")) {
+    if (loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic2, "TetrisA.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic3, "TetrisB.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic4, "TetrisC.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic5, "futuristic.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Gameover, "gameover.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Clear, "clear.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Drop, "drop.mp3") &&
+        loadSoundFromZip(GameSoundEvent::LateralMove, "lateralmove.mp3") &&
+        loadSoundFromZip(GameSoundEvent::LevelUp, "levelup.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Rotate, "rotate.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Select, "select.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Start, "start.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Tetris, "tetris.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Excellent, "excellent.mp3")) {
       return true;
     } else {
       std::cerr << "Failed to load background music. Sound will be disabled."
@@ -145,84 +146,96 @@ void TetrisBoard::dismissSplashScreen() {
 }
 
 bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
-                                   const std::string &soundFileName) {
-  // Extract the sound file from the ZIP archive
-  std::vector<uint8_t> soundData;
-  if (!extractFileFromZip(sounds_zip_path_, soundFileName, soundData)) {
-    std::cerr << "Failed to extract sound file from ZIP archive: "
-              << soundFileName << std::endl;
-    return false;
-  }
+                                   const std::string& soundFileName) {
+    // Extract the sound file from the ZIP archive
+    std::vector<uint8_t> soundData;
+    if (!extractFileFromZip(sounds_zip_path_, soundFileName, soundData)) {
+        std::cerr << "Failed to extract sound file from ZIP archive: "
+                << soundFileName << std::endl;
+        return false;
+    }
 
-  // Get file extension to determine format
-  std::string format;
-  size_t dotPos = soundFileName.find_last_of('.');
-  if (dotPos != std::string::npos) {
-    format = soundFileName.substr(dotPos + 1);
-    // Convert to lowercase
-    std::transform(format.begin(), format.end(), format.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-  } else {
-    std::cerr << "Sound file has no extension: " << soundFileName << std::endl;
-    return false;
-  }
+    // Get file extension to determine format
+    std::string format;
+    size_t dotPos = soundFileName.find_last_of('.');
+    if (dotPos != std::string::npos) {
+        format = soundFileName.substr(dotPos + 1);
+        // Convert to lowercase
+        std::transform(format.begin(), format.end(), format.begin(),
+                    [](unsigned char c) { return std::tolower(c); });
+    } else {
+        std::cerr << "Sound file has no extension: " << soundFileName << std::endl;
+        return false;
+    }
 
-  // Map GameSoundEvent to AudioManager's SoundEvent
-  SoundEvent audioEvent;
-  switch (event) {
-  case GameSoundEvent::BackgroundMusic:
-    audioEvent = SoundEvent::BackgroundMusic;
-    break;
-  case GameSoundEvent::BackgroundMusic2:
-    audioEvent = SoundEvent::BackgroundMusic2;
-    break;
-  case GameSoundEvent::BackgroundMusic3:
-    audioEvent = SoundEvent::BackgroundMusic3;
-    break;
-  case GameSoundEvent::BackgroundMusic4:
-    audioEvent = SoundEvent::BackgroundMusic4;
-    break;
-  case GameSoundEvent::BackgroundMusic5:
-    audioEvent = SoundEvent::BackgroundMusic5;
-    break;
-  case GameSoundEvent::Gameover:
-    audioEvent = SoundEvent::Gameover;
-    break;
-  case GameSoundEvent::Clear:
-    audioEvent = SoundEvent::Clear;
-    break;
-  case GameSoundEvent::Drop:
-    audioEvent = SoundEvent::Drop;
-    break;
-  case GameSoundEvent::LateralMove:
-    audioEvent = SoundEvent::LateralMove;
-    break;
-  case GameSoundEvent::LevelUp:
-    audioEvent = SoundEvent::LevelUp;
-    break;
-  case GameSoundEvent::Rotate:
-    audioEvent = SoundEvent::Rotate;
-    break;
-  case GameSoundEvent::Select:
-    audioEvent = SoundEvent::Select;
-    break;
-  case GameSoundEvent::Start:
-    audioEvent = SoundEvent::Start;
-    break;
-  case GameSoundEvent::Tetris:
-    audioEvent = SoundEvent::Tetris;
-    break;
-  case GameSoundEvent::Excellent:
-    audioEvent = SoundEvent::Excellent;
-    break;
-  default:
-    std::cerr << "Unknown sound event" << std::endl;
-    return false;
-  }
+    // Check if it's an MP3 and convert to WAV if needed
+    if (format == "mp3") {
+        std::vector<uint8_t> wavData;
+        if (!convertMp3ToWavInMemory(soundData, wavData)) {
+            std::cerr << "Failed to convert MP3 to WAV: " << soundFileName << std::endl;
+            return false;
+        }
+        
+        // Replace the original data with the converted WAV data
+        soundData = std::move(wavData);
+        format = "wav";
+    }
 
-  // Load the sound data into the audio manager
-  return AudioManager::getInstance().loadSoundFromMemory(audioEvent, soundData,
-                                                         format);
+    // Map GameSoundEvent to AudioManager's SoundEvent
+    SoundEvent audioEvent;
+    switch (event) {
+    case GameSoundEvent::BackgroundMusic:
+        audioEvent = SoundEvent::BackgroundMusic;
+        break;
+    case GameSoundEvent::BackgroundMusic2:
+        audioEvent = SoundEvent::BackgroundMusic2;
+        break;
+    case GameSoundEvent::BackgroundMusic3:
+        audioEvent = SoundEvent::BackgroundMusic3;
+        break;
+    case GameSoundEvent::BackgroundMusic4:
+        audioEvent = SoundEvent::BackgroundMusic4;
+        break;
+    case GameSoundEvent::BackgroundMusic5:
+        audioEvent = SoundEvent::BackgroundMusic5;
+        break;
+    case GameSoundEvent::Gameover:
+        audioEvent = SoundEvent::Gameover;
+        break;
+    case GameSoundEvent::Clear:
+        audioEvent = SoundEvent::Clear;
+        break;
+    case GameSoundEvent::Drop:
+        audioEvent = SoundEvent::Drop;
+        break;
+    case GameSoundEvent::LateralMove:
+        audioEvent = SoundEvent::LateralMove;
+        break;
+    case GameSoundEvent::LevelUp:
+        audioEvent = SoundEvent::LevelUp;
+        break;
+    case GameSoundEvent::Rotate:
+        audioEvent = SoundEvent::Rotate;
+        break;
+    case GameSoundEvent::Select:
+        audioEvent = SoundEvent::Select;
+        break;
+    case GameSoundEvent::Start:
+        audioEvent = SoundEvent::Start;
+        break;
+    case GameSoundEvent::Tetris:
+        audioEvent = SoundEvent::Tetris;
+        break;
+    case GameSoundEvent::Excellent:
+        audioEvent = SoundEvent::Excellent;
+        break;
+    default:
+        std::cerr << "Unknown sound event" << std::endl;
+        return false;
+    }
+
+    // Load the sound data into the audio manager
+    return AudioManager::getInstance().loadSoundFromMemory(audioEvent, soundData, format);
 }
 
 void TetrisBoard::playBackgroundMusic() {
