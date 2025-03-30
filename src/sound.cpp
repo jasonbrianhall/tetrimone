@@ -11,6 +11,7 @@
 #include <thread>
 #include <vector>
 #include <zip.h>
+#include <random>
 #ifdef _WIN32
 #include <direct.h>
 #endif
@@ -245,6 +246,8 @@ void TetrisBoard::playBackgroundMusic() {
   // Windows implementation - Background music cycling with thread
   static bool musicThreadRunning = false;
   static std::atomic<bool> stopFlag(false);
+  static std::random_device rd;
+  static std::mt19937 gen(rd());
 
   // Kill existing thread if it's running but shouldn't be
   if (musicThreadRunning && (musicPaused || !sound_enabled_)) {
@@ -270,11 +273,11 @@ void TetrisBoard::playBackgroundMusic() {
       };
 
       AudioManager& audioManager = AudioManager::getInstance();
-      size_t currentTrackIndex = 0;
+      std::uniform_int_distribution<> dis(0, backgroundMusicTracks.size() - 1);
 
       while (sound_enabled_ && !stopFlag && !musicPaused) {
-        // Get the current background music track
-        SoundEvent currentTrack = backgroundMusicTracks[currentTrackIndex];
+        // Randomly select a track
+        SoundEvent currentTrack = backgroundMusicTracks[dis(gen)];
 
         // Check if not muted
         bool isMuted = audioManager.isMuted();
@@ -297,9 +300,6 @@ void TetrisBoard::playBackgroundMusic() {
               // Default to 3 minutes if length is unknown
               std::this_thread::sleep_for(std::chrono::minutes(3));
             }
-
-            // Move to next track, wrapping around if at the end
-            currentTrackIndex = (currentTrackIndex + 1) % backgroundMusicTracks.size();
           } else {
             // If sound data retrieval fails, wait a bit before trying again
             std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -314,7 +314,7 @@ void TetrisBoard::playBackgroundMusic() {
     }).detach();
   }
 #else
-  // PulseAudio implementation - Background music cycling with thread
+  // Existing PulseAudio implementation remains the same
   static bool musicThreadRunning = false;
   static std::atomic<bool> stopFlag(false);
 
