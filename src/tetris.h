@@ -531,6 +531,16 @@ struct TetrisApp {
     bool joystickEnabled;
     guint joystickTimerId;
     JoystickMapping joystickMapping;
+
+    GtkWidget* musicSubMenu;
+    GtkWidget* musicMenuItem;
+    GtkWidget* musicOffMenuItem;
+    GtkWidget* musicThemeMenuItem;
+    GtkWidget* musicTetrisAMenuItem;
+    GtkWidget* musicTetrisBMenuItem;
+    GtkWidget* musicTetrisCMenuItem;
+    GtkWidget* musicFuturisticMenuItem;
+
 };
 
 // Class for the game board
@@ -628,6 +638,11 @@ public:
     cairo_surface_t* getOldBackground() const { return oldBackground; }
     int getTransitionDirection() const { return transitionDirection; }
 
+    int currentMusicTrack = 0; // Track index (0-4 for the 5 music tracks)
+    bool musicEnabled = true;  // Flag to control if music is playing (separate from sound effects)
+    void selectBackgroundMusic(int trackIndex);
+    void playCurrentBackgroundMusic();
+
 };
 
 // Function declarations
@@ -680,7 +695,7 @@ void onOpacityValueChanged(GtkRange* range, gpointer userData);
 void rebuildGameUI(TetrisApp* app);
 void updateSizeValueLabel(GtkRange* range, gpointer data);
 void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData);
-
+void onSelectMusic(GtkMenuItem* menuItem, gpointer userData);
 #endif // TETRIS_H
 
 

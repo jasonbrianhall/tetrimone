@@ -1309,6 +1309,72 @@ gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), blockSizeMenuItem);
 // Connect signal handler for block size item
 g_signal_connect(G_OBJECT(blockSizeMenuItem), "activate",
                G_CALLBACK(onBlockSizeDialog), app);
+
+app->musicSubMenu = gtk_menu_new();
+app->musicMenuItem = gtk_menu_item_new_with_label("Background Music");
+gtk_menu_item_set_submenu(GTK_MENU_ITEM(app->musicMenuItem), app->musicSubMenu);
+gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), app->musicMenuItem);
+
+// Connect signals for submenu activation/deactivation
+g_signal_connect(G_OBJECT(app->musicSubMenu), "show", 
+               G_CALLBACK(onMenuActivated), app);
+g_signal_connect(G_OBJECT(app->musicSubMenu), "hide", 
+               G_CALLBACK(onMenuDeactivated), app);
+
+// Create radio menu items for music selection
+GSList* musicGroup = NULL;
+
+// Add "Off" option
+app->musicOffMenuItem = gtk_radio_menu_item_new_with_label(musicGroup, "Off");
+musicGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->musicOffMenuItem));
+g_object_set_data(G_OBJECT(app->musicOffMenuItem), "track-index", GINT_TO_POINTER(-1));
+gtk_menu_shell_append(GTK_MENU_SHELL(app->musicSubMenu), app->musicOffMenuItem);
+
+// Add separator
+gtk_menu_shell_append(GTK_MENU_SHELL(app->musicSubMenu), gtk_separator_menu_item_new());
+
+// Add music track options
+app->musicThemeMenuItem = gtk_radio_menu_item_new_with_label(musicGroup, "Theme (1)");
+musicGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->musicThemeMenuItem));
+g_object_set_data(G_OBJECT(app->musicThemeMenuItem), "track-index", GINT_TO_POINTER(0));
+gtk_menu_shell_append(GTK_MENU_SHELL(app->musicSubMenu), app->musicThemeMenuItem);
+
+app->musicTetrisAMenuItem = gtk_radio_menu_item_new_with_label(musicGroup, "Tetris A (2)");
+musicGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->musicTetrisAMenuItem));
+g_object_set_data(G_OBJECT(app->musicTetrisAMenuItem), "track-index", GINT_TO_POINTER(1));
+gtk_menu_shell_append(GTK_MENU_SHELL(app->musicSubMenu), app->musicTetrisAMenuItem);
+
+app->musicTetrisBMenuItem = gtk_radio_menu_item_new_with_label(musicGroup, "Tetris B (3)");
+musicGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->musicTetrisBMenuItem));
+g_object_set_data(G_OBJECT(app->musicTetrisBMenuItem), "track-index", GINT_TO_POINTER(2));
+gtk_menu_shell_append(GTK_MENU_SHELL(app->musicSubMenu), app->musicTetrisBMenuItem);
+
+app->musicTetrisCMenuItem = gtk_radio_menu_item_new_with_label(musicGroup, "Tetris C (4)");
+musicGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->musicTetrisCMenuItem));
+g_object_set_data(G_OBJECT(app->musicTetrisCMenuItem), "track-index", GINT_TO_POINTER(3));
+gtk_menu_shell_append(GTK_MENU_SHELL(app->musicSubMenu), app->musicTetrisCMenuItem);
+
+app->musicFuturisticMenuItem = gtk_radio_menu_item_new_with_label(musicGroup, "Futuristic (5)");
+musicGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->musicFuturisticMenuItem));
+g_object_set_data(G_OBJECT(app->musicFuturisticMenuItem), "track-index", GINT_TO_POINTER(4));
+gtk_menu_shell_append(GTK_MENU_SHELL(app->musicSubMenu), app->musicFuturisticMenuItem);
+
+// Set Theme as default
+gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->musicThemeMenuItem), TRUE);
+
+// Connect signals for all music menu items
+g_signal_connect(G_OBJECT(app->musicOffMenuItem), "activate", G_CALLBACK(onSelectMusic), app);
+g_signal_connect(G_OBJECT(app->musicThemeMenuItem), "activate", G_CALLBACK(onSelectMusic), app);
+g_signal_connect(G_OBJECT(app->musicTetrisAMenuItem), "activate", G_CALLBACK(onSelectMusic), app);
+g_signal_connect(G_OBJECT(app->musicTetrisBMenuItem), "activate", G_CALLBACK(onSelectMusic), app);
+g_signal_connect(G_OBJECT(app->musicTetrisCMenuItem), "activate", G_CALLBACK(onSelectMusic), app);
+g_signal_connect(G_OBJECT(app->musicFuturisticMenuItem), "activate", G_CALLBACK(onSelectMusic), app);
+
+// Make music menu sensitive only when sound is enabled
+g_object_bind_property(app->soundToggleMenuItem, "active",
+                    app->musicMenuItem, "sensitive",
+                    G_BINDING_DEFAULT);
+
     
     // Help menu
     GtkWidget* helpMenu = gtk_menu_new();
@@ -2231,6 +2297,32 @@ void updateSizeValueLabel(GtkRange* range, gpointer data) {
     char buf[32];
     snprintf(buf, sizeof(buf), "Current size: %d", newSize);
     gtk_label_set_text(GTK_LABEL(label), buf);
+}
+
+void onSelectMusic(GtkMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    int trackIndex = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(menuItem), "track-index"));
+    
+    app->board->selectBackgroundMusic(trackIndex);
+    
+    // Update the app's background music playing flag
+    if (trackIndex >= 0) {
+        app->backgroundMusicPlaying = !app->board->isPaused();
+    } else {
+        app->backgroundMusicPlaying = false;
+    }
+    
+    // Update the active radio menu item
+    GSList* group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->musicOffMenuItem));
+    for (GSList* item = group; item != NULL; item = item->next) {
+        int itemTrackIndex = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(item->data), "track-index"));
+        if (itemTrackIndex == trackIndex) {
+            g_signal_handlers_block_by_func(G_OBJECT(item->data), (gpointer)onSelectMusic, app);
+            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item->data), TRUE);
+            g_signal_handlers_unblock_by_func(G_OBJECT(item->data), (gpointer)onSelectMusic, app);
+            break;
+        }
+    }
 }
 
 int main(int argc, char* argv[]) {
