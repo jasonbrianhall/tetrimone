@@ -108,7 +108,7 @@ THEME_ALL_MP3 = $(SOUND_DIR)/themeall.mp3
 # FFmpeg command for audio conversion
 FFMPEG = ffmpeg
 FFMPEG_OPTS = -y -loglevel error -i
-FFMPEG_MP3_OPTS = -codec:a libmp3lame -qscale:a 2
+FFMPEG_MP3_OPTS = -af "silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB" -codec:a libmp3lame -qscale:a 2
 
 # Create necessary directories
 $(shell mkdir -p $(BUILD_DIR_LINUX)/src $(BUILD_DIR_WIN)/src \
