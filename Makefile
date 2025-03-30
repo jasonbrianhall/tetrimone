@@ -102,6 +102,9 @@ MIDI_FILES := $(wildcard $(SOUND_DIR)/*.mid)
 WAV_FROM_MIDI := $(MIDI_FILES:.mid=.wav)
 MP3_FROM_WAV := $(WAV_FILES:.wav=.mp3) $(WAV_FROM_MIDI:.wav=.mp3)
 
+# Combined theme file for Windows
+THEME_ALL_MP3 = $(SOUND_DIR)/themeall.mp3
+
 # FFmpeg command for audio conversion
 FFMPEG = ffmpeg
 FFMPEG_OPTS = -y -loglevel error -i
@@ -208,15 +211,30 @@ convert-midi: $(WAV_FROM_MIDI)
 	@$(FLUIDSYNTH) $(FLUIDSYNTH_OPTS) $@ $(SOUNDFONT) $<
 
 #
-# WAV to MP3 conversion
+# WAV to MP3 conversion and combined theme file creation
 #
 .PHONY: convert-wav-to-mp3
-convert-wav-to-mp3: convert-midi $(MP3_FROM_WAV)
+convert-wav-to-mp3: convert-midi $(MP3_FROM_WAV) $(THEME_ALL_MP3)
 
 # Rule to convert .wav to .mp3 files
 %.mp3: %.wav
 	@echo "Converting $< to $@..."
 	@$(FFMPEG) $(FFMPEG_OPTS) $< $(FFMPEG_MP3_OPTS) $@
+
+# Rule to create the combined theme MP3 file from multiple WAV files
+$(THEME_ALL_MP3): $(WAV_FROM_MIDI)
+	@echo "Creating combined theme file $@..."
+	@# Create a file list for the theme files
+	@echo "file '$(SOUND_DIR)/theme.wav'" > $(SOUND_DIR)/theme_list.txt
+	@echo "file '$(SOUND_DIR)/TetrisA.wav'" >> $(SOUND_DIR)/theme_list.txt
+	@echo "file '$(SOUND_DIR)/TetrisB.wav'" >> $(SOUND_DIR)/theme_list.txt
+	@echo "file '$(SOUND_DIR)/TetrisC.wav'" >> $(SOUND_DIR)/theme_list.txt
+	@echo "file '$(SOUND_DIR)/futuristic.wav'" >> $(SOUND_DIR)/theme_list.txt
+	@# Concatenate the files using ffmpeg
+	@$(FFMPEG) -f concat -safe 0 -i $(SOUND_DIR)/theme_list.txt $(FFMPEG_MP3_OPTS) $@
+	@# Clean up the temporary file list
+	@rm $(SOUND_DIR)/theme_list.txt
+	@echo "Created combined theme file $@"
 
 #
 # DLL collection for Windows builds
@@ -328,6 +346,10 @@ clean-audio:
 			rm -f "$$mp3_file"; \
 		fi; \
 	done
+	@if [ -f "$(THEME_ALL_MP3)" ]; then \
+		echo "Removing $(THEME_ALL_MP3)"; \
+		rm -f "$(THEME_ALL_MP3)"; \
+	fi
 
 # Full clean including converted audio files
 .PHONY: clean-all

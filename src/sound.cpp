@@ -97,7 +97,13 @@ bool TetrisBoard::initializeAudio() {
   // Try to initialize the audio system
   if (AudioManager::getInstance().initialize()) {
     // Attempt to load the theme music
-    if (loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.mp3") &&
+    if (
+    
+#ifdef _WIN32
+    loadSoundFromZip(GameSoundEvent::BackgroundMusic, "themeall.mp3") &&
+#else    
+    loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.mp3") &&
+#endif
         loadSoundFromZip(GameSoundEvent::BackgroundMusic2, "TetrisA.mp3") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic3, "TetrisB.mp3") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic4, "TetrisC.mp3") &&
@@ -265,12 +271,7 @@ void TetrisBoard::playBackgroundMusic() {
     std::thread([this, &stopFlag]() {
       // Background music tracks to cycle through
       const std::vector<SoundEvent> backgroundMusicTracks = {
-        SoundEvent::BackgroundMusic,
-        SoundEvent::BackgroundMusic2,
-        SoundEvent::BackgroundMusic3,
-        SoundEvent::BackgroundMusic4,
-        SoundEvent::BackgroundMusic5
-      };
+            };
 
       AudioManager& audioManager = AudioManager::getInstance();
       std::uniform_int_distribution<> dis(0, backgroundMusicTracks.size() - 1);
