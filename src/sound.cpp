@@ -249,11 +249,9 @@ void TetrisBoard::playBackgroundMusic() {
   }
 
 #ifdef _WIN32
-  // Windows implementation - Background music cycling with thread
+  // Windows implementation - Play the combined themeall.mp3 file on a loop
   static bool musicThreadRunning = false;
   static std::atomic<bool> stopFlag(false);
-  static std::random_device rd;
-  static std::mt19937 gen(rd());
 
   // Kill existing thread if it's running but shouldn't be
   if (musicThreadRunning && (musicPaused || !sound_enabled_)) {
@@ -269,29 +267,21 @@ void TetrisBoard::playBackgroundMusic() {
     stopFlag = false;
 
     std::thread([this, &stopFlag]() {
-      // Background music tracks to cycle through
-      const std::vector<SoundEvent> backgroundMusicTracks = {
-            };
-
       AudioManager& audioManager = AudioManager::getInstance();
-      std::uniform_int_distribution<> dis(0, backgroundMusicTracks.size() - 1);
 
       while (sound_enabled_ && !stopFlag && !musicPaused) {
-        // Randomly select a track
-        SoundEvent currentTrack = backgroundMusicTracks[dis(gen)];
-
         // Check if not muted
         bool isMuted = audioManager.isMuted();
 
         if (!isMuted) {
-          // Get the sound data and format
+          // Get the sound data and format for the combined theme file
           std::vector<uint8_t> soundData;
           std::string format;
-          if (audioManager.getSoundData(currentTrack, soundData, format)) {
+          if (audioManager.getSoundData(SoundEvent::BackgroundMusic, soundData, format)) {
             // Get the track length
-            size_t trackLength = audioManager.getSoundLength(currentTrack);
+            size_t trackLength = audioManager.getSoundLength(SoundEvent::BackgroundMusic);
 
-            // Cast to the WindowsAudioPlayer and call its playBackgroundMusic method
+            // Play the combined theme file in a loop
             audioManager.playBackgroundMusicLooped(soundData, format);
 
             // Wait for the track length (or a reasonable default if length is 0)
