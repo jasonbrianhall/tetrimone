@@ -31,7 +31,7 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        dnf -y install ffmpeg mingw64-gcc mingw64-gcc-c++ mingw64-gtk3 mingw64-gtkmm30 wine wine-devel wixl binutils make zip unzip libzip-devel mingw64-libzip mingw64-SDL2 mingw64-SDL2_mixer fluidsynth fluid-soundfont-gm
+        dnf -y install ffmpeg mingw64-gcc mingw64-gcc-c++ mingw64-gtk3 mingw64-gtkmm30 wine wine-devel wixl binutils make zip unzip libzip-devel mingw64-libzip mingw64-SDL2 mingw64-SDL2_mixer
 
     - name: Build GTK Version
       run: |
