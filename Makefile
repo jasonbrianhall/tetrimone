@@ -20,8 +20,8 @@ SDL_LIBS_LINUX := $(shell sdl2-config --libs)
 
 ifeq ($(AUDIO_BACKEND),pulse)
   AUDIO_SRCS_LINUX = src/pulseaudioplayer.cpp
-  AUDIO_FLAGS_LINUX = -DUSE_PULSEAUDIO $(shell pkg-config --cflags libpulse libpulse-simple)
-  AUDIO_LIBS_LINUX = $(shell pkg-config --libs libpulse libpulse-simple)
+  AUDIO_FLAGS_LINUX = -DUSE_PULSEAUDIO $(shell pkg-config --cflags libpulse libpulse-simple) -DUSE_SDL
+  AUDIO_LIBS_LINUX = $(shell pkg-config --libs libpulse libpulse-simple) -lSDL2_mixer
 else
   AUDIO_SRCS_LINUX = src/sdlaudioplayer.cpp
   AUDIO_FLAGS_LINUX = -DUSE_SDL
@@ -58,8 +58,8 @@ CXXFLAGS_LINUX_DEBUG = $(CXXFLAGS_LINUX) $(DEBUG_FLAGS)
 CXXFLAGS_WIN_DEBUG = $(CXXFLAGS_WIN) $(DEBUG_FLAGS)
 
 # Linker flags
-LDFLAGS_LINUX = $(GTK_LIBS_LINUX) $(SDL_LIBS_LINUX) $(AUDIO_LIBS_LINUX) $(ZIP_LIBS_LINUX) -pthread -lmpg123 -lsndfile
-LDFLAGS_WIN = $(GTK_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) -lwinmm -lstdc++ -mwindows
+LDFLAGS_LINUX = $(GTK_LIBS_LINUX) $(SDL_LIBS_LINUX) $(AUDIO_LIBS_LINUX) $(ZIP_LIBS_LINUX) -pthread
+LDFLAGS_WIN = $(GTK_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) -lwinmm -lstdc++
 
 # Object files
 OBJS_LINUX = $(SRCS_COMMON:.cpp=.o) $(SRCS_LINUX:.cpp=.o)
