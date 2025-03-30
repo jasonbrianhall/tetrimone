@@ -168,17 +168,17 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
         return false;
     }
 
-    // Check if it's an MP3 and convert to WAV if needed
+    // Check if it's an MP3 and convert to WAV
     if (format == "mp3") {
         std::vector<uint8_t> wavData;
-        if (!convertMp3ToWavInMemory(soundData, wavData)) {
+        if (convertMp3ToWavInMemory(soundData, wavData)) {
+            // Replace the original data with the converted WAV data
+            soundData = std::move(wavData);
+            format = "wav";
+        } else {
             std::cerr << "Failed to convert MP3 to WAV: " << soundFileName << std::endl;
             return false;
         }
-        
-        // Replace the original data with the converted WAV data
-        soundData = std::move(wavData);
-        format = "wav";
     }
 
     // Map GameSoundEvent to AudioManager's SoundEvent
