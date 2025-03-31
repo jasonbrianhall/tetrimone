@@ -156,3 +156,12 @@ This game is based on Tetris®, created by Alexey Pajitnov in 1984.
 Tetris® is a registered trademark of The Tetris Company, LLC.
 
 Original game published by ELORG (also, go watch the Tetris movie on AppleTV)
+
+## TODO
+
+* Audio is currently a singleton which means that Music and Audio can't be controlled separately.  This needs fixed.
+* Scroll bar to control audio and music volume levels
+* Ability to select which audio track the user wants
+* Thought about multiplayer support but didn't really architect it for MP support.  Would require a great deal of reengineering.
+* SDL support doesn't always select the right output device and currently don't have a good way to select the correct one.  Not a problem if using winmm or pulse audio.  
+
