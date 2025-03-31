@@ -34,7 +34,7 @@ else
 endif
 
 # Source files
-SRCS_COMMON = src/tetris.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp
+SRCS_COMMON = src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src/sdlaudioplayer.cpp
 SRCS_WIN_SDL = src/sdlaudioplayer.cpp
@@ -75,11 +75,11 @@ OBJS_LINUX_DEBUG = $(SRCS_COMMON:.cpp=.debug.o) $(SRCS_LINUX:.cpp=.debug.o)
 OBJS_WIN_DEBUG = $(SRCS_COMMON:.cpp=.win.debug.o) $(SRCS_WIN:.cpp=.win.debug.o)
 
 # Target executables
-TARGET_LINUX = tetris
-TARGET_WIN = tetris.exe
-TARGET_WIN_SDL = tetris.exe
-TARGET_LINUX_DEBUG = tetris_debug
-TARGET_WIN_DEBUG = tetris_debug.exe
+TARGET_LINUX = tetrimone
+TARGET_WIN = tetrimone.exe
+TARGET_WIN_SDL = tetrimone.exe
+TARGET_LINUX_DEBUG = tetrimone_debug
+TARGET_WIN_DEBUG = tetrimone_debug.exe
 
 # Build directories
 BUILD_DIR = build
@@ -123,10 +123,10 @@ all: linux
 
 # OS-specific builds
 .PHONY: windows
-windows: tetris-windows
+windows: tetrimone-windows
 
 .PHONY: linux
-linux: tetris-linux
+linux: tetrimone-linux
 
 # Audio-specific builds
 .PHONY: sdl
@@ -139,22 +139,22 @@ pulse:
 
 # Debug targets
 .PHONY: debug
-debug: tetris-linux-debug tetris-windows-debug
+debug: tetrimone-linux-debug tetrimone-windows-debug
 
 # Debug with specific audio backend
 .PHONY: sdl-debug
 sdl-debug:
-	$(MAKE) tetris-linux-debug AUDIO_BACKEND=sdl
+	$(MAKE) tetrimone-linux-debug AUDIO_BACKEND=sdl
 
 .PHONY: pulse-debug
 pulse-debug:
-	$(MAKE) tetris-linux-debug AUDIO_BACKEND=pulse
+	$(MAKE) tetrimone-linux-debug AUDIO_BACKEND=pulse
 
 #
 # Linux build targets
 #
-.PHONY: tetris-linux
-tetris-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX) pack-backgrounds-linux convert-midi convert-wav-to-mp3 pack-sounds
+.PHONY: tetrimone-linux
+tetrimone-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX) pack-backgrounds-linux convert-midi convert-wav-to-mp3 pack-sounds
 
 $(BUILD_DIR_LINUX)/$(TARGET_LINUX): $(addprefix $(BUILD_DIR_LINUX)/,$(OBJS_LINUX))
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
@@ -166,8 +166,8 @@ $(BUILD_DIR_LINUX)/%.o: %.cpp
 #
 # Linux debug targets
 #
-.PHONY: tetris-linux-debug
-tetris-linux-debug: $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG) pack-backgrounds-linux-debug convert-midi convert-wav-to-mp3 pack-sounds link-sound-linux-debug
+.PHONY: tetrimone-linux-debug
+tetrimone-linux-debug: $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG) pack-backgrounds-linux-debug convert-midi convert-wav-to-mp3 pack-sounds link-sound-linux-debug
 
 $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG): $(addprefix $(BUILD_DIR_LINUX_DEBUG)/,$(OBJS_LINUX_DEBUG))
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
@@ -179,8 +179,8 @@ $(BUILD_DIR_LINUX_DEBUG)/%.debug.o: %.cpp
 #
 # Windows build targets
 #
-.PHONY: tetris-windows
-tetris-windows: $(BUILD_DIR_WIN)/$(TARGET_WIN) tetris-collect-dlls pack-backgrounds-windows convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows
+.PHONY: tetrimone-windows
+tetrimone-windows: $(BUILD_DIR_WIN)/$(TARGET_WIN) tetrimone-collect-dlls pack-backgrounds-windows convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows
 
 $(BUILD_DIR_WIN)/$(TARGET_WIN): $(addprefix $(BUILD_DIR_WIN)/,$(OBJS_WIN))
 	$(CXX_WIN) $^ -o $@ $(LDFLAGS_WIN)
@@ -192,8 +192,8 @@ $(BUILD_DIR_WIN)/%.win.o: %.cpp
 #
 # Windows debug targets
 #
-.PHONY: tetris-windows-debug
-tetris-windows-debug: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) tetris-collect-debug-dlls pack-backgrounds-windows-debug convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows-debug
+.PHONY: tetrimone-windows-debug
+tetrimone-windows-debug: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) tetrimone-collect-debug-dlls pack-backgrounds-windows-debug convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows-debug
 
 $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG): $(addprefix $(BUILD_DIR_WIN_DEBUG)/,$(OBJS_WIN_DEBUG))
 	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) $^ -o $@ $(LDFLAGS_WIN)
@@ -247,13 +247,13 @@ $(THEME_ALL_MP3): $(SOUND_DIR)/theme.wav $(SOUND_DIR)/TetrisA.wav $(SOUND_DIR)/T
 #
 # DLL collection for Windows builds
 #
-.PHONY: tetris-collect-dlls
-tetris-collect-dlls: $(BUILD_DIR_WIN)/$(TARGET_WIN)
+.PHONY: tetrimone-collect-dlls
+tetrimone-collect-dlls: $(BUILD_DIR_WIN)/$(TARGET_WIN)
 	@echo "Collecting DLLs for Tetris..."
 	@build/windows/collect_dlls.sh $(BUILD_DIR_WIN)/$(TARGET_WIN) $(DLL_SOURCE_DIR) $(BUILD_DIR_WIN)
 
-.PHONY: tetris-collect-debug-dlls
-tetris-collect-debug-dlls: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG)
+.PHONY: tetrimone-collect-debug-dlls
+tetrimone-collect-debug-dlls: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG)
 	@echo "Collecting Debug DLLs for Tetris..."
 	@build/windows/collect_dlls.sh $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) $(DLL_SOURCE_DIR) $(BUILD_DIR_WIN_DEBUG)
 
@@ -375,14 +375,14 @@ help:
 	@echo "  make sdl           - Build Tetris for Linux with SDL audio explicitly"
 	@echo "  make pulse         - Build Tetris for Linux with PulseAudio (still uses SDL for joystick)"
 	@echo ""
-	@echo "  make tetris-windows-sdl - Build Tetris for Windows with SDL audio"
+	@echo "  make tetrimone-windows-sdl - Build Tetris for Windows with SDL audio"
 	@echo ""
 	@echo "  make debug         - Build Tetris with debug symbols (using SDL for Linux)"
 	@echo "  make sdl-debug     - Build Tetris with debug symbols using SDL audio"
 	@echo "  make pulse-debug   - Build Tetris with debug symbols using PulseAudio"
 	@echo ""
-	@echo "  make tetris-linux  - Build Tetris for Linux (with current audio backend)"
-	@echo "  make tetris-windows - Build Tetris for Windows (requires MinGW)"
+	@echo "  make tetrimone-linux  - Build Tetris for Linux (with current audio backend)"
+	@echo "  make tetrimone-windows - Build Tetris for Windows (requires MinGW)"
 	@echo ""
 	@echo "  make convert-midi  - Convert MIDI files to WAV format using ffmpeg"
 	@echo "  make convert-wav-to-mp3 - Convert WAV files to MP3 format using ffmpeg"

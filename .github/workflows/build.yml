@@ -45,7 +45,7 @@ jobs:
     - name: Create ZIP Archive
       working-directory: build/windows
       run: |
-        zip -r ../../Tetris-GTK.zip ./*
+        zip -r ../../Tetrimone-GTK.zip ./*
 
     - name: Create GTK MSI Installer
       working-directory: build/windows
@@ -71,7 +71,7 @@ jobs:
               <Directory Id="ProgramFilesFolder">
                 <Directory Id="INSTALLFOLDER" Name="Tetris GTK">
                   <Component Id="MainExecutable" Guid="A47D52C8-3E95-48F6-B25F-1E6C9D4A8D34">
-                    <File Id="MainEXE" Name="tetris.exe" Source="tetris.exe" KeyPath="yes"/>
+                    <File Id="MainEXE" Name="tetrimone.exe" Source="tetrimone.exe" KeyPath="yes"/>
                     <File Id="SoundsZIP" Name="sound.zip" Source="sound.zip"/>
                     <File Id="IconFile" Name="icon.ico" Source="icon.ico"/>
         EOL
@@ -123,7 +123,7 @@ jobs:
                   <Component Id="ApplicationShortcuts" Guid="F8E2D459-F6A1-4B53-9C72-E31D8FE52D69">
                     <Shortcut Id="ApplicationStartMenuKlondike" 
                              Name="Tetris GTK" 
-                             Target="[INSTALLFOLDER]tetris.exe" 
+                             Target="[INSTALLFOLDER]tetrimone.exe" 
                              WorkingDirectory="INSTALLFOLDER"
                              Icon="TetrisIcon"/>
                     <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
@@ -150,10 +150,10 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: tetris-artifacts
+        name: tetrimone-artifacts
         path: |
-          Tetris-GTK.msi
-          Tetris-GTK.zip
+          Tetrimone-GTK.msi
+          Tetrimone-GTK.zip
 
   create-release:
     needs: [build-mingw-gtk]
@@ -166,7 +166,7 @@ jobs:
     - name: Download Artifacts
       uses: actions/download-artifact@v4
       with:
-        name: tetris-artifacts
+        name: tetrimone-artifacts
         path: artifacts
 
     - name: Create Release

@@ -1,4 +1,4 @@
-#include "tetris.h"
+#include "tetrimone.h"
 
 typedef struct {
     TetrisApp* app;

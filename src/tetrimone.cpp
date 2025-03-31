@@ -1,4 +1,4 @@
-#include "tetris.h"
+#include "tetrimone.h"
 #include "audiomanager.h"
 #include <iostream>
 #include <string>
