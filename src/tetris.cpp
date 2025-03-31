@@ -1215,11 +1215,11 @@ g_signal_connect(G_OBJECT(tetrisApp->window), "delete-event",
     startGame(tetrisApp);
 }
 
-// Function to create the menu bar with pause handling
+// Function to create the menu bar with a better organization
 void createMenu(TetrisApp* app) {
     GtkWidget* menuBar = gtk_menu_bar_new();
     
-    // Game menu
+    // *** GAME MENU ***
     GtkWidget* gameMenu = gtk_menu_new();
     GtkWidget* gameMenuItem = gtk_menu_item_new_with_label("Game");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(gameMenuItem), gameMenu);
@@ -1242,79 +1242,7 @@ void createMenu(TetrisApp* app) {
     gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), gtk_separator_menu_item_new());
     gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), quitMenuItem);
     
-    // Options menu
-    GtkWidget* optionsMenu = gtk_menu_new();
-    GtkWidget* optionsMenuItem = gtk_menu_item_new_with_label("Options");
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(optionsMenuItem), optionsMenu);
-    
-    // Connect signals for menu activation/deactivation
-    g_signal_connect(G_OBJECT(optionsMenu), "show", 
-                   G_CALLBACK(onMenuActivated), app);
-    g_signal_connect(G_OBJECT(optionsMenu), "hide", 
-                   G_CALLBACK(onMenuDeactivated), app);
-    
-    // Options menu items
-    app->soundToggleMenuItem = gtk_check_menu_item_new_with_label("Sound");
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), TRUE);
-
-    // Add Volume menu item
-    GtkWidget* volumeMenuItem = gtk_menu_item_new_with_label("Volume...");
-    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), volumeMenuItem);
-    g_signal_connect(G_OBJECT(volumeMenuItem), "activate",
-                   G_CALLBACK(onVolumeDialog), app);
-
-GtkWidget* musicMenu = gtk_menu_new();
-GtkWidget* musicMenuItem = gtk_menu_item_new_with_label("Music Tracks");
-gtk_menu_item_set_submenu(GTK_MENU_ITEM(musicMenuItem), musicMenu);
-gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), musicMenuItem);
-
-// Create checkbox for each track
-for (int i = 0; i < 5; i++) {
-    char label[20];
-    sprintf(label, "Track %d", i+1);
-    app->trackMenuItems[i] = gtk_check_menu_item_new_with_label(label);
-    
-    // Set all checked by default
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]), TRUE);
-    
-    // Store track index in the widget data
-    g_object_set_data(G_OBJECT(app->trackMenuItems[i]), "track-index", GINT_TO_POINTER(i));
-    
-    // Connect signal
-    g_signal_connect(G_OBJECT(app->trackMenuItems[i]), "toggled", 
-                   G_CALLBACK(onTrackToggled), app);
-                   
-    gtk_menu_shell_append(GTK_MENU_SHELL(musicMenu), app->trackMenuItems[i]);
-}
-
-
-GtkWidget* joystickConfigMenuItem = gtk_menu_item_new_with_label("Configure Joystick...");
-gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), joystickConfigMenuItem);
-
-// Connect signal handler for joystick config item
-g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
-               G_CALLBACK(onJoystickConfig), app);
-
-    // Add background image menu items
-    GtkWidget* backgroundMenuItem = gtk_menu_item_new_with_label("Set Background Images (only supports PNG)...");
-    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), backgroundMenuItem);
-    g_signal_connect(G_OBJECT(backgroundMenuItem), "activate",
-                  G_CALLBACK(onBackgroundImageDialog), app);
-
-    GtkWidget* backgroundZipMenuItem = gtk_menu_item_new_with_label("Set Background Images from ZIP...");
-    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), backgroundZipMenuItem);
-    g_signal_connect(G_OBJECT(backgroundZipMenuItem), "activate",
-                  G_CALLBACK(onBackgroundZipDialog), app);
-    
-    // Add background toggle checkbox
-    app->backgroundToggleMenuItem = gtk_check_menu_item_new_with_label("Use Background Image");
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), FALSE);
-    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), app->backgroundToggleMenuItem);
-    g_signal_connect(G_OBJECT(app->backgroundToggleMenuItem), "toggled",
-                  G_CALLBACK(onBackgroundToggled), app);
-
-    
-    // Difficulty submenu
+    // *** DIFFICULTY MENU ***
     GtkWidget* difficultyMenu = gtk_menu_new();
     GtkWidget* difficultyMenuItem = gtk_menu_item_new_with_label("Difficulty");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(difficultyMenuItem), difficultyMenu);
@@ -1326,7 +1254,6 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
                    G_CALLBACK(onMenuDeactivated), app);
     
     // Create difficulty radio menu items
-
     GSList* difficultyGroup = NULL;
     app->zenMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Zen");
     difficultyGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->zenMenuItem));
@@ -1338,9 +1265,12 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
     difficultyGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->mediumMenuItem));
     
     app->hardMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Hard");
+    difficultyGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->hardMenuItem));
+    
     app->extremeMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Extreme");
+    difficultyGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->extremeMenuItem));
+    
     app->insaneMenuItem = gtk_radio_menu_item_new_with_label(difficultyGroup, "Insane");
-
     
     // Set medium as default
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), TRUE);
@@ -1352,18 +1282,119 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->hardMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->extremeMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->insaneMenuItem);
-    
-    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), app->soundToggleMenuItem);
-    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), difficultyMenuItem);
 
-GtkWidget* blockSizeMenuItem = gtk_menu_item_new_with_label("Block Size...");
-gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), blockSizeMenuItem);
-
-// Connect signal handler for block size item
-g_signal_connect(G_OBJECT(blockSizeMenuItem), "activate",
-               G_CALLBACK(onBlockSizeDialog), app);
+    // *** GRAPHICS MENU ***
+    GtkWidget* graphicsMenu = gtk_menu_new();
+    GtkWidget* graphicsMenuItem = gtk_menu_item_new_with_label("Graphics");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(graphicsMenuItem), graphicsMenu);
     
-    // Help menu
+    // Connect signals for menu activation/deactivation
+    g_signal_connect(G_OBJECT(graphicsMenu), "show", 
+                   G_CALLBACK(onMenuActivated), app);
+    g_signal_connect(G_OBJECT(graphicsMenu), "hide", 
+                   G_CALLBACK(onMenuDeactivated), app);
+    
+    // Block size menu item
+    GtkWidget* blockSizeMenuItem = gtk_menu_item_new_with_label("Block Size...");
+    gtk_menu_shell_append(GTK_MENU_SHELL(graphicsMenu), blockSizeMenuItem);
+    g_signal_connect(G_OBJECT(blockSizeMenuItem), "activate",
+                   G_CALLBACK(onBlockSizeDialog), app);
+    
+    // Background submenu
+    GtkWidget* backgroundMenu = gtk_menu_new();
+    GtkWidget* backgroundMenuItem = gtk_menu_item_new_with_label("Background");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(backgroundMenuItem), backgroundMenu);
+    gtk_menu_shell_append(GTK_MENU_SHELL(graphicsMenu), backgroundMenuItem);
+    
+    // Background menu items
+    GtkWidget* setBackgroundMenuItem = gtk_menu_item_new_with_label("Set Background Image (PNG)...");
+    gtk_menu_shell_append(GTK_MENU_SHELL(backgroundMenu), setBackgroundMenuItem);
+    g_signal_connect(G_OBJECT(setBackgroundMenuItem), "activate",
+                  G_CALLBACK(onBackgroundImageDialog), app);
+
+    GtkWidget* backgroundZipMenuItem = gtk_menu_item_new_with_label("Set Background Images from ZIP...");
+    gtk_menu_shell_append(GTK_MENU_SHELL(backgroundMenu), backgroundZipMenuItem);
+    g_signal_connect(G_OBJECT(backgroundZipMenuItem), "activate",
+                  G_CALLBACK(onBackgroundZipDialog), app);
+    
+    GtkWidget* backgroundOpacityMenuItem = gtk_menu_item_new_with_label("Background Opacity...");
+    gtk_menu_shell_append(GTK_MENU_SHELL(backgroundMenu), backgroundOpacityMenuItem);
+    g_signal_connect(G_OBJECT(backgroundOpacityMenuItem), "activate",
+                  G_CALLBACK(onBackgroundOpacityDialog), app);
+    
+    // Add background toggle checkbox
+    app->backgroundToggleMenuItem = gtk_check_menu_item_new_with_label("Enable Background Image");
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+    gtk_menu_shell_append(GTK_MENU_SHELL(backgroundMenu), app->backgroundToggleMenuItem);
+    g_signal_connect(G_OBJECT(app->backgroundToggleMenuItem), "toggled",
+                  G_CALLBACK(onBackgroundToggled), app);
+
+    // *** SOUND MENU ***
+    GtkWidget* soundMenu = gtk_menu_new();
+    GtkWidget* soundMenuItem = gtk_menu_item_new_with_label("Sound");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(soundMenuItem), soundMenu);
+    
+    // Connect signals for menu activation/deactivation
+    g_signal_connect(G_OBJECT(soundMenu), "show", 
+                   G_CALLBACK(onMenuActivated), app);
+    g_signal_connect(G_OBJECT(soundMenu), "hide", 
+                   G_CALLBACK(onMenuDeactivated), app);
+    
+    // Sound menu items
+    app->soundToggleMenuItem = gtk_check_menu_item_new_with_label("Enable Sound");
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), TRUE);
+    gtk_menu_shell_append(GTK_MENU_SHELL(soundMenu), app->soundToggleMenuItem);
+    g_signal_connect(G_OBJECT(app->soundToggleMenuItem), "toggled",
+                   G_CALLBACK(onSoundToggled), app);
+    
+    GtkWidget* volumeMenuItem = gtk_menu_item_new_with_label("Volume Settings...");
+    gtk_menu_shell_append(GTK_MENU_SHELL(soundMenu), volumeMenuItem);
+    g_signal_connect(G_OBJECT(volumeMenuItem), "activate",
+                   G_CALLBACK(onVolumeDialog), app);
+    
+    // Music submenu
+    GtkWidget* musicMenu = gtk_menu_new();
+    GtkWidget* musicMenuItem = gtk_menu_item_new_with_label("Music Tracks");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(musicMenuItem), musicMenu);
+    gtk_menu_shell_append(GTK_MENU_SHELL(soundMenu), musicMenuItem);
+    
+    // Create checkbox for each track
+    for (int i = 0; i < 5; i++) {
+        char label[20];
+        sprintf(label, "Track %d", i+1);
+        app->trackMenuItems[i] = gtk_check_menu_item_new_with_label(label);
+        
+        // Set all checked by default
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]), TRUE);
+        
+        // Store track index in the widget data
+        g_object_set_data(G_OBJECT(app->trackMenuItems[i]), "track-index", GINT_TO_POINTER(i));
+        
+        // Connect signal
+        g_signal_connect(G_OBJECT(app->trackMenuItems[i]), "toggled", 
+                       G_CALLBACK(onTrackToggled), app);
+                       
+        gtk_menu_shell_append(GTK_MENU_SHELL(musicMenu), app->trackMenuItems[i]);
+    }
+
+    // *** CONTROLS MENU ***
+    GtkWidget* controlsMenu = gtk_menu_new();
+    GtkWidget* controlsMenuItem = gtk_menu_item_new_with_label("Controls");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(controlsMenuItem), controlsMenu);
+    
+    // Connect signals for menu activation/deactivation
+    g_signal_connect(G_OBJECT(controlsMenu), "show", 
+                   G_CALLBACK(onMenuActivated), app);
+    g_signal_connect(G_OBJECT(controlsMenu), "hide", 
+                   G_CALLBACK(onMenuDeactivated), app);
+    
+    // Joystick config menu item
+    GtkWidget* joystickConfigMenuItem = gtk_menu_item_new_with_label("Configure Joystick...");
+    gtk_menu_shell_append(GTK_MENU_SHELL(controlsMenu), joystickConfigMenuItem);
+    g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
+                   G_CALLBACK(onJoystickConfig), app);
+
+    // *** HELP MENU ***
     GtkWidget* helpMenu = gtk_menu_new();
     GtkWidget* helpMenuItem = gtk_menu_item_new_with_label("Help");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(helpMenuItem), helpMenu);
@@ -1375,15 +1406,18 @@ g_signal_connect(G_OBJECT(blockSizeMenuItem), "activate",
                    G_CALLBACK(onMenuDeactivated), app);
     
     // Help menu items
-    GtkWidget* aboutMenuItem = gtk_menu_item_new_with_label("About");
     GtkWidget* instructionsMenuItem = gtk_menu_item_new_with_label("Instructions");
+    GtkWidget* aboutMenuItem = gtk_menu_item_new_with_label("About");
     
     gtk_menu_shell_append(GTK_MENU_SHELL(helpMenu), instructionsMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(helpMenu), aboutMenuItem);
     
     // Add menus to menu bar
     gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), gameMenuItem);
-    gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), optionsMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), difficultyMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), graphicsMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), soundMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), controlsMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), helpMenuItem);
     
     // Add menu signal handlers
@@ -1396,8 +1430,6 @@ g_signal_connect(G_OBJECT(blockSizeMenuItem), "activate",
     g_signal_connect(G_OBJECT(quitMenuItem), "activate",
                    G_CALLBACK(onQuitGame), app);
     
-    g_signal_connect(G_OBJECT(app->soundToggleMenuItem), "toggled",
-                   G_CALLBACK(onSoundToggled), app);
     g_signal_connect(G_OBJECT(app->zenMenuItem), "toggled",
                    G_CALLBACK(onDifficultyChanged), app);
     g_signal_connect(G_OBJECT(app->easyMenuItem), "toggled",
