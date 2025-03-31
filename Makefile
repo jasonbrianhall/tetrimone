@@ -1,4 +1,4 @@
-# Makefile for Tetris with Windows and Linux Support
+# Makefile for Tetrimone with Windows and Linux Support
 # Configurable audio backend (SDL or PulseAudio)
 # Extended with FFMPEG support for MIDI to WAV conversion
 # Modified to convert WAV to MP3 and only pack MP3 files
@@ -92,7 +92,7 @@ BUILD_DIR_WIN_DEBUG = $(BUILD_DIR)/windows_debug
 DLL_SOURCE_DIR = /usr/x86_64-w64-mingw32/sys-root/mingw/bin
 
 # Background image settings
-BACKGROUNDS_DIR = images/Tetris_backgrounds
+BACKGROUNDS_DIR = images/Tetrimone_backgrounds
 BACKGROUND_ZIP = background.zip
 
 # Sound file settings
@@ -225,13 +225,13 @@ convert-wav-to-mp3: convert-midi $(MP3_FROM_WAV) $(THEME_ALL_MP3)
 	@$(FFMPEG) $(FFMPEG_OPTS) $< $(FFMPEG_MP3_OPTS) $@
 
 # Rule to create the combined theme MP3 file from multiple WAV files
-$(THEME_ALL_MP3): $(SOUND_DIR)/theme.wav $(SOUND_DIR)/TetrisA.wav $(SOUND_DIR)/TetrisB.wav $(SOUND_DIR)/TetrisC.wav $(SOUND_DIR)/futuristic.wav
+$(THEME_ALL_MP3): $(SOUND_DIR)/theme.wav $(SOUND_DIR)/TetrimoneA.wav $(SOUND_DIR)/TetrimoneB.wav $(SOUND_DIR)/TetrimoneC.wav $(SOUND_DIR)/futuristic.wav
 	@echo "Creating combined theme file $(THEME_ALL_MP3)..."
 	@$(FFMPEG) -y \
 		-i "$(SOUND_DIR)/theme.wav" \
-		-i "$(SOUND_DIR)/TetrisA.wav" \
-		-i "$(SOUND_DIR)/TetrisB.wav" \
-		-i "$(SOUND_DIR)/TetrisC.wav" \
+		-i "$(SOUND_DIR)/TetrimoneA.wav" \
+		-i "$(SOUND_DIR)/TetrimoneB.wav" \
+		-i "$(SOUND_DIR)/TetrimoneC.wav" \
 		-i "$(SOUND_DIR)/futuristic.wav" \
 		-filter_complex "\
 			[0:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB[a0];\
@@ -249,12 +249,12 @@ $(THEME_ALL_MP3): $(SOUND_DIR)/theme.wav $(SOUND_DIR)/TetrisA.wav $(SOUND_DIR)/T
 #
 .PHONY: tetrimone-collect-dlls
 tetrimone-collect-dlls: $(BUILD_DIR_WIN)/$(TARGET_WIN)
-	@echo "Collecting DLLs for Tetris..."
+	@echo "Collecting DLLs for Tetrimone..."
 	@build/windows/collect_dlls.sh $(BUILD_DIR_WIN)/$(TARGET_WIN) $(DLL_SOURCE_DIR) $(BUILD_DIR_WIN)
 
 .PHONY: tetrimone-collect-debug-dlls
 tetrimone-collect-debug-dlls: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG)
-	@echo "Collecting Debug DLLs for Tetris..."
+	@echo "Collecting Debug DLLs for Tetrimone..."
 	@build/windows/collect_dlls.sh $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) $(DLL_SOURCE_DIR) $(BUILD_DIR_WIN_DEBUG)
 
 #
@@ -368,21 +368,21 @@ clean-all: clean clean-audio
 .PHONY: help
 help:
 	@echo "Available targets:"
-	@echo "  make               - Build Tetris for Linux with SDL audio (default)"
-	@echo "  make linux         - Build Tetris for Linux with SDL audio"
-	@echo "  make windows       - Build Tetris for Windows"
+	@echo "  make               - Build Tetrimone for Linux with SDL audio (default)"
+	@echo "  make linux         - Build Tetrimone for Linux with SDL audio"
+	@echo "  make windows       - Build Tetrimone for Windows"
 	@echo ""
-	@echo "  make sdl           - Build Tetris for Linux with SDL audio explicitly"
-	@echo "  make pulse         - Build Tetris for Linux with PulseAudio (still uses SDL for joystick)"
+	@echo "  make sdl           - Build Tetrimone for Linux with SDL audio explicitly"
+	@echo "  make pulse         - Build Tetrimone for Linux with PulseAudio (still uses SDL for joystick)"
 	@echo ""
-	@echo "  make tetrimone-windows-sdl - Build Tetris for Windows with SDL audio"
+	@echo "  make tetrimone-windows-sdl - Build Tetrimone for Windows with SDL audio"
 	@echo ""
-	@echo "  make debug         - Build Tetris with debug symbols (using SDL for Linux)"
-	@echo "  make sdl-debug     - Build Tetris with debug symbols using SDL audio"
-	@echo "  make pulse-debug   - Build Tetris with debug symbols using PulseAudio"
+	@echo "  make debug         - Build Tetrimone with debug symbols (using SDL for Linux)"
+	@echo "  make sdl-debug     - Build Tetrimone with debug symbols using SDL audio"
+	@echo "  make pulse-debug   - Build Tetrimone with debug symbols using PulseAudio"
 	@echo ""
-	@echo "  make tetrimone-linux  - Build Tetris for Linux (with current audio backend)"
-	@echo "  make tetrimone-windows - Build Tetris for Windows (requires MinGW)"
+	@echo "  make tetrimone-linux  - Build Tetrimone for Linux (with current audio backend)"
+	@echo "  make tetrimone-windows - Build Tetrimone for Windows (requires MinGW)"
 	@echo ""
 	@echo "  make convert-midi  - Convert MIDI files to WAV format using ffmpeg"
 	@echo "  make convert-wav-to-mp3 - Convert WAV files to MP3 format using ffmpeg"
