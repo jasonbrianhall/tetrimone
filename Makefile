@@ -36,7 +36,7 @@ endif
 # Source files
 SRCS_COMMON = src/tetris.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
-SRCS_WIN = src/windowsaudioplayer.cpp
+SRCS_WIN = src/sdlaudioplayer.cpp
 SRCS_WIN_SDL = src/sdlaudioplayer.cpp
 
 # Windows SDL flags
