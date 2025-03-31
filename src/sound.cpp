@@ -260,63 +260,6 @@ void TetrisBoard::playBackgroundMusic() {
     return;
   }
 
-#ifdef _WIN32
-  // Windows implementation - Play the combined themeall.mp3 file on a loop
-  static bool musicThreadRunning = false;
-  static std::atomic<bool> stopFlag(false);
-
-  // Kill existing thread if it's running but shouldn't be
-  if (musicThreadRunning && (musicPaused || !sound_enabled_)) {
-    stopFlag = true;
-    // Give a moment for the thread to exit
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    musicThreadRunning = false;
-  }
-
-  // Only start the thread if music should be playing and thread isn't already running
-  if (!musicThreadRunning && sound_enabled_ && !musicPaused) {
-    musicThreadRunning = true;
-    stopFlag = false;
-
-    std::thread([this, &stopFlag]() {
-      AudioManager& audioManager = AudioManager::getInstance();
-
-      while (sound_enabled_ && !stopFlag && !musicPaused) {
-        // Check if not muted
-        bool isMuted = audioManager.isMuted();
-
-        if (!isMuted) {
-          // Get the sound data and format for the combined theme file
-          std::vector<uint8_t> soundData;
-          std::string format;
-          if (audioManager.getSoundData(SoundEvent::BackgroundMusic, soundData, format)) {
-            // Get the track length
-            size_t trackLength = audioManager.getSoundLength(SoundEvent::BackgroundMusic);
-
-            // Play the combined theme file in a loop
-            audioManager.playBackgroundMusicLooped(soundData, format);
-
-            // Wait for the track length (or a reasonable default if length is 0)
-            if (trackLength > 0) {
-              std::this_thread::sleep_for(std::chrono::milliseconds(trackLength));
-            } else {
-              // Default to 3 minutes if length is unknown
-              std::this_thread::sleep_for(std::chrono::minutes(3));
-            }
-          } else {
-            // If sound data retrieval fails, wait a bit before trying again
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-          }
-        } else {
-          // If muted, just wait a bit
-          std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
-      }
-
-      musicThreadRunning = false;
-    }).detach();
-  }
-#else
   // Existing PulseAudio implementation remains the same
   static bool musicThreadRunning = false;
   static std::atomic<bool> stopFlag(false);
@@ -368,7 +311,6 @@ void TetrisBoard::playBackgroundMusic() {
       musicThreadRunning = false;
     }).detach();
   }
-#endif
 }
 
 void TetrisBoard::pauseBackgroundMusic() {
