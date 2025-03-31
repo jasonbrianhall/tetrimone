@@ -685,7 +685,8 @@ void onOpacityValueChanged(GtkRange* range, gpointer userData);
 void rebuildGameUI(TetrisApp* app);
 void updateSizeValueLabel(GtkRange* range, gpointer data);
 void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData);
-
+void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData);
+void onVolumeValueChanged(GtkRange* range, gpointer userData);
 #endif // TETRIS_H
 
 

@@ -89,6 +89,7 @@ public:
 
   // Initialize the audio system
   bool initialize();
+  int getVolume();
 
   // Clean up resources
   void shutdown();

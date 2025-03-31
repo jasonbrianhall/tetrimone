@@ -240,6 +240,10 @@ bool AudioManager::getSoundData(SoundEvent event, std::vector<uint8_t>& data, st
   return true;
 }
 
+int AudioManager::getVolume() {
+    return volume_;
+}
+
 void AudioManager::setVolume(float volume) {
   std::lock_guard<std::mutex> lock(mutex_);
   volume_ = std::max(0.0f, std::min(1.0f, volume));

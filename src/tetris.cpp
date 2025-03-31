@@ -1253,6 +1253,12 @@ void createMenu(TetrisApp* app) {
     app->soundToggleMenuItem = gtk_check_menu_item_new_with_label("Sound");
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), TRUE);
 
+    // Add Volume menu item
+    GtkWidget* volumeMenuItem = gtk_menu_item_new_with_label("Volume...");
+    gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), volumeMenuItem);
+    g_signal_connect(G_OBJECT(volumeMenuItem), "activate",
+                   G_CALLBACK(onVolumeDialog), app);
+
 GtkWidget* joystickConfigMenuItem = gtk_menu_item_new_with_label("Configure Joystick...");
 gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), joystickConfigMenuItem);
 
