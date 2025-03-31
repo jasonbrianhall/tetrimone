@@ -506,7 +506,7 @@ if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) && board-
         
         // Center the title
         cairo_text_extents_t extents;
-        const char* title = "TETRIS";
+        const char* title = "TETRIMONE";
         cairo_text_extents(cr, title, &extents);
         
         double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
@@ -1084,7 +1084,7 @@ void onAppActivate(GtkApplication* app, gpointer userData) {
     
     // Create the main window
     tetrisApp->window = gtk_application_window_new(app);
-    gtk_window_set_title(GTK_WINDOW(tetrisApp->window), "Tetris");
+    gtk_window_set_title(GTK_WINDOW(tetrisApp->window), "Tetrimone");
 
 g_signal_connect(G_OBJECT(tetrisApp->window), "delete-event",
                G_CALLBACK(onDeleteEvent), tetrisApp);
@@ -1781,7 +1781,7 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Create a custom dialog
     GtkWidget* dialog = gtk_dialog_new_with_buttons(
-        "About GTK Tetris",
+        "About GTK Tetrimone",
         GTK_WINDOW(app->window),
         GTK_DIALOG_MODAL,
         "_OK", GTK_RESPONSE_OK,
@@ -1811,7 +1811,7 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Add description
     GtkWidget* descLabel = gtk_label_new(
-        "A feature-rich Tetris implementation with advanced graphics,\n"
+        "A feature-rich Tetris Clone implementation with advanced graphics,\n"
         "multiple difficulty levels, theme progression, and comprehensive\n"
         "control options including joystick support."
     );
@@ -1837,7 +1837,7 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Add website button
     GtkWidget* websiteButton = gtk_link_button_new_with_label(
-        "https://github.com/jasonbrianhall/tetris", 
+        "https://github.com/jasonbrianhall/tetrimone", 
         "Website"
     );
     gtk_box_pack_start(GTK_BOX(vbox), websiteButton, FALSE, FALSE, 10);
@@ -1881,7 +1881,7 @@ void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Create label with instructions
     GtkWidget* label = gtk_label_new(
-        "Tetris Instructions:\n\n"
+        "Tetrimone Instructions:\n\n"
         "Goal: Arrange falling blocks to complete lines.\n\n"
         "Controls:\n"
         "• Left/Right Arrow or A/D: Move block left/right\n"
