@@ -154,8 +154,6 @@ public:
                             if (bytesPerSecond > 0) {
                                 float durationInSeconds = static_cast<float>(dataSize) / bytesPerSecond;
                                 isMusic = (durationInSeconds > 3.0f);
-                                std::cout << "Audio duration: " << durationInSeconds << "s, classified as " 
-                                          << (isMusic ? "music" : "sound effect") << std::endl;
                             }
                         }
                         break;
@@ -218,8 +216,6 @@ public:
         
         Mix_Volume(channel, static_cast<int>(MIX_MAX_VOLUME * effectiveVolume));
         
-        std::cout << "Playing " << (isMusic ? "music" : "sound effect") << " on channel " << channel 
-                 << " with volume " << static_cast<int>(MIX_MAX_VOLUME * effectiveVolume) << std::endl;
     }
     
     void stopAllSounds() override {
@@ -236,8 +232,6 @@ public:
         for (auto& pair : sound_chunks_) {
             Mix_Volume(pair.first, 0);
         }
-        
-        std::cout << "All sounds muted" << std::endl;
     }
     
     void restoreVolume() override {
@@ -258,15 +252,12 @@ public:
             
             Mix_Volume(channel, static_cast<int>(MIX_MAX_VOLUME * effectiveVolume));
         }
-        
-        std::cout << "Volume restored" << std::endl;
     }
     
     void setVolume(float volume) override {
         std::lock_guard<std::mutex> lock(mutex_);
         
         volume_ = std::clamp(volume, 0.0f, 1.0f);
-        std::cout << "Master volume set to " << volume_ << std::endl;
         
         if (!isMuted_) {
             // Update volumes for all channels
@@ -284,7 +275,6 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         
         musicVolume_ = std::clamp(volume, 0.0f, 1.0f);
-        std::cout << "Music volume set to " << musicVolume_ << std::endl;
         
         if (!isMuted_) {
             // Update volumes for music channels only
