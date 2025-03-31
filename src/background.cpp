@@ -412,12 +412,12 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
         onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
     }
     
-    std::string filePath;
+    std::vector<std::string> filePaths;
     
 #ifdef _WIN32
-    // Use Windows native dialog
+    // Use Windows native dialog with multi-select support
     OPENFILENAME ofn;
-    char szFile[260] = {0};
+    char szFile[4096] = {0};  // Increased buffer size to support multiple files
     
     ZeroMemory(&ofn, sizeof(ofn));
     ofn.lStructSize = sizeof(ofn);
@@ -429,21 +429,44 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
     ofn.lpstrFileTitle = NULL;
     ofn.nMaxFileTitle = 0;
     ofn.lpstrInitialDir = NULL;
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_ALLOWMULTISELECT | OFN_EXPLORER;
     
     if (GetOpenFileName(&ofn)) {
-        filePath = ofn.lpstrFile;
+        // Parse multiple file selection
+        char* filePtr = ofn.lpstrFile;
+        
+        // First string is the directory
+        std::string directory(filePtr);
+        filePtr += directory.length() + 1;
+        
+        // If no files selected after directory, it means only one file was chosen
+        if (*filePtr == '\0') {
+            filePaths.push_back(directory);
+        } else {
+            // Multiple files selected
+            while (*filePtr != '\0') {
+                std::string filename(filePtr);
+                std::string fullPath = directory + "\\" + filename;
+                filePaths.push_back(fullPath);
+                
+                // Move to next filename
+                filePtr += filename.length() + 1;
+            }
+        }
     }
 #else
     // Use GTK dialog on other platforms
     GtkWidget* dialog = gtk_file_chooser_dialog_new(
-        "Select PNG Background Image",
+        "Select Background Images",
         GTK_WINDOW(app->window),
         GTK_FILE_CHOOSER_ACTION_OPEN,
         "_Cancel", GTK_RESPONSE_CANCEL,
         "_Open", GTK_RESPONSE_ACCEPT,
         NULL
     );
+    
+    // Allow multiple file selection
+    gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
     
     // Add filter for PNG files only
     GtkFileFilter* filter = gtk_file_filter_new();
@@ -454,32 +477,76 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Run the dialog
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-        char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-        filePath = filename;
-        g_free(filename);
+        // Get the selected filenames
+        GSList* filenames = gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(dialog));
+        
+        // Convert GSList to vector of strings
+        for (GSList* list = filenames; list != NULL; list = list->next) {
+            char* filename = static_cast<char*>(list->data);
+            filePaths.push_back(filename);
+            g_free(filename);
+        }
+        
+        // Free the list of filenames
+        g_slist_free(filenames);
+        
+        // Destroy the dialog
+        gtk_widget_destroy(dialog);
+    } else {
+        // User cancelled
+        if (dialog) gtk_widget_destroy(dialog);
+        return;
     }
-    
-    gtk_widget_destroy(dialog);
 #endif
     
-    // Process the selected file path
-    if (!filePath.empty()) {
-        if (app->board->loadBackgroundImage(filePath)) {
+    // Process the selected file paths
+    if (!filePaths.empty()) {
+        // Clean up existing background images
+        app->board->cleanupBackgroundImages();
+        
+        // Flag to track successful image loading
+        bool imagesLoaded = false;
+        
+        // Process each selected file
+        for (const auto& filepath : filePaths) {
+            // Load the PNG with Cairo
+            cairo_surface_t* surface = cairo_image_surface_create_from_png(filepath.c_str());
+            
+            // Check if the surface was created successfully
+            if (cairo_surface_status(surface) == CAIRO_STATUS_SUCCESS) {
+                app->board->backgroundImages.push_back(surface);
+                imagesLoaded = true;
+            } else {
+                std::cerr << "Failed to load PNG: " << filepath << std::endl;
+                cairo_surface_destroy(surface);
+            }
+        }
+        
+        if (imagesLoaded) {
+            // Set background modes
+            app->board->useBackgroundZip = true;
+            app->board->useBackgroundImage = true;
+            
+            // Select initial random background
+            app->board->selectRandomBackground();
+            
+            // Activate background toggle
             gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
             
             // Process any pending events before showing opacity dialog
             while (gtk_events_pending())
                 gtk_main_iteration();
                 
-            // Now show the opacity dialog
+            // Show opacity dialog
             onBackgroundOpacityDialog(NULL, app);
         } else {
+            // No images loaded
             GtkWidget* errorDialog = gtk_message_dialog_new(
                 GTK_WINDOW(app->window),
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_OK,
-                "Failed to load PNG image: %s", filePath.c_str()
+                "No valid PNG images could be loaded."
             );
             gtk_dialog_run(GTK_DIALOG(errorDialog));
             gtk_widget_destroy(errorDialog);

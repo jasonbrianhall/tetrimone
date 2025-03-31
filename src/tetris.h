@@ -550,6 +550,9 @@ private:
     std::mt19937 rng;           // Random number generator
     bool splashScreenActive;
 
+
+    
+public:
     // Background image handling
     cairo_surface_t* backgroundImage;
     bool useBackgroundImage;
@@ -560,8 +563,7 @@ private:
     bool useBackgroundZip;
     int currentBackgroundIndex;
 
-    
-public:
+
     TetrisBoard();
     ~TetrisBoard();
     bool isSplashScreenActive() const { return splashScreenActive; }
