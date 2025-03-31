@@ -7,6 +7,7 @@
 #include <pulse/simple.h>
 #include <thread>
 #include <atomic>
+#include <algorithm>
 
 // Global atomic flag to signal stopping playback
 namespace {
@@ -16,7 +17,7 @@ namespace {
 
 class PulseAudioPlayer : public AudioPlayer {
 public:
-  PulseAudioPlayer() : volume_(1.0f), isMuted_(false) {
+  PulseAudioPlayer() : volume_(1.0f), musicVolume_(1.0f), isMuted_(false) {
     // Set default sample specification
     sampleSpec_.format = PA_SAMPLE_S16LE;
     sampleSpec_.rate = 44100;
@@ -84,6 +85,16 @@ public:
     isMuted_ = false;
   }
 
+  // New method for setting music volume specifically
+  void setMusicVolume(float volume) {
+    musicVolume_ = std::clamp(volume, 0.0f, 1.0f); // Ensure volume is between 0 and 1
+  }
+  
+  // New method for retrieving current music volume
+  float getMusicVolume() const {
+    return musicVolume_;
+  }
+
   void playSound(const std::vector<uint8_t> &data, const std::string &format,
                  std::shared_ptr<std::promise<void>> completionPromise =
                      nullptr) override {
@@ -103,7 +114,9 @@ public:
       // skipping a fixed header
       size_t dataOffset = 0;
       pa_sample_spec ss = sampleSpec_; // Use default values initially
-
+      bool isMusic = false;
+      uint16_t bitsPerSample = 16; // Default to 16 bits if not found
+      
       if (format == "wav" && data.size() >= 44) {
         
         // First verify this is actually a WAV file
@@ -116,7 +129,8 @@ public:
           return;
         }
 
-        // Find the 'data' chunk
+        // Find the 'fmt ' chunk and 'data' chunk
+        uint32_t dataSize = 0;
         for (size_t i = 12; i < data.size() - 8;) {
           // Read chunk ID and length
           char chunkId[5] = {0};
@@ -129,8 +143,7 @@ public:
           if (strcmp(chunkId, "fmt ") == 0) {
             ss.channels = *reinterpret_cast<const uint16_t *>(&data[i + 10]);
             ss.rate = *reinterpret_cast<const uint32_t *>(&data[i + 12]);
-            uint16_t bitsPerSample =
-                *reinterpret_cast<const uint16_t *>(&data[i + 22]);
+            bitsPerSample = *reinterpret_cast<const uint16_t *>(&data[i + 22]);
 
             // Set format based on bits per sample
             if (bitsPerSample == 8) {
@@ -147,6 +160,22 @@ public:
           // If this is the 'data' chunk, we've found our audio data
           if (strcmp(chunkId, "data") == 0) {
             dataOffset = i + 8; // Skip chunk ID and size
+            dataSize = chunkSize;
+            
+            // Check if this is considered music (longer than 3 seconds)
+            if (ss.rate > 0 && ss.channels > 0) {
+              uint32_t bytesPerSample = bitsPerSample / 8;
+              if (bytesPerSample > 0) {
+                uint32_t bytesPerSecond = ss.rate * ss.channels * bytesPerSample;
+                if (bytesPerSecond > 0) {
+                  float durationInSeconds = static_cast<float>(dataSize) / bytesPerSecond;
+                  isMusic = (durationInSeconds > 3.0f);
+                  std::cout << "Audio duration: " << durationInSeconds << "s, classified as " 
+                            << (isMusic ? "music" : "sound effect") << std::endl;
+                }
+              }
+            }
+            
             break;
           }
 
@@ -208,38 +237,37 @@ public:
       size_t remaining = dataLength;
       size_t offset = 0;
       
-      
-      while (remaining > 0 && !g_shouldStopPlayback) {
-        size_t chunkSize = std::min(remaining, CHUNK_SIZE);
-        
-        // If muted, prepare silent audio of the same format
-        if (g_isMuted) {
-          // Create a buffer of zeros (silence) with the same size as our chunk
-          processedData.resize(chunkSize);
-          std::memset(processedData.data(), 0, chunkSize);
-          
-          // Write the silent data instead
-          if (pa_simple_write(s, processedData.data(), chunkSize, &error) < 0) {
-            std::cerr << "DEBUG: Failed to write muted audio data: " << pa_strerror(error) << std::endl;
-            break;
-          }
-        } else {
-          // Write the actual audio data when not muted
-          if (pa_simple_write(s, audioData + offset, chunkSize, &error) < 0) {
-            std::cerr << "DEBUG: Failed to write audio data: " << pa_strerror(error) << std::endl;
-            break;
-          }
-        }
-        
-        offset += chunkSize;
-        remaining -= chunkSize;
-        
-        // Check if we should stop after each chunk
-        if (g_shouldStopPlayback) {
-          break;
-        }
-      }
+while (remaining > 0 && !g_shouldStopPlayback) {
+    size_t chunkSize = std::min(remaining, CHUNK_SIZE);
+    
+    if (g_isMuted) {
+        processedData.resize(chunkSize);
+        std::memset(processedData.data(), 0, chunkSize);
+    } else {
+        processedData.resize(chunkSize);
+        std::memcpy(processedData.data(), audioData + offset, chunkSize);
 
+        // Apply volume according to whether this is music or a sound effect
+        float appliedVolume = isMusic ? (volume_ * musicVolume_) : volume_;
+
+        // Adjust the volume
+        for (size_t i = 0; i < chunkSize / sizeof(int16_t); ++i) {
+            reinterpret_cast<int16_t *>(processedData.data())[i] *= appliedVolume;
+        }
+    }
+
+    if (pa_simple_write(s, processedData.data(), chunkSize, &error) < 0) {
+        std::cerr << "DEBUG: Failed to write audio data: " << pa_strerror(error) << std::endl;
+        break;
+    }
+
+    offset += chunkSize;
+    remaining -= chunkSize;
+
+    if (g_shouldStopPlayback) {
+        break;
+    }
+}
       // Check if we were interrupted or finished normally
       if (g_shouldStopPlayback) {
         pa_simple_flush(s, &error);
@@ -262,15 +290,13 @@ public:
     playbackThread.detach();
   }
 
-  void setVolume(float volume) override {
-    volume_ = volume;
-
-    // For a more complete implementation, you would use the PulseAudio Context API
-    // to set the stream volume here
-  }
+void setVolume(float volume) override {
+    volume_ = std::clamp(volume, 0.0f, 1.0f); // Ensure volume is between 0 and 1
+}
 
 private:
-  float volume_;
+  float volume_;     // General volume for all audio
+  float musicVolume_; // Specific volume for music tracks
   bool isMuted_;
   pa_sample_spec sampleSpec_;
 };

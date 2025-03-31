@@ -34,9 +34,10 @@ else
 endif
 
 # Source files
-SRCS_COMMON = src/tetris.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp
+SRCS_COMMON = src/tetris.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
-SRCS_WIN = src/windowsaudioplayer.cpp
+SRCS_WIN = src/sdlaudioplayer.cpp
+SRCS_WIN_SDL = src/sdlaudioplayer.cpp
 
 # Windows SDL flags
 SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2)
@@ -69,12 +70,14 @@ LDFLAGS_WIN = $(GTK_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) -lwinmm -lstdc++ -
 # Object files
 OBJS_LINUX = $(SRCS_COMMON:.cpp=.o) $(SRCS_LINUX:.cpp=.o)
 OBJS_WIN = $(SRCS_COMMON:.cpp=.win.o) $(SRCS_WIN:.cpp=.win.o)
+OBJS_WIN_SDL = $(SRCS_COMMON:.cpp=.win.o) $(SRCS_WIN_SDL:.cpp=.win.o)
 OBJS_LINUX_DEBUG = $(SRCS_COMMON:.cpp=.debug.o) $(SRCS_LINUX:.cpp=.debug.o)
 OBJS_WIN_DEBUG = $(SRCS_COMMON:.cpp=.win.debug.o) $(SRCS_WIN:.cpp=.win.debug.o)
 
 # Target executables
 TARGET_LINUX = tetris
 TARGET_WIN = tetris.exe
+TARGET_WIN_SDL = tetris.exe
 TARGET_LINUX_DEBUG = tetris_debug
 TARGET_WIN_DEBUG = tetris_debug.exe
 
@@ -326,6 +329,7 @@ clean:
 	find $(BUILD_DIR) -type f -name "$(BACKGROUND_ZIP)" -delete
 	rm -f $(BUILD_DIR_LINUX)/$(TARGET_LINUX)
 	rm -f $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG)
+	rm -f $(BUILD_DIR_WIN)/$(TARGET_WIN_SDL)
 	rm -f $(SOUND_DIR)/$(SOUND_ZIP)
 
 # Clean converted audio files
@@ -370,6 +374,8 @@ help:
 	@echo ""
 	@echo "  make sdl           - Build Tetris for Linux with SDL audio explicitly"
 	@echo "  make pulse         - Build Tetris for Linux with PulseAudio (still uses SDL for joystick)"
+	@echo ""
+	@echo "  make tetris-windows-sdl - Build Tetris for Windows with SDL audio"
 	@echo ""
 	@echo "  make debug         - Build Tetris with debug symbols (using SDL for Linux)"
 	@echo "  make sdl-debug     - Build Tetris with debug symbols using SDL audio"

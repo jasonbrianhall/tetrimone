@@ -527,6 +527,7 @@ struct TetrisApp {
     GtkWidget* hardMenuItem;
     GtkWidget* extremeMenuItem;
     GtkWidget* insaneMenuItem;
+    GtkWidget* trackMenuItems[5];
 
     int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard
 
@@ -549,10 +550,11 @@ private:
     bool paused;
     std::mt19937 rng;           // Random number generator
     bool splashScreenActive;
-
+    std::atomic<bool> musicStopFlag{false};
 
     
 public:
+    bool enabledTracks[5];
     // Background image handling
     cairo_surface_t* backgroundImage;
     bool useBackgroundImage;
@@ -562,7 +564,6 @@ public:
     std::string backgroundZipPath;
     bool useBackgroundZip;
     int currentBackgroundIndex;
-
 
     TetrisBoard();
     ~TetrisBoard();
@@ -685,6 +686,10 @@ void onOpacityValueChanged(GtkRange* range, gpointer userData);
 void rebuildGameUI(TetrisApp* app);
 void updateSizeValueLabel(GtkRange* range, gpointer data);
 void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData);
+void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData);
+void onVolumeValueChanged(GtkRange* range, gpointer userData);
+void onMusicVolumeValueChanged(GtkRange* range, gpointer userData);
+void onTrackToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 
 #endif // TETRIS_H
 
