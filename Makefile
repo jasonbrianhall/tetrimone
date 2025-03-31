@@ -77,7 +77,7 @@ OBJS_WIN_DEBUG = $(SRCS_COMMON:.cpp=.win.debug.o) $(SRCS_WIN:.cpp=.win.debug.o)
 # Target executables
 TARGET_LINUX = tetris
 TARGET_WIN = tetris.exe
-TARGET_WIN_SDL = tetris_sdl.exe
+TARGET_WIN_SDL = tetris.exe
 TARGET_LINUX_DEBUG = tetris_debug
 TARGET_WIN_DEBUG = tetris_debug.exe
 
