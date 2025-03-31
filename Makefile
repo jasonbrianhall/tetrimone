@@ -230,7 +230,13 @@ $(THEME_ALL_MP3): $(SOUND_DIR)/theme.wav $(SOUND_DIR)/TetrisA.wav $(SOUND_DIR)/T
 		-i "$(SOUND_DIR)/TetrisB.wav" \
 		-i "$(SOUND_DIR)/TetrisC.wav" \
 		-i "$(SOUND_DIR)/futuristic.wav" \
-		-filter_complex "[0:a][1:a][2:a][3:a][4:a]concat=n=5:v=0:a=1[outaudio]" \
+		-filter_complex "\
+			[0:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB[a0];\
+			[1:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB[a1];\
+			[2:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB[a2];\
+			[3:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB[a3];\
+			[4:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB[a4];\
+			[a0][a1][a2][a3][a4]concat=n=5:v=0:a=1[outaudio]" \
 		-map "[outaudio]" \
 		-c:a libmp3lame -qscale:a 2 \
 		$(THEME_ALL_MP3)
