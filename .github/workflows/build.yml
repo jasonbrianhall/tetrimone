@@ -1,4 +1,4 @@
-name: Build Tetris
+name: Build Tetrimone
 
 on:
   push:
@@ -63,13 +63,13 @@ jobs:
         cat > installer.wxs << 'EOL'
         <?xml version="1.0" encoding="UTF-8"?>
         <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-          <Product Id="*" Name="Tetris GTK" Language="1033" Version="1.0.${{ github.run_number }}" Manufacturer="Jason Hall" UpgradeCode="15F96C34-8D42-417A-9E1B-CC952F7D6713"> 
+          <Product Id="*" Name="Tetrimone GTK" Language="1033" Version="1.0.${{ github.run_number }}" Manufacturer="Jason Hall" UpgradeCode="15F96C34-8D42-417A-9E1B-CC952F7D6713"> 
             <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
             <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
             <MediaTemplate EmbedCab="yes" />
             <Directory Id="TARGETDIR" Name="SourceDir">
               <Directory Id="ProgramFilesFolder">
-                <Directory Id="INSTALLFOLDER" Name="Tetris GTK">
+                <Directory Id="INSTALLFOLDER" Name="Tetrimone GTK">
                   <Component Id="MainExecutable" Guid="A47D52C8-3E95-48F6-B25F-1E6C9D4A8D34">
                     <File Id="MainEXE" Name="tetrimone.exe" Source="tetrimone.exe" KeyPath="yes"/>
                     <File Id="SoundsZIP" Name="sound.zip" Source="sound.zip"/>
@@ -119,20 +119,20 @@ jobs:
                 </Directory>
               </Directory>
               <Directory Id="ProgramMenuFolder">
-                <Directory Id="ApplicationProgramsFolder" Name="Tetris GTK">
+                <Directory Id="ApplicationProgramsFolder" Name="Tetrimone GTK">
                   <Component Id="ApplicationShortcuts" Guid="F8E2D459-F6A1-4B53-9C72-E31D8FE52D69">
                     <Shortcut Id="ApplicationStartMenuKlondike" 
-                             Name="Tetris GTK" 
+                             Name="Tetrimone GTK" 
                              Target="[INSTALLFOLDER]tetrimone.exe" 
                              WorkingDirectory="INSTALLFOLDER"
-                             Icon="TetrisIcon"/>
+                             Icon="TetrimoneIcon"/>
                     <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
-                    <RegistryValue Root="HKCU" Key="Software\TetrisGTK" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
                   </Component>
                 </Directory>
               </Directory>
             </Directory>
-            <Feature Id="ProductFeature" Title="Tetris GTK" Level="1">
+            <Feature Id="ProductFeature" Title="Tetrimone GTK" Level="1">
               <ComponentRef Id="MainExecutable" />
               <ComponentRef Id="ApplicationShortcuts" />
               <ComponentRef Id="GtkSchemas" />
@@ -141,12 +141,12 @@ jobs:
               <ComponentRef Id="IconsDir" />
               <ComponentRef Id="ThemesDir" />
             </Feature>
-            <Icon Id="TetrisIcon" SourceFile="icon.ico"/>
+            <Icon Id="TetrimoneIcon" SourceFile="icon.ico"/>
           </Product>
         </Wix>
         EOL
 
-        wixl -v installer.wxs -o ../../Tetris-GTK.msi
+        wixl -v installer.wxs -o ../../Tetrimone-GTK.msi
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -173,8 +173,8 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          artifacts/Tetris-GTK.msi
-          artifacts/Tetris-GTK.zip
+          artifacts/Tetrimone-GTK.msi
+          artifacts/Tetrimone-GTK.zip
         tag_name: ${{ github.ref == 'refs/heads/master' && format('v{0}', github.run_number) || format('bleedingedge-v{0}', github.run_number) }}
         name: ${{ github.ref == 'refs/heads/master' && format('Release {0}', github.run_number) || format('Dev Build {0}', github.run_number) }}
         draft: false
@@ -186,5 +186,5 @@ jobs:
           Build number: ${{ github.run_number }}
           
           This release includes:
-          - Windows GTK installer (Tetris-GTK.msi)
-          - Windows GTK portable version (Tetris-GTK.zip)
+          - Windows GTK installer (Tetrimone-GTK.msi)
+          - Windows GTK portable version (Tetrimone-GTK.zip)
