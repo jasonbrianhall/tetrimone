@@ -1811,7 +1811,7 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Add description
     GtkWidget* descLabel = gtk_label_new(
-        "A feature-rich Tetrimone Clone implementation with advanced graphics,\n"
+        "A feature-rich Tetris Clone implementation with advanced graphics,\n"
         "multiple difficulty levels, theme progression, and comprehensive\n"
         "control options including joystick support."
     );
@@ -1829,8 +1829,8 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Add acknowledgment text
     GtkWidget* ackLabel = gtk_label_new(
-        "This game is based on Tetrimone®, created by Alexey Pajitnov in 1984.\n"
-        "Tetrimone® is a registered trademark of The Tetrimone Company, LLC.\n"
+        "This game is based on Tetris®, created by Alexey Pajitnov in 1984.\n"
+        "Tetris® is a registered trademark of The Tetris Company, LLC.\n"
         "Original game published by ELORG."
     );
     gtk_box_pack_start(GTK_BOX(vbox), ackLabel, FALSE, FALSE, 0);
