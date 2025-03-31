@@ -7,6 +7,7 @@
 #include <pulse/simple.h>
 #include <thread>
 #include <atomic>
+#include <algorithm>
 
 // Global atomic flag to signal stopping playback
 namespace {
@@ -208,38 +209,34 @@ public:
       size_t remaining = dataLength;
       size_t offset = 0;
       
-      
-      while (remaining > 0 && !g_shouldStopPlayback) {
-        size_t chunkSize = std::min(remaining, CHUNK_SIZE);
-        
-        // If muted, prepare silent audio of the same format
-        if (g_isMuted) {
-          // Create a buffer of zeros (silence) with the same size as our chunk
-          processedData.resize(chunkSize);
-          std::memset(processedData.data(), 0, chunkSize);
-          
-          // Write the silent data instead
-          if (pa_simple_write(s, processedData.data(), chunkSize, &error) < 0) {
-            std::cerr << "DEBUG: Failed to write muted audio data: " << pa_strerror(error) << std::endl;
-            break;
-          }
-        } else {
-          // Write the actual audio data when not muted
-          if (pa_simple_write(s, audioData + offset, chunkSize, &error) < 0) {
-            std::cerr << "DEBUG: Failed to write audio data: " << pa_strerror(error) << std::endl;
-            break;
-          }
-        }
-        
-        offset += chunkSize;
-        remaining -= chunkSize;
-        
-        // Check if we should stop after each chunk
-        if (g_shouldStopPlayback) {
-          break;
-        }
-      }
+while (remaining > 0 && !g_shouldStopPlayback) {
+    size_t chunkSize = std::min(remaining, CHUNK_SIZE);
+    
+    if (g_isMuted) {
+        processedData.resize(chunkSize);
+        std::memset(processedData.data(), 0, chunkSize);
+    } else {
+        processedData.resize(chunkSize);
+        std::memcpy(processedData.data(), audioData + offset, chunkSize);
 
+        // Adjust the volume if not muted
+        for (size_t i = 0; i < chunkSize / sizeof(int16_t); ++i) {
+            reinterpret_cast<int16_t *>(processedData.data())[i] *= volume_;
+        }
+    }
+
+    if (pa_simple_write(s, processedData.data(), chunkSize, &error) < 0) {
+        std::cerr << "DEBUG: Failed to write audio data: " << pa_strerror(error) << std::endl;
+        break;
+    }
+
+    offset += chunkSize;
+    remaining -= chunkSize;
+
+    if (g_shouldStopPlayback) {
+        break;
+    }
+}
       // Check if we were interrupted or finished normally
       if (g_shouldStopPlayback) {
         pa_simple_flush(s, &error);
@@ -262,12 +259,9 @@ public:
     playbackThread.detach();
   }
 
-  void setVolume(float volume) override {
-    volume_ = volume;
-
-    // For a more complete implementation, you would use the PulseAudio Context API
-    // to set the stream volume here
-  }
+void setVolume(float volume) override {
+    volume_ = std::clamp(volume, 0.0f, 1.0f); // Ensure volume is between 0 and 1
+}
 
 private:
   float volume_;
