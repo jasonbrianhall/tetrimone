@@ -189,19 +189,6 @@ $(BUILD_DIR_WIN)/$(TARGET_WIN): $(addprefix $(BUILD_DIR_WIN)/,$(OBJS_WIN))
 $(BUILD_DIR_WIN)/%.win.o: %.cpp
 	$(CXX_WIN) $(CXXFLAGS_WIN) -c $< -o $@
 
-# Windows SDL build target
-.PHONY: tetris-windows-sdl
-tetris-windows-sdl: $(BUILD_DIR_WIN)/$(TARGET_WIN_SDL) tetris-collect-sdl-dlls pack-backgrounds-windows convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows
-
-$(BUILD_DIR_WIN)/$(TARGET_WIN_SDL): $(addprefix $(BUILD_DIR_WIN)/,$(OBJS_WIN_SDL))
-	$(CXX_WIN) $^ -o $@ $(LDFLAGS_WIN)
-
-# DLL collection for Windows SDL build
-.PHONY: tetris-collect-sdl-dlls
-tetris-collect-sdl-dlls: $(BUILD_DIR_WIN)/$(TARGET_WIN_SDL)
-	@echo "Collecting DLLs for Tetris SDL..."
-	@build/windows/collect_dlls.sh $(BUILD_DIR_WIN)/$(TARGET_WIN_SDL) $(DLL_SOURCE_DIR) $(BUILD_DIR_WIN)
-
 #
 # Windows debug targets
 #
