@@ -69,6 +69,9 @@ TetrisBoard::TetrisBoard() : score(0), level(1), linesCleared(0), gameOver(false
     } else {
         std::cout << "Could not load background.zip, backgrounds will need to be loaded manually" << std::endl;
     }
+    for (int i = 0; i < 5; i++) {
+        enabledTracks[i] = true;
+    }
 }
 
 TetrisBoard::~TetrisBoard() {
@@ -1260,6 +1263,31 @@ void createMenu(TetrisApp* app) {
     g_signal_connect(G_OBJECT(volumeMenuItem), "activate",
                    G_CALLBACK(onVolumeDialog), app);
 
+GtkWidget* musicMenu = gtk_menu_new();
+GtkWidget* musicMenuItem = gtk_menu_item_new_with_label("Music Tracks");
+gtk_menu_item_set_submenu(GTK_MENU_ITEM(musicMenuItem), musicMenu);
+gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), musicMenuItem);
+
+// Create checkbox for each track
+for (int i = 0; i < 5; i++) {
+    char label[20];
+    sprintf(label, "Track %d", i+1);
+    app->trackMenuItems[i] = gtk_check_menu_item_new_with_label(label);
+    
+    // Set all checked by default
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]), TRUE);
+    
+    // Store track index in the widget data
+    g_object_set_data(G_OBJECT(app->trackMenuItems[i]), "track-index", GINT_TO_POINTER(i));
+    
+    // Connect signal
+    g_signal_connect(G_OBJECT(app->trackMenuItems[i]), "toggled", 
+                   G_CALLBACK(onTrackToggled), app);
+                   
+    gtk_menu_shell_append(GTK_MENU_SHELL(musicMenu), app->trackMenuItems[i]);
+}
+
+
 GtkWidget* joystickConfigMenuItem = gtk_menu_item_new_with_label("Configure Joystick...");
 gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), joystickConfigMenuItem);
 
@@ -2256,6 +2284,31 @@ void updateSizeValueLabel(GtkRange* range, gpointer data) {
     char buf[32];
     snprintf(buf, sizeof(buf), "Current size: %d", newSize);
     gtk_label_set_text(GTK_LABEL(label), buf);
+}
+
+void onTrackToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
+    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    
+    // Get the track index
+    int trackIndex = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(menuItem), "track-index"));
+    
+    // Update the enabled state in the board
+    app->board->enabledTracks[trackIndex] = gtk_check_menu_item_get_active(menuItem);
+    
+    // Make sure at least one track is enabled
+    bool anyEnabled = false;
+    for (int i = 0; i < 5; i++) {
+        if (app->board->enabledTracks[i]) {
+            anyEnabled = true;
+            break;
+        }
+    }
+    
+    // If no tracks are enabled, re-enable this one
+    if (!anyEnabled) {
+        app->board->enabledTracks[trackIndex] = true;
+        gtk_check_menu_item_set_active(menuItem, TRUE);
+    }
 }
 
 int main(int argc, char* argv[]) {

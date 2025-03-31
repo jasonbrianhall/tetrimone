@@ -312,6 +312,28 @@ void TetrisBoard::playBackgroundMusic() {
       AudioManager& audioManager = AudioManager::getInstance();
       size_t currentTrackIndex = 0;
 
+      // Check if we need to skip the current track because it's disabled
+      while (!enabledTracks[currentTrackIndex]) {
+        // If all tracks are disabled, just use the first one
+        bool allDisabled = true;
+        for (int i = 0; i < 5; i++) {
+          if (enabledTracks[i]) {
+            allDisabled = false;
+            break;
+          }
+        }
+        
+        if (allDisabled) {
+          // All tracks disabled, just use track 0
+          log_to_file("All tracks disabled, defaulting to track 0");
+          currentTrackIndex = 0;
+          break;
+        } else {
+          // Move to next track and check again
+          currentTrackIndex = (currentTrackIndex + 1) % backgroundMusicTracks.size();
+        }
+      }
+
       #ifdef _WIN32
       log_to_file("Using Windows-specific music playback");
       
@@ -398,7 +420,31 @@ void TetrisBoard::playBackgroundMusic() {
             
             // Only move to next track if we completed normally
             if (elapsedSeconds >= trackDuration && sound_enabled_ && !musicStopFlag.load()) {
-              currentTrackIndex = (currentTrackIndex + 1) % backgroundMusicTracks.size();
+              // Find the next enabled track
+              size_t nextTrackIndex = (currentTrackIndex + 1) % backgroundMusicTracks.size();
+              
+              // Check if all tracks are disabled
+              bool allDisabled = true;
+              for (int i = 0; i < 5; i++) {
+                if (enabledTracks[i]) {
+                  allDisabled = false;
+                  break;
+                }
+              }
+              
+              if (!allDisabled) {
+                // Skip disabled tracks
+                while (!enabledTracks[nextTrackIndex]) {
+                  nextTrackIndex = (nextTrackIndex + 1) % backgroundMusicTracks.size();
+                  // If we looped back to the current track, break to avoid infinite loop
+                  if (nextTrackIndex == currentTrackIndex) {
+                    break;
+                  }
+                }
+              }
+              
+              currentTrackIndex = nextTrackIndex;
+              log_to_file("Moving to track index: " + std::to_string(currentTrackIndex));
             }
           } catch (const std::exception& e) {
             log_to_file("Exception during music playback: " + std::string(e.what()));
@@ -413,7 +459,7 @@ void TetrisBoard::playBackgroundMusic() {
         }
       }
       #else
-      // Original implementation for non-Windows platforms
+      // Original implementation for non-Windows platforms with track skipping
       while (sound_enabled_ && !musicStopFlag.load()) {
         SoundEvent audioEvent = backgroundMusicTracks[currentTrackIndex];
         
@@ -421,7 +467,31 @@ void TetrisBoard::playBackgroundMusic() {
           try {
             audioManager.playSoundAndWait(audioEvent);
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            currentTrackIndex = (currentTrackIndex + 1) % backgroundMusicTracks.size();
+            
+            // Find the next enabled track
+            size_t nextTrackIndex = (currentTrackIndex + 1) % backgroundMusicTracks.size();
+            
+            // Check if all tracks are disabled
+            bool allDisabled = true;
+            for (int i = 0; i < 5; i++) {
+              if (enabledTracks[i]) {
+                allDisabled = false;
+                break;
+              }
+            }
+            
+            if (!allDisabled) {
+              // Skip disabled tracks
+              while (!enabledTracks[nextTrackIndex]) {
+                nextTrackIndex = (nextTrackIndex + 1) % backgroundMusicTracks.size();
+                // If we looped back to the current track, break to avoid infinite loop
+                if (nextTrackIndex == currentTrackIndex) {
+                  break;
+                }
+              }
+            }
+            
+            currentTrackIndex = nextTrackIndex;
           } catch (const std::exception& e) {
             log_to_file("Exception during music playback: " + std::string(e.what()));
             break;
