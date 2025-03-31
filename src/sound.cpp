@@ -371,10 +371,10 @@ void TetrisBoard::playBackgroundMusic() {
         return 120; // Default fallback duration
       };
       
-      while (sound_enabled_ && !musicStopFlag.load() && !musicPaused) {
+      while (sound_enabled_ && !musicStopFlag.load()) {
         SoundEvent audioEvent = backgroundMusicTracks[currentTrackIndex];
         
-        if (!audioManager.isMuted()) {
+        if (!audioManager.isMuted() && !musicPaused) {
           try {
             // Calculate the duration of this track
             int trackDuration = calculateWavDuration(audioEvent);
@@ -383,13 +383,21 @@ void TetrisBoard::playBackgroundMusic() {
             // Play the track
             audioManager.playSound(audioEvent);
             
-            // Wait for the track to finish
-            for (int i = 0; i < trackDuration && sound_enabled_ && !musicStopFlag.load() && !musicPaused; i++) {
-              std::this_thread::sleep_for(std::chrono::seconds(1));
+            // Wait for the track to finish or pause to occur
+            int elapsedSeconds = 0;
+            while (elapsedSeconds < trackDuration && sound_enabled_ && !musicStopFlag.load()) {
+              // Only increment timer if not paused
+              if (!musicPaused) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                elapsedSeconds++;
+              } else {
+                // If paused, just do short sleep to avoid CPU spinning
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+              }
             }
             
-            // Only move to next track if we weren't interrupted
-            if (sound_enabled_ && !musicStopFlag.load() && !musicPaused) {
+            // Only move to next track if we completed normally
+            if (elapsedSeconds >= trackDuration && sound_enabled_ && !musicStopFlag.load()) {
               currentTrackIndex = (currentTrackIndex + 1) % backgroundMusicTracks.size();
             }
           } catch (const std::exception& e) {
@@ -400,15 +408,16 @@ void TetrisBoard::playBackgroundMusic() {
             std::this_thread::sleep_for(std::chrono::seconds(2));
           }
         } else {
-          std::this_thread::sleep_for(std::chrono::seconds(1));
+          // If muted or paused, just wait a bit before checking again
+          std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
       }
       #else
       // Original implementation for non-Windows platforms
-      while (sound_enabled_ && !musicStopFlag.load() && !musicPaused) {
+      while (sound_enabled_ && !musicStopFlag.load()) {
         SoundEvent audioEvent = backgroundMusicTracks[currentTrackIndex];
         
-        if (!audioManager.isMuted()) {
+        if (!audioManager.isMuted() && !musicPaused) {
           try {
             audioManager.playSoundAndWait(audioEvent);
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -420,9 +429,10 @@ void TetrisBoard::playBackgroundMusic() {
             log_to_file("Unknown exception during music playback");
             break;
           }
+        } else {
+          // If muted or paused, just wait a bit
+          std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-        
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
       }
       #endif
 
