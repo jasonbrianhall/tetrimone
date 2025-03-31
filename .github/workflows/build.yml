@@ -35,7 +35,7 @@ jobs:
 
     - name: Build GTK Version
       run: |
-        make tetris-windows-sdl
+        make windows
 
     - name: Copy Resources and Collect DLLs
       working-directory: build/windows
