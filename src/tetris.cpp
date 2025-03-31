@@ -1165,14 +1165,18 @@ g_signal_connect(G_OBJECT(tetrisApp->window), "delete-event",
     gtk_box_pack_start(GTK_BOX(sideBox), controlsLabel, FALSE, FALSE, 10);
     
     GtkWidget* controls = gtk_label_new(
-        "Left/Right/A/D: Move\n"
-        "Up/W/Z: Rotate\n"
-        "Down/S: Soft Drop\n"
-        "Space: Hard Drop\n"
-        "P: Pause\n"
-        "R: Restart\n"
-        "M: Mute or Unmute"
-    );
+    "Keyboard Controls:\n"
+    "• Left/Right/A/D: Move block\n"
+    "• Up/W: Rotate clockwise\n"
+    "• Z: Rotate counter-clockwise\n"
+    "• Down/S: Soft drop\n"
+    "• Space: Hard drop\n"
+    "• P: Pause/Resume game\n"
+    "• R: Restart game\n"
+    "• M: Toggle music\n\n"
+    "Controller support is available.\n"
+    "Configure in Controls menu.");
+
     gtk_widget_set_halign(controls, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(sideBox), controls, FALSE, FALSE, 0);
     
