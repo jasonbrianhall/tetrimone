@@ -108,6 +108,9 @@ bool TetrisBoard::initializeAudio() {
         loadSoundFromZip(GameSoundEvent::BackgroundMusic3, "TetrisB.mp3") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic4, "TetrisC.mp3") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic5, "futuristic.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Single, "single.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Double, "double.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Triple, "triple.mp3") &&
         loadSoundFromZip(GameSoundEvent::Gameover, "gameover.mp3") &&
         loadSoundFromZip(GameSoundEvent::Clear, "clear.mp3") &&
         loadSoundFromZip(GameSoundEvent::Drop, "drop.mp3") &&
@@ -198,6 +201,15 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
         break;
     case GameSoundEvent::BackgroundMusic5:
         audioEvent = SoundEvent::BackgroundMusic5;
+        break;
+    case GameSoundEvent::Single:
+        audioEvent = SoundEvent::Single;
+        break;
+    case GameSoundEvent::Double:
+        audioEvent = SoundEvent::Double;
+        break;
+    case GameSoundEvent::Triple:
+        audioEvent = SoundEvent::Triple;
         break;
     case GameSoundEvent::Gameover:
         audioEvent = SoundEvent::Gameover;
@@ -395,6 +407,15 @@ void TetrisBoard::playSound(GameSoundEvent event) {
     break;
   case GameSoundEvent::BackgroundMusic5:
     audioEvent = SoundEvent::BackgroundMusic5;
+    break;
+  case GameSoundEvent::Single:
+    audioEvent = SoundEvent::Single;
+    break;
+  case GameSoundEvent::Double:
+    audioEvent = SoundEvent::Double;
+    break;
+  case GameSoundEvent::Triple:
+    audioEvent = SoundEvent::Triple;
     break;
   case GameSoundEvent::Gameover:
     audioEvent = SoundEvent::Gameover;
