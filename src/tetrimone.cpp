@@ -47,8 +47,8 @@ void Tetromino::setPosition(int newX, int newY) {
     y = newY;
 }
 
-// TetrisBoard class implementation
-TetrisBoard::TetrisBoard() : score(0), level(1), linesCleared(0), gameOver(false), 
+// TetrimoneBoard class implementation
+TetrimoneBoard::TetrimoneBoard() : score(0), level(1), linesCleared(0), gameOver(false), 
                             paused(false), splashScreenActive(true),
                             backgroundImage(nullptr), useBackgroundImage(false),
                             backgroundOpacity(0.3), useBackgroundZip(false), 
@@ -74,7 +74,7 @@ TetrisBoard::TetrisBoard() : score(0), level(1), linesCleared(0), gameOver(false
     }
 }
 
-TetrisBoard::~TetrisBoard() {
+TetrimoneBoard::~TetrimoneBoard() {
     // Cancel any ongoing transition and clean up resources
     cancelBackgroundTransition();
     
@@ -87,7 +87,7 @@ TetrisBoard::~TetrisBoard() {
     cleanupBackgroundImages();
 }
 
-bool TetrisBoard::movePiece(int dx, int dy) {
+bool TetrimoneBoard::movePiece(int dx, int dy) {
     if (gameOver || paused) return false;
     
     currentPiece->move(dx, dy);
@@ -100,7 +100,7 @@ bool TetrisBoard::movePiece(int dx, int dy) {
     return true;
 }
 
-bool TetrisBoard::rotatePiece(bool clockwise) {
+bool TetrimoneBoard::rotatePiece(bool clockwise) {
     if (gameOver || paused) return false;
     
     currentPiece->rotate(clockwise);
@@ -113,7 +113,7 @@ bool TetrisBoard::rotatePiece(bool clockwise) {
     return true;
 }
 
-bool TetrisBoard::checkCollision(const Tetromino& piece) const {
+bool TetrimoneBoard::checkCollision(const Tetromino& piece) const {
     auto shape = piece.getShape();
     int pieceX = piece.getX();
     int pieceY = piece.getY();
@@ -139,7 +139,7 @@ bool TetrisBoard::checkCollision(const Tetromino& piece) const {
     return false;
 }
 
-void TetrisBoard::lockPiece() {
+void TetrimoneBoard::lockPiece() {
     auto shape = currentPiece->getShape();
     int pieceX = currentPiece->getX();
     int pieceY = currentPiece->getY();
@@ -162,7 +162,7 @@ void TetrisBoard::lockPiece() {
     }
 }
 
-int TetrisBoard::clearLines() {
+int TetrimoneBoard::clearLines() {
     int linesCleared = 0;
     int currentlevel = (this->linesCleared / 10) + 1;
     // Check each row from bottom to top
@@ -201,7 +201,7 @@ int TetrisBoard::clearLines() {
     if (linesCleared > 0) {
         // Play appropriate sound based on number of lines cleared
         if (linesCleared == 4) {
-            playSound(GameSoundEvent::Excellent); // Play Tetris/Excellent sound for 4 lines
+            playSound(GameSoundEvent::Excellent); // Play Tetrimone/Excellent sound for 4 lines
         } else if (linesCleared > 0) {
             playSound(GameSoundEvent::Clear); // Play normal clear sound for 1-3 lines
             if (linesCleared == 1) { playSound(GameSoundEvent::Single); }
@@ -209,7 +209,7 @@ int TetrisBoard::clearLines() {
             if (linesCleared == 3) { playSound(GameSoundEvent::Triple); }
             
         }
-        // Classic Tetris scoring
+        // Classic Tetrimone scoring
         switch (linesCleared) {
             case 1:
                 score += 40 * level;
@@ -247,7 +247,7 @@ int TetrisBoard::clearLines() {
     return linesCleared;
 }
 
-void TetrisBoard::generateNewPiece() {
+void TetrimoneBoard::generateNewPiece() {
     // Move next piece to current
     currentPiece = std::move(nextPiece);
     
@@ -267,7 +267,7 @@ void TetrisBoard::generateNewPiece() {
     }
 }
 
-void TetrisBoard::updateGame() {
+void TetrimoneBoard::updateGame() {
     if (gameOver || paused || splashScreenActive) return;
     
     // Existing update code...
@@ -278,7 +278,7 @@ void TetrisBoard::updateGame() {
     }
 }
 
-void TetrisBoard::hardDrop() {
+void TetrimoneBoard::hardDrop() {
     if (gameOver || paused) return;
     
     // Move the piece down until collision
@@ -297,14 +297,14 @@ void TetrisBoard::hardDrop() {
     generateNewPiece();
 }
 
-int TetrisBoard::getGridValue(int x, int y) const {
+int TetrimoneBoard::getGridValue(int x, int y) const {
     if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
         return 0;
     }
     return grid[y][x];
 }
 
-void TetrisBoard::restart() {
+void TetrimoneBoard::restart() {
     // Clear the grid
     for (auto& row : grid) {
         std::fill(row.begin(), row.end(), 0);
@@ -333,8 +333,8 @@ void TetrisBoard::restart() {
 
 // GTK+ callback functions
 gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data) {
-    TetrisApp* app = static_cast<TetrisApp*>(data);
-    TetrisBoard* board = app->board;
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(data);
+    TetrimoneBoard* board = app->board;
     
     // Get widget dimensions
     GtkAllocation allocation;
@@ -699,7 +699,7 @@ if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) && board-
 }
 
 void onBlockSizeDialog(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Pause the game if it's running
     bool wasPaused = app->board->isPaused();
@@ -804,8 +804,8 @@ void onBlockSizeDialog(GtkMenuItem* menuItem, gpointer userData) {
 }
 
 gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data) {
-    TetrisApp* app = static_cast<TetrisApp*>(data);
-    TetrisBoard* board = app->board;
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(data);
+    TetrimoneBoard* board = app->board;
     
     // Get widget dimensions
     GtkAllocation allocation;
@@ -871,8 +871,8 @@ gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data) {
 }
 
 gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data) {
-    TetrisApp* app = static_cast<TetrisApp*>(data);
-    TetrisBoard* board = app->board;
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(data);
+    TetrimoneBoard* board = app->board;
     
     // Handle space to dismiss splash screen first
     if (event->keyval == GDK_KEY_space && board->isSplashScreenActive()) {
@@ -980,8 +980,8 @@ gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data) {
 }
 
 gboolean onTimerTick(gpointer data) {
-    TetrisApp* app = static_cast<TetrisApp*>(data);
-    TetrisBoard* board = app->board;
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(data);
+    TetrimoneBoard* board = app->board;
     
     if (!board->isGameOver() && !board->isPaused()) {
         board->updateGame();
@@ -993,8 +993,8 @@ gboolean onTimerTick(gpointer data) {
     return TRUE;  // Keep the timer running
 }
 
-void updateLabels(TetrisApp* app) {
-    TetrisBoard* board = app->board;
+void updateLabels(TetrimoneApp* app) {
+    TetrimoneBoard* board = app->board;
     
     // Update score label
     std::string score_text = "<b>Score:</b> " + std::to_string(board->getScore());
@@ -1009,7 +1009,7 @@ void updateLabels(TetrisApp* app) {
     gtk_label_set_markup(GTK_LABEL(app->linesLabel), lines_text.c_str());
 }
 
-void resetUI(TetrisApp* app) {
+void resetUI(TetrimoneApp* app) {
     // Reset all UI elements to their initial state
     gtk_widget_queue_draw(app->gameArea);
     gtk_widget_queue_draw(app->nextPieceArea);
@@ -1026,7 +1026,7 @@ void resetUI(TetrisApp* app) {
 }
 
 void cleanupApp(gpointer data) {
-    TetrisApp* app = static_cast<TetrisApp*>(data);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(data);
     
     // Stop timers first to prevent any race conditions
     if (app->timerId > 0) {
@@ -1061,7 +1061,7 @@ void cleanupApp(gpointer data) {
 }
 
 void onScreenSizeChanged(GtkWidget* widget, GdkRectangle* allocation, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // We intentionally avoid recalculating the block size here
     // so that manual resize doesn't affect the game area
@@ -1072,9 +1072,9 @@ void onScreenSizeChanged(GtkWidget* widget, GdkRectangle* allocation, gpointer u
 }
 
 void onAppActivate(GtkApplication* app, gpointer userData) {
-    TetrisApp* tetrisApp = new TetrisApp();
+    TetrimoneApp* tetrisApp = new TetrimoneApp();
     tetrisApp->app = app;
-    tetrisApp->board = new TetrisBoard();
+    tetrisApp->board = new TetrimoneBoard();
     tetrisApp->timerId = 0;
     tetrisApp->dropSpeed = INITIAL_SPEED;
     tetrisApp->difficulty = 2; // Default to Medium
@@ -1220,7 +1220,7 @@ g_signal_connect(G_OBJECT(tetrisApp->window), "delete-event",
 }
 
 // Function to create the menu bar with a better organization
-void createMenu(TetrisApp* app) {
+void createMenu(TetrimoneApp* app) {
     GtkWidget* menuBar = gtk_menu_bar_new();
     
     // *** GAME MENU ***
@@ -1458,7 +1458,7 @@ void createMenu(TetrisApp* app) {
 
 // Menu callback functions
 void onStartGame(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     if (app->board->isGameOver()) {
         app->board->restart();
         resetUI(app);
@@ -1474,7 +1474,7 @@ void onStartGame(GtkMenuItem* menuItem, gpointer userData) {
     updateLabels(app);
 }
 
-void pauseGame(TetrisApp* app) {
+void pauseGame(TetrimoneApp* app) {
     // Remove the timer
     if (app->timerId > 0) {
         g_source_remove(app->timerId);
@@ -1493,7 +1493,7 @@ void pauseGame(TetrisApp* app) {
 }
 
 void onRestartGame(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     app->board->restart();
     resetUI(app);
     
@@ -1512,7 +1512,7 @@ void onRestartGame(GtkMenuItem* menuItem, gpointer userData) {
 }
 
 void onQuitGame(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     gtk_window_close(GTK_WINDOW(app->window));
 }
 
@@ -1520,7 +1520,7 @@ gboolean onDeleteEvent(GtkWidget* widget, GdkEvent* event, gpointer userData) {
 #ifdef DEBUG
     std::cerr << "DEBUG: onDeleteEvent called" << std::endl;
 #endif    
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
 #ifdef DEBUG
     std::cerr << "DEBUG: Stopping timers" << std::endl;
 #endif
@@ -1582,7 +1582,7 @@ gboolean onDeleteEvent(GtkWidget* widget, GdkEvent* event, gpointer userData) {
 
 
 void onSoundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     bool isSoundEnabled = gtk_check_menu_item_get_active(menuItem);
     
     app->board->sound_enabled_ = isSoundEnabled;
@@ -1608,7 +1608,7 @@ void onSoundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
 }
 
 void onDifficultyChanged(GtkRadioMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Only proceed if the item is active (selected)
     if (!gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menuItem))) {
@@ -1741,7 +1741,7 @@ std::string getDifficultyText(int difficulty) {
     }
 }
 
-void adjustDropSpeed(TetrisApp* app) {
+void adjustDropSpeed(TetrimoneApp* app) {
     // Base speed based on level
     int baseSpeed = INITIAL_SPEED - (app->board->getLevel() - 1) * 50;
     
@@ -1777,7 +1777,7 @@ void adjustDropSpeed(TetrisApp* app) {
 }
 
 void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Create a custom dialog
     GtkWidget* dialog = gtk_dialog_new_with_buttons(
@@ -1811,7 +1811,7 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Add description
     GtkWidget* descLabel = gtk_label_new(
-        "A feature-rich Tetris Clone implementation with advanced graphics,\n"
+        "A feature-rich Tetrimone Clone implementation with advanced graphics,\n"
         "multiple difficulty levels, theme progression, and comprehensive\n"
         "control options including joystick support."
     );
@@ -1829,8 +1829,8 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Add acknowledgment text
     GtkWidget* ackLabel = gtk_label_new(
-        "This game is based on Tetris®, created by Alexey Pajitnov in 1984.\n"
-        "Tetris® is a registered trademark of The Tetris Company, LLC.\n"
+        "This game is based on Tetrimone®, created by Alexey Pajitnov in 1984.\n"
+        "Tetrimone® is a registered trademark of The Tetrimone Company, LLC.\n"
         "Original game published by ELORG."
     );
     gtk_box_pack_start(GTK_BOX(vbox), ackLabel, FALSE, FALSE, 0);
@@ -1865,7 +1865,7 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
 }
 
 void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Create dialog
     GtkWidget* dialog = gtk_dialog_new_with_buttons(
@@ -1912,7 +1912,7 @@ void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData) {
         "• Difficulty can be adjusted in Options menu\n\n"
         "Tips:\n"
         "• Keep the stack low and even\n"
-        "• Save I-pieces for Tetris clears (4 lines)\n"
+        "• Save I-pieces for Tetrimone clears (4 lines)\n"
         "• Watch the preview for the next piece\n"
         "• Red line indicates the game over zone"
     );    
@@ -1936,7 +1936,7 @@ void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData) {
 }
 
 // Add to startGame function
-void startGame(TetrisApp* app) {
+void startGame(TetrimoneApp* app) {
     // Remove existing timer if any
     if (app->timerId > 0) {
         g_source_remove(app->timerId);
@@ -1962,7 +1962,7 @@ void startGame(TetrisApp* app) {
 }
 
 void onPauseGame(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     if (!app->board->isGameOver()) {
         bool isPaused = app->board->isPaused();
         app->board->togglePause();
@@ -1982,7 +1982,7 @@ void onPauseGame(GtkMenuItem* menuItem, gpointer userData) {
 }
 
 void onMenuActivated(GtkWidget* widget, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Store current menu item label
     const char* currentLabel = gtk_menu_item_get_label(GTK_MENU_ITEM(app->pauseMenuItem));
@@ -1997,7 +1997,7 @@ void onMenuActivated(GtkWidget* widget, gpointer userData) {
 }
 
 void onMenuDeactivated(GtkWidget* widget, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Call onPauseGame to resume if we weren't manually paused before
     if (app->board->isPaused() && !app->board->isGameOver() && 
@@ -2006,13 +2006,13 @@ void onMenuDeactivated(GtkWidget* widget, gpointer userData) {
     }
 }
 
-bool TetrisBoard::isGameOver() const {
+bool TetrimoneBoard::isGameOver() const {
     // If this is the first time checking game over status since it became true,
     // play the game over sound
     static bool soundPlayed = false;
     if (gameOver && !soundPlayed) {
         // Cast away const to allow calling non-const member function
-        TetrisBoard* nonConstThis = const_cast<TetrisBoard*>(this);
+        TetrimoneBoard* nonConstThis = const_cast<TetrimoneBoard*>(this);
         nonConstThis->playSound(GameSoundEvent::Gameover);
         soundPlayed = true;
     }
@@ -2025,7 +2025,7 @@ bool TetrisBoard::isGameOver() const {
     return gameOver;
 }
 
-void calculateBlockSize(TetrisApp* app) {
+void calculateBlockSize(TetrimoneApp* app) {
     // Get the screen dimensions
     GdkRectangle workarea = {0};
     GdkMonitor* monitor = gdk_display_get_primary_monitor(gdk_display_get_default());
@@ -2051,7 +2051,7 @@ void calculateBlockSize(TetrisApp* app) {
 void onBlockSizeValueChanged(GtkRange* range, gpointer data) {
     // Extract the app pointer and label from the data
     BlockSizeCallbackData* cbData = static_cast<BlockSizeCallbackData*>(data);
-    TetrisApp* app = cbData->app;
+    TetrimoneApp* app = cbData->app;
     GtkWidget* label = cbData->label;
     
     // Get the new block size from the slider
@@ -2092,7 +2092,7 @@ void onBlockSizeValueChanged(GtkRange* range, gpointer data) {
     updateLabels(app);
 }
 
-void rebuildGameUI(TetrisApp* app) {
+void rebuildGameUI(TetrimoneApp* app) {
     // Remove and destroy existing game area and next piece area
     if (app->gameArea != NULL) {
         gtk_widget_destroy(app->gameArea);
@@ -2190,13 +2190,13 @@ void rebuildGameUI(TetrisApp* app) {
 }
 
 void onResizeWindowButtonClicked(GtkWidget* button, gpointer data) {
-    TetrisApp* app = static_cast<TetrisApp*>(data);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(data);
     
     // Rebuild UI with current block size
     rebuildGameUI(app);
 }
 
-bool TetrisBoard::loadBackgroundImage(const std::string& imagePath) {
+bool TetrimoneBoard::loadBackgroundImage(const std::string& imagePath) {
     // Clean up previous image if it exists
     if (backgroundImage != nullptr) {
         cairo_surface_destroy(backgroundImage);
@@ -2223,7 +2223,7 @@ bool TetrisBoard::loadBackgroundImage(const std::string& imagePath) {
 }
 
 void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Create dialog
     GtkWidget* dialog = gtk_dialog_new_with_buttons(
@@ -2285,7 +2285,7 @@ void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData) {
 }
 
 void onOpacityValueChanged(GtkRange* range, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Update the opacity in the board
     double opacity = gtk_range_get_value(range);
@@ -2323,7 +2323,7 @@ void updateSizeValueLabel(GtkRange* range, gpointer data) {
 }
 
 void onTrackToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Get the track index
     int trackIndex = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(menuItem), "track-index"));

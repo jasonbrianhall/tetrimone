@@ -48,7 +48,7 @@ void log_to_file(const std::string& message) {
 #endif
 
 // Function to extract a file from a ZIP archive into memory
-bool TetrisBoard::extractFileFromZip(const std::string &zipFilePath,
+bool TetrimoneBoard::extractFileFromZip(const std::string &zipFilePath,
                                      const std::string &fileName,
                                      std::vector<uint8_t> &fileData) {
   int errCode = 0;
@@ -113,7 +113,7 @@ bool TetrisBoard::extractFileFromZip(const std::string &zipFilePath,
   return true;
 }
 
-bool TetrisBoard::initializeAudio() {
+bool TetrimoneBoard::initializeAudio() {
   // Don't do anything if sound is disabled
   if (!sound_enabled_) {
     return false;
@@ -130,9 +130,9 @@ bool TetrisBoard::initializeAudio() {
     if (
     
         loadSoundFromZip(GameSoundEvent::BackgroundMusic, "theme.mp3") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusic2, "TetrisA.mp3") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusic3, "TetrisB.mp3") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusic4, "TetrisC.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic2, "TetrimoneA.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic3, "TetrimoneB.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic4, "TetrimoneC.mp3") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic5, "futuristic.mp3") &&
         loadSoundFromZip(GameSoundEvent::Single, "single.mp3") &&
         loadSoundFromZip(GameSoundEvent::Double, "double.mp3") &&
@@ -145,7 +145,7 @@ bool TetrisBoard::initializeAudio() {
         loadSoundFromZip(GameSoundEvent::Rotate, "rotate.mp3") &&
         loadSoundFromZip(GameSoundEvent::Select, "select.mp3") &&
         loadSoundFromZip(GameSoundEvent::Start, "start.mp3") &&
-        loadSoundFromZip(GameSoundEvent::Tetris, "tetris.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Tetrimone, "tetris.mp3") &&
         loadSoundFromZip(GameSoundEvent::Excellent, "excellent.mp3")) {
       return true;
     } else {
@@ -163,12 +163,12 @@ bool TetrisBoard::initializeAudio() {
   }
 }
 
-void TetrisBoard::dismissSplashScreen() { 
+void TetrimoneBoard::dismissSplashScreen() { 
     splashScreenActive = false; 
     playSound(GameSoundEvent::Start);
 }
 
-bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
+bool TetrimoneBoard::loadSoundFromZip(GameSoundEvent event,
                                    const std::string& soundFileName) {
     // Extract the sound file from the ZIP archive
     std::vector<uint8_t> soundData;
@@ -261,8 +261,8 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
     case GameSoundEvent::Start:
         audioEvent = SoundEvent::Start;
         break;
-    case GameSoundEvent::Tetris:
-        audioEvent = SoundEvent::Tetris;
+    case GameSoundEvent::Tetrimone:
+        audioEvent = SoundEvent::Tetrimone;
         break;
     case GameSoundEvent::Excellent:
         audioEvent = SoundEvent::Excellent;
@@ -281,7 +281,7 @@ bool TetrisBoard::loadSoundFromZip(GameSoundEvent event,
     return false;
 }
 
-void TetrisBoard::playBackgroundMusic() {
+void TetrimoneBoard::playBackgroundMusic() {
   log_to_file("playBackgroundMusic called");
   
   if (!sound_enabled_) {
@@ -511,7 +511,7 @@ void TetrisBoard::playBackgroundMusic() {
   }
 }
 
-void TetrisBoard::pauseBackgroundMusic() {
+void TetrimoneBoard::pauseBackgroundMusic() {
   log_to_file("pauseBackgroundMusic called");
   
   if (!sound_enabled_) {
@@ -526,7 +526,7 @@ void TetrisBoard::pauseBackgroundMusic() {
   AudioManager::getInstance().setMuted(true);
 }
 
-void TetrisBoard::playSound(GameSoundEvent event) {
+void TetrimoneBoard::playSound(GameSoundEvent event) {
   if (!sound_enabled_) {
     return;
   }
@@ -582,8 +582,8 @@ void TetrisBoard::playSound(GameSoundEvent event) {
   case GameSoundEvent::Start:
     audioEvent = SoundEvent::Start;
     break;
-  case GameSoundEvent::Tetris:
-    audioEvent = SoundEvent::Tetris;
+  case GameSoundEvent::Tetrimone:
+    audioEvent = SoundEvent::Tetrimone;
     break;
   case GameSoundEvent::Excellent:
     audioEvent = SoundEvent::Excellent;
@@ -596,7 +596,7 @@ void TetrisBoard::playSound(GameSoundEvent event) {
   AudioManager::getInstance().playSound(audioEvent);
 }
 
-void TetrisBoard::cleanupAudio() {
+void TetrimoneBoard::cleanupAudio() {
   log_to_file("cleanupAudio called");
   
   if (!sound_enabled_) {
@@ -633,7 +633,7 @@ void TetrisBoard::cleanupAudio() {
   }
 }
 
-bool TetrisBoard::setSoundsZipPath(const std::string &path) {
+bool TetrimoneBoard::setSoundsZipPath(const std::string &path) {
   // Save original path in case of failure
   std::string original_path = sounds_zip_path_;
 
@@ -656,7 +656,7 @@ bool TetrisBoard::setSoundsZipPath(const std::string &path) {
   return true;
 }
 
-void TetrisBoard::resumeBackgroundMusic() {
+void TetrimoneBoard::resumeBackgroundMusic() {
     if (!sound_enabled_) {
         // Enable sound if it was disabled
         sound_enabled_ = true;

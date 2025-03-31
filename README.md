@@ -1,17 +1,17 @@
-# GTK Tetris: Pixel-Dropping Pandemonium! 🧩🚀
+# GTK Tetrimone: Pixel-Dropping Pandemonium! 🧩🚀
 
 ## Overview
 
-Prepare for a block-stacking adventure that'll make your neurons dance! GTK Tetris is a pulse-pounding reimagining of the classic puzzle game, powered by GTK+, SDL, and flexible audio backends. Warning: May cause sudden outbursts of strategic genius and controller-gripping intensity!
+Prepare for a block-stacking adventure that'll make your neurons dance! GTK Tetrimone is a pulse-pounding reimagining of the classic puzzle game, powered by GTK+, SDL, and flexible audio backends. Warning: May cause sudden outbursts of strategic genius and controller-gripping intensity!
 
 ## Features
 
 ### Gameplay Madness
-- **Classic Tetris Mechanics**: Because some legends never die
+- **Classic Tetrimone Mechanics**: Because some legends never die
 - **Keyboard Ninja Controls**: Move, rotate, and drop with lightning reflexes
 - **Gamepad Support**: For those who prefer their tetrominos with analog swagger
 - **20 Color Themes**: Watch your world transform as you level up
-- **Difficulty Levels**: From "Casual Puzzler" to "Tetris Terminator"
+- **Difficulty Levels**: From "Casual Puzzler" to "Tetrimone Terminator"
 
 ### Audio Awesomeness
 - **Pumping Background Music**: Powered by PulseAudio or SDL2 audio
@@ -50,7 +50,7 @@ Prepare for a block-stacking adventure that'll make your neurons dance! GTK Tetr
 
 ## Build Instructions
 
-### Linux Tetris Taming
+### Linux Tetrimone Taming
 
 #### Debian/Ubuntu
 ```bash
@@ -59,8 +59,8 @@ sudo apt-get update
 sudo apt-get install libgtk-3-dev libsdl2-dev libsdl2-mixer-dev libpulse-dev libzip-dev gcc g++ make
 
 # Clone the block-dropping battlefield
-git clone https://github.com/jasonbrianhall/tetris.git
-cd tetris
+git clone https://github.com/jasonbrianhall/tetrimone.git
+cd tetrimone
 
 # Build with default SDL audio
 make
@@ -80,8 +80,8 @@ sudo dnf groupinstall "Development Tools"
 sudo dnf install gtk3-devel SDL2-devel SDL2_mixer-devel pulseaudio-libs-devel libzip-devel gcc-c++
 
 # Clone the block-dropping battlefield
-git clone https://github.com/jasonbrianhall/tetris.git
-cd tetris
+git clone https://github.com/jasonbrianhall/tetrimone.git
+cd tetrimone
 
 # Build with default SDL audio
 make
@@ -94,7 +94,7 @@ make
 # make pulse-debug   # Debug build with PulseAudio
 ```
 
-## Scoring: The Tetris Triumph Scale
+## Scoring: The Tetrimone Triumph Scale
 
 - **1 line**: 40 × level (Appetizer)
 - **2 lines**: 100 × level (Light Meal)
@@ -105,10 +105,10 @@ make
 
 - **Zen**: For those who are about to rock but aren't ready yet
 - **Easy**: For the block-dropping novice
-- **Medium**: The classic Tetris experience
+- **Medium**: The classic Tetrimone experience
 - **Hard**: For those who laugh in the face of falling blocks
 - **Extreme**: Brace yourself
-- **Instance**: A good way to lose in less then a minute
+- **Insane**: A good way to lose in less then a minute
 
 ## Sound Configuration
 Sounds loaded from `sound.zip`. Dare to customize? Replace the audio files and make the game your own sonic playground!
@@ -119,16 +119,16 @@ Sounds loaded from `sound.zip`. Dare to customize? Replace the audio files and m
 make windows
 
 # The Windows binary will be located at:
-# build/windows/tetris.exe
+# build/windows/tetrimone.exe
 ```
 
 #### Linux Build Locations
 ```bash
 # Standard build
-build/linux/tetris
+build/linux/tetrimone
 
 # Debug build
-build/linux_debug/tetris
+build/linux_debug/tetrimone
 ```
 
 ## Troubleshooting
@@ -139,23 +139,23 @@ build/linux_debug/tetris
 ## Contributing
 1. Fork the repository
 2. Create a feature branch
-3. Code like a Tetris god
+3. Code like a Tetrimone god
 4. Push your block-dropping brilliance
 5. Submit a Pull Request
 
 ## License
-MIT License - Spread the Tetris love freely!
+MIT License - Spread the Tetrimone love freely!
 
 ## Credits
-- **Developer**: Jason Brian Hall - Tetris Mastermind
-- **Libraries**: GTK+, SDL2, PulseAudio/SDL2 Audio, libzip, winmm
+- **Developer**: Jason Brian Hall - Tetrimone Mastermind
+- **Libraries**: GTK+, SDL2, PulseAudio/SDL2 Audio, libzip
 
 **May your blocks always fall true, and your lines always clear!** 🕹️✨
 
-This game is based on Tetris®, created by Alexey Pajitnov in 1984.
-Tetris® is a registered trademark of The Tetris Company, LLC.
+This game is based on Tetrimone®, created by Alexey Pajitnov in 1984.
+Tetrimone® is a registered trademark of The Tetrimone Company, LLC.
 
-Original game published by ELORG (also, go watch the Tetris movie on AppleTV)
+Original game published by ELORG (also, go watch the Tetrimone movie on AppleTV)
 
 ## TODO
 

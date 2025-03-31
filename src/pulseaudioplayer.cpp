@@ -32,7 +32,7 @@ public:
     // Test if we can create a connection to PulseAudio
     int error = 0;
     pa_simple *s = pa_simple_new(NULL,               // Use default server
-                                 "TetrisAudio",      // Application name
+                                 "TetrimoneAudio",      // Application name
                                  PA_STREAM_PLAYBACK, // Stream direction
                                  NULL,               // Default device
                                  "Test",             // Stream description
@@ -206,7 +206,7 @@ public:
       // Create the PulseAudio stream
       int error = 0;
       pa_simple *s =
-          pa_simple_new(NULL, "TetrisAudio", PA_STREAM_PLAYBACK, NULL,
+          pa_simple_new(NULL, "TetrimoneAudio", PA_STREAM_PLAYBACK, NULL,
                         format.c_str(), &ss, NULL, NULL, &error);
 
       if (!s) {

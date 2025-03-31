@@ -27,7 +27,7 @@ enum class SoundEvent {
   Rotate,
   Select,
   Start,
-  Tetris,
+  Tetrimone,
   Excellent
 };
 

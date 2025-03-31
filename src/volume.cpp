@@ -9,7 +9,7 @@ static float s_lastMusicVolume = 0.5f;  // Default to 50% if not set
 static bool s_volumesInitialized = false;
 
 void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Create dialog
     GtkWidget* dialog = gtk_dialog_new_with_buttons(
@@ -153,7 +153,7 @@ void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData) {
 }
 
 void onVolumeValueChanged(GtkRange* range, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Get the percentage value from the slider
     double volumePercent = gtk_range_get_value(range);
@@ -170,7 +170,7 @@ void onVolumeValueChanged(GtkRange* range, gpointer userData) {
 }
 
 void onMusicVolumeValueChanged(GtkRange* range, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Get the percentage value from the slider
     double musicVolumePercent = gtk_range_get_value(range);

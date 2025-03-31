@@ -10,7 +10,7 @@
 #include <direct.h>
 #endif
 
-void TetrisBoard::cleanupBackgroundImages() {
+void TetrimoneBoard::cleanupBackgroundImages() {
     for (auto surface : backgroundImages) {
         if (surface != nullptr) {
             cairo_surface_destroy(surface);
@@ -20,7 +20,7 @@ void TetrisBoard::cleanupBackgroundImages() {
 }
 
 void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Pause the game if it's running
     bool wasPaused = app->board->isPaused();
@@ -111,7 +111,7 @@ void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
     }
 }
 
-bool TetrisBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
+bool TetrimoneBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
     // Clean up existing background images first
     cleanupBackgroundImages();
     
@@ -352,7 +352,7 @@ bool TetrisBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
     return true;
 }
 
-void TetrisBoard::selectRandomBackground() {
+void TetrimoneBoard::selectRandomBackground() {
     if (backgroundImages.empty()) {
         return;
     }
@@ -388,7 +388,7 @@ void TetrisBoard::selectRandomBackground() {
 
 // Update the background toggle handler to handle ZIP mode
 void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     bool useBackground = gtk_check_menu_item_get_active(menuItem);
     
     // The toggle should control visibility, regardless of background mode
@@ -404,7 +404,7 @@ void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
 }
 
 void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Pause the game if it's running
     bool wasPaused = app->board->isPaused();
@@ -562,7 +562,7 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
     }
 }
 
-void TetrisBoard::startBackgroundTransition() {
+void TetrimoneBoard::startBackgroundTransition() {
     if (!useBackgroundZip || backgroundImages.empty() || !useBackgroundImage) {
         return; // Only perform transitions when using background images from ZIP
     }
@@ -615,14 +615,14 @@ void TetrisBoard::startBackgroundTransition() {
     // Start the transition timer - update 20 times per second
     transitionTimerId = g_timeout_add(50, 
         [](gpointer data) -> gboolean {
-            TetrisBoard* board = static_cast<TetrisBoard*>(data);
+            TetrimoneBoard* board = static_cast<TetrimoneBoard*>(data);
             board->updateBackgroundTransition();
             return TRUE; // Keep the timer running
         }, 
         this);
 }
 
-void TetrisBoard::updateBackgroundTransition() {
+void TetrimoneBoard::updateBackgroundTransition() {
     if (!isTransitioning) {
         return;
     }
@@ -675,7 +675,7 @@ void TetrisBoard::updateBackgroundTransition() {
     }
 }
 
-void TetrisBoard::cancelBackgroundTransition() {
+void TetrimoneBoard::cancelBackgroundTransition() {
     if (isTransitioning && transitionTimerId > 0) {
         g_source_remove(transitionTimerId);
         transitionTimerId = 0;

@@ -27,7 +27,7 @@ enum class GameSoundEvent {
   Rotate,
   Select,
   Start,
-  Tetris,
+  Tetrimone,
   Excellent
 };
 
@@ -35,12 +35,12 @@ extern int currentThemeIndex;
 
 // Forward declarations (need to be at the top)
 class Tetromino;
-class TetrisBoard;
-struct TetrisApp;
+class TetrimoneBoard;
+struct TetrimoneApp;
 
-// Define the callback data structure after TetrisApp is forward declared
+// Define the callback data structure after TetrimoneApp is forward declared
 struct BlockSizeCallbackData {
-    struct TetrisApp* app;
+    struct TetrimoneApp* app;
     GtkWidget* label;
 };
 
@@ -56,7 +56,7 @@ const int INITIAL_SPEED = 500; // milliseconds
 
 // Colors for each tetromino type (RGB)
 const std::vector<std::vector<std::array<double, 3>>> TETROMINO_COLOR_THEMES = {
-    // Theme 1: Classic Tetris (Levels 1-3)
+    // Theme 1: Classic Tetrimone (Levels 1-3)
     {
         {0.0, 0.7, 0.9},  // I - Cyan
         {0.9, 0.9, 0.0},  // O - Yellow
@@ -499,8 +499,8 @@ typedef struct {
     bool invert_y;            // Whether to invert Y axis
 } JoystickMapping;
 
-// TetrisApp structure needs to be defined before it's used in TetrisBoard
-struct TetrisApp {
+// TetrimoneApp structure needs to be defined before it's used in TetrimoneBoard
+struct TetrimoneApp {
     GtkApplication* app;
     GtkWidget* window;
     GtkWidget* mainBox;
@@ -511,7 +511,7 @@ struct TetrisApp {
     GtkWidget* linesLabel;
     GtkWidget* difficultyLabel;
     bool backgroundMusicPlaying = false;
-    TetrisBoard* board;
+    TetrimoneBoard* board;
     guint timerId;
     int dropSpeed;
     GtkWidget* backgroundToggleMenuItem;
@@ -538,7 +538,7 @@ struct TetrisApp {
 };
 
 // Class for the game board
-class TetrisBoard {
+class TetrimoneBoard {
 private:
     std::vector<std::vector<int>> grid;  // Grid of placed blocks (0 = empty, 1-7 = tetromino type + 1)
     std::unique_ptr<Tetromino> currentPiece;
@@ -565,8 +565,8 @@ public:
     bool useBackgroundZip;
     int currentBackgroundIndex;
 
-    TetrisBoard();
-    ~TetrisBoard();
+    TetrimoneBoard();
+    ~TetrimoneBoard();
     bool isSplashScreenActive() const { return splashScreenActive; }
     void dismissSplashScreen();
     bool movePiece(int dx, int dy);
@@ -641,17 +641,17 @@ gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data);
 gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data);
 gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data);
 gboolean onTimerTick(gpointer data);
-void updateLabels(TetrisApp* app);
-void startGame(TetrisApp* app);
-void pauseGame(TetrisApp* app);
-void resetUI(TetrisApp* app);
+void updateLabels(TetrimoneApp* app);
+void startGame(TetrimoneApp* app);
+void pauseGame(TetrimoneApp* app);
+void resetUI(TetrimoneApp* app);
 void cleanupApp(gpointer data);
 void onAppActivate(GtkApplication* app, gpointer userData);
 void onMenuActivated(GtkWidget* widget, gpointer userData);
 void onMenuDeactivated(GtkWidget* widget, gpointer userData);
 
 // Menu related functions
-void createMenu(TetrisApp* app);
+void createMenu(TetrimoneApp* app);
 void onStartGame(GtkMenuItem* menuItem, gpointer userData);
 void onPauseGame(GtkMenuItem* menuItem, gpointer userData);
 void onRestartGame(GtkMenuItem* menuItem, gpointer userData);
@@ -661,11 +661,11 @@ void onDifficultyChanged(GtkRadioMenuItem* menuItem, gpointer userData);
 void onAboutDialog(GtkMenuItem* menuItem, gpointer userData);
 void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData);
 std::string getDifficultyText(int difficulty);
-void adjustDropSpeed(TetrisApp* app);
-void calculateBlockSize(TetrisApp* app);
+void adjustDropSpeed(TetrimoneApp* app);
+void calculateBlockSize(TetrimoneApp* app);
 gboolean pollJoystick(gpointer data);
-void initSDL(TetrisApp* app);
-void shutdownSDL(TetrisApp* app);
+void initSDL(TetrimoneApp* app);
+void shutdownSDL(TetrimoneApp* app);
 void onBlockSizeDialog(GtkMenuItem* menuItem, gpointer userData);
 void onBlockSizeValueChanged(GtkRange* range, gpointer data);
 void onResizeWindowButtonClicked(GtkWidget* button, gpointer data);
@@ -673,17 +673,17 @@ gboolean onDeleteEvent(GtkWidget* widget, GdkEvent* event, gpointer userData);
 
 void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData);
 void onJoystickRescan(GtkButton* button, gpointer userData);
-void updateJoystickInfo(GtkLabel* infoLabel, TetrisApp* app);
+void updateJoystickInfo(GtkLabel* infoLabel, TetrimoneApp* app);
 void onJoystickMapApply(GtkButton* button, gpointer userData);
 void onJoystickMapReset(GtkButton* button, gpointer userData);
-void saveJoystickMapping(TetrisApp* app);
-void loadJoystickMapping(TetrisApp* app);
+void saveJoystickMapping(TetrimoneApp* app);
+void loadJoystickMapping(TetrimoneApp* app);
 
 void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData);
 void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData);
 void onOpacityValueChanged(GtkRange* range, gpointer userData);
-void rebuildGameUI(TetrisApp* app);
+void rebuildGameUI(TetrimoneApp* app);
 void updateSizeValueLabel(GtkRange* range, gpointer data);
 void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData);
 void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData);

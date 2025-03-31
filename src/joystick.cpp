@@ -1,13 +1,13 @@
 #include "tetrimone.h"
 
 typedef struct {
-    TetrisApp* app;
+    TetrimoneApp* app;
     GtkTextBuffer* buffer;
 } JoystickTestData;
 
 gboolean updateJoystickTestDisplay(gpointer userData);
 
-void initSDL(TetrisApp *app) {
+void initSDL(TetrimoneApp *app) {
   // Make sure SDL is not already initialized
   if (app->joystickEnabled) {
     shutdownSDL(app);
@@ -69,7 +69,7 @@ app->joystickMapping = {
 }
 
 // Shutdown SDL
-void shutdownSDL(TetrisApp *app) {
+void shutdownSDL(TetrimoneApp *app) {
   // Stop the joystick polling timer
   if (app->joystickTimerId > 0) {
     g_source_remove(app->joystickTimerId);
@@ -103,7 +103,7 @@ const int MAX_JOYSTICK_BUTTONS = 16; // Maximum number of buttons to check
 const Uint32 BUTTON_DEBOUNCE_TIME = 200; // ms between button actions
 
 gboolean pollJoystick(gpointer data) {
-  TetrisApp *app = static_cast<TetrisApp *>(data);
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
 
   // Safety checks
   if (!app || !app->joystickEnabled || !app->joystick || !app->board) {
@@ -481,7 +481,7 @@ gboolean pollJoystick(gpointer data) {
 
 
 // Function to update joystick info in the config dialog
-void updateJoystickInfo(GtkLabel* infoLabel, TetrisApp* app) {
+void updateJoystickInfo(GtkLabel* infoLabel, TetrimoneApp* app) {
     std::string info;
     
     if (!app->joystickEnabled) {
@@ -515,7 +515,7 @@ void updateJoystickInfo(GtkLabel* infoLabel, TetrisApp* app) {
 }
 
 void onJoystickTestButton(GtkButton* button, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Create a new dialog window
     GtkWidget* testDialog = gtk_dialog_new_with_buttons(
@@ -579,7 +579,7 @@ void onJoystickTestButton(GtkButton* button, gpointer userData) {
 
 // Function to handle joystick rescan button
 void onJoystickRescan(GtkButton* button, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     GtkLabel* infoLabel = GTK_LABEL(g_object_get_data(G_OBJECT(button), "info-label"));
     
     // Shutdown SDL to reset joystick subsystem
@@ -607,7 +607,7 @@ void onJoystickRescan(GtkButton* button, gpointer userData) {
 
 // Structure to store data needed for the joystick selection callback
 typedef struct {
-    TetrisApp* app;
+    TetrimoneApp* app;
     GtkWidget* idScale;
     GtkWidget* infoLabel;
     GtkWidget* dialog;
@@ -616,7 +616,7 @@ typedef struct {
 // Callback for Apply Joystick Selection button
 void onJoystickSelectionApply(GtkButton* button, gpointer userData) {
     JoystickSelectionData* data = static_cast<JoystickSelectionData*>(userData);
-    TetrisApp* app = data->app;
+    TetrimoneApp* app = data->app;
     GtkWidget* idScale = data->idScale;
     GtkWidget* infoLabel = data->infoLabel;
     GtkWidget* dialog = data->dialog;
@@ -674,7 +674,7 @@ void onJoystickSelectionApply(GtkButton* button, gpointer userData) {
 gboolean updateJoystickTestDisplay(gpointer userData) {
     JoystickTestData* data = static_cast<JoystickTestData*>(userData);
     GtkTextBuffer* buffer = data->buffer;
-    TetrisApp* app = data->app;
+    TetrimoneApp* app = data->app;
     
     if (!app->joystickEnabled || !app->joystick) {
         return TRUE; // Keep the timer going
@@ -761,7 +761,7 @@ gboolean updateJoystickTestDisplay(gpointer userData) {
 
 
 void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(userData);
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     (void)menuItem; // Avoid unused parameter warning
     
@@ -1112,7 +1112,7 @@ void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData) {
     }
 }
 
-void saveJoystickMapping(TetrisApp* app) {
+void saveJoystickMapping(TetrimoneApp* app) {
     std::string configDir = g_get_user_config_dir();
     std::string configFile = configDir + "/tetris/joystick.conf";
     
@@ -1133,7 +1133,7 @@ void saveJoystickMapping(TetrisApp* app) {
     }
 }
 
-void loadJoystickMapping(TetrisApp* app) {
+void loadJoystickMapping(TetrimoneApp* app) {
     std::string configDir = g_get_user_config_dir();
     std::string configFile = configDir + "/tetris/joystick.conf";
     
@@ -1159,7 +1159,7 @@ void loadJoystickMapping(TetrisApp* app) {
 }
 
 void onJoystickMapApply(GtkButton* button, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(g_object_get_data(G_OBJECT(button), "app"));
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(g_object_get_data(G_OBJECT(button), "app"));
     GtkWidget* rotateCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "rotate_combo"));
     GtkWidget* rotateCCWCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "rotate_ccw_combo"));
     GtkWidget* hardDropCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "hard_drop_combo"));
@@ -1195,7 +1195,7 @@ void onJoystickMapApply(GtkButton* button, gpointer userData) {
 }
 
 void onJoystickMapReset(GtkButton* button, gpointer userData) {
-    TetrisApp* app = static_cast<TetrisApp*>(g_object_get_data(G_OBJECT(button), "app"));
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(g_object_get_data(G_OBJECT(button), "app"));
     GtkWidget* rotateCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "rotate_combo"));
     GtkWidget* rotateCCWCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "rotate_ccw_combo"));
     GtkWidget* hardDropCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "hard_drop_combo"));
