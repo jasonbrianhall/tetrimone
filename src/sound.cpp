@@ -21,6 +21,7 @@
 // Add at the top of sound.cpp after the includes
 #ifdef _WIN32
 void log_to_file(const std::string& message) {
+#ifdef DEBUG
     static std::mutex log_mutex;
     std::lock_guard<std::mutex> lock(log_mutex);
     
@@ -38,6 +39,7 @@ void log_to_file(const std::string& message) {
         log_file << "[" << timestamp << "] " << message << std::endl;
         log_file.close();
     }
+    #endif
 }
 #else
 void log_to_file(const std::string& message) {
