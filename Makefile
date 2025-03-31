@@ -224,7 +224,16 @@ convert-wav-to-mp3: convert-midi $(MP3_FROM_WAV) $(THEME_ALL_MP3)
 # Rule to create the combined theme MP3 file from multiple WAV files
 $(THEME_ALL_MP3): $(SOUND_DIR)/theme.wav $(SOUND_DIR)/TetrisA.wav $(SOUND_DIR)/TetrisB.wav $(SOUND_DIR)/TetrisC.wav $(SOUND_DIR)/futuristic.wav
 	@echo "Creating combined theme file $(THEME_ALL_MP3)..."
-	@$(FFMPEG) -y -i "$(SOUND_DIR)/theme.wav" -i "$(SOUND_DIR)/TetrisA.wav" -i "$(SOUND_DIR)/TetrisB.wav" -i "$(SOUND_DIR)/TetrisC.wav" -i "$(SOUND_DIR)/futuristic.wav" -filter_complex "[0:a][1:a][2:a][3:a][4:a]concat=n=5:v=0:a=1[out]" -map "[out]" $(FFMPEG_MP3_OPTS) $(THEME_ALL_MP3)
+	@$(FFMPEG) -y \
+		-i "$(SOUND_DIR)/theme.wav" \
+		-i "$(SOUND_DIR)/TetrisA.wav" \
+		-i "$(SOUND_DIR)/TetrisB.wav" \
+		-i "$(SOUND_DIR)/TetrisC.wav" \
+		-i "$(SOUND_DIR)/futuristic.wav" \
+		-filter_complex "[0:a][1:a][2:a][3:a][4:a]concat=n=5:v=0:a=1[outaudio]" \
+		-map "[outaudio]" \
+		-c:a libmp3lame -qscale:a 2 \
+		$(THEME_ALL_MP3)
 
 #
 # DLL collection for Windows builds
