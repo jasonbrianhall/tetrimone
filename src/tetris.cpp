@@ -1156,7 +1156,7 @@ g_signal_connect(G_OBJECT(tetrisApp->window), "delete-event",
         "Down/S: Soft Drop\n"
         "Space: Hard Drop\n"
         "P: Pause\n"
-        "R: Restart"
+        "R: Restart\n"
         "M: Mute or Unmute"
     );
     gtk_widget_set_halign(controls, GTK_ALIGN_START);
