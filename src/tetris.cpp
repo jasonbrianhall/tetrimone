@@ -916,7 +916,14 @@ gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data) {
                 onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
             }
             break;
-            
+        case GDK_KEY_m:
+        case GDK_KEY_M:
+            if (app->board->musicPaused) {
+                app->board->resumeBackgroundMusic();
+            } else {
+                app->board->pauseBackgroundMusic();
+            }
+            break;        
         case GDK_KEY_n:
         case GDK_KEY_N:
             if (board->isPaused()) {
@@ -1150,6 +1157,7 @@ g_signal_connect(G_OBJECT(tetrisApp->window), "delete-event",
         "Space: Hard Drop\n"
         "P: Pause\n"
         "R: Restart"
+        "M: Mute or Unmute"
     );
     gtk_widget_set_halign(controls, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(sideBox), controls, FALSE, FALSE, 0);
