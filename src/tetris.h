@@ -549,7 +549,7 @@ private:
     bool paused;
     std::mt19937 rng;           // Random number generator
     bool splashScreenActive;
-
+    std::atomic<bool> musicStopFlag{false};
 
     
 public:

@@ -34,11 +34,7 @@ public:
         }
         
         // Initialize SDL_mixer
-        #ifdef _WIN32
-        int bufferSize = 16384;
-        #else
         int bufferSize = 4096;
-        #endif
         
         if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, bufferSize) < 0) {
             std::cerr << "SDL_mixer init failed: " << Mix_GetError() << std::endl;
