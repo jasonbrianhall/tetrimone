@@ -4,8 +4,8 @@
 #include <iomanip>
 
 // Static variables to backup volume values in case AudioManager doesn't persist them
-static float s_lastSfxVolume = 0.5f;    // Default to 50% if not set
-static float s_lastMusicVolume = 0.5f;  // Default to 50% if not set
+static float s_lastSfxVolume = 0.50f;    // Default to 50% if not set
+static float s_lastMusicVolume = 0.50f;  // Default to 50% if not set
 static bool s_volumesInitialized = false;
 
 void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData) {
