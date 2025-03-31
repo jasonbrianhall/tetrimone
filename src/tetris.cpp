@@ -1802,7 +1802,7 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Add program name
     GtkWidget* nameLabel = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(nameLabel), "<span size='x-large' weight='bold'>GTK Tetris</span>");
+    gtk_label_set_markup(GTK_LABEL(nameLabel), "<span size='x-large' weight='bold'>GTK Tetrimone</span>");
     gtk_box_pack_start(GTK_BOX(vbox), nameLabel, FALSE, FALSE, 5);
     
     // Add version
