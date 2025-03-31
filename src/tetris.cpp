@@ -933,7 +933,8 @@ gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data) {
             } else {
                 app->board->pauseBackgroundMusic();
             }
-            break;        
+            break;   
+
         case GDK_KEY_n:
         case GDK_KEY_N:
             if (board->isPaused()) {

@@ -50,6 +50,7 @@ public:
 
   // Set volume (0.0 - 1.0)
   virtual void setVolume(float volume) = 0;
+  virtual void setMusicVolume(float volume) = 0;
 
   virtual void stopAllSounds() = 0;
   virtual void restoreVolume() { }
@@ -109,7 +110,8 @@ public:
 
   // Set volume (0.0 - 1.0)
   void setVolume(float volume);
-
+  void setMusicVolume(float volume);
+  int getMusicVolume();
   // Mute/unmute all sounds
   void setMuted(bool muted);
 
@@ -137,6 +139,8 @@ private:
   std::unordered_map<SoundEvent, SoundData> sounds_;
   std::unique_ptr<AudioPlayer> player_;
   float volume_;
+  float musicvolume_;
+
   bool muted_;
   bool initialized_;
   std::mutex mutex_;

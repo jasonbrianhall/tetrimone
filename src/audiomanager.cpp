@@ -253,6 +253,20 @@ void AudioManager::setVolume(float volume) {
   }
 }
 
+void AudioManager::setMusicVolume(float volume) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  musicvolume_ = std::max(0.0f, std::min(1.0f, musicvolume_));
+
+  if (player_) {
+    player_->setMusicVolume(volume);
+  }
+}
+
+int AudioManager::getMusicVolume() {
+  return musicvolume_;
+}
+
+
 void AudioManager::setMuted(bool muted) {
   std::lock_guard<std::mutex> lock(mutex_);
   

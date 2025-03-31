@@ -687,6 +687,7 @@ void updateSizeValueLabel(GtkRange* range, gpointer data);
 void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData);
 void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData);
 void onVolumeValueChanged(GtkRange* range, gpointer userData);
+void onMusicVolumeValueChanged(GtkRange* range, gpointer userData);
 #endif // TETRIS_H
 
 
