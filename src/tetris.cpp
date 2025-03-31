@@ -320,6 +320,12 @@ void TetrisBoard::restart() {
     currentPiece.reset();
     generateNewPiece();
     generateNewPiece();
+    
+    // Select a random background if using background images from ZIP
+    if (useBackgroundZip && !backgroundImages.empty()) {
+        // Start a smooth background transition
+        startBackgroundTransition();
+    }
 }
 
 // GTK+ callback functions
@@ -1255,7 +1261,7 @@ g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
                G_CALLBACK(onJoystickConfig), app);
 
     // Add background image menu items
-    GtkWidget* backgroundMenuItem = gtk_menu_item_new_with_label("Set Background Image (only supports PNG)...");
+    GtkWidget* backgroundMenuItem = gtk_menu_item_new_with_label("Set Background Images (only supports PNG)...");
     gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), backgroundMenuItem);
     g_signal_connect(G_OBJECT(backgroundMenuItem), "activate",
                   G_CALLBACK(onBackgroundImageDialog), app);
