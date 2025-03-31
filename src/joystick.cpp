@@ -1114,10 +1114,10 @@ void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData) {
 
 void saveJoystickMapping(TetrimoneApp* app) {
     std::string configDir = g_get_user_config_dir();
-    std::string configFile = configDir + "/tetris/joystick.conf";
+    std::string configFile = configDir + "/tetrimone/joystick.conf";
     
     // Ensure directory exists
-    g_mkdir_with_parents((configDir + "/tetris").c_str(), 0755);
+    g_mkdir_with_parents((configDir + "/tetrimone").c_str(), 0755);
     
     FILE* file = fopen(configFile.c_str(), "w");
     if (file) {
@@ -1135,7 +1135,7 @@ void saveJoystickMapping(TetrimoneApp* app) {
 
 void loadJoystickMapping(TetrimoneApp* app) {
     std::string configDir = g_get_user_config_dir();
-    std::string configFile = configDir + "/tetris/joystick.conf";
+    std::string configFile = configDir + "/tetrimone/joystick.conf";
     
     FILE* file = fopen(configFile.c_str(), "r");
     if (file) {

@@ -25,7 +25,7 @@ void log_to_file(const std::string& message) {
     static std::mutex log_mutex;
     std::lock_guard<std::mutex> lock(log_mutex);
     
-    std::ofstream log_file("tetris_audio_debug.log", std::ios_base::app);
+    std::ofstream log_file("tetrimone_audio_debug.log", std::ios_base::app);
     if (log_file.is_open()) {
         auto now = std::chrono::system_clock::now();
         auto now_time_t = std::chrono::system_clock::to_time_t(now);
@@ -145,7 +145,7 @@ bool TetrimoneBoard::initializeAudio() {
         loadSoundFromZip(GameSoundEvent::Rotate, "rotate.mp3") &&
         loadSoundFromZip(GameSoundEvent::Select, "select.mp3") &&
         loadSoundFromZip(GameSoundEvent::Start, "start.mp3") &&
-        loadSoundFromZip(GameSoundEvent::Tetrimone, "tetris.mp3") &&
+        loadSoundFromZip(GameSoundEvent::Tetrimone, "tetrimone.mp3") &&
         loadSoundFromZip(GameSoundEvent::Excellent, "excellent.mp3")) {
       return true;
     } else {

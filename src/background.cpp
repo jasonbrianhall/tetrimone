@@ -151,7 +151,7 @@ bool TetrimoneBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
     }
     
     // Create a temporary directory for our extracted files
-    std::string extractDir = std::string(tempPath) + "tetris_backgrounds_" + std::to_string(GetTickCount());
+    std::string extractDir = std::string(tempPath) + "tetrimone_backgrounds_" + std::to_string(GetTickCount());
     if (!CreateDirectory(extractDir.c_str(), NULL)) {
         DWORD error = GetLastError();
         if (error != ERROR_ALREADY_EXISTS) {

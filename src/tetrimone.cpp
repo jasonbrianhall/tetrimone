@@ -1072,91 +1072,91 @@ void onScreenSizeChanged(GtkWidget* widget, GdkRectangle* allocation, gpointer u
 }
 
 void onAppActivate(GtkApplication* app, gpointer userData) {
-    TetrimoneApp* tetrisApp = new TetrimoneApp();
-    tetrisApp->app = app;
-    tetrisApp->board = new TetrimoneBoard();
-    tetrisApp->timerId = 0;
-    tetrisApp->dropSpeed = INITIAL_SPEED;
-    tetrisApp->difficulty = 2; // Default to Medium
+    TetrimoneApp* tetrimoneApp = new TetrimoneApp();
+    tetrimoneApp->app = app;
+    tetrimoneApp->board = new TetrimoneBoard();
+    tetrimoneApp->timerId = 0;
+    tetrimoneApp->dropSpeed = INITIAL_SPEED;
+    tetrimoneApp->difficulty = 2; // Default to Medium
     
     // Calculate block size based on screen resolution
-    calculateBlockSize(tetrisApp);
+    calculateBlockSize(tetrimoneApp);
     
     // Create the main window
-    tetrisApp->window = gtk_application_window_new(app);
-    gtk_window_set_title(GTK_WINDOW(tetrisApp->window), "Tetrimone");
+    tetrimoneApp->window = gtk_application_window_new(app);
+    gtk_window_set_title(GTK_WINDOW(tetrimoneApp->window), "Tetrimone");
 
-g_signal_connect(G_OBJECT(tetrisApp->window), "delete-event",
-               G_CALLBACK(onDeleteEvent), tetrisApp);
+g_signal_connect(G_OBJECT(tetrimoneApp->window), "delete-event",
+               G_CALLBACK(onDeleteEvent), tetrimoneApp);
     
     // Use the calculated block size for window dimensions
-    gtk_window_set_default_size(GTK_WINDOW(tetrisApp->window), 
+    gtk_window_set_default_size(GTK_WINDOW(tetrimoneApp->window), 
                               GRID_WIDTH * BLOCK_SIZE + 200, 
                               GRID_HEIGHT * BLOCK_SIZE + 40);
-    gtk_window_set_resizable(GTK_WINDOW(tetrisApp->window), TRUE);
+    gtk_window_set_resizable(GTK_WINDOW(tetrimoneApp->window), TRUE);
     
     // Create main vertical box
     GtkWidget* mainVBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_container_add(GTK_CONTAINER(tetrisApp->window), mainVBox);
+    gtk_container_add(GTK_CONTAINER(tetrimoneApp->window), mainVBox);
     
     // Create menu
-    createMenu(tetrisApp);
-    gtk_box_pack_start(GTK_BOX(mainVBox), tetrisApp->menuBar, FALSE, FALSE, 0);
+    createMenu(tetrimoneApp);
+    gtk_box_pack_start(GTK_BOX(mainVBox), tetrimoneApp->menuBar, FALSE, FALSE, 0);
     
     // Create main horizontal box for game contents
-    tetrisApp->mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-    gtk_container_set_border_width(GTK_CONTAINER(tetrisApp->mainBox), 10);
-    gtk_box_pack_start(GTK_BOX(mainVBox), tetrisApp->mainBox, TRUE, TRUE, 0);
+    tetrimoneApp->mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+    gtk_container_set_border_width(GTK_CONTAINER(tetrimoneApp->mainBox), 10);
+    gtk_box_pack_start(GTK_BOX(mainVBox), tetrimoneApp->mainBox, TRUE, TRUE, 0);
 
-    g_signal_connect(G_OBJECT(tetrisApp->window), "size-allocate",
-               G_CALLBACK(onScreenSizeChanged), tetrisApp);
+    g_signal_connect(G_OBJECT(tetrimoneApp->window), "size-allocate",
+               G_CALLBACK(onScreenSizeChanged), tetrimoneApp);
     
     // Create the game area (drawing area)
-    tetrisApp->gameArea = gtk_drawing_area_new();
-    gtk_widget_set_size_request(tetrisApp->gameArea, 
+    tetrimoneApp->gameArea = gtk_drawing_area_new();
+    gtk_widget_set_size_request(tetrimoneApp->gameArea, 
                               GRID_WIDTH * BLOCK_SIZE, 
                               GRID_HEIGHT * BLOCK_SIZE);
-    g_signal_connect(G_OBJECT(tetrisApp->gameArea), "draw",
-                   G_CALLBACK(onDrawGameArea), tetrisApp);
-    gtk_box_pack_start(GTK_BOX(tetrisApp->mainBox), tetrisApp->gameArea, FALSE, FALSE, 0);
+    g_signal_connect(G_OBJECT(tetrimoneApp->gameArea), "draw",
+                   G_CALLBACK(onDrawGameArea), tetrimoneApp);
+    gtk_box_pack_start(GTK_BOX(tetrimoneApp->mainBox), tetrimoneApp->gameArea, FALSE, FALSE, 0);
     
     // Create the side panel (vertical box)
     GtkWidget* sideBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    gtk_box_pack_start(GTK_BOX(tetrisApp->mainBox), sideBox, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(tetrimoneApp->mainBox), sideBox, FALSE, FALSE, 0);
     
     // Create the next piece preview frame
     GtkWidget* nextPieceFrame = gtk_frame_new("Next Piece");
     gtk_box_pack_start(GTK_BOX(sideBox), nextPieceFrame, FALSE, FALSE, 0);
     
     // Create the next piece drawing area
-    tetrisApp->nextPieceArea = gtk_drawing_area_new();
-    gtk_widget_set_size_request(tetrisApp->nextPieceArea, 4 * BLOCK_SIZE, 4 * BLOCK_SIZE);
-    g_signal_connect(G_OBJECT(tetrisApp->nextPieceArea), "draw",
-                   G_CALLBACK(onDrawNextPiece), tetrisApp);
-    gtk_container_add(GTK_CONTAINER(nextPieceFrame), tetrisApp->nextPieceArea);
+    tetrimoneApp->nextPieceArea = gtk_drawing_area_new();
+    gtk_widget_set_size_request(tetrimoneApp->nextPieceArea, 4 * BLOCK_SIZE, 4 * BLOCK_SIZE);
+    g_signal_connect(G_OBJECT(tetrimoneApp->nextPieceArea), "draw",
+                   G_CALLBACK(onDrawNextPiece), tetrimoneApp);
+    gtk_container_add(GTK_CONTAINER(nextPieceFrame), tetrimoneApp->nextPieceArea);
     
     // Create score, level, and lines labels
-    tetrisApp->scoreLabel = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(tetrisApp->scoreLabel), "<b>Score:</b> 0");
-    gtk_widget_set_halign(tetrisApp->scoreLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(sideBox), tetrisApp->scoreLabel, FALSE, FALSE, 0);
+    tetrimoneApp->scoreLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(tetrimoneApp->scoreLabel), "<b>Score:</b> 0");
+    gtk_widget_set_halign(tetrimoneApp->scoreLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(sideBox), tetrimoneApp->scoreLabel, FALSE, FALSE, 0);
     
-    tetrisApp->levelLabel = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(tetrisApp->levelLabel), "<b>Level:</b> 1");
-    gtk_widget_set_halign(tetrisApp->levelLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(sideBox), tetrisApp->levelLabel, FALSE, FALSE, 0);
+    tetrimoneApp->levelLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(tetrimoneApp->levelLabel), "<b>Level:</b> 1");
+    gtk_widget_set_halign(tetrimoneApp->levelLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(sideBox), tetrimoneApp->levelLabel, FALSE, FALSE, 0);
     
-    tetrisApp->linesLabel = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(tetrisApp->linesLabel), "<b>Lines:</b> 0");
-    gtk_widget_set_halign(tetrisApp->linesLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(sideBox), tetrisApp->linesLabel, FALSE, FALSE, 0);
+    tetrimoneApp->linesLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(tetrimoneApp->linesLabel), "<b>Lines:</b> 0");
+    gtk_widget_set_halign(tetrimoneApp->linesLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(sideBox), tetrimoneApp->linesLabel, FALSE, FALSE, 0);
     
     // Add difficulty label
-    tetrisApp->difficultyLabel = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(tetrisApp->difficultyLabel), 
-                       getDifficultyText(tetrisApp->difficulty).c_str());
-    gtk_widget_set_halign(tetrisApp->difficultyLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(sideBox), tetrisApp->difficultyLabel, FALSE, FALSE, 0);
+    tetrimoneApp->difficultyLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(tetrimoneApp->difficultyLabel), 
+                       getDifficultyText(tetrimoneApp->difficulty).c_str());
+    gtk_widget_set_halign(tetrimoneApp->difficultyLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(sideBox), tetrimoneApp->difficultyLabel, FALSE, FALSE, 0);
     
     // Add controls info
     GtkWidget* controlsLabel = gtk_label_new(NULL);
@@ -1181,42 +1181,42 @@ g_signal_connect(G_OBJECT(tetrisApp->window), "delete-event",
     gtk_box_pack_start(GTK_BOX(sideBox), controls, FALSE, FALSE, 0);
     
     // Set up key press events
-    gtk_widget_add_events(tetrisApp->window, GDK_KEY_PRESS_MASK);
-    g_signal_connect(G_OBJECT(tetrisApp->window), "key-press-event",
-                   G_CALLBACK(onKeyPress), tetrisApp);
+    gtk_widget_add_events(tetrimoneApp->window, GDK_KEY_PRESS_MASK);
+    g_signal_connect(G_OBJECT(tetrimoneApp->window), "key-press-event",
+                   G_CALLBACK(onKeyPress), tetrimoneApp);
     
     // Connect cleanup function
-    g_object_set_data_full(G_OBJECT(tetrisApp->window), "app-data", 
-                          tetrisApp, cleanupApp);
+    g_object_set_data_full(G_OBJECT(tetrimoneApp->window), "app-data", 
+                          tetrimoneApp, cleanupApp);
     
     // Show all widgets
-    gtk_widget_show_all(tetrisApp->window);
+    gtk_widget_show_all(tetrimoneApp->window);
 
     // Initialize the menu state
-    gtk_widget_set_sensitive(tetrisApp->startMenuItem, FALSE);
-    gtk_widget_set_sensitive(tetrisApp->pauseMenuItem, TRUE);
+    gtk_widget_set_sensitive(tetrimoneApp->startMenuItem, FALSE);
+    gtk_widget_set_sensitive(tetrimoneApp->pauseMenuItem, TRUE);
 
-    if (tetrisApp->board->initializeAudio()) {
+    if (tetrimoneApp->board->initializeAudio()) {
         // Only play music if initialization was successful
-        tetrisApp->board->playBackgroundMusic();
-        tetrisApp->backgroundMusicPlaying = true;
+        tetrimoneApp->board->playBackgroundMusic();
+        tetrimoneApp->backgroundMusicPlaying = true;
     }
     else {
         printf("Music failed to initialize");
         // Disable sound menu item
         gtk_check_menu_item_set_active(
-            GTK_CHECK_MENU_ITEM(tetrisApp->soundToggleMenuItem), FALSE);
+            GTK_CHECK_MENU_ITEM(tetrimoneApp->soundToggleMenuItem), FALSE);
     }
 
-    tetrisApp->joystick = NULL;
-    tetrisApp->joystickEnabled = false;
-    tetrisApp->joystickTimerId = 0;
+    tetrimoneApp->joystick = NULL;
+    tetrimoneApp->joystickEnabled = false;
+    tetrimoneApp->joystickTimerId = 0;
     
     // Try to initialize SDL
-    initSDL(tetrisApp);
+    initSDL(tetrimoneApp);
         
     // Start the game
-    startGame(tetrisApp);
+    startGame(tetrimoneApp);
 }
 
 // Function to create the menu bar with a better organization
@@ -2354,7 +2354,7 @@ int main(int argc, char* argv[]) {
     freopen("debug_output.log", "w", stdout);
     freopen("debug_output.log", "a", stderr);
 #endif    
-    app = gtk_application_new("org.gtk.tetris", G_APPLICATION_FLAGS_NONE);
+    app = gtk_application_new("org.gtk.tetrimone", G_APPLICATION_FLAGS_NONE);
     g_signal_connect(app, "activate", G_CALLBACK(onAppActivate), NULL);
     status = g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
