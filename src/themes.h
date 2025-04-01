@@ -11,7 +11,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.9, 0.5, 0.0}   // L - Orange
     },
     
-    // Theme 2: Neon (Levels 4-6)
+    // Theme 2: Neon 
     {
         {0.0, 1.0, 1.0},  // I - Neon Cyan
         {1.0, 1.0, 0.0},  // O - Neon Yellow
@@ -22,7 +22,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {1.0, 0.5, 0.0}   // L - Neon Orange
     },
     
-    // Theme 3: Pastel (Levels 7-9)
+    // Theme 3: Pastel
     {
         {0.5, 0.8, 1.0},  // I - Pastel Blue
         {1.0, 1.0, 0.6},  // O - Pastel Yellow
@@ -33,7 +33,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {1.0, 0.8, 0.6}   // L - Pastel Orange
     },
     
-    // Theme 4: Earth Tones (Levels 10-12)
+    // Theme 4: Earth Tones
     {
         {0.5, 0.8, 0.8},  // I - Soft Teal
         {0.9, 0.8, 0.4},  // O - Sand
@@ -44,7 +44,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.6, 0.4, 0.2}   // L - Sienna
     },
     
-    // Theme 5: Monochrome Blue (Levels 13-15)
+    // Theme 5: Monochrome Blue
     {
         {0.0, 0.2, 0.4},  // I - Navy
         {0.3, 0.5, 0.7},  // O - Steel Blue
@@ -55,7 +55,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.5, 0.7, 0.9}   // L - Light Blue
     },
     
-    // Theme 6: Monochrome Green (Levels 16-18)
+    // Theme 6: Monochrome Green
     {
         {0.0, 0.4, 0.2},  // I - Forest Green
         {0.3, 0.7, 0.5},  // O - Mint
@@ -66,7 +66,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.5, 0.9, 0.7}   // L - Light Green
     },
     
-    // Theme 7: Sunset (Levels 19-21)
+    // Theme 7: Sunset
     {
         {0.9, 0.6, 0.1},  // I - Golden
         {0.9, 0.3, 0.1},  // O - Sunset Orange
@@ -77,7 +77,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {1.0, 0.7, 0.4}   // L - Peach
     },
     
-    // Theme 8: Ocean (Levels 22-24)
+    // Theme 8: Ocean
     {
         {0.0, 0.2, 0.6},  // I - Deep Blue
         {0.1, 0.5, 0.8},  // O - Ocean Blue
@@ -88,7 +88,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.6, 0.8, 0.9}   // L - Light Blue
     },
     
-    // Theme 9: Grayscale (Levels 25-27)
+    // Theme 9: Grayscale
     {
         {0.1, 0.1, 0.1},  // I - Near Black
         {0.9, 0.9, 0.9},  // O - Near White
@@ -99,7 +99,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.8, 0.8, 0.8}   // L - Lighter Gray
     },
     
-    // Theme 10: Candy (Levels 28-30)
+    // Theme 10: Candy
     {
         {0.9, 0.5, 0.8},  // I - Pink
         {0.9, 0.8, 0.4},  // O - Light Yellow
@@ -110,7 +110,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {1.0, 0.7, 0.3}   // L - Peach
     },
     
-    // Theme 11: Neon Dark (Levels 31-33)
+    // Theme 11: Neon Dark
     {
         {0.0, 0.9, 0.9},  // I - Neon Cyan
         {0.9, 0.9, 0.0},  // O - Neon Yellow
@@ -121,7 +121,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.9, 0.5, 0.0}   // L - Neon Orange
     },
     
-    // Theme 12: Jewel Tones (Levels 34-36)
+    // Theme 12: Jewel Tones
     {
         {0.0, 0.6, 0.8},  // I - Sapphire
         {0.9, 0.8, 0.0},  // O - Amber
@@ -132,7 +132,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.8, 0.4, 0.0}   // L - Topaz
     },
     
-    // Theme 13: Retro Gaming (Levels 37-39)
+    // Theme 13: Retro Gaming
     {
         {0.0, 0.8, 0.0},  // I - Green Phosphor
         {0.8, 0.8, 0.0},  // O - Amber Phosphor
@@ -143,7 +143,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.3, 0.8, 0.0}   // L - Yellow-Green Phosphor
     },
     
-    // Theme 14: Autumn (Levels 40-42)
+    // Theme 14: Autumn
     {
         {0.7, 0.3, 0.1},  // I - Rust
         {0.9, 0.7, 0.2},  // O - Gold
@@ -154,7 +154,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.9, 0.5, 0.0}   // L - Orange
     },
     
-    // Theme 15: Winter (Levels 43-45)
+    // Theme 15: Winter
     {
         {0.7, 0.9, 1.0},  // I - Ice Blue
         {1.0, 1.0, 1.0},  // O - Snow White
@@ -165,7 +165,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.9, 0.9, 0.9}   // L - Silver
     },
     
-    // Theme 16: Spring (Levels 46-48)
+    // Theme 16: Spring
     {
         {0.7, 0.9, 0.7},  // I - Mint Green
         {1.0, 0.9, 0.7},  // O - Peach
@@ -176,7 +176,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {1.0, 1.0, 0.7}   // L - Cream
     },
     
-    // Theme 17: Summer (Levels 49-51)
+    // Theme 17: Summer
     {
         {0.0, 0.8, 0.8},  // I - Turquoise
         {1.0, 0.8, 0.0},  // O - Sunshine Yellow
@@ -187,7 +187,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {1.0, 0.6, 0.0}   // L - Orange
     },
     
-    // Theme 18: Monochrome Purple (Levels 52-54)
+    // Theme 18: Monochrome Purple
     {
         {0.2, 0.0, 0.4},  // I - Deep Purple
         {0.8, 0.6, 1.0},  // O - Light Lavender
@@ -198,7 +198,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.7, 0.5, 0.9}   // L - Light Purple
     },
     
-    // Theme 19: Desert (Levels 55-57)
+    // Theme 19: Desert
     {
         {0.9, 0.8, 0.6},  // I - Sand
         {0.7, 0.6, 0.4},  // O - Khaki
@@ -209,7 +209,7 @@ const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEME
         {0.8, 0.7, 0.5}   // L - Beige
     },
     
-    // Theme 20: Rainbow (Levels 58+)
+    // Theme 20: Rainbow
     {
         {1.0, 0.0, 0.0},  // I - Red
         {1.0, 0.5, 0.0},  // O - Orange
