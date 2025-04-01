@@ -1829,9 +1829,9 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Add acknowledgment text
     GtkWidget* ackLabel = gtk_label_new(
-        "This game is based on Tetris®, created by Alexey Pajitnov in 1984.\n"
-        "Tetris® is a registered trademark of The Tetris Company, LLC.\n"
-        "Original game published by ELORG."
+        "This game is inspired by classic falling block puzzle games that originated in the 1980s.\n"
+        "Tetrimone is an independent creation and is not affiliated with, endorsed by,\n"
+        "or connected to any commercial puzzle game publishers."
     );
     gtk_box_pack_start(GTK_BOX(vbox), ackLabel, FALSE, FALSE, 0);
     
