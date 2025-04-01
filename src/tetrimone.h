@@ -1,5 +1,5 @@
-#ifndef TETRIS_H
-#define TETRIS_H
+#ifndef TETRIMONE_H
+#define TETRIMONE_H
 
 #include <gtk/gtk.h>
 #include <vector>
@@ -691,6 +691,6 @@ void onVolumeValueChanged(GtkRange* range, gpointer userData);
 void onMusicVolumeValueChanged(GtkRange* range, gpointer userData);
 void onTrackToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 
-#endif // TETRIS_H
+#endif // TETRIMONE_H
 
 
