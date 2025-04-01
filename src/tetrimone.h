@@ -35,7 +35,7 @@ enum class GameSoundEvent {
 extern int currentThemeIndex;
 
 // Forward declarations (need to be at the top)
-class Tetromino;
+class TetromoneBlock;
 class TetrimoneBoard;
 struct TetrimoneApp;
 
@@ -55,7 +55,7 @@ const int MAX_BLOCK_SIZE = 80;  // Maximum block size to prevent extreme scaling
 
 const int INITIAL_SPEED = 500; // milliseconds
 
-const std::vector<std::vector<std::vector<std::vector<int>>>> TETROMINO_SHAPES = {
+const std::vector<std::vector<std::vector<std::vector<int>>>> TETROMONEBLOCK_SHAPES = {
     // I-piece
     {
         {
@@ -247,15 +247,15 @@ const std::vector<std::vector<std::vector<std::vector<int>>>> TETROMINO_SHAPES =
     }
 };
 
-// Class for a single tetromino piece
-class Tetromino {
+// Class for a single tetromoneblock piece
+class TetromoneBlock {
 private:
     int type;                   // 0-6 for I, O, T, S, Z, J, L
     int rotation;               // 0-3 for four possible rotations
     int x, y;                   // Position on the grid
     
 public:
-    Tetromino(int type);
+    TetromoneBlock(int type);
     void rotate(bool clockwise = true);
     void move(int dx, int dy);
     std::vector<std::vector<int>> getShape() const;
@@ -318,9 +318,9 @@ struct TetrimoneApp {
 // Class for the game board
 class TetrimoneBoard {
 private:
-    std::vector<std::vector<int>> grid;  // Grid of placed blocks (0 = empty, 1-7 = tetromino type + 1)
-    std::unique_ptr<Tetromino> currentPiece;
-    std::unique_ptr<Tetromino> nextPiece;
+    std::vector<std::vector<int>> grid;  // Grid of placed blocks (0 = empty, 1-7 = tetromoneblock type + 1)
+    std::unique_ptr<TetromoneBlock> currentPiece;
+    std::unique_ptr<TetromoneBlock> nextPiece;
     int score;
     int level;
     int linesCleared;
@@ -349,7 +349,7 @@ public:
     void dismissSplashScreen();
     bool movePiece(int dx, int dy);
     bool rotatePiece(bool direction);
-    bool checkCollision(const Tetromino& piece) const;
+    bool checkCollision(const TetromoneBlock& piece) const;
     void lockPiece();
     int clearLines();
     void generateNewPiece();
@@ -363,8 +363,8 @@ public:
     int getScore() const { return score; }
     int getLevel() const { return level; }
     int getLinesCleared() const { return linesCleared; }
-    const Tetromino& getCurrentPiece() const { return *currentPiece; }
-    const Tetromino& getNextPiece() const { return *nextPiece; }
+    const TetromoneBlock& getCurrentPiece() const { return *currentPiece; }
+    const TetromoneBlock& getNextPiece() const { return *nextPiece; }
     int getGridValue(int x, int y) const;
     bool sound_enabled_ = true;
     bool musicPaused = false;

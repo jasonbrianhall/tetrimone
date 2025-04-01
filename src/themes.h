@@ -1,5 +1,5 @@
-// Colors for each tetromino type (RGB)
-const std::vector<std::vector<std::array<double, 3>>> TETROMINO_COLOR_THEMES = {
+// Colors for each tetromoneblock type (RGB)
+const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEMES = {
     // Theme 1: Classic Tetrimone (Levels 1-3)
     {
         {0.0, 0.7, 0.9},  // I - Cyan
