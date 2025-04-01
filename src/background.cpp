@@ -140,32 +140,6 @@ bool TetrimoneBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
     // Count how many PNG files we found
     int pngCount = 0;
     
-#ifdef _WIN32
-    // Windows-specific approach - extract to a user writable location
-    char tempPath[MAX_PATH];
-    DWORD pathLen = GetTempPath(MAX_PATH, tempPath);
-    if (pathLen == 0 || pathLen > MAX_PATH) {
-        std::cerr << "Failed to get temp path" << std::endl;
-        zip_close(archive);
-        return false;
-    }
-    
-    // Create a temporary directory for our extracted files
-    std::string extractDir = std::string(tempPath) + "tetrimone_backgrounds_" + std::to_string(GetTickCount());
-    if (!CreateDirectory(extractDir.c_str(), NULL)) {
-        DWORD error = GetLastError();
-        if (error != ERROR_ALREADY_EXISTS) {
-            std::cerr << "Failed to create temp directory (error " << error << ")" << std::endl;
-            zip_close(archive);
-            return false;
-        }
-    }
-    
-    // Add trailing slash
-    if (extractDir.back() != '\\') {
-        extractDir += '\\';
-    }
-    
     // Process each file in the archive
     for (zip_int64_t i = 0; i < numEntries; i++) {
         // Get file info
@@ -189,10 +163,6 @@ bool TetrimoneBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
             continue;  // Skip non-PNG files
         }
         
-        // Generate a unique filename
-        std::string baseName = "bg_" + std::to_string(i) + ".png";
-        std::string extractPath = extractDir + baseName;
-        
         // Open the file in the archive
         zip_file_t *file = zip_fopen_index(archive, i, 0);
         if (!file) {
@@ -214,125 +184,48 @@ bool TetrimoneBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
         // Close the file
         zip_fclose(file);
         
-        // Extract the PNG to the temporary directory
-        std::ofstream outFile(extractPath, std::ios::binary);
-        if (!outFile) {
-            std::cerr << "Failed to create output file: " << extractPath << std::endl;
-            continue;
-        }
+        // Load PNG directly from memory using Cairo
+        // Create a custom read function that reads from our in-memory buffer
+        struct PngReadData {
+            const std::vector<uint8_t>* data;
+            size_t offset;
+        };
         
-        outFile.write(reinterpret_cast<const char*>(fileData.data()), fileData.size());
-        outFile.close();
+        PngReadData readData = { &fileData, 0 };
         
-        if (!outFile) {
-            std::cerr << "Error writing to output file: " << extractPath << std::endl;
-            continue;
-        }
-        
-        // Convert path to UTF-8 for Cairo
-        std::string utf8Path = extractPath;
-        
-        // Load the PNG with Cairo
-        cairo_surface_t* surface = cairo_image_surface_create_from_png(utf8Path.c_str());
+        cairo_surface_t* surface = cairo_image_surface_create_from_png_stream(
+            [](void* closure, unsigned char* data, unsigned int length) -> cairo_status_t {
+                PngReadData* readData = static_cast<PngReadData*>(closure);
+                
+                // Check if we've reached the end of our data
+                if (readData->offset >= readData->data->size()) {
+                    return CAIRO_STATUS_READ_ERROR;
+                }
+                
+                // Calculate how much we can read
+                size_t remaining = readData->data->size() - readData->offset;
+                size_t toRead = (length < remaining) ? length : remaining;
+                
+                // Copy the data
+                memcpy(data, readData->data->data() + readData->offset, toRead);
+                readData->offset += toRead;
+                
+                return CAIRO_STATUS_SUCCESS;
+            },
+            &readData
+        );
         
         // Check if the surface was created successfully
         if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
             std::cerr << "Failed to load PNG: " << cairo_status_to_string(cairo_surface_status(surface)) << std::endl;
             cairo_surface_destroy(surface);
-            DeleteFile(utf8Path.c_str());
             continue;
         }
         
         // Add the surface to our collection
         backgroundImages.push_back(surface);
         pngCount++;
-        
-        // Delete the temporary file (Cairo has loaded it into memory now)
-        DeleteFile(utf8Path.c_str());
     }
-    
-    // Try to remove the temporary directory
-    RemoveDirectory(extractDir.c_str());
-    
-#else
-    // Original Linux approach
-    for (zip_int64_t i = 0; i < numEntries; i++) {
-        // Get file info
-        zip_stat_t stat;
-        if (zip_stat_index(archive, i, 0, &stat) < 0) {
-            std::cerr << "Failed to get file stats at index " << i << std::endl;
-            continue;
-        }
-        
-        // Check if it's a PNG file
-        std::string filename = stat.name;
-        std::string extension = "";
-        size_t dotPos = filename.find_last_of('.');
-        if (dotPos != std::string::npos) {
-            extension = filename.substr(dotPos + 1);
-            std::transform(extension.begin(), extension.end(), extension.begin(), 
-                [](unsigned char c) { return std::tolower(c); });
-        }
-        
-        if (extension != "png") {
-            continue;  // Skip non-PNG files
-        }
-        
-        // Open the file in the archive
-        zip_file_t *file = zip_fopen_index(archive, i, 0);
-        if (!file) {
-            std::cerr << "Failed to open file in ZIP archive: " << zip_strerror(archive) << std::endl;
-            continue;
-        }
-        
-        // Allocate memory for the file content
-        std::vector<uint8_t> fileData(stat.size);
-        
-        // Read the file content
-        zip_int64_t bytesRead = zip_fread(file, fileData.data(), stat.size);
-        if (bytesRead < 0 || static_cast<zip_uint64_t>(bytesRead) != stat.size) {
-            std::cerr << "Failed to read file: " << zip_file_strerror(file) << std::endl;
-            zip_fclose(file);
-            continue;
-        }
-        
-        // Close the file
-        zip_fclose(file);
-        
-        // Create a temporary file for Cairo to read
-        char tempFilename[L_tmpnam];
-        tmpnam(tempFilename);
-        std::string tempPath = std::string(tempFilename) + ".png";
-        
-        // Write the data to the temporary file
-        std::ofstream tempFile(tempPath, std::ios::binary);
-        if (!tempFile) {
-            std::cerr << "Failed to create temporary file for PNG" << std::endl;
-            continue;
-        }
-        
-        tempFile.write(reinterpret_cast<const char*>(fileData.data()), fileData.size());
-        tempFile.close();
-        
-        // Load the PNG with Cairo
-        cairo_surface_t* surface = cairo_image_surface_create_from_png(tempPath.c_str());
-        
-        // Check if the surface was created successfully
-        if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
-            std::cerr << "Failed to load PNG: " << cairo_status_to_string(cairo_surface_status(surface)) << std::endl;
-            cairo_surface_destroy(surface);
-            remove(tempPath.c_str());  // Delete the temporary file
-            continue;
-        }
-        
-        // Add the surface to our collection
-        backgroundImages.push_back(surface);
-        pngCount++;
-        
-        // Delete the temporary file
-        remove(tempPath.c_str());
-    }
-#endif
     
     // Close the archive
     zip_close(archive);
