@@ -1811,11 +1811,11 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Add description
     GtkWidget* descLabel = gtk_label_new(
-        "A feature-rich Tetris Clone implementation with advanced graphics,\n"
+        "A feature-rich falling block puzzle game with advanced graphics,\n"
         "multiple difficulty levels, theme progression, and comprehensive\n"
         "control options including joystick support."
-    );
-    gtk_box_pack_start(GTK_BOX(vbox), descLabel, FALSE, FALSE, 10);
+     );
+     gtk_box_pack_start(GTK_BOX(vbox), descLabel, FALSE, FALSE, 10);
     
     // Add license info
     GtkWidget* licenseLabel = gtk_label_new("This software is released under the MIT License.");
