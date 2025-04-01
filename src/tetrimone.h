@@ -46,7 +46,7 @@ struct BlockSizeCallbackData {
 
 // Constants
 const int GRID_WIDTH = 10;
-const int GRID_HEIGHT = 20;
+const int GRID_HEIGHT = 22;
 
 extern int BLOCK_SIZE;  // This will be calculated at runtime
 const int MIN_BLOCK_SIZE = 20;  // Minimum block size to ensure visibility
