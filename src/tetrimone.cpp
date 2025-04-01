@@ -251,10 +251,67 @@ void TetrimoneBoard::generateNewPiece() {
     // Move next piece to current
     currentPiece = std::move(nextPiece);
     
-    // Generate new next piece
-    // Update the distribution to include the full range of block types
-    std::uniform_int_distribution<int> dist(0, TETROMONEBLOCK_SHAPES.size() - 1);
-    int nextType = dist(rng);
+    // Define ranges for different block sizes
+    const std::vector<std::pair<int, int>> blockSizeRanges = {
+        {0, 6},     // Tetromones (index 0-6)
+        {7, 10},    // Triomones (index 7-10)
+        {11, 12},   // Dominoes (index 11-12)
+        {13, 13}    // Mononome (index 13)
+    };
+    
+    // Determine valid ranges based on minBlockSize
+    std::vector<int> validPieces;
+    
+    switch (minBlockSize) {
+        case 1:  // All pieces
+            for (int i = 0; i < 14; ++i) {
+                validPieces.push_back(i);
+            }
+            break;
+        case 2:  // Triomones and Tetromones
+            for (int i = 0; i <= 10; ++i) {
+                validPieces.push_back(i);
+            }
+            break;
+        case 3:  // Tetromones only
+            for (int i = 0; i <= 6; ++i) {
+                validPieces.push_back(i);
+            }
+            break;
+        case 4:  // Tetromones only, but ensure at least 4 blocks
+            for (int i = 0; i <= 6; ++i) {
+                int blockCount = 0;
+                for (const auto& row : TETROMONEBLOCK_SHAPES[i][0]) {
+                    for (int cell : row) {
+                        if (cell == 1) blockCount++;
+                    }
+                }
+                // Only add if block count is exactly 4
+                if (blockCount == 4) {
+                    validPieces.push_back(i);
+                }
+            }
+            break;
+        default:
+            // Fallback to standard tetromones
+            for (int i = 0; i <= 6; ++i) {
+                validPieces.push_back(i);
+            }
+            break;
+    }
+    
+    // If no valid pieces found, fallback to standard Tetromones
+    if (validPieces.empty()) {
+        for (int i = 0; i <= 6; ++i) {
+            validPieces.push_back(i);
+        }
+    }
+    
+    // Use uniform distribution over valid pieces
+    std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
+    int nextIndex = dist(rng);
+    int nextType = validPieces[nextIndex];
+    
     nextPiece = std::make_unique<TetromoneBlock>(nextType);
     
     // If this is the first piece (current was null)

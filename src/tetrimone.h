@@ -138,7 +138,7 @@ private:
     std::mt19937 rng;           // Random number generator
     bool splashScreenActive;
     std::atomic<bool> musicStopFlag{false};
-
+    int minBlockSize = 1;
     
 public:
     bool enabledTracks[5];
