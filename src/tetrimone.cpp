@@ -252,7 +252,8 @@ void TetrimoneBoard::generateNewPiece() {
     currentPiece = std::move(nextPiece);
     
     // Generate new next piece
-    std::uniform_int_distribution<int> dist(0, 6);
+    // Update the distribution to include the full range of block types
+    std::uniform_int_distribution<int> dist(0, TETROMONEBLOCK_SHAPES.size() - 1);
     int nextType = dist(rng);
     nextPiece = std::make_unique<TetromoneBlock>(nextType);
     
