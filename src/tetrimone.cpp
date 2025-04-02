@@ -56,7 +56,7 @@ TetrimoneBoard::TetrimoneBoard() : score(0), level(1), linesCleared(0), gameOver
                             transitionOpacity(0.0), transitionDirection(0),
                             oldBackground(nullptr), transitionTimerId(0) {
     rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
-    grid.resize(GRID_HEIGHT, std::vector<int>(GRID_WIDTH, 0));
+    grid.resize(gridHeight, std::vector<int>(gridWidth, 0));
     generateNewPiece();
     generateNewPiece();
     
