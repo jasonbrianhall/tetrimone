@@ -1456,6 +1456,72 @@ void createMenu(TetrimoneApp* app) {
     g_signal_connect(G_OBJECT(joystickConfigMenuItem), "activate",
                    G_CALLBACK(onJoystickConfig), app);
 
+    // *** RULES MENU ***
+    GtkWidget* rulesMenu = gtk_menu_new();
+    GtkWidget* rulesMenuItem = gtk_menu_item_new_with_label("Rules");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(rulesMenuItem), rulesMenu);
+    
+    // Connect signals for menu activation/deactivation
+    g_signal_connect(G_OBJECT(rulesMenu), "show", 
+                   G_CALLBACK(onMenuActivated), app);
+    g_signal_connect(G_OBJECT(rulesMenu), "hide", 
+                   G_CALLBACK(onMenuDeactivated), app);
+    
+    // Minimum Block Size Submenu
+    GtkWidget* blockSizeRulesMenu = gtk_menu_new();
+    GtkWidget* blockSizeRulesMenuItem = gtk_menu_item_new_with_label("Minimum Block Size");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(blockSizeRulesMenuItem), blockSizeRulesMenu);
+    gtk_menu_shell_append(GTK_MENU_SHELL(rulesMenu), blockSizeRulesMenuItem);
+    
+    // Create radio group for block size selection
+    GSList* blockSizeGroup = NULL;
+    
+    // Create radio menu items for each block size
+    GtkWidget* blockSize1MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "4 Single Double Triple and Quadruple Blocks");
+    blockSizeGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(blockSize1MenuItem));
+    
+    GtkWidget* blockSize2MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "3 No Single Blocks");
+    blockSizeGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(blockSize2MenuItem));
+    
+    GtkWidget* blockSize3MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "2 No Single or Double Blocks");
+    blockSizeGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(blockSize3MenuItem));
+    
+    GtkWidget* blockSize4MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "1 No Single, Double, or Triple Blocks; only Quadruple Blocks");
+    
+    // Set the default selection based on current min block size
+    switch (app->board->getMinBlockSize()) {
+        case 1:
+            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize1MenuItem), TRUE);
+            break;
+        case 2:
+            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize2MenuItem), TRUE);
+            break;
+        case 3:
+            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize3MenuItem), TRUE);
+            break;
+        case 4:
+            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize4MenuItem), TRUE);
+            break;
+    }
+    
+    // Add block size menu items to submenu
+    gtk_menu_shell_append(GTK_MENU_SHELL(blockSizeRulesMenu), blockSize1MenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(blockSizeRulesMenu), blockSize2MenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(blockSizeRulesMenu), blockSize3MenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(blockSizeRulesMenu), blockSize4MenuItem);
+    
+    // Connect signals for block size selection
+    g_signal_connect(G_OBJECT(blockSize1MenuItem), "toggled", 
+                   G_CALLBACK(onBlockSizeRulesChanged), app);
+    g_signal_connect(G_OBJECT(blockSize2MenuItem), "toggled", 
+                   G_CALLBACK(onBlockSizeRulesChanged), app);
+    g_signal_connect(G_OBJECT(blockSize3MenuItem), "toggled", 
+                   G_CALLBACK(onBlockSizeRulesChanged), app);
+    g_signal_connect(G_OBJECT(blockSize4MenuItem), "toggled", 
+                   G_CALLBACK(onBlockSizeRulesChanged), app);
+
+
+
     // *** HELP MENU ***
     GtkWidget* helpMenu = gtk_menu_new();
     GtkWidget* helpMenuItem = gtk_menu_item_new_with_label("Help");
@@ -1480,6 +1546,7 @@ void createMenu(TetrimoneApp* app) {
     gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), graphicsMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), soundMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), controlsMenuItem);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), rulesMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), helpMenuItem);
     
     // Add menu signal handlers
@@ -1513,6 +1580,104 @@ void createMenu(TetrimoneApp* app) {
     // Store menu bar in app structure
     app->menuBar = menuBar;
 }
+
+void onBlockSizeRulesChanged(GtkRadioMenuItem* menuItem, gpointer userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    
+    // Only proceed if the item is active (selected)
+    if (!gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menuItem))) {
+        return;
+    }
+    
+    int newMinBlockSize = 1;
+    
+    // Get the parent menu
+    GtkWidget* parentMenu = gtk_widget_get_parent(GTK_WIDGET(menuItem));
+    
+    // Find the index of this item in the parent menu
+    GList* children = gtk_container_get_children(GTK_CONTAINER(parentMenu));
+    int index = g_list_index(children, menuItem);
+    g_list_free(children);
+    
+    // Determine the block size based on the index
+    switch (index) {
+        case 3:  // Last item (4 blocks)
+            newMinBlockSize = 4;
+            break;
+        case 2:  // Third item (3 blocks)
+            newMinBlockSize = 3;
+            break;
+        case 1:  // Second item (2 blocks)
+            newMinBlockSize = 2;
+            break;
+        case 0:  // First item (1 block)
+        default:
+            newMinBlockSize = 1;
+            break;
+    }
+    
+    // Retrieve the current min block size
+    int currentMinBlockSize = app->board->getMinBlockSize();
+    
+    // Proceed only if block size is different
+    if (newMinBlockSize != currentMinBlockSize) {
+        // Create confirmation dialog
+        GtkWidget* dialog = gtk_message_dialog_new(
+            GTK_WINDOW(app->window),
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_QUESTION,
+            GTK_BUTTONS_YES_NO,
+            "Changing the minimum block size will restart the game. Continue?"
+        );
+        
+        // Run dialog and get response
+        gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        
+        // If user clicked "No", revert to original radio button and return
+        if (response != GTK_RESPONSE_YES) {
+            // Block signals to avoid recursion
+            g_signal_handlers_block_by_func(G_OBJECT(menuItem), 
+                                         (gpointer)onBlockSizeRulesChanged, app);
+            
+            // Reselect the previous block size menu item
+            GList* children = gtk_container_get_children(GTK_CONTAINER(parentMenu));
+            GtkWidget* previousItem = GTK_WIDGET(g_list_nth_data(children, currentMinBlockSize - 1));
+            g_list_free(children);
+            
+            if (previousItem) {
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(previousItem), TRUE);
+            }
+            
+            // Unblock signals
+            g_signal_handlers_unblock_by_func(G_OBJECT(menuItem), 
+                                           (gpointer)onBlockSizeRulesChanged, app);
+            
+            return;
+        }
+        
+        // Apply the new minimum block size
+        app->board->setMinBlockSize(newMinBlockSize);
+        
+        // Restart the game with new settings
+        app->board->restart();
+        resetUI(app);
+        
+        // Start game with new settings
+        if (app->board->isPaused()) {
+            app->board->togglePause();
+            gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
+        }
+        
+        gtk_widget_set_sensitive(app->startMenuItem, FALSE);
+        gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+        
+        startGame(app);
+        gtk_widget_queue_draw(app->gameArea);
+        gtk_widget_queue_draw(app->nextPieceArea);
+        updateLabels(app);
+    }
+} 
 
 // Menu callback functions
 void onStartGame(GtkMenuItem* menuItem, gpointer userData) {

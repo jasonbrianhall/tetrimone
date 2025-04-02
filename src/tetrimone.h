@@ -166,7 +166,10 @@ public:
     void hardDrop();
     void togglePause() { paused = !paused; }
     void setPaused(bool pause) { paused = pause; }
-    
+    void setMinBlockSize(int size) { 
+        minBlockSize = std::max(1, std::min(size, 4)); 
+    }
+    int getMinBlockSize() const { return minBlockSize; }
     bool isGameOver() const;
     bool isPaused() const { return paused; }
     int getScore() const { return score; }
@@ -277,7 +280,7 @@ void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData);
 void onVolumeValueChanged(GtkRange* range, gpointer userData);
 void onMusicVolumeValueChanged(GtkRange* range, gpointer userData);
 void onTrackToggled(GtkCheckMenuItem* menuItem, gpointer userData);
-
+void onBlockSizeRulesChanged(GtkRadioMenuItem* menuItem, gpointer userData);
 #endif // TETRIMONE_H
 
 
