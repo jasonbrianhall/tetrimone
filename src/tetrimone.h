@@ -36,7 +36,7 @@ enum class GameSoundEvent {
 extern int currentThemeIndex;
 
 // Forward declarations (need to be at the top)
-class TetromoneBlock;
+class TetrimoneBlock;
 class TetrimoneBoard;
 struct TetrimoneApp;
 
@@ -50,21 +50,26 @@ struct BlockSizeCallbackData {
 const int GRID_WIDTH = 10;
 const int GRID_HEIGHT = 22;
 
+const int MIN_GRID_WIDTH = 8;   // Minimum width to ensure the game is playable
+const int MAX_GRID_WIDTH = 16;  // Maximum width to prevent extreme scaling
+const int MIN_GRID_HEIGHT = 16; // Minimum height to ensure the game is playable
+const int MAX_GRID_HEIGHT = 30; // Maximum height to prevent extreme scaling
+
 extern int BLOCK_SIZE;  // This will be calculated at runtime
 const int MIN_BLOCK_SIZE = 20;  // Minimum block size to ensure visibility
 const int MAX_BLOCK_SIZE = 80;  // Maximum block size to prevent extreme scaling
 
 const int INITIAL_SPEED = 500; // milliseconds
 
-// Class for a single tetromoneblock piece
-class TetromoneBlock {
+// Class for a single tetrimoneblock piece
+class TetrimoneBlock {
 private:
     int type;                   // 0-6 for I, O, T, S, Z, J, L
     int rotation;               // 0-3 for four possible rotations
     int x, y;                   // Position on the grid
     
 public:
-    TetromoneBlock(int type);
+    TetrimoneBlock(int type);
     void rotate(bool clockwise = true);
     void move(int dx, int dy);
     std::vector<std::vector<int>> getShape() const;
@@ -127,9 +132,9 @@ struct TetrimoneApp {
 // Class for the game board
 class TetrimoneBoard {
 private:
-    std::vector<std::vector<int>> grid;  // Grid of placed blocks (0 = empty, 1-7 = tetromoneblock type + 1)
-    std::unique_ptr<TetromoneBlock> currentPiece;
-    std::unique_ptr<TetromoneBlock> nextPiece;
+    std::vector<std::vector<int>> grid;  // Grid of placed blocks (0 = empty, 1-7 = tetrimoneblock type + 1)
+    std::unique_ptr<TetrimoneBlock> currentPiece;
+    std::unique_ptr<TetrimoneBlock> nextPiece;
     int score;
     int level;
     int linesCleared;
@@ -139,6 +144,8 @@ private:
     bool splashScreenActive;
     std::atomic<bool> musicStopFlag{false};
     int minBlockSize = 1;
+    int gridWidth = GRID_WIDTH;   // Default width
+    int gridHeight = GRID_HEIGHT; // Default height
     
 public:
     bool enabledTracks[5];
@@ -158,7 +165,7 @@ public:
     void dismissSplashScreen();
     bool movePiece(int dx, int dy);
     bool rotatePiece(bool direction);
-    bool checkCollision(const TetromoneBlock& piece) const;
+    bool checkCollision(const TetrimoneBlock& piece) const;
     void lockPiece();
     int clearLines();
     void generateNewPiece();
@@ -175,8 +182,8 @@ public:
     int getScore() const { return score; }
     int getLevel() const { return level; }
     int getLinesCleared() const { return linesCleared; }
-    const TetromoneBlock& getCurrentPiece() const { return *currentPiece; }
-    const TetromoneBlock& getNextPiece() const { return *nextPiece; }
+    const TetrimoneBlock& getCurrentPiece() const { return *currentPiece; }
+    const TetrimoneBlock& getNextPiece() const { return *nextPiece; }
     int getGridValue(int x, int y) const;
     bool sound_enabled_ = true;
     bool musicPaused = false;

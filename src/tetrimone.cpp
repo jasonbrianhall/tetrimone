@@ -10,39 +10,39 @@
 int BLOCK_SIZE = 30;  // Default value, will be updated at runtime
 int currentThemeIndex = 0;
 
-// TetromoneBlock class implementation
-TetromoneBlock::TetromoneBlock(int type) : type(type), rotation(0) {
+// TetrimoneBlock class implementation
+TetrimoneBlock::TetrimoneBlock(int type) : type(type), rotation(0) {
     // Start pieces centered at top
     x = GRID_WIDTH / 2 - 2;
     y = 0;
 }
 
-void TetromoneBlock::rotate(bool clockwise) {
+void TetrimoneBlock::rotate(bool clockwise) {
     rotation = (rotation + (clockwise ? 1 : 3)) % 4;
 }
 
-void TetromoneBlock::move(int dx, int dy) {
+void TetrimoneBlock::move(int dx, int dy) {
     x += dx;
     y += dy;
 }
 
-std::vector<std::vector<int>> TetromoneBlock::getShape() const {
-    return TETROMONEBLOCK_SHAPES[type][rotation];
+std::vector<std::vector<int>> TetrimoneBlock::getShape() const {
+    return TETRIMONEBLOCK_SHAPES[type][rotation];
 }
 
-std::array<double, 3> TetromoneBlock::getColor() const {
-    // Get the current level (need to add a way to pass this info to the TetromoneBlock)
+std::array<double, 3> TetrimoneBlock::getColor() const {
+    // Get the current level (need to add a way to pass this info to the TetrimoneBlock)
     int themeIndex=currentThemeIndex;
 
     // Cap at the max theme index
-    if (themeIndex >= TETROMONEBLOCK_COLOR_THEMES.size()) {
-        themeIndex = TETROMONEBLOCK_COLOR_THEMES.size() - 1;
+    if (themeIndex >= TETRIMONEBLOCK_COLOR_THEMES.size()) {
+        themeIndex = TETRIMONEBLOCK_COLOR_THEMES.size() - 1;
     }
     
-    return TETROMONEBLOCK_COLOR_THEMES[themeIndex][type];
+    return TETRIMONEBLOCK_COLOR_THEMES[themeIndex][type];
 }
 
-void TetromoneBlock::setPosition(int newX, int newY) {
+void TetrimoneBlock::setPosition(int newX, int newY) {
     x = newX;
     y = newY;
 }
@@ -113,7 +113,7 @@ bool TetrimoneBoard::rotatePiece(bool clockwise) {
     return true;
 }
 
-bool TetrimoneBoard::checkCollision(const TetromoneBlock& piece) const {
+bool TetrimoneBoard::checkCollision(const TetrimoneBlock& piece) const {
     auto shape = piece.getShape();
     int pieceX = piece.getX();
     int pieceY = piece.getY();
@@ -253,7 +253,7 @@ void TetrimoneBoard::generateNewPiece() {
     
     // Define ranges for different block sizes
     const std::vector<std::pair<int, int>> blockSizeRanges = {
-        {0, 6},     // Tetromones (index 0-6)
+        {0, 6},     // Tetrimones (index 0-6)
         {7, 10},    // Triomones (index 7-10)
         {11, 12},   // Dominoes (index 11-12)
         {13, 13}    // Mononome (index 13)
@@ -268,20 +268,20 @@ void TetrimoneBoard::generateNewPiece() {
                 validPieces.push_back(i);
             }
             break;
-        case 2:  // Triomones and Tetromones
+        case 2:  // Triomones and Tetrimones
             for (int i = 0; i <= 10; ++i) {
                 validPieces.push_back(i);
             }
             break;
-        case 3:  // Tetromones only
+        case 3:  // Tetrimones only
             for (int i = 0; i <= 6; ++i) {
                 validPieces.push_back(i);
             }
             break;
-        case 4:  // Tetromones only, but ensure at least 4 blocks
+        case 4:  // Tetrimones only, but ensure at least 4 blocks
             for (int i = 0; i <= 6; ++i) {
                 int blockCount = 0;
-                for (const auto& row : TETROMONEBLOCK_SHAPES[i][0]) {
+                for (const auto& row : TETRIMONEBLOCK_SHAPES[i][0]) {
                     for (int cell : row) {
                         if (cell == 1) blockCount++;
                     }
@@ -293,14 +293,14 @@ void TetrimoneBoard::generateNewPiece() {
             }
             break;
         default:
-            // Fallback to standard tetromones
+            // Fallback to standard tetrimones
             for (int i = 0; i <= 6; ++i) {
                 validPieces.push_back(i);
             }
             break;
     }
     
-    // If no valid pieces found, fallback to standard Tetromones
+    // If no valid pieces found, fallback to standard Tetrimones
     if (validPieces.empty()) {
         for (int i = 0; i <= 6; ++i) {
             validPieces.push_back(i);
@@ -312,11 +312,11 @@ void TetrimoneBoard::generateNewPiece() {
     int nextIndex = dist(rng);
     int nextType = validPieces[nextIndex];
     
-    nextPiece = std::make_unique<TetromoneBlock>(nextType);
+    nextPiece = std::make_unique<TetrimoneBlock>(nextType);
     
     // If this is the first piece (current was null)
     if (!currentPiece) {
-        currentPiece = std::make_unique<TetromoneBlock>(nextType);
+        currentPiece = std::make_unique<TetrimoneBlock>(nextType);
     }
     
     // Check if the new piece collides immediately - game over
@@ -519,8 +519,8 @@ if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) && board-
         for (int x = 0; x < GRID_WIDTH; ++x) {
             int value = board->getGridValue(x, y);
             if (value > 0) {
-                // Get color from tetromoneblock colors (value-1 because grid values are 1-based)
-               auto color = TETROMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
+                // Get color from tetrimoneblock colors (value-1 because grid values are 1-based)
+               auto color = TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
                cairo_set_source_rgb(cr, color[0], color[1], color[2]);
                 
                 // Draw block with a small margin
@@ -626,7 +626,7 @@ if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) && board-
     
     // Draw current piece if game is active
     if (!board->isGameOver() && !board->isPaused() && !board->isSplashScreenActive()) {
-        const TetromoneBlock& piece = board->getCurrentPiece();
+        const TetrimoneBlock& piece = board->getCurrentPiece();
         auto shape = piece.getShape();
         auto color = piece.getColor();
         int pieceX = piece.getX();
@@ -878,7 +878,7 @@ gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data) {
     
     if (!board->isGameOver()) {
         // Draw next piece
-        const TetromoneBlock& piece = board->getNextPiece();
+        const TetrimoneBlock& piece = board->getNextPiece();
         auto shape = piece.getShape();
         auto color = piece.getColor();
         

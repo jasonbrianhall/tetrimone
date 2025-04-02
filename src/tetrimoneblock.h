@@ -1,4 +1,4 @@
-const std::vector<std::vector<std::vector<std::vector<int>>>> TETROMONEBLOCK_SHAPES = {
+const std::vector<std::vector<std::vector<std::vector<int>>>> TETRIMONEBLOCK_SHAPES = {
     // I-Block
     {
         {

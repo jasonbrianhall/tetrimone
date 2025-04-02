@@ -1,5 +1,5 @@
-// Colors for each tetromoneblock type (RGB)
-const std::vector<std::vector<std::array<double, 3>>> TETROMONEBLOCK_COLOR_THEMES = {
+// Colors for each tetrimoneblock type (RGB)
+const std::vector<std::vector<std::array<double, 3>>> TETRIMONEBLOCK_COLOR_THEMES = {
     // Theme 1: Watercolor
     {
         {0.6, 0.8, 0.9},  // I - Soft Blue Wash
