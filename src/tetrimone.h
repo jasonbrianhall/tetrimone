@@ -12,6 +12,8 @@
 #include "themes.h"
 #include "tetrimoneblock.h"
 
+// Structure to pass multiple widgets to callback functions
+
 enum class GameSoundEvent {
   BackgroundMusic,
   BackgroundMusic2,
@@ -39,6 +41,15 @@ extern int currentThemeIndex;
 class TetrimoneBlock;
 class TetrimoneBoard;
 struct TetrimoneApp;
+
+struct BoardSizeCallbackData {
+    struct TetrimoneApp* app;
+    GtkWidget* widthLabel;
+    GtkWidget* heightLabel;
+    GtkWidget* widthScale;
+    GtkWidget* heightScale;
+};
+
 
 // Define the callback data structure after TetrimoneApp is forward declared
 struct BlockSizeCallbackData {
@@ -231,6 +242,10 @@ public:
     cairo_surface_t* getOldBackground() const { return oldBackground; }
     int getTransitionDirection() const { return transitionDirection; }
 
+    int getGridWidth() const { return gridWidth; }
+    int getGridHeight() const { return gridHeight; }
+    void setGridSize(int width, int height);
+
 };
 
 // Function declarations
@@ -288,6 +303,10 @@ void onVolumeValueChanged(GtkRange* range, gpointer userData);
 void onMusicVolumeValueChanged(GtkRange* range, gpointer userData);
 void onTrackToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onBlockSizeRulesChanged(GtkRadioMenuItem* menuItem, gpointer userData);
+void onBoardSizeDialog(GtkMenuItem* menuItem, gpointer userData);
+void updateBoardSizeValueLabels(GtkRange* range, gpointer data);
+
+
 #endif // TETRIMONE_H
 
 
