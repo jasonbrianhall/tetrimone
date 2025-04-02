@@ -1477,16 +1477,16 @@ void createMenu(TetrimoneApp* app) {
     GSList* blockSizeGroup = NULL;
     
     // Create radio menu items for each block size
-    GtkWidget* blockSize1MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "4 Single Double Triple and Quadruple Blocks");
+    GtkWidget* blockSize1MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "4:  Single, Double, Triple, and Quadruple Blocks");
     blockSizeGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(blockSize1MenuItem));
     
-    GtkWidget* blockSize2MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "3 No Single Blocks");
+    GtkWidget* blockSize2MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "3:  No Single Blocks");
     blockSizeGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(blockSize2MenuItem));
     
-    GtkWidget* blockSize3MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "2 No Single or Double Blocks");
+    GtkWidget* blockSize3MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "2:   No Single or Double Blocks");
     blockSizeGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(blockSize3MenuItem));
     
-    GtkWidget* blockSize4MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "1 No Single, Double, or Triple Blocks; only Quadruple Blocks");
+    GtkWidget* blockSize4MenuItem = gtk_radio_menu_item_new_with_label(blockSizeGroup, "1:  No Single, Double, or Triple Blocks; only Quadruple Blocks");
     
     // Set the default selection based on current min block size
     switch (app->board->getMinBlockSize()) {
