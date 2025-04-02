@@ -47,8 +47,8 @@ struct BlockSizeCallbackData {
 };
 
 // Constants
-const int GRID_WIDTH = 10;
-const int GRID_HEIGHT = 22;
+extern int GRID_WIDTH;
+extern int GRID_HEIGHT;
 
 const int MIN_GRID_WIDTH = 8;   // Minimum width to ensure the game is playable
 const int MAX_GRID_WIDTH = 16;  // Maximum width to prevent extreme scaling
@@ -288,6 +288,11 @@ void onVolumeValueChanged(GtkRange* range, gpointer userData);
 void onMusicVolumeValueChanged(GtkRange* range, gpointer userData);
 void onTrackToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onBlockSizeRulesChanged(GtkRadioMenuItem* menuItem, gpointer userData);
+void onGameSizeDialog(GtkMenuItem* menuItem, gpointer userData);
+
+void updateWidthValueLabel(GtkAdjustment* adj, gpointer data);
+void updateHeightValueLabel(GtkAdjustment* adj, gpointer data);
+
 #endif // TETRIMONE_H
 
 

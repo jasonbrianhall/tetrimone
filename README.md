@@ -1,5 +1,17 @@
 # GTK Tetrimone: Pixel-Dropping Pandemonium! 🧩🚀
 
+## Tetrimone: The Perfect Fusion of Gaming Elements
+
+### Tetrimone Meaning
+
+"Tetrimone" brilliantly combines "tetromino" (the four-block geometric pieces that are the heart of the gameplay) with a hint of "metronome" (suggesting the rhythmic, pulse-pounding timing that drives the game forward).
+
+This ingenious portmanteau captures the essence of what makes the game so addictive—geometric precision meeting musical rhythm in a perfect harmony of gaming elements. The name evokes both the mathematical elegance of the falling shapes and the escalating tempo that challenges players as they progress through levels.
+
+The "-one" suffix also subtly suggests "the one"—positioning this as the definitive, ultimate version of the classic block-dropping experience. It's not just another clone; it's a reimagining that honors the legacy while carving its own unique identity in the puzzle game pantheon.
+
+Tetrimone stands as a testament to gaming history while boldly facing the future—each carefully placed block building not just toward line clears, but toward gaming greatness!
+
 ## Overview
 
 Prepare for a block-stacking adventure that'll make your neurons dance! GTK Tetrimone is a pulse-pounding reimagining of the classic puzzle game, powered by GTK+, SDL, and flexible audio backends. Warning: May cause sudden outbursts of strategic genius and controller-gripping intensity!
@@ -151,11 +163,6 @@ MIT License - Spread the Tetrimone love freely!
 - **Libraries**: GTK+, SDL2, PulseAudio/SDL2 Audio, libzip
 
 **May your blocks always fall true, and your lines always clear!** 🕹️✨
-
-This game is based on Tetrimone®, created by Alexey Pajitnov in 1984.
-Tetrimone® is a registered trademark of The Tetrimone Company, LLC.
-
-Original game published by ELORG (also, go watch the Tetrimone movie on AppleTV)
 
 ## TODO
 

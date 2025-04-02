@@ -10,6 +10,10 @@
 int BLOCK_SIZE = 30;  // Default value, will be updated at runtime
 int currentThemeIndex = 0;
 
+int GRID_WIDTH = 10;
+int GRID_HEIGHT = 22;
+
+
 // TetrimoneBlock class implementation
 TetrimoneBlock::TetrimoneBlock(int type) : type(type), rotation(0) {
     // Start pieces centered at top
@@ -56,7 +60,10 @@ TetrimoneBoard::TetrimoneBoard() : score(0), level(1), linesCleared(0), gameOver
                             transitionOpacity(0.0), transitionDirection(0),
                             oldBackground(nullptr), transitionTimerId(0) {
     rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
-    grid.resize(gridHeight, std::vector<int>(gridWidth, 0));
+    
+    // Initialize grid with maximum possible dimensions to avoid reallocation
+    grid.resize(MAX_GRID_HEIGHT, std::vector<int>(MAX_GRID_WIDTH, 0));
+    
     generateNewPiece();
     generateNewPiece();
     
@@ -1520,6 +1527,13 @@ void createMenu(TetrimoneApp* app) {
     g_signal_connect(G_OBJECT(blockSize4MenuItem), "toggled", 
                    G_CALLBACK(onBlockSizeRulesChanged), app);
 
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(rulesMenuItem), rulesMenu);
+    gtk_menu_shell_append(GTK_MENU_SHELL(app->menuBar), rulesMenuItem);
+    
+    // Game Size option
+    GtkWidget* gameSizeMenuItem = gtk_menu_item_new_with_label("Game Size");
+    g_signal_connect(gameSizeMenuItem, "activate", G_CALLBACK(onGameSizeDialog), app);
+    gtk_menu_shell_append(GTK_MENU_SHELL(rulesMenu), gameSizeMenuItem);
 
 
     // *** HELP MENU ***
@@ -2568,6 +2582,168 @@ void onTrackToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
         app->board->enabledTracks[trackIndex] = true;
         gtk_check_menu_item_set_active(menuItem, TRUE);
     }
+}
+
+void updateWidthValueLabel(GtkAdjustment* adj, gpointer data) {
+    GtkWidget* label = GTK_WIDGET(data);
+    int value = (int)gtk_adjustment_get_value(adj);
+    char text[50];
+    sprintf(text, "Width: %d", value);
+    gtk_label_set_text(GTK_LABEL(label), text);
+}
+
+void updateHeightValueLabel(GtkAdjustment* adj, gpointer data) {
+    GtkWidget* label = GTK_WIDGET(data);
+    int value = (int)gtk_adjustment_get_value(adj);
+    char text[50];
+    sprintf(text, "Height: %d", value);
+    gtk_label_set_text(GTK_LABEL(label), text);
+}
+
+void onGameSizeDialog(GtkMenuItem* menuItem, gpointer userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    
+    // Create dialog
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        "Game Size Settings",
+        GTK_WINDOW(app->window),
+        GTK_DIALOG_MODAL,
+        "Apply", GTK_RESPONSE_APPLY,
+        "Cancel", GTK_RESPONSE_CANCEL,
+        NULL
+    );
+    
+    // Get content area
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
+    
+    // Create main VBox
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    
+    // Width settings
+    GtkWidget* widthFrame = gtk_frame_new("Width");
+    gtk_box_pack_start(GTK_BOX(vbox), widthFrame, TRUE, TRUE, 0);
+    
+    GtkWidget* widthBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_container_add(GTK_CONTAINER(widthFrame), widthBox);
+    
+    // Width adjustment
+    GtkAdjustment* widthAdj = gtk_adjustment_new(
+        GRID_WIDTH,              // Initial value
+        MIN_GRID_WIDTH,          // Minimum value
+        MAX_GRID_WIDTH,          // Maximum value
+        1,                       // Step increment
+        5,                       // Page increment
+        0                        // Page size (not used)
+    );
+    
+    GtkWidget* widthScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, widthAdj);
+    gtk_scale_set_digits(GTK_SCALE(widthScale), 0);  // No decimal places
+    gtk_box_pack_start(GTK_BOX(widthBox), widthScale, TRUE, TRUE, 0);
+    
+    GtkWidget* widthLabel = gtk_label_new("");
+    gtk_box_pack_start(GTK_BOX(widthBox), widthLabel, FALSE, FALSE, 0);
+    
+    // Height settings
+    GtkWidget* heightFrame = gtk_frame_new("Height");
+    gtk_box_pack_start(GTK_BOX(vbox), heightFrame, TRUE, TRUE, 0);
+    
+    GtkWidget* heightBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_container_add(GTK_CONTAINER(heightFrame), heightBox);
+    
+    // Height adjustment
+    GtkAdjustment* heightAdj = gtk_adjustment_new(
+        GRID_HEIGHT,             // Initial value
+        MIN_GRID_HEIGHT,         // Minimum value
+        MAX_GRID_HEIGHT,         // Maximum value
+        1,                       // Step increment
+        5,                       // Page increment
+        0                        // Page size (not used)
+    );
+    
+    GtkWidget* heightScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, heightAdj);
+    gtk_scale_set_digits(GTK_SCALE(heightScale), 0);  // No decimal places
+    gtk_box_pack_start(GTK_BOX(heightBox), heightScale, TRUE, TRUE, 0);
+    
+    GtkWidget* heightLabel = gtk_label_new("");
+    gtk_box_pack_start(GTK_BOX(heightBox), heightLabel, FALSE, FALSE, 0);
+    
+    // Update labels initially
+    char widthText[50];
+    sprintf(widthText, "Width: %d", GRID_WIDTH);
+    gtk_label_set_text(GTK_LABEL(widthLabel), widthText);
+    
+    char heightText[50];
+    sprintf(heightText, "Height: %d", GRID_HEIGHT);
+    gtk_label_set_text(GTK_LABEL(heightLabel), heightText);
+    
+    // Connect value changed signals to update labels - using regular functions instead of lambdas
+    g_signal_connect(widthAdj, "value-changed", G_CALLBACK(updateWidthValueLabel), widthLabel);
+    g_signal_connect(heightAdj, "value-changed", G_CALLBACK(updateHeightValueLabel), heightLabel);
+    
+    // Warning message about restarting game
+    GtkWidget* warningLabel = gtk_label_new("Note: Changing game size will restart the current game.");
+    gtk_box_pack_start(GTK_BOX(vbox), warningLabel, FALSE, FALSE, 10);
+    
+    // Show all widgets
+    gtk_widget_show_all(dialog);
+    
+    // Run dialog
+    gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+    
+    if (response == GTK_RESPONSE_APPLY) {
+        // Get the new grid dimensions
+        int newWidth = (int)gtk_adjustment_get_value(widthAdj);
+        int newHeight = (int)gtk_adjustment_get_value(heightAdj);
+        
+        // Only proceed if dimensions have changed
+        if (newWidth != GRID_WIDTH || newHeight != GRID_HEIGHT) {
+            // Create confirmation dialog
+            GtkWidget* confirmDialog = gtk_message_dialog_new(
+                GTK_WINDOW(app->window),
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_QUESTION,
+                GTK_BUTTONS_YES_NO,
+                "Changing the game size will restart the current game. Continue?"
+            );
+            
+            // Run confirmation dialog and get response
+            gint confirmResponse = gtk_dialog_run(GTK_DIALOG(confirmDialog));
+            gtk_widget_destroy(confirmDialog);
+            
+            // If user confirmed, apply changes and restart the game
+            if (confirmResponse == GTK_RESPONSE_YES) {
+                // Update the global grid dimensions
+                GRID_WIDTH = newWidth;
+                GRID_HEIGHT = newHeight;
+                
+                // First recalculate block size based on the new grid dimensions
+                calculateBlockSize(app);
+                
+                // Rebuild UI to match new dimensions
+                rebuildGameUI(app);
+                
+                // Restart the game with the new dimensions
+                app->board->restart();
+                resetUI(app);
+                
+                // Start game with new settings
+                if (app->board->isPaused()) {
+                    app->board->togglePause();
+                    gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
+                }
+                
+                gtk_widget_set_sensitive(app->startMenuItem, FALSE);
+                gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+                
+                startGame(app);
+            }
+        }
+    }
+    
+    // Destroy dialog
+    gtk_widget_destroy(dialog);
 }
 
 int main(int argc, char* argv[]) {
