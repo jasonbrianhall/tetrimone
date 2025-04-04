@@ -1,3 +1,5 @@
+# Last modification 04/04/2025
+
 # Makefile for Tetrimone with Windows and Linux Support
 # Configurable audio backend (SDL or PulseAudio)
 # Extended with FFMPEG support for MIDI to WAV conversion
