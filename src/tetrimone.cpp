@@ -1376,7 +1376,7 @@ void createMenu(TetrimoneApp* app) {
     gtk_menu_shell_append(GTK_MENU_SHELL(graphicsMenu), backgroundMenuItem);
     
     // Background menu items
-    GtkWidget* setBackgroundMenuItem = gtk_menu_item_new_with_label("Set Background Image (PNG)...");
+    GtkWidget* setBackgroundMenuItem = gtk_menu_item_new_with_label("Set Background Image ...");
     gtk_menu_shell_append(GTK_MENU_SHELL(backgroundMenu), setBackgroundMenuItem);
     g_signal_connect(G_OBJECT(setBackgroundMenuItem), "activate",
                   G_CALLBACK(onBackgroundImageDialog), app);
@@ -2431,32 +2431,6 @@ void onResizeWindowButtonClicked(GtkWidget* button, gpointer data) {
     
     // Rebuild UI with current block size
     rebuildGameUI(app);
-}
-
-bool TetrimoneBoard::loadBackgroundImage(const std::string& imagePath) {
-    // Clean up previous image if it exists
-    if (backgroundImage != nullptr) {
-        cairo_surface_destroy(backgroundImage);
-        backgroundImage = nullptr;
-    }
-    
-    // Try to load the new image
-    backgroundImage = cairo_image_surface_create_from_png(imagePath.c_str());
-    
-    // Check if image loaded successfully
-    cairo_status_t status = cairo_surface_status(backgroundImage);
-    if (status != CAIRO_STATUS_SUCCESS) {
-        std::cerr << "Failed to load background image: " 
-                  << cairo_status_to_string(status) << std::endl;
-        cairo_surface_destroy(backgroundImage);
-        backgroundImage = nullptr;
-        return false;
-    }
-    
-    // Store the path of successfully loaded image
-    backgroundImagePath = imagePath;
-    useBackgroundImage = true;
-    return true;
 }
 
 void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData) {

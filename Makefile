@@ -105,9 +105,6 @@ MIDI_FILES := $(wildcard $(SOUND_DIR)/*.mid)
 WAV_FROM_MIDI := $(MIDI_FILES:.mid=.wav)
 MP3_FROM_WAV := $(WAV_FILES:.wav=.mp3) $(WAV_FROM_MIDI:.wav=.mp3)
 
-# Combined theme file for Windows
-THEME_ALL_MP3 = $(SOUND_DIR)/themeall.mp3
-
 # FFmpeg command for audio conversion
 FFMPEG = ffmpeg
 FFMPEG_OPTS = -y -loglevel error -i
@@ -217,32 +214,12 @@ convert-midi: $(WAV_FROM_MIDI)
 # WAV to MP3 conversion
 #
 .PHONY: convert-wav-to-mp3
-convert-wav-to-mp3: convert-midi $(MP3_FROM_WAV) $(THEME_ALL_MP3)
+convert-wav-to-mp3: convert-midi $(MP3_FROM_WAV)
 
 # Rule to convert .wav to .mp3 files
 %.mp3: %.wav
 	@echo "Converting $< to $@..."
 	@$(FFMPEG) $(FFMPEG_OPTS) $< $(FFMPEG_MP3_OPTS) $@
-
-# Rule to create the combined theme MP3 file from multiple WAV files
-$(THEME_ALL_MP3): $(SOUND_DIR)/theme.wav $(SOUND_DIR)/TetrimoneA.wav $(SOUND_DIR)/TetrimoneB.wav $(SOUND_DIR)/TetrimoneC.wav $(SOUND_DIR)/futuristic.wav
-	@echo "Creating combined theme file $(THEME_ALL_MP3)..."
-	@$(FFMPEG) -y \
-		-i "$(SOUND_DIR)/theme.wav" \
-		-i "$(SOUND_DIR)/TetrimoneA.wav" \
-		-i "$(SOUND_DIR)/TetrimoneB.wav" \
-		-i "$(SOUND_DIR)/TetrimoneC.wav" \
-		-i "$(SOUND_DIR)/futuristic.wav" \
-		-filter_complex "\
-			[0:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB[a0];\
-			[1:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB[a1];\
-			[2:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB[a2];\
-			[3:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB[a3];\
-			[4:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB[a4];\
-			[a0][a1][a2][a3][a4]concat=n=5:v=0:a=1[outaudio]" \
-		-map "[outaudio]" \
-		-c:a libmp3lame -qscale:a 2 \
-		$(THEME_ALL_MP3)
 
 #
 # DLL collection for Windows builds
@@ -262,28 +239,64 @@ tetrimone-collect-debug-dlls: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG)
 #
 .PHONY: pack-backgrounds-linux
 pack-backgrounds-linux:
-	@echo "Packing background images for Linux build..."
-	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.png
+	@echo "Packing background images for Windows build..."
+	@if command -v magick >/dev/null 2>&1; then \
+		echo "Converting PNG to JPEG using ImageMagick v7..."; \
+		cd $(BACKGROUNDS_DIR) && \
+		for img in *.png; do \
+			magick "$$img" "$${img%.png}.jpg"; \
+		done && \
+		zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.jpg; \
+	else \
+		cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.png; \
+	fi
 	@echo "Background images packed to $(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP)"
 
 .PHONY: pack-backgrounds-linux-debug
 pack-backgrounds-linux-debug:
-	@echo "Packing background images for Linux debug build..."
-	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP) *.png
+	@echo "Packing background images for Windows build..."
+	@if command -v magick >/dev/null 2>&1; then \
+		echo "Converting PNG to JPEG using ImageMagick v7..."; \
+		cd $(BACKGROUNDS_DIR) && \
+		for img in *.png; do \
+			magick "$$img" "$${img%.png}.jpg"; \
+		done && \
+		zip -r ../../$(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP) *.jpg; \
+	else \
+		cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP) *.png; \
+	fi
 	@echo "Background images packed to $(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP)"
 
 .PHONY: pack-backgrounds-windows
 pack-backgrounds-windows:
 	@echo "Packing background images for Windows build..."
-	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN)/$(BACKGROUND_ZIP) *.png
+	@if command -v magick >/dev/null 2>&1; then \
+		echo "Converting PNG to JPEG using ImageMagick v7..."; \
+		cd $(BACKGROUNDS_DIR) && \
+		for img in *.png; do \
+			magick "$$img" "$${img%.png}.jpg"; \
+		done && \
+		zip -r ../../$(BUILD_DIR_WIN)/$(BACKGROUND_ZIP) *.jpg; \
+	else \
+		cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN)/$(BACKGROUND_ZIP) *.png; \
+	fi
 	@echo "Background images packed to $(BUILD_DIR_WIN)/$(BACKGROUND_ZIP)"
-
+	
 .PHONY: pack-backgrounds-windows-debug
 pack-backgrounds-windows-debug:
-	@echo "Packing background images for Windows debug build..."
-	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP) *.png
+	@echo "Packing background images for Windows build..."
+	@if command -v magick >/dev/null 2>&1; then \
+		echo "Converting PNG to JPEG using ImageMagick v7..."; \
+		cd $(BACKGROUNDS_DIR) && \
+		for img in *.png; do \
+			magick "$$img" "$${img%.png}.jpg"; \
+		done && \
+		zip -r ../../$(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP) *.jpg; \
+	else \
+		cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP) *.png; \
+	fi
 	@echo "Background images packed to $(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP)"
-
+	
 .PHONY: pack-backgrounds-all
 pack-backgrounds-all: pack-backgrounds-linux pack-backgrounds-linux-debug pack-backgrounds-windows pack-backgrounds-windows-debug
 
@@ -355,10 +368,6 @@ clean-audio:
 			rm -f "$$mp3_file"; \
 		fi; \
 	done
-	@if [ -f "$(THEME_ALL_MP3)" ]; then \
-		echo "Removing $(THEME_ALL_MP3)"; \
-		rm -f "$(THEME_ALL_MP3)"; \
-	fi
 
 # Full clean including converted audio files
 .PHONY: clean-all
@@ -395,6 +404,6 @@ help:
 	@echo "  make link-sound-all - Create symbolic links to sound.zip in all build directories"
 	@echo ""
 	@echo "  make clean         - Remove all build files"
-	@echo "  make clean-audio   - Remove all converted MIDI and MP3 files"
+	@echo "  make clean-audio   - Remove all converted audio files"
 	@echo "  make clean-all     - Remove all build files and converted audio files"
 	@echo "  make help          - Show this help message"

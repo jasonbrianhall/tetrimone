@@ -292,7 +292,8 @@ void onGameSizeDialog(GtkMenuItem* menuItem, gpointer userData);
 
 void updateWidthValueLabel(GtkAdjustment* adj, gpointer data);
 void updateHeightValueLabel(GtkAdjustment* adj, gpointer data);
-
+cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename);
+cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t length);
 #endif // TETRIMONE_H
 
 
