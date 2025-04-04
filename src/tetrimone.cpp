@@ -1376,7 +1376,7 @@ void createMenu(TetrimoneApp* app) {
     gtk_menu_shell_append(GTK_MENU_SHELL(graphicsMenu), backgroundMenuItem);
     
     // Background menu items
-    GtkWidget* setBackgroundMenuItem = gtk_menu_item_new_with_label("Set Background Image (PNG)...");
+    GtkWidget* setBackgroundMenuItem = gtk_menu_item_new_with_label("Set Background Image ...");
     gtk_menu_shell_append(GTK_MENU_SHELL(backgroundMenu), setBackgroundMenuItem);
     g_signal_connect(G_OBJECT(setBackgroundMenuItem), "activate",
                   G_CALLBACK(onBackgroundImageDialog), app);
