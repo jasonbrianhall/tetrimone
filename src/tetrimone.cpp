@@ -2433,32 +2433,6 @@ void onResizeWindowButtonClicked(GtkWidget* button, gpointer data) {
     rebuildGameUI(app);
 }
 
-bool TetrimoneBoard::loadBackgroundImage(const std::string& imagePath) {
-    // Clean up previous image if it exists
-    if (backgroundImage != nullptr) {
-        cairo_surface_destroy(backgroundImage);
-        backgroundImage = nullptr;
-    }
-    
-    // Try to load the new image
-    backgroundImage = cairo_image_surface_create_from_png(imagePath.c_str());
-    
-    // Check if image loaded successfully
-    cairo_status_t status = cairo_surface_status(backgroundImage);
-    if (status != CAIRO_STATUS_SUCCESS) {
-        std::cerr << "Failed to load background image: " 
-                  << cairo_status_to_string(status) << std::endl;
-        cairo_surface_destroy(backgroundImage);
-        backgroundImage = nullptr;
-        return false;
-    }
-    
-    // Store the path of successfully loaded image
-    backgroundImagePath = imagePath;
-    useBackgroundImage = true;
-    return true;
-}
-
 void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
