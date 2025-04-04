@@ -112,36 +112,48 @@ void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
 }
 
 cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename) {
+    // Read the file into memory first
+    GFile* file = g_file_new_for_path(filename);
     GError* error = NULL;
     
-    // Load the image using GdkPixbuf
-    GdkPixbuf* pixbuf = gdk_pixbuf_new_from_file(filename, &error);
+    // Get file content as bytes
+    GBytes* bytes = NULL;
+    GFileInputStream* stream = g_file_read(file, NULL, &error);
     
-    if (!pixbuf) {
+    if (!stream) {
         if (error) {
-            std::cerr << "Failed to load JPEG: " << error->message << std::endl;
+            std::cerr << "Failed to open JPEG file: " << error->message << std::endl;
             g_error_free(error);
         }
+        g_object_unref(file);
         return NULL;
     }
     
-    // Create a cairo surface of the same size
-    cairo_surface_t* surface = cairo_image_surface_create(
-        CAIRO_FORMAT_ARGB32,
-        gdk_pixbuf_get_width(pixbuf),
-        gdk_pixbuf_get_height(pixbuf)
-    );
+    // Load file content into memory
+    error = NULL;
+    bytes = g_input_stream_read_bytes(G_INPUT_STREAM(stream), 10 * 1024 * 1024, NULL, &error); // 10MB max
     
-    // Create a cairo context
-    cairo_t* cr = cairo_create(surface);
+    if (!bytes) {
+        if (error) {
+            std::cerr << "Failed to read JPEG file: " << error->message << std::endl;
+            g_error_free(error);
+        }
+        g_object_unref(stream);
+        g_object_unref(file);
+        return NULL;
+    }
     
-    // Draw the pixbuf onto the surface
-    gdk_cairo_set_source_pixbuf(cr, pixbuf, 0, 0);
-    cairo_paint(cr);
+    // Get the data and size
+    gsize size;
+    const void* data = g_bytes_get_data(bytes, &size);
+    
+    // Use the existing from_memory function that works with ZIP files
+    cairo_surface_t* surface = cairo_image_surface_create_from_memory(data, size);
     
     // Clean up
-    cairo_destroy(cr);
-    g_object_unref(pixbuf);
+    g_bytes_unref(bytes);
+    g_object_unref(stream);
+    g_object_unref(file);
     
     return surface;
 }
@@ -200,6 +212,10 @@ bool TetrimoneBoard::loadBackgroundImage(const std::string& imagePath) {
     std::string extension = imagePath.substr(imagePath.find_last_of(".") + 1);
     std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
     
+    // Log the attempt to load
+    std::cout << "Attempting to load background image: " << imagePath 
+              << " (type: " << extension << ")" << std::endl;
+    
     if (extension == "jpg" || extension == "jpeg") {
         // Load JPEG file
         backgroundImage = cairo_image_surface_create_from_jpeg(imagePath.c_str());
@@ -209,17 +225,25 @@ bool TetrimoneBoard::loadBackgroundImage(const std::string& imagePath) {
     }
     
     // Check if image loaded successfully
-    if (backgroundImage == nullptr || 
-        cairo_surface_status(backgroundImage) != CAIRO_STATUS_SUCCESS) {
-        std::cerr << "Failed to load background image: " << imagePath << std::endl;
-        
-        if (backgroundImage != nullptr) {
-            cairo_surface_destroy(backgroundImage);
-            backgroundImage = nullptr;
-        }
-        
+    if (backgroundImage == nullptr) {
+        std::cerr << "Failed to load background image (null pointer): " << imagePath << std::endl;
         return false;
     }
+    
+    cairo_status_t status = cairo_surface_status(backgroundImage);
+    if (status != CAIRO_STATUS_SUCCESS) {
+        std::cerr << "Failed to load background image (status error): " << imagePath 
+                  << " - " << cairo_status_to_string(status) << std::endl;
+        
+        cairo_surface_destroy(backgroundImage);
+        backgroundImage = nullptr;
+        return false;
+    }
+    
+    // Log successful loading
+    std::cout << "Successfully loaded background image: " << imagePath 
+              << " (" << cairo_image_surface_get_width(backgroundImage) << "x" 
+              << cairo_image_surface_get_height(backgroundImage) << ")" << std::endl;
     
     // Store the path and set flag
     backgroundImagePath = imagePath;
