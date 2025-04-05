@@ -25,3 +25,9 @@ int TetrimoneBoard::getGhostPieceY() const {
     return yPos - 1;
 }
 
+void onGhostPieceToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    app->board->setGhostPieceEnabled(gtk_check_menu_item_get_active(menuItem));
+    gtk_widget_queue_draw(app->gameArea);
+}
+

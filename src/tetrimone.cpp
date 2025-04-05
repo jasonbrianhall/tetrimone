@@ -1485,6 +1485,13 @@ void createMenu(TetrimoneApp* app) {
         gtk_menu_shell_append(GTK_MENU_SHELL(musicMenu), app->trackMenuItems[i]);
     }
 
+GtkWidget* ghostPieceMenuItem = gtk_check_menu_item_new_with_label("Show Ghost Piece");
+gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ghostPieceMenuItem), 
+                              app->board->isGhostPieceEnabled());
+gtk_menu_shell_append(GTK_MENU_SHELL(graphicsMenu), ghostPieceMenuItem);
+g_signal_connect(G_OBJECT(ghostPieceMenuItem), "toggled",
+              G_CALLBACK(onGhostPieceToggled), app);
+
     // *** CONTROLS MENU ***
     GtkWidget* controlsMenu = gtk_menu_new();
     GtkWidget* controlsMenuItem = gtk_menu_item_new_with_label("Controls");
