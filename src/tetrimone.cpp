@@ -216,29 +216,71 @@ int TetrimoneBoard::clearLines() {
             if (linesCleared == 1) { playSound(GameSoundEvent::Single); }
             if (linesCleared == 2) { playSound(GameSoundEvent::Double); }
             if (linesCleared == 3) { playSound(GameSoundEvent::Triple); }
-            
         }
+        
         // Classic Tetrimone scoring
+        int baseScore = 0;
         switch (linesCleared) {
             case 1:
-                score += 40 * level;
+                baseScore = 40 * level;
                 break;
             case 2:
-                score += 100 * level;
+                baseScore = 100 * level;
                 break;
             case 3:
-                score += 300 * level;
+                baseScore = 300 * level;
                 break;
             case 4:
-                score += 1200 * level;
+                baseScore = 1200 * level;
                 break;
         }
+        
+        // Calculate sequence bonus
+        int sequenceBonus = 0;
+        if (linesCleared > 0) {
+            if (lastClearCount > 0) {
+                // Player cleared lines in consecutive moves
+                consecutiveClears++;
+                maxConsecutiveClears = std::max(maxConsecutiveClears, consecutiveClears);
+                
+                // Bonus increases with each consecutive clear
+                sequenceBonus = baseScore * (consecutiveClears * 0.1); // 10% bonus per consecutive clear
+                
+                // Extra bonus for maintaining the same number of lines cleared
+                if (linesCleared == lastClearCount) {
+                    sequenceBonus += baseScore * 0.2; // 20% bonus for consistent clears
+                    playSound(GameSoundEvent::LevelUp); // Special sound for consistent sequence
+                }
+                
+                // Notify player about sequence
+                sequenceActive = true;
+            } else {
+                // First clear after a move with no clears
+                consecutiveClears = 1;
+                sequenceActive = false;
+            }
+            
+            lastClearCount = linesCleared;
+        } else {
+            // Reset sequence when a move doesn't clear any lines
+            consecutiveClears = 0;
+            lastClearCount = 0;
+            sequenceActive = false;
+        }
+        
+        // Apply total score with bonus
+        score += baseScore + sequenceBonus;
         
         // Update total lines cleared
         this->linesCleared += linesCleared;
         
         // Update level every 10 lines
         level = (this->linesCleared / 10) + 1;
+    } else {
+        // No lines cleared in this move
+        lastClearCount = 0;
+        consecutiveClears = 0;
+        sequenceActive = false;
     }
     
     if (level > currentlevel) {
@@ -396,6 +438,10 @@ void TetrimoneBoard::restart() {
         // Start a smooth background transition
         startBackgroundTransition();
     }
+    consecutiveClears = 0;
+    maxConsecutiveClears = 0;
+    lastClearCount = 0;
+    sequenceActive = false;
 }
 
 // GTK+ callback functions
@@ -1111,6 +1157,19 @@ void updateLabels(TetrimoneApp* app) {
     // Update lines label
     std::string lines_text = "<b>Lines:</b> " + std::to_string(board->getLinesCleared());
     gtk_label_set_markup(GTK_LABEL(app->linesLabel), lines_text.c_str());
+
+    // Update sequence label
+    std::string sequence_text;
+    if (board->isSequenceActive() && board->getConsecutiveClears() > 1) {
+        sequence_text = "<b>Sequence:</b> " + std::to_string(board->getConsecutiveClears()) + 
+                        " (Max: " + std::to_string(board->getMaxConsecutiveClears()) + ")";
+        // Make it stand out when active
+        sequence_text = "<span foreground='#00AA00'>" + sequence_text + "</span>";
+    } else {
+        sequence_text = "<b>Sequence:</b> " + std::to_string(board->getConsecutiveClears()) + 
+                        " (Max: " + std::to_string(board->getMaxConsecutiveClears()) + ")";
+    }
+    gtk_label_set_markup(GTK_LABEL(app->sequenceLabel), sequence_text.c_str());
 }
 
 void resetUI(TetrimoneApp* app) {
@@ -1254,6 +1313,11 @@ g_signal_connect(G_OBJECT(tetrimoneApp->window), "delete-event",
     gtk_label_set_markup(GTK_LABEL(tetrimoneApp->linesLabel), "<b>Lines:</b> 0");
     gtk_widget_set_halign(tetrimoneApp->linesLabel, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(sideBox), tetrimoneApp->linesLabel, FALSE, FALSE, 0);
+
+tetrimoneApp->sequenceLabel = gtk_label_new(NULL);
+gtk_label_set_markup(GTK_LABEL(tetrimoneApp->sequenceLabel), "<b>Sequence:</b> 0 (Max: 0)");
+gtk_widget_set_halign(tetrimoneApp->sequenceLabel, GTK_ALIGN_START);
+gtk_box_pack_start(GTK_BOX(sideBox), tetrimoneApp->sequenceLabel, FALSE, FALSE, 0);
     
     // Add difficulty label
     tetrimoneApp->difficultyLabel = gtk_label_new(NULL);
@@ -2425,7 +2489,6 @@ void rebuildGameUI(TetrimoneApp* app) {
     gtk_container_add(GTK_CONTAINER(nextPieceFrame), app->nextPieceArea);
     
     // Recreate score, level, and lines labels
-    // (We need to recreate these because we destroyed their container)
     app->scoreLabel = gtk_label_new(NULL);
     std::string score_text = "<b>Score:</b> " + std::to_string(app->board->getScore());
     gtk_label_set_markup(GTK_LABEL(app->scoreLabel), score_text.c_str());
@@ -2443,6 +2506,11 @@ void rebuildGameUI(TetrimoneApp* app) {
     gtk_label_set_markup(GTK_LABEL(app->linesLabel), lines_text.c_str());
     gtk_widget_set_halign(app->linesLabel, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(sideBox), app->linesLabel, FALSE, FALSE, 0);
+
+    app->sequenceLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(app->sequenceLabel), "<b>Sequence:</b> 0");
+    gtk_widget_set_halign(app->sequenceLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(sideBox), app->sequenceLabel, FALSE, FALSE, 0);
     
     // Recreate difficulty label
     app->difficultyLabel = gtk_label_new(NULL);
