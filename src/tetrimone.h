@@ -134,9 +134,9 @@ struct TetrimoneApp {
 // Class for the game board
 class TetrimoneBoard {
 private:
-    std::vector<std::vector<int>> grid;  // Grid of placed blocks (0 = empty, 1-7 = tetrimoneblock type + 1)
+    std::vector<std::vector<int>> grid;
     std::unique_ptr<TetrimoneBlock> currentPiece;
-    std::unique_ptr<TetrimoneBlock> nextPiece;
+    std::vector<std::unique_ptr<TetrimoneBlock>> nextPieces; // Vector of next pieces (3)
     int score;
     int level;
     int linesCleared;
@@ -194,7 +194,8 @@ public:
     int getLevel() const { return level; }
     int getLinesCleared() const { return linesCleared; }
     const TetrimoneBlock& getCurrentPiece() const { return *currentPiece; }
-    const TetrimoneBlock& getNextPiece() const { return *nextPiece; }
+    const std::vector<std::unique_ptr<TetrimoneBlock>>& getNextPieces() const { return nextPieces; }
+    const TetrimoneBlock& getNextPiece(int index = 0) const { return *nextPieces[index]; }
     int getGridValue(int x, int y) const;
     bool sound_enabled_ = true;
     bool musicPaused = false;
