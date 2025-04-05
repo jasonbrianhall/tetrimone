@@ -248,19 +248,19 @@ pack-backgrounds-linux:
 .PHONY: pack-backgrounds-linux-debug
 pack-backgrounds-linux-debug:
 	@echo "Packing background images for Windows build..."
-	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.jpg;
+	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP) *.jpg;
 	@echo "Background images packed to $(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP)"
 
 .PHONY: pack-backgrounds-windows
 pack-backgrounds-windows:
 	@echo "Packing background images for Windows build..."
-	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.jpg;
+	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN)/$(BACKGROUND_ZIP) *.jpg;
 	@echo "Background images packed to $(BUILD_DIR_WIN)/$(BACKGROUND_ZIP)"
 	
 .PHONY: pack-backgrounds-windows-debug
 pack-backgrounds-windows-debug:
 	@echo "Packing background images for Windows build..."
-	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.jpg;
+	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP) *.jpg;
 	@echo "Background images packed to $(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP)"
 	
 .PHONY: pack-backgrounds-all
