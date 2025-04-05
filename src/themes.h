@@ -559,3 +559,5 @@ const std::vector<std::vector<std::array<double, 3>>> TETRIMONEBLOCK_COLOR_THEME
         {0.9, 0.8, 0.6}   // Monomino - Parchment
     }
 };
+
+const size_t NUM_COLOR_THEMES = TETRIMONEBLOCK_COLOR_THEMES.size();

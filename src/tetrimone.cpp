@@ -291,7 +291,7 @@ int TetrimoneBoard::clearLines() {
     if (level > currentlevel) {
         playSound(GameSoundEvent::LevelUp);
         // Every Level, change theme; wrap around at 20
-        currentThemeIndex = (currentThemeIndex + 1) % 20;
+        currentThemeIndex = (currentThemeIndex + 1) % NUM_COLOR_THEMES;
         
         // Add this section to change background on level up
         if (useBackgroundZip && !backgroundImages.empty()) {
