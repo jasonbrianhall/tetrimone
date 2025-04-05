@@ -21,6 +21,8 @@ TetrimoneBlock::TetrimoneBlock(int type) : type(type), rotation(0) {
     y = 0;
 }
 
+int TetrimoneBlock::getRotation() const { return rotation; }
+
 void TetrimoneBlock::rotate(bool clockwise) {
     rotation = (rotation + (clockwise ? 1 : 3)) % 4;
 }
@@ -53,7 +55,7 @@ void TetrimoneBlock::setPosition(int newX, int newY) {
 
 // TetrimoneBoard class implementation
 TetrimoneBoard::TetrimoneBoard() : score(0), level(1), linesCleared(0), gameOver(false), 
-                            paused(false), splashScreenActive(true),
+                            paused(false), ghostPieceEnabled(true), splashScreenActive(true),
                             backgroundImage(nullptr), useBackgroundImage(false),
                             backgroundOpacity(0.3), useBackgroundZip(false), 
                             currentBackgroundIndex(0), isTransitioning(false),
@@ -681,6 +683,43 @@ if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) && board-
         }
     }
     
+if (!board->isGameOver() && !board->isPaused() && !board->isSplashScreenActive() && 
+    board->isGhostPieceEnabled()) {
+    
+    const TetrimoneBlock& piece = board->getCurrentPiece();
+    auto shape = piece.getShape();
+    auto color = piece.getColor();
+    int pieceX = piece.getX();
+    int ghostY = board->getGhostPieceY();
+    
+    // Only draw ghost if it's in a different position than current piece
+    if (ghostY > piece.getY()) {
+        // Set semi-transparent color for ghost piece
+        cairo_set_source_rgba(cr, color[0], color[1], color[2], 0.3);
+        
+        for (size_t y = 0; y < shape.size(); ++y) {
+            for (size_t x = 0; x < shape[y].size(); ++x) {
+                if (shape[y][x] == 1) {
+                    int drawX = (pieceX + x) * BLOCK_SIZE;
+                    int drawY = (ghostY + y) * BLOCK_SIZE;
+                    
+                    // Only draw if within the visible grid
+                    if (drawY >= 0) {
+                        // Draw ghost block (just outline)
+                        cairo_rectangle(cr,
+                            drawX + 1, 
+                            drawY + 1, 
+                            BLOCK_SIZE - 2, 
+                            BLOCK_SIZE - 2);
+                        cairo_stroke_preserve(cr);
+                        cairo_fill(cr);
+                    }
+                }
+            }
+        }
+    }
+}
+
     // Draw enhanced pause menu if paused
     if (board->isPaused() && !board->isGameOver()) {
         cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
