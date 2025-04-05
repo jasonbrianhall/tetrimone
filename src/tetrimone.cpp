@@ -680,7 +680,7 @@ if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) && board-
         
         // Draw title
         cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-        cairo_set_font_size(cr, 40);
+        cairo_set_font_size(cr, 40*BLOCK_SIZE/47);
         cairo_set_source_rgb(cr, 1, 1, 1);
         
         // Center the title
@@ -696,30 +696,30 @@ if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) && board-
         
         // Draw colored blocks for decoration
         int blockSize = 30;
-        int startX = (GRID_WIDTH * BLOCK_SIZE - 4 * blockSize) / 2;
+        int startX = (GRID_WIDTH * BLOCK_SIZE - 4 * BLOCK_SIZE) / 2;
         int startY = y + 20;
         
         // Draw I piece (cyan)
         cairo_set_source_rgb(cr, 0.0, 0.7, 0.9);
         for (int i = 0; i < 4; i++) {
-            cairo_rectangle(cr, startX + i * blockSize, startY, blockSize - 2, blockSize - 2);
+            cairo_rectangle(cr, startX + i * BLOCK_SIZE, startY, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
             cairo_fill(cr);
         }
         
         // Draw T piece (purple)
         cairo_set_source_rgb(cr, 0.8, 0.0, 0.8);
-        startY += blockSize * 1.5;
-        cairo_rectangle(cr, startX + blockSize, startY, blockSize - 2, blockSize - 2);
+        startY += BLOCK_SIZE * 1.5;
+        cairo_rectangle(cr, startX + BLOCK_SIZE, startY, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
         cairo_fill(cr);
-        cairo_rectangle(cr, startX, startY + blockSize, blockSize - 2, blockSize - 2);
+        cairo_rectangle(cr, startX, startY + BLOCK_SIZE, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
         cairo_fill(cr);
-        cairo_rectangle(cr, startX + blockSize, startY + blockSize, blockSize - 2, blockSize - 2);
+        cairo_rectangle(cr, startX + BLOCK_SIZE, startY + BLOCK_SIZE, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
         cairo_fill(cr);
-        cairo_rectangle(cr, startX + blockSize * 2, startY + blockSize, blockSize - 2, blockSize - 2);
+        cairo_rectangle(cr, startX + BLOCK_SIZE * 2, startY + BLOCK_SIZE, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
         cairo_fill(cr);
         
         // Draw press space message
-        cairo_set_font_size(cr, 20);
+        cairo_set_font_size(cr, 20 * BLOCK_SIZE/47);
         const char* startText = "Press SPACE to Start";
         cairo_text_extents(cr, startText, &extents);
         
@@ -731,7 +731,7 @@ if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) && board-
         
         // Draw joystick message if enabled
         if (app->joystickEnabled) {
-            cairo_set_font_size(cr, 16);
+            cairo_set_font_size(cr, 16 * BLOCK_SIZE/47);
             const char* joystickText = "or Press START on Controller";
             cairo_text_extents(cr, joystickText, &extents);
             
@@ -1054,7 +1054,7 @@ gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data) {
             int sectionX = pieceIndex * sectionWidth;
             
             // Reserve space for the header
-            int headerHeight = 30;
+            int headerHeight = 25;
             
             // Get the piece information
             const TetrimoneBlock& piece = board->getNextPiece(pieceIndex);
@@ -1072,6 +1072,26 @@ gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data) {
             int availableWidth = sectionWidth;
             int offsetX = sectionX + (availableWidth - pieceWidth * previewBlockSize) / 2;
             int offsetY = headerHeight + (allocation.height - headerHeight - pieceHeight * previewBlockSize) / 2;
+            
+            // Draw piece number label at the top of each section
+            cairo_set_source_rgb(cr, 0.8, 0.8, 0.8);
+            cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+            
+            // Scale font size with block size
+            double fontSize = std::max(10.0, std::min(16.0, previewBlockSize * 0.5));
+            cairo_set_font_size(cr, fontSize);
+            
+            // Use a shorter label to avoid width issues
+            char pieceLabel[10];
+            snprintf(pieceLabel, sizeof(pieceLabel), "%d", pieceIndex + 1);
+            
+            cairo_text_extents_t extents;
+            cairo_text_extents(cr, pieceLabel, &extents);
+            
+            // Center the text in the section
+            double textX = sectionX + (sectionWidth - extents.width) / 2;
+            cairo_move_to(cr, textX, headerHeight - 5);
+            cairo_show_text(cr, pieceLabel);
             
             // Set color for drawing
             cairo_set_source_rgb(cr, color[0], color[1], color[2]);
@@ -1112,22 +1132,6 @@ gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data) {
                     }
                 }
             }
-            
-            // Draw piece number label at the top of each section
-            cairo_set_source_rgb(cr, 0.8, 0.8, 0.8);
-            cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-            cairo_set_font_size(cr, 14);
-            
-            char pieceLabel[20];
-            snprintf(pieceLabel, sizeof(pieceLabel), "Piece %d", pieceIndex + 1);
-            
-            cairo_text_extents_t extents;
-            cairo_text_extents(cr, pieceLabel, &extents);
-            
-            // Center the text in the section
-            double textX = sectionX + (sectionWidth - extents.width) / 2;
-            cairo_move_to(cr, textX, 20);
-            cairo_show_text(cr, pieceLabel);
         }
     }
     
@@ -2598,16 +2602,20 @@ void rebuildGameUI(TetrimoneApp* app) {
     GtkWidget* nextPieceFrame = gtk_frame_new("Next Pieces");
     gtk_box_pack_start(GTK_BOX(sideBox), nextPieceFrame, FALSE, FALSE, 0);
     
-    // Create the next piece drawing area - make it taller to fit 3 pieces
-    // Add more width to accommodate piece labels
+    // Create the next piece drawing area - sized for 3 horizontal pieces with half-size blocks
+    // Width: 3 sections with enough space for pieces at half size 
+    // Height: enough space for the pieces plus header space
+    int previewBlockSize = BLOCK_SIZE / 2;
+    int previewWidth = 3 * 4 * previewBlockSize; // 3 sections, each 4 blocks wide at half size
+    int previewHeight = 4 * previewBlockSize + 30; // Height for pieces plus header
+
     app->nextPieceArea = gtk_drawing_area_new();
-    gtk_widget_set_size_request(app->nextPieceArea, 5 * BLOCK_SIZE, 12 * BLOCK_SIZE);
+    gtk_widget_set_size_request(app->nextPieceArea, previewWidth, previewHeight);
     g_signal_connect(G_OBJECT(app->nextPieceArea), "draw",
                    G_CALLBACK(onDrawNextPiece), app);
     gtk_container_add(GTK_CONTAINER(nextPieceFrame), app->nextPieceArea);
     
-    // Rest of the function remains the same...
-    // Recreate score, level, and lines labels
+    // Create score, level, and lines labels
     app->scoreLabel = gtk_label_new(NULL);
     std::string score_text = "<b>Score:</b> " + std::to_string(app->board->getScore());
     gtk_label_set_markup(GTK_LABEL(app->scoreLabel), score_text.c_str());
