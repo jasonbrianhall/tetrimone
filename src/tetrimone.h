@@ -121,8 +121,9 @@ struct TetrimoneApp {
     GtkWidget* extremeMenuItem;
     GtkWidget* insaneMenuItem;
     GtkWidget* trackMenuItems[5];
+    GtkWidget* sequenceLabel;
 
-    int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard
+    int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard, 0 = Zen, 4 = Extreme
 
     SDL_Joystick* joystick;
     bool joystickEnabled;
@@ -148,7 +149,10 @@ private:
     int gridWidth = GRID_WIDTH;   // Default width
     int gridHeight = GRID_HEIGHT; // Default height
     bool ghostPieceEnabled;
-
+    int consecutiveClears;
+    int maxConsecutiveClears;
+    int lastClearCount;
+    bool sequenceActive;
     
 public:
     TetrimoneBoard();
@@ -238,6 +242,10 @@ public:
     cairo_surface_t* getOldBackground() const { return oldBackground; }
     int getTransitionDirection() const { return transitionDirection; }
     int getGhostPieceY() const;
+
+    int getConsecutiveClears() const { return consecutiveClears; }
+    int getMaxConsecutiveClears() const { return maxConsecutiveClears; }
+    bool isSequenceActive() const { return sequenceActive; }
 };
 
 // Function declarations
