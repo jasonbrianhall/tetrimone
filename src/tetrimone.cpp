@@ -68,7 +68,10 @@ TetrimoneBoard::TetrimoneBoard() : score(0), level(1), linesCleared(0), gameOver
     // Initialize grid with maximum possible dimensions to avoid reallocation
     grid.resize(MAX_GRID_HEIGHT, std::vector<int>(MAX_GRID_WIDTH, 0));
     
-    generateNewPiece();
+    // Initialize with 3 next pieces instead of just one
+    nextPieces.resize(3);
+    
+    // Generate initial pieces
     generateNewPiece();
     
     // Try to load background.zip by default
@@ -301,75 +304,131 @@ int TetrimoneBoard::clearLines() {
 }
 
 void TetrimoneBoard::generateNewPiece() {
-    // Move next piece to current
-    currentPiece = std::move(nextPiece);
-    
-    // Define ranges for different block sizes
-    const std::vector<std::pair<int, int>> blockSizeRanges = {
-        {0, 6},     // Tetrimones (index 0-6)
-        {7, 10},    // Triomones (index 7-10)
-        {11, 12},   // Dominoes (index 11-12)
-        {13, 13}    // Mononome (index 13)
-    };
-    
-    // Determine valid ranges based on minBlockSize
-    std::vector<int> validPieces;
-    
-    switch (minBlockSize) {
-        case 1:  // All pieces
-            for (int i = 0; i < 14; ++i) {
-                validPieces.push_back(i);
-            }
-            break;
-        case 2:  // Triomones and Tetrimones
-            for (int i = 0; i <= 10; ++i) {
-                validPieces.push_back(i);
-            }
-            break;
-        case 3:  // Tetrimones only
-            for (int i = 0; i <= 6; ++i) {
-                validPieces.push_back(i);
-            }
-            break;
-        case 4:  // Tetrimones only, but ensure at least 4 blocks
-            for (int i = 0; i <= 6; ++i) {
-                int blockCount = 0;
-                for (const auto& row : TETRIMONEBLOCK_SHAPES[i][0]) {
-                    for (int cell : row) {
-                        if (cell == 1) blockCount++;
+    // Move first next piece to current
+    if (!nextPieces[0]) {
+        // First time initialization - create all next pieces
+        for (int i = 0; i < 3; i++) {
+            // Use the existing piece generation logic to create each piece
+            std::vector<int> validPieces;
+            
+            switch (minBlockSize) {
+                case 1:  // All pieces
+                    for (int j = 0; j < 14; ++j) {
+                        validPieces.push_back(j);
                     }
+                    break;
+                case 2:  // Triomones and Tetrimones
+                    for (int j = 0; j <= 10; ++j) {
+                        validPieces.push_back(j);
+                    }
+                    break;
+                case 3:  // Tetrimones only
+                    for (int j = 0; j <= 6; ++j) {
+                        validPieces.push_back(j);
+                    }
+                    break;
+                case 4:  // Tetrimones only, but ensure at least 4 blocks
+                    for (int j = 0; j <= 6; ++j) {
+                        int blockCount = 0;
+                        for (const auto& row : TETRIMONEBLOCK_SHAPES[j][0]) {
+                            for (int cell : row) {
+                                if (cell == 1) blockCount++;
+                            }
+                        }
+                        // Only add if block count is exactly 4
+                        if (blockCount == 4) {
+                            validPieces.push_back(j);
+                        }
+                    }
+                    break;
+                default:
+                    // Fallback to standard tetrimones
+                    for (int j = 0; j <= 6; ++j) {
+                        validPieces.push_back(j);
+                    }
+                    break;
+            }
+            
+            // If no valid pieces found, fallback to standard Tetrimones
+            if (validPieces.empty()) {
+                for (int j = 0; j <= 6; ++j) {
+                    validPieces.push_back(j);
                 }
-                // Only add if block count is exactly 4
-                if (blockCount == 4) {
+            }
+            
+            // Use uniform distribution over valid pieces
+            std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
+            int nextIndex = dist(rng);
+            int nextType = validPieces[nextIndex];
+            
+            nextPieces[i] = std::make_unique<TetrimoneBlock>(nextType);
+        }
+        
+        // Create the current piece
+        currentPiece = std::make_unique<TetrimoneBlock>(nextPieces[0]->getType());
+    } else {
+        // Move first next piece to current
+        currentPiece = std::move(nextPieces[0]);
+        
+        // Shift remaining pieces
+        for (int i = 0; i < 2; i++) {
+            nextPieces[i] = std::move(nextPieces[i + 1]);
+        }
+        
+        // Generate a new piece for the last position
+        std::vector<int> validPieces;
+        
+        switch (minBlockSize) {
+            case 1:  // All pieces
+                for (int i = 0; i < 14; ++i) {
                     validPieces.push_back(i);
                 }
-            }
-            break;
-        default:
-            // Fallback to standard tetrimones
+                break;
+            case 2:  // Triomones and Tetrimones
+                for (int i = 0; i <= 10; ++i) {
+                    validPieces.push_back(i);
+                }
+                break;
+            case 3:  // Tetrimones only
+                for (int i = 0; i <= 6; ++i) {
+                    validPieces.push_back(i);
+                }
+                break;
+            case 4:  // Tetrimones only, but ensure at least 4 blocks
+                for (int i = 0; i <= 6; ++i) {
+                    int blockCount = 0;
+                    for (const auto& row : TETRIMONEBLOCK_SHAPES[i][0]) {
+                        for (int cell : row) {
+                            if (cell == 1) blockCount++;
+                        }
+                    }
+                    // Only add if block count is exactly 4
+                    if (blockCount == 4) {
+                        validPieces.push_back(i);
+                    }
+                }
+                break;
+            default:
+                // Fallback to standard tetrimones
+                for (int i = 0; i <= 6; ++i) {
+                    validPieces.push_back(i);
+                }
+                break;
+        }
+        
+        // If no valid pieces found, fallback to standard Tetrimones
+        if (validPieces.empty()) {
             for (int i = 0; i <= 6; ++i) {
                 validPieces.push_back(i);
             }
-            break;
-    }
-    
-    // If no valid pieces found, fallback to standard Tetrimones
-    if (validPieces.empty()) {
-        for (int i = 0; i <= 6; ++i) {
-            validPieces.push_back(i);
         }
-    }
-    
-    // Use uniform distribution over valid pieces
-    std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
-    int nextIndex = dist(rng);
-    int nextType = validPieces[nextIndex];
-    
-    nextPiece = std::make_unique<TetrimoneBlock>(nextType);
-    
-    // If this is the first piece (current was null)
-    if (!currentPiece) {
-        currentPiece = std::make_unique<TetrimoneBlock>(nextType);
+        
+        // Use uniform distribution over valid pieces
+        std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
+        int nextIndex = dist(rng);
+        int nextType = validPieces[nextIndex];
+        
+        nextPieces[2] = std::make_unique<TetrimoneBlock>(nextType);
     }
     
     // Check if the new piece collides immediately - game over
@@ -377,6 +436,7 @@ void TetrimoneBoard::generateNewPiece() {
         gameOver = true;
     }
 }
+
 
 void TetrimoneBoard::updateGame() {
     if (gameOver || paused || splashScreenActive) return;
@@ -429,10 +489,13 @@ void TetrimoneBoard::restart() {
     paused = false;
     splashScreenActive = true;  // Show splash screen on restart
     
-    // Generate new pieces
-    nextPiece.reset();
+    // Reset pieces
     currentPiece.reset();
-    generateNewPiece();
+    for (auto& piece : nextPieces) {
+        piece.reset();
+    }
+    
+    // Generate new pieces
     generateNewPiece();
     
     // Select a random background if using background images from ZIP
@@ -440,6 +503,7 @@ void TetrimoneBoard::restart() {
         // Start a smooth background transition
         startBackgroundTransition();
     }
+    
     consecutiveClears = 0;
     maxConsecutiveClears = 0;
     lastClearCount = 0;
@@ -965,57 +1029,105 @@ gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data) {
     
     // Draw background
     cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
-    // Draw background
-    cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
     cairo_rectangle(cr, 0, 0, allocation.width, allocation.height);
     cairo_fill(cr);
     
     if (!board->isGameOver()) {
-        // Draw next piece
-        const TetrimoneBlock& piece = board->getNextPiece();
-        auto shape = piece.getShape();
-        auto color = piece.getColor();
+        // Calculate section width - each piece gets exactly 1/3 of the total width
+        int sectionWidth = allocation.width / 3;
         
-        cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+        // Calculate preview block size (half of the normal block size)
+        int previewBlockSize = BLOCK_SIZE / 2;
         
-        // Center the piece in the preview area
-        int offsetX = (allocation.width - 4 * BLOCK_SIZE) / 2;
-        int offsetY = (allocation.height - 4 * BLOCK_SIZE) / 2;
+        // Draw dividers between sections
+        cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
+        cairo_set_line_width(cr, 2);
+        cairo_move_to(cr, sectionWidth, 0);
+        cairo_line_to(cr, sectionWidth, allocation.height);
+        cairo_move_to(cr, sectionWidth * 2, 0);
+        cairo_line_to(cr, sectionWidth * 2, allocation.height);
+        cairo_stroke(cr);
         
-        for (size_t y = 0; y < shape.size(); ++y) {
-            for (size_t x = 0; x < shape[y].size(); ++x) {
-                if (shape[y][x] == 1) {
-                    int drawX = offsetX + x * BLOCK_SIZE;
-                    int drawY = offsetY + y * BLOCK_SIZE;
-                    
-                    // Draw block with a small margin
-                    cairo_rectangle(cr,
-                        drawX + 1, 
-                        drawY + 1, 
-                        BLOCK_SIZE - 2, 
-                        BLOCK_SIZE - 2);
-                    cairo_fill(cr);
-                    
-                    // Draw highlight (3D effect)
-                    cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
-                    cairo_move_to(cr, drawX + 1, drawY + 1);
-                    cairo_line_to(cr, drawX + BLOCK_SIZE - 1, drawY + 1);
-                    cairo_line_to(cr, drawX + 1, drawY + BLOCK_SIZE - 1);
-                    cairo_close_path(cr);
-                    cairo_fill(cr);
-                    
-                    // Draw shadow (3D effect)
-                    cairo_set_source_rgba(cr, 0, 0, 0, 0.3);
-                    cairo_move_to(cr, drawX + BLOCK_SIZE - 1, drawY + 1);
-                    cairo_line_to(cr, drawX + BLOCK_SIZE - 1, drawY + BLOCK_SIZE - 1);
-                    cairo_line_to(cr, drawX + 1, drawY + BLOCK_SIZE - 1);
-                    cairo_close_path(cr);
-                    cairo_fill(cr);
-                    
-                    // Reset color for next block
-                    cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+        // Process each piece
+        for (int pieceIndex = 0; pieceIndex < 3; pieceIndex++) {
+            // Calculate the section's X position
+            int sectionX = pieceIndex * sectionWidth;
+            
+            // Reserve space for the header
+            int headerHeight = 30;
+            
+            // Get the piece information
+            const TetrimoneBlock& piece = board->getNextPiece(pieceIndex);
+            auto shape = piece.getShape();
+            auto color = piece.getColor();
+            
+            // Calculate the shape dimensions in blocks
+            int pieceWidth = 0;
+            for (const auto& row : shape) {
+                pieceWidth = std::max(pieceWidth, (int)row.size());
+            }
+            int pieceHeight = shape.size();
+            
+            // Center the piece in the available space (using the preview block size)
+            int availableWidth = sectionWidth;
+            int offsetX = sectionX + (availableWidth - pieceWidth * previewBlockSize) / 2;
+            int offsetY = headerHeight + (allocation.height - headerHeight - pieceHeight * previewBlockSize) / 2;
+            
+            // Set color for drawing
+            cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+            
+            // Draw the piece blocks with half size
+            for (size_t y = 0; y < shape.size(); ++y) {
+                for (size_t x = 0; x < shape[y].size(); ++x) {
+                    if (shape[y][x] == 1) {
+                        int drawX = offsetX + x * previewBlockSize;
+                        int drawY = offsetY + y * previewBlockSize;
+                        
+                        // Draw block with a small margin
+                        cairo_rectangle(cr,
+                            drawX + 1, 
+                            drawY + 1, 
+                            previewBlockSize - 2, 
+                            previewBlockSize - 2);
+                        cairo_fill(cr);
+                        
+                        // Draw highlight (3D effect)
+                        cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
+                        cairo_move_to(cr, drawX + 1, drawY + 1);
+                        cairo_line_to(cr, drawX + previewBlockSize - 1, drawY + 1);
+                        cairo_line_to(cr, drawX + 1, drawY + previewBlockSize - 1);
+                        cairo_close_path(cr);
+                        cairo_fill(cr);
+                        
+                        // Draw shadow (3D effect)
+                        cairo_set_source_rgba(cr, 0, 0, 0, 0.3);
+                        cairo_move_to(cr, drawX + previewBlockSize - 1, drawY + 1);
+                        cairo_line_to(cr, drawX + previewBlockSize - 1, drawY + previewBlockSize - 1);
+                        cairo_line_to(cr, drawX + 1, drawY + previewBlockSize - 1);
+                        cairo_close_path(cr);
+                        cairo_fill(cr);
+                        
+                        // Reset color for next block
+                        cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+                    }
                 }
             }
+            
+            // Draw piece number label at the top of each section
+            cairo_set_source_rgb(cr, 0.8, 0.8, 0.8);
+            cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+            cairo_set_font_size(cr, 14);
+            
+            char pieceLabel[20];
+            snprintf(pieceLabel, sizeof(pieceLabel), "Piece %d", pieceIndex + 1);
+            
+            cairo_text_extents_t extents;
+            cairo_text_extents(cr, pieceLabel, &extents);
+            
+            // Center the text in the section
+            double textX = sectionX + (sectionWidth - extents.width) / 2;
+            cairo_move_to(cr, textX, 20);
+            cairo_show_text(cr, pieceLabel);
         }
     }
     
@@ -1295,7 +1407,7 @@ g_signal_connect(G_OBJECT(tetrimoneApp->window), "delete-event",
     
     // Create the next piece drawing area
     tetrimoneApp->nextPieceArea = gtk_drawing_area_new();
-    gtk_widget_set_size_request(tetrimoneApp->nextPieceArea, 4 * BLOCK_SIZE, 4 * BLOCK_SIZE);
+    gtk_widget_set_size_request(tetrimoneApp->nextPieceArea, 3*2 * BLOCK_SIZE, 2.5 * BLOCK_SIZE);
     g_signal_connect(G_OBJECT(tetrimoneApp->nextPieceArea), "draw",
                    G_CALLBACK(onDrawNextPiece), tetrimoneApp);
     gtk_container_add(GTK_CONTAINER(nextPieceFrame), tetrimoneApp->nextPieceArea);
@@ -2483,16 +2595,18 @@ void rebuildGameUI(TetrimoneApp* app) {
     gtk_box_pack_start(GTK_BOX(app->mainBox), sideBox, FALSE, FALSE, 0);
     
     // Create the next piece preview frame
-    GtkWidget* nextPieceFrame = gtk_frame_new("Next Piece");
+    GtkWidget* nextPieceFrame = gtk_frame_new("Next Pieces");
     gtk_box_pack_start(GTK_BOX(sideBox), nextPieceFrame, FALSE, FALSE, 0);
     
-    // Create the next piece drawing area
+    // Create the next piece drawing area - make it taller to fit 3 pieces
+    // Add more width to accommodate piece labels
     app->nextPieceArea = gtk_drawing_area_new();
-    gtk_widget_set_size_request(app->nextPieceArea, 4 * BLOCK_SIZE, 4 * BLOCK_SIZE);
+    gtk_widget_set_size_request(app->nextPieceArea, 5 * BLOCK_SIZE, 12 * BLOCK_SIZE);
     g_signal_connect(G_OBJECT(app->nextPieceArea), "draw",
                    G_CALLBACK(onDrawNextPiece), app);
     gtk_container_add(GTK_CONTAINER(nextPieceFrame), app->nextPieceArea);
     
+    // Rest of the function remains the same...
     // Recreate score, level, and lines labels
     app->scoreLabel = gtk_label_new(NULL);
     std::string score_text = "<b>Score:</b> " + std::to_string(app->board->getScore());
