@@ -71,6 +71,7 @@ private:
 public:
     TetrimoneBlock(int type);
     void rotate(bool clockwise = true);
+    int getRotation() const;
     void move(int dx, int dy);
     std::vector<std::vector<int>> getShape() const;
     std::array<double, 3> getColor() const;
@@ -146,8 +147,13 @@ private:
     int minBlockSize = 1;
     int gridWidth = GRID_WIDTH;   // Default width
     int gridHeight = GRID_HEIGHT; // Default height
+    bool ghostPieceEnabled;
+
     
 public:
+    TetrimoneBoard();
+    ~TetrimoneBoard();
+
     bool enabledTracks[5];
     // Background image handling
     cairo_surface_t* backgroundImage;
@@ -158,9 +164,10 @@ public:
     std::string backgroundZipPath;
     bool useBackgroundZip;
     int currentBackgroundIndex;
+    bool isGhostPieceEnabled() const { return ghostPieceEnabled; }
+    void setGhostPieceEnabled(bool enabled) { ghostPieceEnabled = enabled; }
 
-    TetrimoneBoard();
-    ~TetrimoneBoard();
+
     bool isSplashScreenActive() const { return splashScreenActive; }
     void dismissSplashScreen();
     bool movePiece(int dx, int dy);
@@ -230,7 +237,7 @@ public:
     double getTransitionOpacity() const { return transitionOpacity; }
     cairo_surface_t* getOldBackground() const { return oldBackground; }
     int getTransitionDirection() const { return transitionDirection; }
-
+    int getGhostPieceY() const;
 };
 
 // Function declarations
@@ -294,6 +301,9 @@ void updateWidthValueLabel(GtkAdjustment* adj, gpointer data);
 void updateHeightValueLabel(GtkAdjustment* adj, gpointer data);
 cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename);
 cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t length);
+
+void onGhostPieceToggled(GtkCheckMenuItem* menuItem, gpointer userData);
+
 #endif // TETRIMONE_H
 
 

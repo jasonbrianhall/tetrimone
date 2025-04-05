@@ -36,7 +36,7 @@ else
 endif
 
 # Source files
-SRCS_COMMON = src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp
+SRCS_COMMON = src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src/sdlaudioplayer.cpp
 SRCS_WIN_SDL = src/sdlaudioplayer.cpp
@@ -242,61 +242,25 @@ tetrimone-collect-debug-dlls: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG)
 .PHONY: pack-backgrounds-linux
 pack-backgrounds-linux:
 	@echo "Packing background images for Windows build..."
-	@if command -v magick >/dev/null 2>&1; then \
-		echo "Converting PNG to JPEG using ImageMagick v7..."; \
-		cd $(BACKGROUNDS_DIR) && \
-		for img in *.png; do \
-			magick "$$img" "$${img%.png}.jpg"; \
-		done && \
-		zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.jpg; \
-	else \
-		cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.png; \
-	fi
+	zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.jpg; \
 	@echo "Background images packed to $(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP)"
 
 .PHONY: pack-backgrounds-linux-debug
 pack-backgrounds-linux-debug:
 	@echo "Packing background images for Windows build..."
-	@if command -v magick >/dev/null 2>&1; then \
-		echo "Converting PNG to JPEG using ImageMagick v7..."; \
-		cd $(BACKGROUNDS_DIR) && \
-		for img in *.png; do \
-			magick "$$img" "$${img%.png}.jpg"; \
-		done && \
-		zip -r ../../$(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP) *.jpg; \
-	else \
-		cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP) *.png; \
-	fi
+	zip -r ../../$(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP) *.jpg; \
 	@echo "Background images packed to $(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP)"
 
 .PHONY: pack-backgrounds-windows
 pack-backgrounds-windows:
 	@echo "Packing background images for Windows build..."
-	@if command -v magick >/dev/null 2>&1; then \
-		echo "Converting PNG to JPEG using ImageMagick v7..."; \
-		cd $(BACKGROUNDS_DIR) && \
-		for img in *.png; do \
-			magick "$$img" "$${img%.png}.jpg"; \
-		done && \
-		zip -r ../../$(BUILD_DIR_WIN)/$(BACKGROUND_ZIP) *.jpg; \
-	else \
-		cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN)/$(BACKGROUND_ZIP) *.png; \
-	fi
+	zip -r ../../$(BUILD_DIR_WIN)/$(BACKGROUND_ZIP) *.jpg; \
 	@echo "Background images packed to $(BUILD_DIR_WIN)/$(BACKGROUND_ZIP)"
 	
 .PHONY: pack-backgrounds-windows-debug
 pack-backgrounds-windows-debug:
 	@echo "Packing background images for Windows build..."
-	@if command -v magick >/dev/null 2>&1; then \
-		echo "Converting PNG to JPEG using ImageMagick v7..."; \
-		cd $(BACKGROUNDS_DIR) && \
-		for img in *.png; do \
-			magick "$$img" "$${img%.png}.jpg"; \
-		done && \
-		zip -r ../../$(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP) *.jpg; \
-	else \
-		cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP) *.png; \
-	fi
+	zip -r ../../$(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP) *.jpg; \
 	@echo "Background images packed to $(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP)"
 	
 .PHONY: pack-backgrounds-all
