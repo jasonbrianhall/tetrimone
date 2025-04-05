@@ -60,7 +60,9 @@ TetrimoneBoard::TetrimoneBoard() : score(0), level(1), linesCleared(0), gameOver
                             backgroundOpacity(0.3), useBackgroundZip(false), 
                             currentBackgroundIndex(0), isTransitioning(false),
                             transitionOpacity(0.0), transitionDirection(0),
-                            oldBackground(nullptr), transitionTimerId(0) {
+                            oldBackground(nullptr), transitionTimerId(0),
+                            consecutiveClears(0), maxConsecutiveClears(0), 
+                            lastClearCount(0), sequenceActive(false) {
     rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
     
     // Initialize grid with maximum possible dimensions to avoid reallocation
@@ -2251,6 +2253,8 @@ void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData) {
         "• 2 lines: 100 × level\n"
         "• 3 lines: 300 × level\n"
         "• 4 lines: 1200 × level\n"
+        "• Sequence bonus: 10% extra per consecutive clear\n"
+        "• Consistency bonus: 20% extra for repeating same line count\n"
         "• Hard drops: 2 points per cell\n\n"
         "Levels:\n"
         "• Every 10 lines cleared increases the level\n"
@@ -2261,7 +2265,8 @@ void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData) {
         "• Keep the stack low and even\n"
         "• Save I-pieces for Tetrimone clears (4 lines)\n"
         "• Watch the preview for the next piece\n"
-        "• Red line indicates the game over zone"
+        "• Red line indicates the game over zone\n"
+        "• Try to build sequences by clearing lines consecutively"
     );    
     gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
     gtk_widget_set_margin_start(label, 20);
