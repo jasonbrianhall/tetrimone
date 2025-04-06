@@ -1257,8 +1257,9 @@ gboolean onTimerTick(gpointer data) {
         // If the game just ended after this update, check for high score
         if (board->isGameOver()) {
             // Check for high score - the method will show dialog if it's a high score
+            std::cout << "Game is over" << std::endl;
             bool isHighScore = board->checkAndRecordHighScore();
-            
+            std::cout << "Is high score " << isHighScore << std::endl;
             // If it's a high score, play a special sound
             if (isHighScore) {
                 board->playSound(GameSoundEvent::Excellent);
@@ -1537,6 +1538,16 @@ void createMenu(TetrimoneApp* app) {
     app->pauseMenuItem = gtk_menu_item_new_with_label("Pause");
     app->restartMenuItem = gtk_menu_item_new_with_label("Restart");
     GtkWidget* quitMenuItem = gtk_menu_item_new_with_label("Quit");
+
+GtkWidget* highScoresMenuItem = gtk_menu_item_new_with_label("High Scores");
+gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), gtk_separator_menu_item_new());
+gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), highScoresMenuItem);
+g_signal_connect(G_OBJECT(highScoresMenuItem), "activate",
+               G_CALLBACK(onViewHighScores), app);
+
+g_signal_connect(G_OBJECT(highScoresMenuItem), "activate",
+               G_CALLBACK(onViewHighScores), app);
+
     
     gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), app->startMenuItem);
     gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), app->pauseMenuItem);
