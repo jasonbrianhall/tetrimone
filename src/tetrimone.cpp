@@ -6,7 +6,7 @@
 #include <windows.h>
 #include <commdlg.h>
 #endif
-
+#include "highscores.h"
 int BLOCK_SIZE = 30;  // Default value, will be updated at runtime
 int currentThemeIndex = 0;
 
@@ -1253,6 +1253,18 @@ gboolean onTimerTick(gpointer data) {
     
     if (!board->isGameOver() && !board->isPaused()) {
         board->updateGame();
+        
+        // If the game just ended after this update, check for high score
+        if (board->isGameOver()) {
+            // Check for high score - the method will show dialog if it's a high score
+            bool isHighScore = board->checkAndRecordHighScore();
+            
+            // If it's a high score, play a special sound
+            if (isHighScore) {
+                board->playSound(GameSoundEvent::Excellent);
+            }
+        }
+        
         gtk_widget_queue_draw(app->gameArea);
         gtk_widget_queue_draw(app->nextPieceArea);
         updateLabels(app);
