@@ -11,6 +11,7 @@
 #include <SDL2/SDL.h>
 #include "themes.h"
 #include "tetrimoneblock.h"
+#include "highscores.h"
 
 enum class GameSoundEvent {
   BackgroundMusic,
@@ -153,11 +154,16 @@ private:
     int maxConsecutiveClears;
     int lastClearCount;
     bool sequenceActive;
+    Highscores highScores;
     
 public:
     TetrimoneBoard();
     ~TetrimoneBoard();
+    bool checkAndRecordHighScore(TetrimoneApp* app);
+    const Highscores& getHighScores() const { return highScores; }
 
+    bool highScoreAlreadyProcessed = false;
+ 
     bool enabledTracks[5];
     // Background image handling
     cairo_surface_t* backgroundImage;
@@ -312,7 +318,7 @@ cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename);
 cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t length);
 
 void onGhostPieceToggled(GtkCheckMenuItem* menuItem, gpointer userData);
-
+void onViewHighScores(GtkMenuItem* menuItem, gpointer userData);
 #endif // TETRIMONE_H
 
 
