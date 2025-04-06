@@ -1258,7 +1258,7 @@ gboolean onTimerTick(gpointer data) {
         if (board->isGameOver()) {
             // Check for high score - the method will show dialog if it's a high score
             std::cout << "Game is over" << std::endl;
-            bool isHighScore = board->checkAndRecordHighScore();
+            bool isHighScore = board->checkAndRecordHighScore(app);
             std::cout << "Is high score " << isHighScore << std::endl;
             // If it's a high score, play a special sound
             if (isHighScore) {

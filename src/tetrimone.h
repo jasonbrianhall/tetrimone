@@ -159,7 +159,7 @@ private:
 public:
     TetrimoneBoard();
     ~TetrimoneBoard();
-    bool checkAndRecordHighScore();
+    bool checkAndRecordHighScore(TetrimoneApp* app);
     const Highscores& getHighScores() const { return highScores; }
  
     bool enabledTracks[5];
