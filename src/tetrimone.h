@@ -161,6 +161,8 @@ public:
     ~TetrimoneBoard();
     bool checkAndRecordHighScore(TetrimoneApp* app);
     const Highscores& getHighScores() const { return highScores; }
+
+    bool highScoreAlreadyProcessed = false;
  
     bool enabledTracks[5];
     // Background image handling

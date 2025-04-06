@@ -528,6 +528,7 @@ void TetrimoneBoard::restart() {
   maxConsecutiveClears = 0;
   lastClearCount = 0;
   sequenceActive = false;
+  highScoreAlreadyProcessed = false;
 }
 
 // GTK+ callback functions
@@ -1280,21 +1281,22 @@ gboolean onTimerTick(gpointer data) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
   TetrimoneBoard *board = app->board;
 
-  if (!board->isGameOver() && !board->isPaused()) {
+  if (!board->isPaused()) {
     board->updateGame();
 
     // If the game just ended after this update, check for high score
     if (board->isGameOver()) {
-      // Check for high score - the method will show dialog if it's a high score
-      std::cout << "Game is over" << std::endl;
-      bool isHighScore = board->checkAndRecordHighScore(app);
-      std::cout << "Is high score " << isHighScore << std::endl;
-      // If it's a high score, play a special sound
-      if (isHighScore) {
-        board->playSound(GameSoundEvent::Excellent);
-      }
-    }
 
+      if (!board->highScoreAlreadyProcessed) {
+           board->highScoreAlreadyProcessed=true;
+           bool isHighScore = board->checkAndRecordHighScore(app);
+      
+           // If it's a high score, play a special sound
+           if (isHighScore) {
+                board->playSound(GameSoundEvent::Excellent);
+           }
+         }
+    }
     gtk_widget_queue_draw(app->gameArea);
     gtk_widget_queue_draw(app->nextPieceArea);
     updateLabels(app);
