@@ -1585,10 +1585,6 @@ void createMenu(TetrimoneApp *app) {
   gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu), highScoresMenuItem);
   g_signal_connect(G_OBJECT(highScoresMenuItem), "activate",
                    G_CALLBACK(onViewHighScores), app);
-
-  g_signal_connect(G_OBJECT(highScoresMenuItem), "activate",
-                   G_CALLBACK(onViewHighScores), app);
-
   gtk_menu_shell_append(GTK_MENU_SHELL(gameMenu),
                         gtk_separator_menu_item_new());
 
