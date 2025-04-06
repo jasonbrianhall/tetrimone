@@ -68,7 +68,7 @@ Prepare for a block-stacking adventure that'll make your neurons dance! GTK Tetr
 ```bash
 # Summon the dependencies
 sudo apt-get update
-sudo apt-get install libgtk-3-dev libsdl2-dev libsdl2-mixer-dev libpulse-dev libzip-dev gcc g++ make fluidsynth
+sudo apt-get install libgtk-3-dev libsdl2-dev libsdl2-mixer-dev libpulse-dev libzip-dev gcc g++ make fluidsynth ffmpeg
 
 # Clone the block-dropping battlefield
 git clone https://github.com/jasonbrianhall/tetrimone.git
@@ -89,7 +89,7 @@ make
 ```bash
 # Summon the dependencies
 sudo dnf groupinstall "Development Tools"
-sudo dnf install gtk3-devel SDL2-devel SDL2_mixer-devel pulseaudio-libs-devel libzip-devel gcc-c++ fluidsynth
+sudo dnf install gtk3-devel SDL2-devel SDL2_mixer-devel pulseaudio-libs-devel libzip-devel gcc-c++ fluidsynth ffmpeg
 
 # Clone the block-dropping battlefield
 git clone https://github.com/jasonbrianhall/tetrimone.git
