@@ -3,10 +3,13 @@
 #include <iostream>
 #include <string>
 #ifdef _WIN32
-#include <commdlg.h>
 #include <windows.h>
+#include <commdlg.h>
 #endif
 #include "highscores.h"
+
+
+
 int BLOCK_SIZE = 30; // Default value, will be updated at runtime
 int currentThemeIndex = 0;
 
