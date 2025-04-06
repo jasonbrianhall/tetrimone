@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <sstream>
 #include "tetrimone.h"
+#include <iostream>
 
 #ifdef _WIN32
     #include <direct.h>
@@ -102,20 +103,23 @@ std::vector<Score> Highscores::getScoresByDifficulty(const std::string& difficul
 bool Highscores::isHighScore(int score, int width, int height, const std::string& difficulty) const {
     // Create a key combining difficulty, width, and height
     std::string key = createScoreKey(difficulty, width, height);
-    
+        
     auto it = scoresByDifficultyAndSize.find(key);
     if (it == scoresByDifficultyAndSize.end()) {
         return true;  // First score for this configuration
     }
     
     const auto& configScores = it->second;
+    
     if (configScores.size() < MAX_SCORES_PER_CONFIG) {
         return true;  // Less than max scores for this configuration
     }
     
     // Check if the score is better than the worst score in the list
     // For scores, higher is better, so check against the last (lowest) score
-    return score > configScores.back().score;
+    bool isHighScore = score > configScores.back().score;
+
+    return isHighScore;
 }
 
 void Highscores::loadScores() {
@@ -279,7 +283,7 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
         "_Close", GTK_RESPONSE_CLOSE,
         NULL
     );
-    gtk_window_set_default_size(GTK_WINDOW(dialog), 600, 500);
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 600);
     
     // Get content area
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -287,7 +291,8 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
     
     // Create notebook (tabbed interface)
     GtkWidget* notebook = gtk_notebook_new();
-    gtk_container_add(GTK_CONTAINER(contentArea), notebook);
+    // Ensure notebook expands to fill the entire content area
+    gtk_box_pack_start(GTK_BOX(contentArea), notebook, TRUE, TRUE, 0);
     
     // Get all scores
     const std::vector<Score>& allScores = app->board->getHighScores().getScores();
@@ -311,6 +316,9 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
         GtkWidget* scrollWindow = gtk_scrolled_window_new(NULL, NULL);
         gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrollWindow), 
                                         GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+        
+        // Ensure scrolled window expands
+        gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrollWindow), GTK_SHADOW_ETCHED_IN);
         
         // Create list store and tree view
         GtkListStore* listStore = gtk_list_store_new(5, 
@@ -343,6 +351,9 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
         GtkWidget* treeView = gtk_tree_view_new_with_model(GTK_TREE_MODEL(listStore));
         g_object_unref(listStore);
         
+        // Ensure tree view can expand
+        gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(treeView), GTK_TREE_VIEW_GRID_LINES_BOTH);
+        
         // Create columns with sorting
         GtkCellRenderer* renderer = gtk_cell_renderer_text_new();
         
@@ -350,6 +361,7 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
         GtkTreeViewColumn* nameColumn = gtk_tree_view_column_new_with_attributes(
             "Name", renderer, "text", 0, NULL
         );
+        gtk_tree_view_column_set_expand(nameColumn, TRUE);
         gtk_tree_view_column_set_sort_column_id(nameColumn, 0);
         gtk_tree_view_column_set_resizable(nameColumn, TRUE);
         gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), nameColumn);
@@ -358,6 +370,7 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
         GtkTreeViewColumn* scoreColumn = gtk_tree_view_column_new_with_attributes(
             "Score", renderer, "text", 1, NULL
         );
+        gtk_tree_view_column_set_expand(scoreColumn, TRUE);
         gtk_tree_view_column_set_sort_column_id(scoreColumn, 1);
         gtk_tree_view_column_set_resizable(scoreColumn, TRUE);
         gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), scoreColumn);
@@ -366,6 +379,7 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
         GtkTreeViewColumn* diffColumn = gtk_tree_view_column_new_with_attributes(
             "Difficulty", renderer, "text", 2, NULL
         );
+        gtk_tree_view_column_set_expand(diffColumn, TRUE);
         gtk_tree_view_column_set_sort_column_id(diffColumn, 2);
         gtk_tree_view_column_set_resizable(diffColumn, TRUE);
         gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), diffColumn);
@@ -374,6 +388,7 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
         GtkTreeViewColumn* sizeColumn = gtk_tree_view_column_new_with_attributes(
             "Grid Size", renderer, "text", 3, NULL
         );
+        gtk_tree_view_column_set_expand(sizeColumn, TRUE);
         gtk_tree_view_column_set_sort_column_id(sizeColumn, 3);
         gtk_tree_view_column_set_resizable(sizeColumn, TRUE);
         gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), sizeColumn);
