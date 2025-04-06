@@ -92,7 +92,7 @@ sudo dnf groupinstall "Development Tools"
 sudo dnf install gtk3-devel SDL2-devel SDL2_mixer-devel pulseaudio-libs-devel libzip-devel gcc-c++ fluidsynth ffmpeg
 
 # For Windows Cross-Compile (only tested on Fedora)
-dnf install ffmpeg mingw64-gcc mingw64-gcc-c++ mingw64-gtk3 mingw64-gtkmm30 wine wine-devel wixl binutils make zip unzip libzip-devel mingw64-libzip mingw64-SDL2 mingw64-SDL2_mixer fluidsynth ImageMagick
+dnf install ffmpeg mingw64-gcc mingw64-gcc-c++ mingw64-gtk3 mingw64-gtkmm30 wine wine-devel wixl binutils make zip unzip libzip-devel mingw64-libzip mingw64-SDL2 mingw64-SDL2_mixer fluidsynth
 
 # Clone the block-dropping battlefield
 git clone https://github.com/jasonbrianhall/tetrimone.git
