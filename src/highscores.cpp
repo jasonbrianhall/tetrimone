@@ -271,116 +271,123 @@ bool TetrimoneBoard::checkAndRecordHighScore(TetrimoneApp* app) {
 void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
-    // Create a dialog to display high scores
+    // Create main dialog
     GtkWidget* dialog = gtk_dialog_new_with_buttons(
         "High Scores",
         GTK_WINDOW(app->window),
         GTK_DIALOG_MODAL,
-        "_OK", GTK_RESPONSE_OK,
+        "_Close", GTK_RESPONSE_CLOSE,
         NULL
     );
-    
-    // Make it a reasonable size
-    gtk_window_set_default_size(GTK_WINDOW(dialog), 500, 400);
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 600, 500);
     
     // Get content area
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
     gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
     
-    // Create a notebook for different difficulty tabs
+    // Create notebook (tabbed interface)
     GtkWidget* notebook = gtk_notebook_new();
     gtk_container_add(GTK_CONTAINER(contentArea), notebook);
     
-    // Define difficulties
-    std::vector<std::string> difficulties = {"Zen", "Easy", "Medium", "Hard", "Extreme", "Insane"};
+    // Get all scores
+    const std::vector<Score>& allScores = app->board->getHighScores().getScores();
     
+    // Difficulty levels to create tabs for
+    const std::vector<std::string> difficulties = {
+        "All", "Zen", "Easy", "Medium", "Hard", "Extreme", "Insane"
+    };
+    
+    // Create a tab for each difficulty level
     for (const auto& difficulty : difficulties) {
-        // Get scores for this difficulty
-        std::vector<Score> difficultyScores = 
-            app->board->getHighScores().getScoresByDifficulty(difficulty);
-        
-        // Create a scrolled window for this tab
-        GtkWidget* scrolledWindow = gtk_scrolled_window_new(NULL, NULL);
-        gtk_scrolled_window_set_policy(
-            GTK_SCROLLED_WINDOW(scrolledWindow),
-            GTK_POLICY_AUTOMATIC,
-            GTK_POLICY_AUTOMATIC
-        );
-        
-        // Create a vertical box for the scores
-        GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-        gtk_container_add(GTK_CONTAINER(scrolledWindow), vbox);
-        
-        // Add header
-        GtkWidget* header = gtk_label_new(NULL);
-        std::string headerText = "<b>" + difficulty + " Difficulty</b>";
-        gtk_label_set_markup(GTK_LABEL(header), headerText.c_str());
-        gtk_box_pack_start(GTK_BOX(vbox), header, FALSE, FALSE, 5);
-        
-        // Create a grid for the scores
-        GtkWidget* grid = gtk_grid_new();
-        gtk_grid_set_column_spacing(GTK_GRID(grid), 20);
-        gtk_grid_set_row_spacing(GTK_GRID(grid), 5);
-        gtk_box_pack_start(GTK_BOX(vbox), grid, FALSE, FALSE, 10);
-        
-        // Add header row
-        GtkWidget* rankHeader = gtk_label_new("Rank");
-        GtkWidget* nameHeader = gtk_label_new("Name");
-        GtkWidget* scoreHeader = gtk_label_new("Score");
-        GtkWidget* sizeHeader = gtk_label_new("Grid Size");
-        
-        gtk_widget_set_halign(rankHeader, GTK_ALIGN_START);
-        gtk_widget_set_halign(nameHeader, GTK_ALIGN_START);
-        gtk_widget_set_halign(scoreHeader, GTK_ALIGN_END);
-        gtk_widget_set_halign(sizeHeader, GTK_ALIGN_END);
-        
-        gtk_grid_attach(GTK_GRID(grid), rankHeader, 0, 0, 1, 1);
-        gtk_grid_attach(GTK_GRID(grid), nameHeader, 1, 0, 1, 1);
-        gtk_grid_attach(GTK_GRID(grid), scoreHeader, 2, 0, 1, 1);
-        gtk_grid_attach(GTK_GRID(grid), sizeHeader, 3, 0, 1, 1);
-        
-        // Add separator
-        GtkWidget* separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-        gtk_grid_attach(GTK_GRID(grid), separator, 0, 1, 4, 1);
-        
-        // Add scores
-        if (difficultyScores.empty()) {
-            GtkWidget* noScores = gtk_label_new("No scores recorded for this difficulty yet.");
-            gtk_grid_attach(GTK_GRID(grid), noScores, 0, 2, 4, 1);
+        // Prepare scores for this difficulty
+        std::vector<Score> tabScores;
+        if (difficulty == "All") {
+            tabScores = allScores;
         } else {
-            for (size_t i = 0; i < difficultyScores.size(); i++) {
-                const Score& score = difficultyScores[i];
-                int row = i + 2; // +2 because header and separator take rows 0 and 1
-                
-                // Rank
-                std::string rankStr = std::to_string(i + 1) + ".";
-                GtkWidget* rankLabel = gtk_label_new(rankStr.c_str());
-                gtk_widget_set_halign(rankLabel, GTK_ALIGN_START);
-                
-                // Name
-                GtkWidget* nameLabel = gtk_label_new(score.name.c_str());
-                gtk_widget_set_halign(nameLabel, GTK_ALIGN_START);
-                
-                // Score
-                GtkWidget* scoreLabel = gtk_label_new(std::to_string(score.score).c_str());
-                gtk_widget_set_halign(scoreLabel, GTK_ALIGN_END);
-                
-                // Grid Size
-                std::string sizeStr = std::to_string(score.width) + " x " + std::to_string(score.height);
-                GtkWidget* sizeLabel = gtk_label_new(sizeStr.c_str());
-                gtk_widget_set_halign(sizeLabel, GTK_ALIGN_END);
-                
-                // Add to grid
-                gtk_grid_attach(GTK_GRID(grid), rankLabel, 0, row, 1, 1);
-                gtk_grid_attach(GTK_GRID(grid), nameLabel, 1, row, 1, 1);
-                gtk_grid_attach(GTK_GRID(grid), scoreLabel, 2, row, 1, 1);
-                gtk_grid_attach(GTK_GRID(grid), sizeLabel, 3, row, 1, 1);
-            }
+            tabScores = app->board->getHighScores().getScoresByDifficulty(difficulty);
         }
         
+        // Create scrolled window for this tab
+        GtkWidget* scrollWindow = gtk_scrolled_window_new(NULL, NULL);
+        gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrollWindow), 
+                                        GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+        
+        // Create list store and tree view
+        GtkListStore* listStore = gtk_list_store_new(5, 
+            G_TYPE_STRING,  // Name
+            G_TYPE_INT,     // Score
+            G_TYPE_STRING,  // Difficulty
+            G_TYPE_STRING,  // Grid Size
+            G_TYPE_INT      // Unused column for potential sorting
+        );
+        
+        // Populate list store
+        for (const auto& score : tabScores) {
+            GtkTreeIter iter;
+            gtk_list_store_append(listStore, &iter);
+            // Create grid size string explicitly
+            char gridSizeBuffer[50];
+            snprintf(gridSizeBuffer, sizeof(gridSizeBuffer), "%d x %d", score.width, score.height);
+            
+            gtk_list_store_set(listStore, &iter, 
+                0, score.name.c_str(),
+                1, score.score,
+                2, score.difficulty.c_str(), 
+                3, gridSizeBuffer,
+                4, score.score,  // Duplicate score for potential sorting
+                -1
+            );
+        }
+        
+        // Create tree view
+        GtkWidget* treeView = gtk_tree_view_new_with_model(GTK_TREE_MODEL(listStore));
+        g_object_unref(listStore);
+        
+        // Create columns with sorting
+        GtkCellRenderer* renderer = gtk_cell_renderer_text_new();
+        
+        // Name column
+        GtkTreeViewColumn* nameColumn = gtk_tree_view_column_new_with_attributes(
+            "Name", renderer, "text", 0, NULL
+        );
+        gtk_tree_view_column_set_sort_column_id(nameColumn, 0);
+        gtk_tree_view_column_set_resizable(nameColumn, TRUE);
+        gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), nameColumn);
+        
+        // Score column
+        GtkTreeViewColumn* scoreColumn = gtk_tree_view_column_new_with_attributes(
+            "Score", renderer, "text", 1, NULL
+        );
+        gtk_tree_view_column_set_sort_column_id(scoreColumn, 1);
+        gtk_tree_view_column_set_resizable(scoreColumn, TRUE);
+        gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), scoreColumn);
+        
+        // Difficulty column
+        GtkTreeViewColumn* diffColumn = gtk_tree_view_column_new_with_attributes(
+            "Difficulty", renderer, "text", 2, NULL
+        );
+        gtk_tree_view_column_set_sort_column_id(diffColumn, 2);
+        gtk_tree_view_column_set_resizable(diffColumn, TRUE);
+        gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), diffColumn);
+        
+        // Grid Size column
+        GtkTreeViewColumn* sizeColumn = gtk_tree_view_column_new_with_attributes(
+            "Grid Size", renderer, "text", 3, NULL
+        );
+        gtk_tree_view_column_set_sort_column_id(sizeColumn, 3);
+        gtk_tree_view_column_set_resizable(sizeColumn, TRUE);
+        gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), sizeColumn);
+        
+        // Add some form of interaction
+        gtk_tree_view_set_headers_clickable(GTK_TREE_VIEW(treeView), TRUE);
+        
+        // Add tree view to scrolled window
+        gtk_container_add(GTK_CONTAINER(scrollWindow), treeView);
+        
         // Add tab to notebook
-        GtkWidget* tabLabel = gtk_label_new(difficulty.c_str());
-        gtk_notebook_append_page(GTK_NOTEBOOK(notebook), scrolledWindow, tabLabel);
+        char tabLabel[50];
+        snprintf(tabLabel, sizeof(tabLabel), "%s (%zu)", difficulty.c_str(), tabScores.size());
+        gtk_notebook_append_page(GTK_NOTEBOOK(notebook), scrollWindow, gtk_label_new(tabLabel));
     }
     
     // Show all widgets
