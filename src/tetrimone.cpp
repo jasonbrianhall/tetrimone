@@ -848,7 +848,7 @@ for (int y = 0; y < GRID_HEIGHT; ++y) {
 }
 
   // Draw splash screen if active
-  if (board->isSplashScreenActive()) {
+ if (board->isSplashScreenActive()) {
     // Semi-transparent overlay
     cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
     cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
@@ -863,7 +863,8 @@ for (int y = 0; y < GRID_HEIGHT; ++y) {
 
     // Center the title
     cairo_text_extents_t extents;
-    const char *title = "TETRIMONE";
+    const char *title = board->retroModeActive ? 
+        "БЛОЧНАЯ РЕВОЛЮЦИЯ" : "TETRIMONE";
     cairo_text_extents(cr, title, &extents);
 
     double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
@@ -903,7 +904,8 @@ for (int y = 0; y < GRID_HEIGHT; ++y) {
 
     // Draw press space message
     cairo_set_font_size(cr, 20 * BLOCK_SIZE / 47);
-    const char *startText = "Press SPACE to Start";
+    const char *startText = board->retroModeActive ? 
+        "Нажмите ПРОБЕЛ для начала" : "Press SPACE to Start";
     cairo_text_extents(cr, startText, &extents);
 
     x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
@@ -915,7 +917,9 @@ for (int y = 0; y < GRID_HEIGHT; ++y) {
     // Draw joystick message if enabled
     if (app->joystickEnabled) {
       cairo_set_font_size(cr, 16 * BLOCK_SIZE / 47);
-      const char *joystickText = "or Press START on Controller";
+      const char *joystickText = board->retroModeActive ? 
+          "или Нажмите СТАРТ на контроллере" : 
+          "or Press START on Controller";
       cairo_text_extents(cr, joystickText, &extents);
 
       x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
