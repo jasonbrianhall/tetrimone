@@ -171,6 +171,32 @@ MIT License - Spread the Tetrimone love freely!
 
 * Thought about multiplayer support but didn't really architect it for MP support.  Would require a great deal of reengineering.
 
+## 🥚 Секретный Пасхальный Режим (Secret Soviet Easter Egg) 🚩
+
+### 🕹️ Инструкция По Активации Специального Режима 🕹️
+
+Внимание, товарищ! Вы обнаружили ВЫСОКОСЕКРЕТНУЮ кнопку невероятной силы! 🕵️‍♀️
+
+**Инструкция**: Нажмите клавишу "." (точка) и WITNESS THE TRANSFORMATION! 
+
+Что происходит? 
+- 🎨 Цветовая тема превращается в СОВЕТСКИЙ РЕТРО-СТИЛЬ
+- 🎵 Музыка замолкает (потому что в Советском Союзе музыка - это буржуазная роскошь!)
+- 📝 Интерфейс становится ИДЕОЛОГИЧЕСКИ ЧИСТЫМ
+- 🌍 Игра превращается в инструмент ГОСУДАРСТВЕННОЙ ВАЖНОСТИ
+
+**Предупреждение**: Злоупотребление пасхальным яйцом может привести к немедленной переквалификации в лагерь переподготовки разработчиков! 😂
+
+### Translation for Capitalist Spies 🕵️
+
+In English: Press the period key to activate an EPIC retro Soviet mode that transforms the entire game aesthetic! Complete with Russian text, Soviet color scheme, and a dash of communist humor. Your block-dropping experience will never be the same! 
+
+**Pro Tip**: Press the period key again to return to the decadent Western interface. 🇺🇸➡️🇷🇺➡️🇺🇸
+
+Remember: In Tetrimone, as in life, the Party is always right! 🚩✊
+
+
+
 ## 🎮 Other Projects by Jason Brian Hall
 
 Bored? Let me rescue you from the depths of monotony with these digital delights! 🚀
@@ -195,6 +221,3 @@ Numbers have never been this exciting! Prepare for a Sudoku adventure that'll ma
 
 🃏 **Card Games Collection**: [Solitaire, FreeCell & Spider](https://github.com/jasonbrianhall/cardgames) - The most meticulously crafted card games with custom decks, animations, and more features than you can shuffle!
 
-## Easter Eggs
-
-If you read this far, their is an easter egg.  Press period.  Also, changes about and instructions.  Use Google translate.
