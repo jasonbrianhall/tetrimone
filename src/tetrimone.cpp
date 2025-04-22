@@ -455,43 +455,51 @@ void TetrimoneBoard::generateNewPiece() {
       // Use the existing piece generation logic to create each piece
       std::vector<int> validPieces;
 
-      switch (minBlockSize) {
-      case 1: // All pieces
-        for (int j = 0; j < 14; ++j) {
-          validPieces.push_back(j);
-        }
-        break;
-      case 2: // Triomones and Tetrimones
-        for (int j = 0; j <= 10; ++j) {
-          validPieces.push_back(j);
-        }
-        break;
-      case 3: // Tetrimones only
+      // When in retro mode, only allow standard tetrominos (types 0-6)
+      if (retroModeActive) {
         for (int j = 0; j <= 6; ++j) {
           validPieces.push_back(j);
         }
-        break;
-      case 4: // Tetrimones only, but ensure at least 4 blocks
-        for (int j = 0; j <= 6; ++j) {
-          int blockCount = 0;
-          for (const auto &row : TETRIMONEBLOCK_SHAPES[j][0]) {
-            for (int cell : row) {
-              if (cell == 1)
-                blockCount++;
-            }
-          }
-          // Only add if block count is exactly 4
-          if (blockCount == 4) {
+      } else {
+        // Otherwise use the regular minBlockSize rules
+        switch (minBlockSize) {
+        case 1: // All pieces
+          for (int j = 0; j < 14; ++j) {
             validPieces.push_back(j);
           }
+          break;
+        case 2: // Triomones and Tetromones
+          for (int j = 0; j <= 10; ++j) {
+            validPieces.push_back(j);
+          }
+          break;
+        case 3: // Tetromones only
+          for (int j = 0; j <= 6; ++j) {
+            validPieces.push_back(j);
+          }
+          break;
+        case 4: // Tetromones only, but ensure at least 4 blocks
+          for (int j = 0; j <= 6; ++j) {
+            int blockCount = 0;
+            for (const auto &row : TETRIMONEBLOCK_SHAPES[j][0]) {
+              for (int cell : row) {
+                if (cell == 1)
+                  blockCount++;
+              }
+            }
+            // Only add if block count is exactly 4
+            if (blockCount == 4) {
+              validPieces.push_back(j);
+            }
+          }
+          break;
+        default:
+          // Fallback to standard tetrimones
+          for (int j = 0; j <= 6; ++j) {
+            validPieces.push_back(j);
+          }
+          break;
         }
-        break;
-      default:
-        // Fallback to standard tetrimones
-        for (int j = 0; j <= 6; ++j) {
-          validPieces.push_back(j);
-        }
-        break;
       }
 
       // If no valid pieces found, fallback to standard Tetrimones
@@ -523,46 +531,54 @@ void TetrimoneBoard::generateNewPiece() {
     // Generate a new piece for the last position
     std::vector<int> validPieces;
 
-    switch (minBlockSize) {
-    case 1: // All pieces
-      for (int i = 0; i < 14; ++i) {
-        validPieces.push_back(i);
+    // When in retro mode, only allow standard tetrominos (types 0-6)
+    if (retroModeActive) {
+      for (int j = 0; j <= 6; ++j) {
+        validPieces.push_back(j);
       }
-      break;
-    case 2: // Triomones and Tetrimones
-      for (int i = 0; i <= 10; ++i) {
-        validPieces.push_back(i);
-      }
-      break;
-    case 3: // Tetrimones only
-      for (int i = 0; i <= 6; ++i) {
-        validPieces.push_back(i);
-      }
-      break;
-    case 4: // Tetrimones only, but ensure at least 4 blocks
-      for (int i = 0; i <= 6; ++i) {
-        int blockCount = 0;
-        for (const auto &row : TETRIMONEBLOCK_SHAPES[i][0]) {
-          for (int cell : row) {
-            if (cell == 1)
-              blockCount++;
-          }
-        }
-        // Only add if block count is exactly 4
-        if (blockCount == 4) {
+    } else {
+      // Otherwise use the regular minBlockSize rules
+      switch (minBlockSize) {
+      case 1: // All pieces
+        for (int i = 0; i < 14; ++i) {
           validPieces.push_back(i);
         }
+        break;
+      case 2: // Triomones and Tetromones
+        for (int i = 0; i <= 10; ++i) {
+          validPieces.push_back(i);
+        }
+        break;
+      case 3: // Tetromones only
+        for (int i = 0; i <= 6; ++i) {
+          validPieces.push_back(i);
+        }
+        break;
+      case 4: // Tetromones only, but ensure at least 4 blocks
+        for (int i = 0; i <= 6; ++i) {
+          int blockCount = 0;
+          for (const auto &row : TETRIMONEBLOCK_SHAPES[i][0]) {
+            for (int cell : row) {
+              if (cell == 1)
+                blockCount++;
+            }
+          }
+          // Only add if block count is exactly 4
+          if (blockCount == 4) {
+            validPieces.push_back(i);
+          }
+        }
+        break;
+      default:
+        // Fallback to standard tetromones
+        for (int i = 0; i <= 6; ++i) {
+          validPieces.push_back(i);
+        }
+        break;
       }
-      break;
-    default:
-      // Fallback to standard tetrimones
-      for (int i = 0; i <= 6; ++i) {
-        validPieces.push_back(i);
-      }
-      break;
     }
 
-    // If no valid pieces found, fallback to standard Tetrimones
+    // If no valid pieces found, fallback to standard Tetromones
     if (validPieces.empty()) {
       for (int i = 0; i <= 6; ++i) {
         validPieces.push_back(i);
