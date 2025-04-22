@@ -16,6 +16,126 @@ int currentThemeIndex = 0;
 int GRID_WIDTH = 10;
 int GRID_HEIGHT = 22;
 
+static bool keyDownPressed = false;
+static bool keyLeftPressed = false;
+static bool keyRightPressed = false;
+static guint keyDownTimer = 0;
+static guint keyLeftTimer = 0;
+static guint keyRightTimer = 0;
+static int keyDownDelay = 150;
+static int keyLeftDelay = 150;
+static int keyRightDelay = 150;
+static int keyDownCount = 0;
+static int keyLeftCount = 0;
+static int keyRightCount = 0;
+
+gboolean onKeyDownTick(gpointer userData) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+  
+  // Only process if the game is active and key is still pressed
+  if (!app->board->isPaused() && !app->board->isGameOver() && 
+      !app->board->isSplashScreenActive() && keyDownPressed) {
+    
+    // Move the piece down with acceleration
+    app->board->movePiece(0, 1);
+    keyDownCount++;
+    
+    // Accelerate by decreasing the delay (matches joystick.cpp)
+    if (keyDownCount > 6) {
+      keyDownDelay = 20; // Very fast (matches joystick)
+    } else if (keyDownCount > 4) {
+      keyDownDelay = 30; // Fast (matches joystick)
+    } else if (keyDownCount > 2) {
+      keyDownDelay = 60; // Medium (matches joystick)
+    }
+    
+    // Update the timer with the new delay
+    keyDownTimer = g_timeout_add(keyDownDelay, onKeyDownTick, app);
+    
+    // Update the display
+    gtk_widget_queue_draw(app->gameArea);
+    gtk_widget_queue_draw(app->nextPieceArea);
+    updateLabels(app);
+    
+    // Stop this timer instance (we created a new one above)
+    return FALSE;
+  }
+  
+  // If game is paused or key is released, stop the timer
+  keyDownTimer = 0;
+  return FALSE;
+}
+
+gboolean onKeyLeftTick(gpointer userData) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+  
+  if (!app->board->isPaused() && !app->board->isGameOver() && 
+      !app->board->isSplashScreenActive() && keyLeftPressed) {
+    
+    // Move the piece left with acceleration
+    app->board->movePiece(-1, 0);
+    keyLeftCount++;
+    
+    // Accelerate by decreasing the delay (matches joystick.cpp horizontal movement)
+    if (keyLeftCount > 6) {
+      keyLeftDelay = 30; // Very fast
+    } else if (keyLeftCount > 4) {
+      keyLeftDelay = 50; // Fast
+    } else if (keyLeftCount > 2) {
+      keyLeftDelay = 100; // Medium
+    }
+    
+    // Update the timer with the new delay
+    keyLeftTimer = g_timeout_add(keyLeftDelay, onKeyLeftTick, app);
+    
+    // Update the display
+    gtk_widget_queue_draw(app->gameArea);
+    gtk_widget_queue_draw(app->nextPieceArea);
+    updateLabels(app);
+    
+    // Stop this timer instance
+    return FALSE;
+  }
+  
+  keyLeftTimer = 0;
+  return FALSE;
+}
+
+gboolean onKeyRightTick(gpointer userData) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+  
+  if (!app->board->isPaused() && !app->board->isGameOver() && 
+      !app->board->isSplashScreenActive() && keyRightPressed) {
+    
+    // Move the piece right with acceleration
+    app->board->movePiece(1, 0);
+    keyRightCount++;
+    
+    // Accelerate by decreasing the delay (matches joystick.cpp horizontal movement)
+    if (keyRightCount > 6) {
+      keyRightDelay = 30; // Very fast
+    } else if (keyRightCount > 4) {
+      keyRightDelay = 50; // Fast
+    } else if (keyRightCount > 2) {
+      keyRightDelay = 100; // Medium
+    }
+    
+    // Update the timer with the new delay
+    keyRightTimer = g_timeout_add(keyRightDelay, onKeyRightTick, app);
+    
+    // Update the display
+    gtk_widget_queue_draw(app->gameArea);
+    gtk_widget_queue_draw(app->nextPieceArea);
+    updateLabels(app);
+    
+    // Stop this timer instance
+    return FALSE;
+  }
+  
+  keyRightTimer = 0;
+  return FALSE;
+}
+
 // TetrimoneBlock class implementation
 TetrimoneBlock::TetrimoneBlock(int type) : type(type), rotation(0) {
   // Start pieces centered at top
@@ -640,23 +760,24 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     cairo_restore(cr);
   }
 
-  // Draw grid lines
-  cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
-  cairo_set_line_width(cr, 1);
+if (board->isShowingGridLines()) {
+    cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
+    cairo_set_line_width(cr, 1);
 
-  // Vertical lines
-  for (int x = 1; x < GRID_WIDTH; ++x) {
-    cairo_move_to(cr, x * BLOCK_SIZE, 0);
-    cairo_line_to(cr, x * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
-  }
+    // Vertical lines
+    for (int x = 1; x < GRID_WIDTH; ++x) {
+        cairo_move_to(cr, x * BLOCK_SIZE, 0);
+        cairo_line_to(cr, x * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
+    }
 
-  // Horizontal lines
-  for (int y = 1; y < GRID_HEIGHT; ++y) {
-    cairo_move_to(cr, 0, y * BLOCK_SIZE);
-    cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, y * BLOCK_SIZE);
-  }
+    // Horizontal lines
+    for (int y = 1; y < GRID_HEIGHT; ++y) {
+        cairo_move_to(cr, 0, y * BLOCK_SIZE);
+        cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, y * BLOCK_SIZE);
+    }
 
-  cairo_stroke(cr);
+    cairo_stroke(cr);
+}
 
   int failureLineY = 2; // Position the line at the second row
   cairo_set_source_rgb(cr, 1.0, 0.2, 0.2); // Bright red for visibility
@@ -1173,103 +1294,188 @@ gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
 gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
   TetrimoneBoard *board = app->board;
+  
+  // Handle key press events
+  if (event->type == GDK_KEY_PRESS) {
+    // Handle space to dismiss splash screen first
+    if (event->keyval == GDK_KEY_space && board->isSplashScreenActive()) {
+      board->dismissSplashScreen();
+      gtk_widget_queue_draw(app->gameArea);
+      gtk_widget_queue_draw(app->nextPieceArea);
+      updateLabels(app);
+      return TRUE;
+    }
 
-  // Handle space to dismiss splash screen first
-  if (event->keyval == GDK_KEY_space && board->isSplashScreenActive()) {
-    board->dismissSplashScreen();
-    gtk_widget_queue_draw(app->gameArea);
-    gtk_widget_queue_draw(app->nextPieceArea);
-    updateLabels(app);
-    return TRUE;
-  }
+    // Handle game control keys only when game is active
+    if (!board->isPaused() && !board->isGameOver() &&
+        !board->isSplashScreenActive()) {
+      switch (event->keyval) {
+      case GDK_KEY_Left:
+      case GDK_KEY_a:
+      case GDK_KEY_A:
+        // Start left acceleration if not already active
+        if (!keyLeftPressed) {
+          keyLeftPressed = true;
+          keyLeftCount = 0;
+          keyLeftDelay = 150; // Reset to initial delay
+          
+          // Immediate move
+          board->movePiece(-1, 0);
+          
+          // Start the repeat timer
+          if (keyLeftTimer == 0) {
+            keyLeftTimer = g_timeout_add(keyLeftDelay, onKeyLeftTick, app);
+          }
+        }
+        break;
 
-  // Handle game control keys only when game is active
-  if (!board->isPaused() && !board->isGameOver() &&
-      !board->isSplashScreenActive()) {
+      case GDK_KEY_Right:
+      case GDK_KEY_d:
+      case GDK_KEY_D:
+        // Start right acceleration if not already active
+        if (!keyRightPressed) {
+          keyRightPressed = true;
+          keyRightCount = 0;
+          keyRightDelay = 150; // Reset to initial delay
+          
+          // Immediate move
+          board->movePiece(1, 0);
+          
+          // Start the repeat timer
+          if (keyRightTimer == 0) {
+            keyRightTimer = g_timeout_add(keyRightDelay, onKeyRightTick, app);
+          }
+        }
+        break;
+
+      case GDK_KEY_Down:
+      case GDK_KEY_s:
+      case GDK_KEY_S:
+        // Start down acceleration if not already active
+        if (!keyDownPressed) {
+          keyDownPressed = true;
+          keyDownCount = 0;
+          keyDownDelay = 150; // Reset to initial delay
+          
+          // Immediate move
+          board->movePiece(0, 1);
+          
+          // Start the repeat timer
+          if (keyDownTimer == 0) {
+            keyDownTimer = g_timeout_add(keyDownDelay, onKeyDownTick, app);
+          }
+        }
+        break;
+
+      case GDK_KEY_Up:
+      case GDK_KEY_w:
+      case GDK_KEY_W:
+        board->rotatePiece(true);
+        break;
+
+      case GDK_KEY_z:
+      case GDK_KEY_Z:
+        board->rotatePiece(false);
+        break;
+
+      case GDK_KEY_space:
+        board->hardDrop();
+        break;
+      }
+    }
+
+    // Handle global control keys regardless of game state
     switch (event->keyval) {
-    case GDK_KEY_Left:
-    case GDK_KEY_a:
-    case GDK_KEY_A:
-      board->movePiece(-1, 0);
+    case GDK_KEY_p:
+    case GDK_KEY_P:
+      if (!board->isSplashScreenActive()) {
+        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+      }
+      break;
+    case GDK_KEY_m:
+    case GDK_KEY_M:
+      if (app->board->musicPaused) {
+        app->board->resumeBackgroundMusic();
+      } else {
+        app->board->pauseBackgroundMusic();
+      }
       break;
 
-    case GDK_KEY_Right:
-    case GDK_KEY_d:
-    case GDK_KEY_D:
-      board->movePiece(1, 0);
+    case GDK_KEY_n:
+    case GDK_KEY_N:
+      if (board->isPaused()) {
+        onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
+      }
       break;
 
-    case GDK_KEY_Down:
-    case GDK_KEY_s:
-    case GDK_KEY_S:
-      board->movePiece(0, 1);
+    case GDK_KEY_q:
+    case GDK_KEY_Q:
+      if (board->isPaused()) {
+        onQuitGame(GTK_MENU_ITEM(NULL), app);
+      }
       break;
 
-    case GDK_KEY_Up:
-    case GDK_KEY_w:
-    case GDK_KEY_W:
-      board->rotatePiece(true);
+    case GDK_KEY_r:
+    case GDK_KEY_R:
+      if (board->isGameOver()) {
+        onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
+      }
       break;
 
-    case GDK_KEY_z:
-    case GDK_KEY_Z:
-      board->rotatePiece(false);
+    case GDK_KEY_Escape:
+      // Emergency unpause if somehow stuck
+      if (board->isPaused() && !board->isGameOver()) {
+        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+      }
       break;
 
-    case GDK_KEY_space:
-      board->hardDrop();
+    default:
+      // Don't return FALSE here as it prevents redrawing
       break;
     }
-  }
-
-  // Handle global control keys regardless of game state
-  switch (event->keyval) {
-  case GDK_KEY_p:
-  case GDK_KEY_P:
-    if (!board->isSplashScreenActive()) {
-      onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+  } 
+  // Handle key release events
+  else if (event->type == GDK_KEY_RELEASE) {
+    switch (event->keyval) {
+      case GDK_KEY_Down:
+      case GDK_KEY_s:
+      case GDK_KEY_S:
+        // Stop down acceleration
+        keyDownPressed = false;
+        
+        // Cancel the timer if it exists
+        if (keyDownTimer > 0) {
+          g_source_remove(keyDownTimer);
+          keyDownTimer = 0;
+        }
+        break;
+        
+      case GDK_KEY_Left:
+      case GDK_KEY_a:
+      case GDK_KEY_A:
+        // Stop left acceleration
+        keyLeftPressed = false;
+        
+        // Cancel the timer if it exists
+        if (keyLeftTimer > 0) {
+          g_source_remove(keyLeftTimer);
+          keyLeftTimer = 0;
+        }
+        break;
+        
+      case GDK_KEY_Right:
+      case GDK_KEY_d:
+      case GDK_KEY_D:
+        // Stop right acceleration
+        keyRightPressed = false;
+        
+        // Cancel the timer if it exists
+        if (keyRightTimer > 0) {
+          g_source_remove(keyRightTimer);
+          keyRightTimer = 0;
+        }
+        break;
     }
-    break;
-  case GDK_KEY_m:
-  case GDK_KEY_M:
-    if (app->board->musicPaused) {
-      app->board->resumeBackgroundMusic();
-    } else {
-      app->board->pauseBackgroundMusic();
-    }
-    break;
-
-  case GDK_KEY_n:
-  case GDK_KEY_N:
-    if (board->isPaused()) {
-      onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
-    }
-    break;
-
-  case GDK_KEY_q:
-  case GDK_KEY_Q:
-    if (board->isPaused()) {
-      onQuitGame(GTK_MENU_ITEM(NULL), app);
-    }
-    break;
-
-  case GDK_KEY_r:
-  case GDK_KEY_R:
-    if (board->isGameOver()) {
-      onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
-    }
-    break;
-
-  case GDK_KEY_Escape:
-    // Emergency unpause if somehow stuck
-    if (board->isPaused() && !board->isGameOver()) {
-      onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
-    }
-    break;
-
-  default:
-    // Don't return FALSE here as it prevents redrawing
-    break;
   }
 
   // Always redraw and update after any key press
@@ -1279,6 +1485,7 @@ gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 
   return TRUE; // Always claim we handled the key event
 }
+
 
 gboolean onTimerTick(gpointer data) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
@@ -1524,12 +1731,12 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   gtk_box_pack_start(GTK_BOX(sideBox), controls, FALSE, FALSE, 0);
 
   // Set up key press events
-  gtk_widget_add_events(tetrimoneApp->window, GDK_KEY_PRESS_MASK);
+  gtk_widget_add_events(tetrimoneApp->window, GDK_KEY_PRESS_MASK | GDK_KEY_RELEASE_MASK);
   g_signal_connect(G_OBJECT(tetrimoneApp->window), "key-press-event",
-                   G_CALLBACK(onKeyPress), tetrimoneApp);
-
-  // Connect cleanup function
-  g_object_set_data_full(G_OBJECT(tetrimoneApp->window), "app-data",
+                 G_CALLBACK(onKeyPress), tetrimoneApp);
+  g_signal_connect(G_OBJECT(tetrimoneApp->window), "key-release-event", 
+                 G_CALLBACK(onKeyPress), tetrimoneApp);  // Connect cleanup function
+    g_object_set_data_full(G_OBJECT(tetrimoneApp->window), "app-data",
                          tetrimoneApp, cleanupApp);
 
   // Show all widgets
@@ -1699,6 +1906,14 @@ void createMenu(TetrimoneApp *app) {
                         app->backgroundToggleMenuItem);
   g_signal_connect(G_OBJECT(app->backgroundToggleMenuItem), "toggled",
                    G_CALLBACK(onBackgroundToggled), app);
+
+  GtkWidget* gridLinesMenuItem = gtk_check_menu_item_new_with_label("Show Grid Lines");
+  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(gridLinesMenuItem), 
+                               app->board->isShowingGridLines());
+  gtk_menu_shell_append(GTK_MENU_SHELL(graphicsMenu), gridLinesMenuItem);
+  g_signal_connect(G_OBJECT(gridLinesMenuItem), "toggled",
+                   G_CALLBACK(onGridLinesToggled), app);
+
 
   // *** SOUND MENU ***
   GtkWidget *soundMenu = gtk_menu_new();
@@ -1924,6 +2139,17 @@ void createMenu(TetrimoneApp *app) {
   // Store menu bar in app structure
   app->menuBar = menuBar;
 }
+
+void onGridLinesToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    bool showLines = gtk_check_menu_item_get_active(menuItem);
+    
+    app->board->setShowGridLines(showLines);
+    
+    // Redraw the game area
+    gtk_widget_queue_draw(app->gameArea);
+}
+
 
 void onBlockSizeRulesChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
@@ -3071,7 +3297,7 @@ int main(int argc, char *argv[]) {
   freopen("debug_output.log", "w", stdout);
   freopen("debug_output.log", "a", stderr);
 #endif
-  app = gtk_application_new("org.gtk.tetrimone", G_APPLICATION_FLAGS_NONE);
+  app = gtk_application_new("org.gtk.tetrimone", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(onAppActivate), NULL);
   status = g_application_run(G_APPLICATION(app), argc, argv);
   g_object_unref(app);

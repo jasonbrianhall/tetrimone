@@ -157,6 +157,10 @@ private:
     Highscores highScores;
     
 public:
+    bool showGridLines = false; // Grid lines off by default
+    bool isShowingGridLines() const { return showGridLines; }
+    void setShowGridLines(bool show) { showGridLines = show; }
+
     TetrimoneBoard();
     ~TetrimoneBoard();
     bool checkAndRecordHighScore(TetrimoneApp* app);
@@ -259,6 +263,9 @@ public:
 gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data);
 gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data);
 gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data);
+gboolean onKeyDownTick(gpointer userData);
+gboolean onKeyLeftTick(gpointer userData);
+gboolean onKeyRightTick(gpointer userData);
 gboolean onTimerTick(gpointer data);
 void updateLabels(TetrimoneApp* app);
 void startGame(TetrimoneApp* app);
@@ -297,7 +304,6 @@ void onJoystickMapApply(GtkButton* button, gpointer userData);
 void onJoystickMapReset(GtkButton* button, gpointer userData);
 void saveJoystickMapping(TetrimoneApp* app);
 void loadJoystickMapping(TetrimoneApp* app);
-
 void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData);
 void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData);
@@ -311,7 +317,7 @@ void onMusicVolumeValueChanged(GtkRange* range, gpointer userData);
 void onTrackToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onBlockSizeRulesChanged(GtkRadioMenuItem* menuItem, gpointer userData);
 void onGameSizeDialog(GtkMenuItem* menuItem, gpointer userData);
-
+void onGridLinesToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void updateWidthValueLabel(GtkAdjustment* adj, gpointer data);
 void updateHeightValueLabel(GtkAdjustment* adj, gpointer data);
 cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename);
