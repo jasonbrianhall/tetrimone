@@ -790,16 +790,21 @@ if (board->isShowingGridLines()) {
   cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, failureLineY * BLOCK_SIZE);
   cairo_stroke(cr);
 
-  // Draw placed blocks
-  for (int y = 0; y < GRID_HEIGHT; ++y) {
-    for (int x = 0; x < GRID_WIDTH; ++x) {
-      int value = board->getGridValue(x, y);
-      if (value > 0) {
-        // Get color from tetrimoneblock colors (value-1 because grid values are
-        // 1-based)
-        auto color = TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
-        cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+// Draw placed blocks
+for (int y = 0; y < GRID_HEIGHT; ++y) {
+  for (int x = 0; x < GRID_WIDTH; ++x) {
+    int value = board->getGridValue(x, y);
+    if (value > 0) {
+      // Get color from tetrimoneblock colors (value-1 because grid values are 1-based)
+      auto color = TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
+      cairo_set_source_rgb(cr, color[0], color[1], color[2]);
 
+      if (board->retroModeActive) {
+        // In retro mode, draw simple blocks without 3D effects
+        cairo_rectangle(cr, x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+        cairo_fill(cr);
+      } else {
+        // Regular mode with 3D effects
         // Draw block with a small margin
         cairo_rectangle(cr, x * BLOCK_SIZE + 1, y * BLOCK_SIZE + 1,
                         BLOCK_SIZE - 2, BLOCK_SIZE - 2);
@@ -824,6 +829,7 @@ if (board->isShowingGridLines()) {
       }
     }
   }
+}
 
   // Draw splash screen if active
   if (board->isSplashScreenActive()) {
@@ -907,24 +913,30 @@ if (board->isShowingGridLines()) {
   }
 
   // Draw current piece if game is active
-  if (!board->isGameOver() && !board->isPaused() &&
-      !board->isSplashScreenActive()) {
-    const TetrimoneBlock &piece = board->getCurrentPiece();
-    auto shape = piece.getShape();
-    auto color = piece.getColor();
-    int pieceX = piece.getX();
-    int pieceY = piece.getY();
+if (!board->isGameOver() && !board->isPaused() &&
+    !board->isSplashScreenActive()) {
+  const TetrimoneBlock &piece = board->getCurrentPiece();
+  auto shape = piece.getShape();
+  auto color = piece.getColor();
+  int pieceX = piece.getX();
+  int pieceY = piece.getY();
 
-    cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+  cairo_set_source_rgb(cr, color[0], color[1], color[2]);
 
-    for (size_t y = 0; y < shape.size(); ++y) {
-      for (size_t x = 0; x < shape[y].size(); ++x) {
-        if (shape[y][x] == 1) {
-          int drawX = (pieceX + x) * BLOCK_SIZE;
-          int drawY = (pieceY + y) * BLOCK_SIZE;
+  for (size_t y = 0; y < shape.size(); ++y) {
+    for (size_t x = 0; x < shape[y].size(); ++x) {
+      if (shape[y][x] == 1) {
+        int drawX = (pieceX + x) * BLOCK_SIZE;
+        int drawY = (pieceY + y) * BLOCK_SIZE;
 
-          // Only draw if within the visible grid
-          if (drawY >= 0) {
+        // Only draw if within the visible grid
+        if (drawY >= 0) {
+          if (board->retroModeActive) {
+            // In retro mode, draw simple blocks without 3D effects
+            cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+            cairo_fill(cr);
+          } else {
+            // Regular mode with 3D effects
             // Draw block with a small margin
             cairo_rectangle(cr, drawX + 1, drawY + 1, BLOCK_SIZE - 2,
                             BLOCK_SIZE - 2);
@@ -953,6 +965,7 @@ if (board->isShowingGridLines()) {
       }
     }
   }
+}
 
   if (!board->isGameOver() && !board->isPaused() &&
       !board->isSplashScreenActive() && board->isGhostPieceEnabled()) {
