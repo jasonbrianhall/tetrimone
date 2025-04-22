@@ -158,8 +158,10 @@ private:
     int lastClearCount;
     bool sequenceActive;
     Highscores highScores;
+
     
 public:
+    bool retroModeActive = false;  // Flag for retro mode
     bool showGridLines = false; // Grid lines off by default
     bool isShowingGridLines() const { return showGridLines; }
     void setShowGridLines(bool show) { showGridLines = show; }

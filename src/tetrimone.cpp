@@ -428,17 +428,21 @@ int TetrimoneBoard::clearLines() {
     sequenceActive = false;
   }
 
-  if (level > currentlevel) {
+if (level > currentlevel) {
     playSound(GameSoundEvent::LevelUp);
-    // Every Level, change theme; wrap around at 20
-    currentThemeIndex = (currentThemeIndex + 1) % NUM_COLOR_THEMES;
+    
+    // Only change theme if retro mode is not enabled
+    if (!retroModeActive) {
+        // Every Level, change theme; wrap around except for retro theme
+        currentThemeIndex = (currentThemeIndex + 1) % NUM_COLOR_THEMES-1;
 
-    // Add this section to change background on level up
-    if (useBackgroundZip && !backgroundImages.empty()) {
-      // Change to a random background on level up if using background zip
-      startBackgroundTransition();
+        // Add this section to change background on level up
+        if (useBackgroundZip && !backgroundImages.empty()) {
+            // Change to a random background on level up if using background zip
+            startBackgroundTransition();
+        }
     }
-  }
+}
 
   return linesCleared;
 }
@@ -1329,6 +1333,7 @@ gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
         }
         break;
 
+
       case GDK_KEY_Right:
       case GDK_KEY_d:
       case GDK_KEY_D:
@@ -1428,6 +1433,64 @@ gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
         onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
       }
       break;
+
+case GDK_KEY_period:
+    // Toggle retro mode with just the period key
+    {
+        // Save the current theme index when entering retro mode
+        static int savedThemeIndex = 0;
+        
+        // Toggle the retro mode flag
+        board->retroModeActive = !board->retroModeActive;
+        
+        if (board->retroModeActive) {
+            // Store current theme before switching to retro mode
+            savedThemeIndex = currentThemeIndex;
+            
+            // Set to Soviet Retro theme (last theme in the list)
+            currentThemeIndex = NUM_COLOR_THEMES - 1;
+            
+            // Disable background image
+            if (board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) {
+                board->setUseBackgroundImage(false);
+                board->setUseBackgroundZip(false);
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), FALSE);
+            }
+            
+            // Disable music
+            if (app->backgroundMusicPlaying) {
+                board->pauseBackgroundMusic();
+                app->backgroundMusicPlaying = false;
+            }
+            
+            // Play a special sound effect
+            board->playSound(GameSoundEvent::Select);
+            
+            std::cout << "Retro mode ON" << std::endl;
+        } else {
+            // Restore previous theme
+            currentThemeIndex = savedThemeIndex;
+            
+            // Re-enable background if it was enabled before
+            if (board->getBackgroundImage() != nullptr) {
+                board->setUseBackgroundImage(true);
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+            }
+            
+            // Re-enable music if sound is enabled
+            if (!app->backgroundMusicPlaying && board->sound_enabled_) {
+                board->resumeBackgroundMusic();
+                app->backgroundMusicPlaying = true;
+            }
+            
+            std::cout << "Retro mode OFF" << std::endl;
+        }
+        
+        // Redraw game area to show theme change
+        gtk_widget_queue_draw(app->gameArea);
+        gtk_widget_queue_draw(app->nextPieceArea);
+    }
+    break;
 
     default:
       // Don't return FALSE here as it prevents redrawing

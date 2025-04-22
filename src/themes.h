@@ -557,7 +557,25 @@ const std::vector<std::vector<std::array<double, 3>>> TETRIMONEBLOCK_COLOR_THEME
         {0.5, 0.5, 0.6},  // H/V Domino - Silver
         {0.8, 0.6, 0.3},  // Diagonal Domino - Gold Leaf
         {0.9, 0.8, 0.6}   // Monomino - Parchment
-    }
+    },
+    // Theme 31: Soviet Retro Mode (1984)
+    {
+        {0.0, 0.6, 0.0},  // I - Classic Phosphor Green
+        {0.0, 0.5, 0.0},  // O - Darker Phosphor Green
+        {0.0, 0.7, 0.0},  // T - Brighter Phosphor Green
+        {0.0, 0.55, 0.0}, // S - Medium Phosphor Green
+        {0.0, 0.65, 0.0}, // Z - Medium-Bright Phosphor Green
+        {0.0, 0.5, 0.0},  // J - Darker Phosphor Green
+        {0.0, 0.6, 0.0},  // L - Classic Phosphor Green
+        // Additional colors for smaller pieces
+        {0.0, 0.55, 0.0}, // Straight Triomino - Medium Phosphor Green
+        {0.0, 0.6, 0.0},  // L Triomino - Classic Phosphor Green
+        {0.0, 0.5, 0.0},  // Reverse L Triomino - Darker Phosphor Green
+        {0.0, 0.65, 0.0}, // V Triomino - Medium-Bright Phosphor Green
+        {0.0, 0.7, 0.0},  // H/V Domino - Brighter Phosphor Green
+        {0.0, 0.55, 0.0}, // Diagonal Domino - Medium Phosphor Green
+        {0.0, 0.8, 0.0}   // Monomino - Brightest Phosphor Green
+}  
 };
 
 const size_t NUM_COLOR_THEMES = TETRIMONEBLOCK_COLOR_THEMES.size();
