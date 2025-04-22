@@ -640,23 +640,24 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     cairo_restore(cr);
   }
 
-  // Draw grid lines
-  cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
-  cairo_set_line_width(cr, 1);
+if (board->isShowingGridLines()) {
+    cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
+    cairo_set_line_width(cr, 1);
 
-  // Vertical lines
-  for (int x = 1; x < GRID_WIDTH; ++x) {
-    cairo_move_to(cr, x * BLOCK_SIZE, 0);
-    cairo_line_to(cr, x * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
-  }
+    // Vertical lines
+    for (int x = 1; x < GRID_WIDTH; ++x) {
+        cairo_move_to(cr, x * BLOCK_SIZE, 0);
+        cairo_line_to(cr, x * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
+    }
 
-  // Horizontal lines
-  for (int y = 1; y < GRID_HEIGHT; ++y) {
-    cairo_move_to(cr, 0, y * BLOCK_SIZE);
-    cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, y * BLOCK_SIZE);
-  }
+    // Horizontal lines
+    for (int y = 1; y < GRID_HEIGHT; ++y) {
+        cairo_move_to(cr, 0, y * BLOCK_SIZE);
+        cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, y * BLOCK_SIZE);
+    }
 
-  cairo_stroke(cr);
+    cairo_stroke(cr);
+}
 
   int failureLineY = 2; // Position the line at the second row
   cairo_set_source_rgb(cr, 1.0, 0.2, 0.2); // Bright red for visibility
@@ -1700,6 +1701,14 @@ void createMenu(TetrimoneApp *app) {
   g_signal_connect(G_OBJECT(app->backgroundToggleMenuItem), "toggled",
                    G_CALLBACK(onBackgroundToggled), app);
 
+  GtkWidget* gridLinesMenuItem = gtk_check_menu_item_new_with_label("Show Grid Lines");
+  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(gridLinesMenuItem), 
+                               app->board->isShowingGridLines());
+  gtk_menu_shell_append(GTK_MENU_SHELL(graphicsMenu), gridLinesMenuItem);
+  g_signal_connect(G_OBJECT(gridLinesMenuItem), "toggled",
+                   G_CALLBACK(onGridLinesToggled), app);
+
+
   // *** SOUND MENU ***
   GtkWidget *soundMenu = gtk_menu_new();
   GtkWidget *soundMenuItem = gtk_menu_item_new_with_label("Sound");
@@ -1924,6 +1933,17 @@ void createMenu(TetrimoneApp *app) {
   // Store menu bar in app structure
   app->menuBar = menuBar;
 }
+
+void onGridLinesToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    bool showLines = gtk_check_menu_item_get_active(menuItem);
+    
+    app->board->setShowGridLines(showLines);
+    
+    // Redraw the game area
+    gtk_widget_queue_draw(app->gameArea);
+}
+
 
 void onBlockSizeRulesChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
@@ -3071,7 +3091,7 @@ int main(int argc, char *argv[]) {
   freopen("debug_output.log", "w", stdout);
   freopen("debug_output.log", "a", stderr);
 #endif
-  app = gtk_application_new("org.gtk.tetrimone", G_APPLICATION_FLAGS_NONE);
+  app = gtk_application_new("org.gtk.tetrimone", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(onAppActivate), NULL);
   status = g_application_run(G_APPLICATION(app), argc, argv);
   g_object_unref(app);

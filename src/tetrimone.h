@@ -157,6 +157,10 @@ private:
     Highscores highScores;
     
 public:
+    bool showGridLines = false; // Grid lines off by default
+    bool isShowingGridLines() const { return showGridLines; }
+    void setShowGridLines(bool show) { showGridLines = show; }
+
     TetrimoneBoard();
     ~TetrimoneBoard();
     bool checkAndRecordHighScore(TetrimoneApp* app);
@@ -311,7 +315,7 @@ void onMusicVolumeValueChanged(GtkRange* range, gpointer userData);
 void onTrackToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onBlockSizeRulesChanged(GtkRadioMenuItem* menuItem, gpointer userData);
 void onGameSizeDialog(GtkMenuItem* menuItem, gpointer userData);
-
+void onGridLinesToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void updateWidthValueLabel(GtkAdjustment* adj, gpointer data);
 void updateHeightValueLabel(GtkAdjustment* adj, gpointer data);
 cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename);
