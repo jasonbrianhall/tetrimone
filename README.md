@@ -194,3 +194,7 @@ Numbers have never been this exciting! Prepare for a Sudoku adventure that'll ma
 🔤 **Hangman Hijinks**: [Hangman](https://github.com/jasonbrianhall/hangman) - Word-guessing mayhem in your terminal! Prepare for linguistic warfare! 💬
 
 🃏 **Card Games Collection**: [Solitaire, FreeCell & Spider](https://github.com/jasonbrianhall/cardgames) - The most meticulously crafted card games with custom decks, animations, and more features than you can shuffle!
+
+## Easter Eggs
+
+If you read this far, their is an easter egg.  Press period.  Also, changes about and instructions.  Use Google translate.

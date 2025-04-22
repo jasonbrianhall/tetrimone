@@ -1509,8 +1509,6 @@ case GDK_KEY_period:
             
             // Play a special sound effect
             board->playSound(GameSoundEvent::Select);
-            
-            std::cout << "Retro mode ON" << std::endl;
         } else {
             // Restore previous theme
             currentThemeIndex = savedThemeIndex;
