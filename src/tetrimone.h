@@ -9,9 +9,12 @@
 #include <memory>
 #include "audiomanager.h"
 #include <SDL2/SDL.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
+#include <vector>
 #include "themes.h"
 #include "tetrimoneblock.h"
 #include "highscores.h"
+
 
 enum class GameSoundEvent {
   BackgroundMusic,
@@ -325,6 +328,8 @@ cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t
 
 void onGhostPieceToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onViewHighScores(GtkMenuItem* menuItem, gpointer userData);
+void setWindowIcon(GtkWindow* window);
+
 #endif // TETRIMONE_H
 
 

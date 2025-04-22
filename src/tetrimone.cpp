@@ -1625,6 +1625,8 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   tetrimoneApp->window = gtk_application_window_new(app);
   gtk_window_set_title(GTK_WINDOW(tetrimoneApp->window), "Tetrimone");
 
+  setWindowIcon(GTK_WINDOW(tetrimoneApp->window));
+
   g_signal_connect(G_OBJECT(tetrimoneApp->window), "delete-event",
                    G_CALLBACK(onDeleteEvent), tetrimoneApp);
 
