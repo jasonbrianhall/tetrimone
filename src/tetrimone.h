@@ -263,6 +263,9 @@ public:
 gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data);
 gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data);
 gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data);
+gboolean onKeyDownTick(gpointer userData);
+gboolean onKeyLeftTick(gpointer userData);
+gboolean onKeyRightTick(gpointer userData);
 gboolean onTimerTick(gpointer data);
 void updateLabels(TetrimoneApp* app);
 void startGame(TetrimoneApp* app);
@@ -301,7 +304,6 @@ void onJoystickMapApply(GtkButton* button, gpointer userData);
 void onJoystickMapReset(GtkButton* button, gpointer userData);
 void saveJoystickMapping(TetrimoneApp* app);
 void loadJoystickMapping(TetrimoneApp* app);
-
 void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData);
 void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onBackgroundOpacityDialog(GtkMenuItem* menuItem, gpointer userData);
