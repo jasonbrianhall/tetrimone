@@ -967,31 +967,37 @@ if (!board->isGameOver() && !board->isPaused() &&
   }
 }
 
-  if (!board->isGameOver() && !board->isPaused() &&
-      !board->isSplashScreenActive() && board->isGhostPieceEnabled()) {
+if (!board->isGameOver() && !board->isPaused() &&
+    !board->isSplashScreenActive() && board->isGhostPieceEnabled()) {
 
-    const TetrimoneBlock &piece = board->getCurrentPiece();
-    auto shape = piece.getShape();
-    auto color = piece.getColor();
-    int pieceX = piece.getX();
-    int ghostY = board->getGhostPieceY();
+  const TetrimoneBlock &piece = board->getCurrentPiece();
+  auto shape = piece.getShape();
+  auto color = piece.getColor();
+  int pieceX = piece.getX();
+  int ghostY = board->getGhostPieceY();
 
-    // Only draw ghost if it's in a different position than current piece
-    if (ghostY > piece.getY()) {
-      // Set semi-transparent color for ghost piece
-      cairo_set_source_rgba(cr, color[0], color[1], color[2], 0.3);
+  // Only draw ghost if it's in a different position than current piece
+  if (ghostY > piece.getY()) {
+    // Set semi-transparent color for ghost piece
+    cairo_set_source_rgba(cr, color[0], color[1], color[2], 0.3);
 
-      for (size_t y = 0; y < shape.size(); ++y) {
-        for (size_t x = 0; x < shape[y].size(); ++x) {
-          if (shape[y][x] == 1) {
-            int drawX = (pieceX + x) * BLOCK_SIZE;
-            int drawY = (ghostY + y) * BLOCK_SIZE;
+    for (size_t y = 0; y < shape.size(); ++y) {
+      for (size_t x = 0; x < shape[y].size(); ++x) {
+        if (shape[y][x] == 1) {
+          int drawX = (pieceX + x) * BLOCK_SIZE;
+          int drawY = (ghostY + y) * BLOCK_SIZE;
 
-            // Only draw if within the visible grid
-            if (drawY >= 0) {
+          // Only draw if within the visible grid
+          if (drawY >= 0) {
+            if (board->retroModeActive) {
+              // In retro mode, don't draw ghost pieces
+              //cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+              //cairo_stroke();
+            } else {
+              // Regular mode with 3D effects
               // Draw ghost block (just outline)
               cairo_rectangle(cr, drawX + 1, drawY + 1, BLOCK_SIZE - 2,
-                              BLOCK_SIZE - 2);
+                            BLOCK_SIZE - 2);
               cairo_stroke_preserve(cr);
               cairo_fill(cr);
             }
@@ -1000,7 +1006,7 @@ if (!board->isGameOver() && !board->isPaused() &&
       }
     }
   }
-
+}
   // Draw enhanced pause menu if paused
   if (board->isPaused() && !board->isGameOver()) {
     cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
@@ -1274,7 +1280,11 @@ gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
           if (shape[y][x] == 1) {
             int drawX = offsetX + x * previewBlockSize;
             int drawY = offsetY + y * previewBlockSize;
-
+     if (board->retroModeActive) {
+        // In retro mode, draw simple blocks without 3D effects
+        cairo_rectangle(cr, drawX, drawY, previewBlockSize, previewBlockSize);
+        cairo_fill(cr);
+      } else {
             // Draw block with a small margin
             cairo_rectangle(cr, drawX + 1, drawY + 1, previewBlockSize - 2,
                             previewBlockSize - 2);
@@ -1299,6 +1309,7 @@ gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
 
             // Reset color for next block
             cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+}
           }
         }
       }
