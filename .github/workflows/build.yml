@@ -8,6 +8,7 @@ on:
       - '**.h'
       - 'Makefile'
       - '**/Makefile'
+      - '**.yml'
   pull_request:
     branches: [ master ]
     paths:
@@ -15,7 +16,7 @@ on:
       - '**.h'
       - 'Makefile'
       - '**/Makefile'
-
+      - '**.yml'
   workflow_dispatch:
 
 jobs:
