@@ -126,7 +126,7 @@ struct TetrimoneApp {
     GtkWidget* insaneMenuItem;
     GtkWidget* trackMenuItems[5];
     GtkWidget* sequenceLabel;
-
+    GtkWidget* controlsLabel;
     int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard, 0 = Zen, 4 = Extreme
 
     SDL_Joystick* joystick;

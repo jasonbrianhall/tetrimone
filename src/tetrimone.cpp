@@ -1530,6 +1530,32 @@ case GDK_KEY_period:
             std::cout << "Retro mode OFF" << std::endl;
         }
         
+        // Update controls text
+        gtk_label_set_text(GTK_LABEL(app->controlsLabel), 
+            board->retroModeActive ? 
+            "Управление клавиатурой:\n"
+            "• Влево/Вправо/A/D: Перемещение блока\n"
+            "• Вверх/W: Поворот по часовой стрелке\n"
+            "• Z: Поворот против часовой стрелки\n"
+            "• Вниз/S: Мягкое падение\n"
+            "• Пробел: Быстрое падение\n"
+            "• P: Пауза/Продолжение игры\n"
+            "• R: Перезапуск игры\n"
+            "• M: Переключение музыки\n\n"
+            "Поддержка контроллера доступна.\n"
+            "Настройка в меню Управление." :
+            "Keyboard Controls:\n"
+            "• Left/Right/A/D: Move block\n"
+            "• Up/W: Rotate clockwise\n"
+            "• Z: Rotate counter-clockwise\n"
+            "• Down/S: Soft drop\n"
+            "• Space: Hard drop\n"
+            "• P: Pause/Resume game\n"
+            "• R: Restart game\n"
+            "• M: Toggle music\n\n"
+            "Controller support is available.\n"
+            "Configure in Controls menu.");
+        
         // Redraw game area to show theme change
         gtk_widget_queue_draw(app->gameArea);
         gtk_widget_queue_draw(app->nextPieceArea);
@@ -1824,7 +1850,7 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   gtk_widget_set_halign(controlsLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(sideBox), controlsLabel, FALSE, FALSE, 10);
 
-  GtkWidget *controls = gtk_label_new("Keyboard Controls:\n"
+  /*GtkWidget *controls = gtk_label_new("Keyboard Controls:\n"
                                       "• Left/Right/A/D: Move block\n"
                                       "• Up/W: Rotate clockwise\n"
                                       "• Z: Rotate counter-clockwise\n"
@@ -1834,10 +1860,36 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
                                       "• R: Restart game\n"
                                       "• M: Toggle music\n\n"
                                       "Controller support is available.\n"
-                                      "Configure in Controls menu.");
+                                      "Configure in Controls menu."); */
 
-  gtk_widget_set_halign(controls, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(sideBox), controls, FALSE, FALSE, 0);
+
+  tetrimoneApp->controlsLabel = gtk_label_new(
+    tetrimoneApp->board->retroModeActive ? 
+    "Управление клавиатурой:\n"
+    "• Влево/Вправо/A/D: Перемещение блока\n"
+    "• Вверх/W: Поворот по часовой стрелке\n"
+    "• Z: Поворот против часовой стрелки\n"
+    "• Вниз/S: Мягкое падение\n"
+    "• Пробел: Быстрое падение\n"
+    "• P: Пауза/Продолжение игры\n"
+    "• R: Перезапуск игры\n"
+    "• M: Переключение музыки\n\n"
+    "Поддержка контроллера доступна.\n"
+    "Настройка в меню Управление." :
+    "Keyboard Controls:\n"
+    "• Left/Right/A/D: Move block\n"
+    "• Up/W: Rotate clockwise\n"
+    "• Z: Rotate counter-clockwise\n"
+    "• Down/S: Soft drop\n"
+    "• Space: Hard drop\n"
+    "• P: Pause/Resume game\n"
+    "• R: Restart game\n"
+    "• M: Toggle music\n\n"
+    "Controller support is available.\n"
+    "Configure in Controls menu.");
+
+  gtk_widget_set_halign(tetrimoneApp->controlsLabel, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(sideBox), tetrimoneApp->controlsLabel, FALSE, FALSE, 0);
 
   // Set up key press events
   gtk_widget_add_events(tetrimoneApp->window, GDK_KEY_PRESS_MASK | GDK_KEY_RELEASE_MASK);
