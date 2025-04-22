@@ -126,7 +126,7 @@ struct TetrimoneApp {
     GtkWidget* insaneMenuItem;
     GtkWidget* trackMenuItems[5];
     GtkWidget* sequenceLabel;
-
+    GtkWidget* controlsLabel;
     int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard, 0 = Zen, 4 = Extreme
 
     SDL_Joystick* joystick;
@@ -158,8 +158,10 @@ private:
     int lastClearCount;
     bool sequenceActive;
     Highscores highScores;
+
     
 public:
+    bool retroModeActive = false;  // Flag for retro mode
     bool showGridLines = false; // Grid lines off by default
     bool isShowingGridLines() const { return showGridLines; }
     void setShowGridLines(bool show) { showGridLines = show; }

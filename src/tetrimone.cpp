@@ -428,17 +428,21 @@ int TetrimoneBoard::clearLines() {
     sequenceActive = false;
   }
 
-  if (level > currentlevel) {
+if (level > currentlevel) {
     playSound(GameSoundEvent::LevelUp);
-    // Every Level, change theme; wrap around at 20
-    currentThemeIndex = (currentThemeIndex + 1) % NUM_COLOR_THEMES;
+    
+    // Only change theme if retro mode is not enabled
+    if (!retroModeActive) {
+        // Every Level, change theme; wrap around except for retro theme
+        currentThemeIndex = (currentThemeIndex + 1) % NUM_COLOR_THEMES-1;
 
-    // Add this section to change background on level up
-    if (useBackgroundZip && !backgroundImages.empty()) {
-      // Change to a random background on level up if using background zip
-      startBackgroundTransition();
+        // Add this section to change background on level up
+        if (useBackgroundZip && !backgroundImages.empty()) {
+            // Change to a random background on level up if using background zip
+            startBackgroundTransition();
+        }
     }
-  }
+}
 
   return linesCleared;
 }
@@ -451,43 +455,51 @@ void TetrimoneBoard::generateNewPiece() {
       // Use the existing piece generation logic to create each piece
       std::vector<int> validPieces;
 
-      switch (minBlockSize) {
-      case 1: // All pieces
-        for (int j = 0; j < 14; ++j) {
-          validPieces.push_back(j);
-        }
-        break;
-      case 2: // Triomones and Tetrimones
-        for (int j = 0; j <= 10; ++j) {
-          validPieces.push_back(j);
-        }
-        break;
-      case 3: // Tetrimones only
+      // When in retro mode, only allow standard tetrominos (types 0-6)
+      if (retroModeActive) {
         for (int j = 0; j <= 6; ++j) {
           validPieces.push_back(j);
         }
-        break;
-      case 4: // Tetrimones only, but ensure at least 4 blocks
-        for (int j = 0; j <= 6; ++j) {
-          int blockCount = 0;
-          for (const auto &row : TETRIMONEBLOCK_SHAPES[j][0]) {
-            for (int cell : row) {
-              if (cell == 1)
-                blockCount++;
-            }
-          }
-          // Only add if block count is exactly 4
-          if (blockCount == 4) {
+      } else {
+        // Otherwise use the regular minBlockSize rules
+        switch (minBlockSize) {
+        case 1: // All pieces
+          for (int j = 0; j < 14; ++j) {
             validPieces.push_back(j);
           }
+          break;
+        case 2: // Triomones and Tetromones
+          for (int j = 0; j <= 10; ++j) {
+            validPieces.push_back(j);
+          }
+          break;
+        case 3: // Tetromones only
+          for (int j = 0; j <= 6; ++j) {
+            validPieces.push_back(j);
+          }
+          break;
+        case 4: // Tetromones only, but ensure at least 4 blocks
+          for (int j = 0; j <= 6; ++j) {
+            int blockCount = 0;
+            for (const auto &row : TETRIMONEBLOCK_SHAPES[j][0]) {
+              for (int cell : row) {
+                if (cell == 1)
+                  blockCount++;
+              }
+            }
+            // Only add if block count is exactly 4
+            if (blockCount == 4) {
+              validPieces.push_back(j);
+            }
+          }
+          break;
+        default:
+          // Fallback to standard tetrimones
+          for (int j = 0; j <= 6; ++j) {
+            validPieces.push_back(j);
+          }
+          break;
         }
-        break;
-      default:
-        // Fallback to standard tetrimones
-        for (int j = 0; j <= 6; ++j) {
-          validPieces.push_back(j);
-        }
-        break;
       }
 
       // If no valid pieces found, fallback to standard Tetrimones
@@ -519,46 +531,54 @@ void TetrimoneBoard::generateNewPiece() {
     // Generate a new piece for the last position
     std::vector<int> validPieces;
 
-    switch (minBlockSize) {
-    case 1: // All pieces
-      for (int i = 0; i < 14; ++i) {
-        validPieces.push_back(i);
+    // When in retro mode, only allow standard tetrominos (types 0-6)
+    if (retroModeActive) {
+      for (int j = 0; j <= 6; ++j) {
+        validPieces.push_back(j);
       }
-      break;
-    case 2: // Triomones and Tetrimones
-      for (int i = 0; i <= 10; ++i) {
-        validPieces.push_back(i);
-      }
-      break;
-    case 3: // Tetrimones only
-      for (int i = 0; i <= 6; ++i) {
-        validPieces.push_back(i);
-      }
-      break;
-    case 4: // Tetrimones only, but ensure at least 4 blocks
-      for (int i = 0; i <= 6; ++i) {
-        int blockCount = 0;
-        for (const auto &row : TETRIMONEBLOCK_SHAPES[i][0]) {
-          for (int cell : row) {
-            if (cell == 1)
-              blockCount++;
-          }
-        }
-        // Only add if block count is exactly 4
-        if (blockCount == 4) {
+    } else {
+      // Otherwise use the regular minBlockSize rules
+      switch (minBlockSize) {
+      case 1: // All pieces
+        for (int i = 0; i < 14; ++i) {
           validPieces.push_back(i);
         }
+        break;
+      case 2: // Triomones and Tetromones
+        for (int i = 0; i <= 10; ++i) {
+          validPieces.push_back(i);
+        }
+        break;
+      case 3: // Tetromones only
+        for (int i = 0; i <= 6; ++i) {
+          validPieces.push_back(i);
+        }
+        break;
+      case 4: // Tetromones only, but ensure at least 4 blocks
+        for (int i = 0; i <= 6; ++i) {
+          int blockCount = 0;
+          for (const auto &row : TETRIMONEBLOCK_SHAPES[i][0]) {
+            for (int cell : row) {
+              if (cell == 1)
+                blockCount++;
+            }
+          }
+          // Only add if block count is exactly 4
+          if (blockCount == 4) {
+            validPieces.push_back(i);
+          }
+        }
+        break;
+      default:
+        // Fallback to standard tetromones
+        for (int i = 0; i <= 6; ++i) {
+          validPieces.push_back(i);
+        }
+        break;
       }
-      break;
-    default:
-      // Fallback to standard tetrimones
-      for (int i = 0; i <= 6; ++i) {
-        validPieces.push_back(i);
-      }
-      break;
     }
 
-    // If no valid pieces found, fallback to standard Tetrimones
+    // If no valid pieces found, fallback to standard Tetromones
     if (validPieces.empty()) {
       for (int i = 0; i <= 6; ++i) {
         validPieces.push_back(i);
@@ -786,16 +806,21 @@ if (board->isShowingGridLines()) {
   cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, failureLineY * BLOCK_SIZE);
   cairo_stroke(cr);
 
-  // Draw placed blocks
-  for (int y = 0; y < GRID_HEIGHT; ++y) {
-    for (int x = 0; x < GRID_WIDTH; ++x) {
-      int value = board->getGridValue(x, y);
-      if (value > 0) {
-        // Get color from tetrimoneblock colors (value-1 because grid values are
-        // 1-based)
-        auto color = TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
-        cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+// Draw placed blocks
+for (int y = 0; y < GRID_HEIGHT; ++y) {
+  for (int x = 0; x < GRID_WIDTH; ++x) {
+    int value = board->getGridValue(x, y);
+    if (value > 0) {
+      // Get color from tetrimoneblock colors (value-1 because grid values are 1-based)
+      auto color = TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
+      cairo_set_source_rgb(cr, color[0], color[1], color[2]);
 
+      if (board->retroModeActive) {
+        // In retro mode, draw simple blocks without 3D effects
+        cairo_rectangle(cr, x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+        cairo_fill(cr);
+      } else {
+        // Regular mode with 3D effects
         // Draw block with a small margin
         cairo_rectangle(cr, x * BLOCK_SIZE + 1, y * BLOCK_SIZE + 1,
                         BLOCK_SIZE - 2, BLOCK_SIZE - 2);
@@ -820,9 +845,10 @@ if (board->isShowingGridLines()) {
       }
     }
   }
+}
 
   // Draw splash screen if active
-  if (board->isSplashScreenActive()) {
+ if (board->isSplashScreenActive()) {
     // Semi-transparent overlay
     cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
     cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
@@ -837,7 +863,8 @@ if (board->isShowingGridLines()) {
 
     // Center the title
     cairo_text_extents_t extents;
-    const char *title = "TETRIMONE";
+    const char *title = board->retroModeActive ? 
+        "БЛОЧНАЯ РЕВОЛЮЦИЯ" : "TETRIMONE";
     cairo_text_extents(cr, title, &extents);
 
     double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
@@ -877,7 +904,8 @@ if (board->isShowingGridLines()) {
 
     // Draw press space message
     cairo_set_font_size(cr, 20 * BLOCK_SIZE / 47);
-    const char *startText = "Press SPACE to Start";
+    const char *startText = board->retroModeActive ? 
+        "Нажмите ПРОБЕЛ для начала" : "Press SPACE to Start";
     cairo_text_extents(cr, startText, &extents);
 
     x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
@@ -889,7 +917,9 @@ if (board->isShowingGridLines()) {
     // Draw joystick message if enabled
     if (app->joystickEnabled) {
       cairo_set_font_size(cr, 16 * BLOCK_SIZE / 47);
-      const char *joystickText = "or Press START on Controller";
+      const char *joystickText = board->retroModeActive ? 
+          "или Нажмите СТАРТ на контроллере" : 
+          "or Press START on Controller";
       cairo_text_extents(cr, joystickText, &extents);
 
       x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
@@ -903,24 +933,30 @@ if (board->isShowingGridLines()) {
   }
 
   // Draw current piece if game is active
-  if (!board->isGameOver() && !board->isPaused() &&
-      !board->isSplashScreenActive()) {
-    const TetrimoneBlock &piece = board->getCurrentPiece();
-    auto shape = piece.getShape();
-    auto color = piece.getColor();
-    int pieceX = piece.getX();
-    int pieceY = piece.getY();
+if (!board->isGameOver() && !board->isPaused() &&
+    !board->isSplashScreenActive()) {
+  const TetrimoneBlock &piece = board->getCurrentPiece();
+  auto shape = piece.getShape();
+  auto color = piece.getColor();
+  int pieceX = piece.getX();
+  int pieceY = piece.getY();
 
-    cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+  cairo_set_source_rgb(cr, color[0], color[1], color[2]);
 
-    for (size_t y = 0; y < shape.size(); ++y) {
-      for (size_t x = 0; x < shape[y].size(); ++x) {
-        if (shape[y][x] == 1) {
-          int drawX = (pieceX + x) * BLOCK_SIZE;
-          int drawY = (pieceY + y) * BLOCK_SIZE;
+  for (size_t y = 0; y < shape.size(); ++y) {
+    for (size_t x = 0; x < shape[y].size(); ++x) {
+      if (shape[y][x] == 1) {
+        int drawX = (pieceX + x) * BLOCK_SIZE;
+        int drawY = (pieceY + y) * BLOCK_SIZE;
 
-          // Only draw if within the visible grid
-          if (drawY >= 0) {
+        // Only draw if within the visible grid
+        if (drawY >= 0) {
+          if (board->retroModeActive) {
+            // In retro mode, draw simple blocks without 3D effects
+            cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+            cairo_fill(cr);
+          } else {
+            // Regular mode with 3D effects
             // Draw block with a small margin
             cairo_rectangle(cr, drawX + 1, drawY + 1, BLOCK_SIZE - 2,
                             BLOCK_SIZE - 2);
@@ -949,32 +985,39 @@ if (board->isShowingGridLines()) {
       }
     }
   }
+}
 
-  if (!board->isGameOver() && !board->isPaused() &&
-      !board->isSplashScreenActive() && board->isGhostPieceEnabled()) {
+if (!board->isGameOver() && !board->isPaused() &&
+    !board->isSplashScreenActive() && board->isGhostPieceEnabled()) {
 
-    const TetrimoneBlock &piece = board->getCurrentPiece();
-    auto shape = piece.getShape();
-    auto color = piece.getColor();
-    int pieceX = piece.getX();
-    int ghostY = board->getGhostPieceY();
+  const TetrimoneBlock &piece = board->getCurrentPiece();
+  auto shape = piece.getShape();
+  auto color = piece.getColor();
+  int pieceX = piece.getX();
+  int ghostY = board->getGhostPieceY();
 
-    // Only draw ghost if it's in a different position than current piece
-    if (ghostY > piece.getY()) {
-      // Set semi-transparent color for ghost piece
-      cairo_set_source_rgba(cr, color[0], color[1], color[2], 0.3);
+  // Only draw ghost if it's in a different position than current piece
+  if (ghostY > piece.getY()) {
+    // Set semi-transparent color for ghost piece
+    cairo_set_source_rgba(cr, color[0], color[1], color[2], 0.3);
 
-      for (size_t y = 0; y < shape.size(); ++y) {
-        for (size_t x = 0; x < shape[y].size(); ++x) {
-          if (shape[y][x] == 1) {
-            int drawX = (pieceX + x) * BLOCK_SIZE;
-            int drawY = (ghostY + y) * BLOCK_SIZE;
+    for (size_t y = 0; y < shape.size(); ++y) {
+      for (size_t x = 0; x < shape[y].size(); ++x) {
+        if (shape[y][x] == 1) {
+          int drawX = (pieceX + x) * BLOCK_SIZE;
+          int drawY = (ghostY + y) * BLOCK_SIZE;
 
-            // Only draw if within the visible grid
-            if (drawY >= 0) {
+          // Only draw if within the visible grid
+          if (drawY >= 0) {
+            if (board->retroModeActive) {
+              // In retro mode, don't draw ghost pieces
+              //cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+              //cairo_stroke();
+            } else {
+              // Regular mode with 3D effects
               // Draw ghost block (just outline)
               cairo_rectangle(cr, drawX + 1, drawY + 1, BLOCK_SIZE - 2,
-                              BLOCK_SIZE - 2);
+                            BLOCK_SIZE - 2);
               cairo_stroke_preserve(cr);
               cairo_fill(cr);
             }
@@ -983,7 +1026,7 @@ if (board->isShowingGridLines()) {
       }
     }
   }
-
+}
   // Draw enhanced pause menu if paused
   if (board->isPaused() && !board->isGameOver()) {
     cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
@@ -1257,7 +1300,11 @@ gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
           if (shape[y][x] == 1) {
             int drawX = offsetX + x * previewBlockSize;
             int drawY = offsetY + y * previewBlockSize;
-
+     if (board->retroModeActive) {
+        // In retro mode, draw simple blocks without 3D effects
+        cairo_rectangle(cr, drawX, drawY, previewBlockSize, previewBlockSize);
+        cairo_fill(cr);
+      } else {
             // Draw block with a small margin
             cairo_rectangle(cr, drawX + 1, drawY + 1, previewBlockSize - 2,
                             previewBlockSize - 2);
@@ -1282,6 +1329,7 @@ gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
 
             // Reset color for next block
             cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+}
           }
         }
       }
@@ -1328,6 +1376,7 @@ gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
           }
         }
         break;
+
 
       case GDK_KEY_Right:
       case GDK_KEY_d:
@@ -1428,6 +1477,88 @@ gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
         onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
       }
       break;
+
+case GDK_KEY_period:
+    // Toggle retro mode with just the period key
+    {
+        // Save the current theme index when entering retro mode
+        static int savedThemeIndex = 0;
+        
+        // Toggle the retro mode flag
+        board->retroModeActive = !board->retroModeActive;
+        
+        if (board->retroModeActive) {
+            // Store current theme before switching to retro mode
+            savedThemeIndex = currentThemeIndex;
+            
+            // Set to Soviet Retro theme (last theme in the list)
+            currentThemeIndex = NUM_COLOR_THEMES - 1;
+            
+            // Disable background image
+            if (board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) {
+                board->setUseBackgroundImage(false);
+                board->setUseBackgroundZip(false);
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), FALSE);
+            }
+            
+            // Disable music
+            if (app->backgroundMusicPlaying) {
+                board->pauseBackgroundMusic();
+                app->backgroundMusicPlaying = false;
+            }
+            
+            // Play a special sound effect
+            board->playSound(GameSoundEvent::Select);
+        } else {
+            // Restore previous theme
+            currentThemeIndex = savedThemeIndex;
+            
+            // Re-enable background if it was enabled before
+            if (board->getBackgroundImage() != nullptr) {
+                board->setUseBackgroundImage(true);
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+            }
+            
+            // Re-enable music if sound is enabled
+            if (!app->backgroundMusicPlaying && board->sound_enabled_) {
+                board->resumeBackgroundMusic();
+                app->backgroundMusicPlaying = true;
+            }
+            
+            std::cout << "Retro mode OFF" << std::endl;
+        }
+        
+        // Update controls text
+        gtk_label_set_text(GTK_LABEL(app->controlsLabel), 
+            board->retroModeActive ? 
+            "Управление клавиатурой:\n"
+            "• Влево/Вправо/A/D: Перемещение блока\n"
+            "• Вверх/W: Поворот по часовой стрелке\n"
+            "• Z: Поворот против часовой стрелки\n"
+            "• Вниз/S: Мягкое падение\n"
+            "• Пробел: Быстрое падение\n"
+            "• P: Пауза/Продолжение игры\n"
+            "• R: Перезапуск игры\n"
+            "• M: Переключение музыки\n\n"
+            "Поддержка контроллера доступна.\n"
+            "Настройка в меню Управление." :
+            "Keyboard Controls:\n"
+            "• Left/Right/A/D: Move block\n"
+            "• Up/W: Rotate clockwise\n"
+            "• Z: Rotate counter-clockwise\n"
+            "• Down/S: Soft drop\n"
+            "• Space: Hard drop\n"
+            "• P: Pause/Resume game\n"
+            "• R: Restart game\n"
+            "• M: Toggle music\n\n"
+            "Controller support is available.\n"
+            "Configure in Controls menu.");
+        
+        // Redraw game area to show theme change
+        gtk_widget_queue_draw(app->gameArea);
+        gtk_widget_queue_draw(app->nextPieceArea);
+    }
+    break;
 
     default:
       // Don't return FALSE here as it prevents redrawing
@@ -1717,7 +1848,7 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   gtk_widget_set_halign(controlsLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(sideBox), controlsLabel, FALSE, FALSE, 10);
 
-  GtkWidget *controls = gtk_label_new("Keyboard Controls:\n"
+  /*GtkWidget *controls = gtk_label_new("Keyboard Controls:\n"
                                       "• Left/Right/A/D: Move block\n"
                                       "• Up/W: Rotate clockwise\n"
                                       "• Z: Rotate counter-clockwise\n"
@@ -1727,10 +1858,36 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
                                       "• R: Restart game\n"
                                       "• M: Toggle music\n\n"
                                       "Controller support is available.\n"
-                                      "Configure in Controls menu.");
+                                      "Configure in Controls menu."); */
 
-  gtk_widget_set_halign(controls, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(sideBox), controls, FALSE, FALSE, 0);
+
+  tetrimoneApp->controlsLabel = gtk_label_new(
+    tetrimoneApp->board->retroModeActive ? 
+    "Управление клавиатурой:\n"
+    "• Влево/Вправо/A/D: Перемещение блока\n"
+    "• Вверх/W: Поворот по часовой стрелке\n"
+    "• Z: Поворот против часовой стрелки\n"
+    "• Вниз/S: Мягкое падение\n"
+    "• Пробел: Быстрое падение\n"
+    "• P: Пауза/Продолжение игры\n"
+    "• R: Перезапуск игры\n"
+    "• M: Переключение музыки\n\n"
+    "Поддержка контроллера доступна.\n"
+    "Настройка в меню Управление." :
+    "Keyboard Controls:\n"
+    "• Left/Right/A/D: Move block\n"
+    "• Up/W: Rotate clockwise\n"
+    "• Z: Rotate counter-clockwise\n"
+    "• Down/S: Soft drop\n"
+    "• Space: Hard drop\n"
+    "• P: Pause/Resume game\n"
+    "• R: Restart game\n"
+    "• M: Toggle music\n\n"
+    "Controller support is available.\n"
+    "Configure in Controls menu.");
+
+  gtk_widget_set_halign(tetrimoneApp->controlsLabel, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(sideBox), tetrimoneApp->controlsLabel, FALSE, FALSE, 0);
 
   // Set up key press events
   gtk_widget_add_events(tetrimoneApp->window, GDK_KEY_PRESS_MASK | GDK_KEY_RELEASE_MASK);
@@ -2578,161 +2735,364 @@ void adjustDropSpeed(TetrimoneApp *app) {
 void onAboutDialog(GtkMenuItem *menuItem, gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
 
-  // Create a custom dialog
-  GtkWidget *dialog = gtk_dialog_new_with_buttons(
-      "About GTK Tetrimone", GTK_WINDOW(app->window), GTK_DIALOG_MODAL, "_OK",
-      GTK_RESPONSE_OK, NULL);
+  // Check if in retro mode
+  if (app->board->retroModeActive) {
+    // Create a custom Soviet-style dialog
+    GtkWidget *dialog = gtk_dialog_new_with_buttons(
+        "Государственное Сообщение: Система Управления Блоками", 
+        GTK_WINDOW(app->window), 
+        GTK_DIALOG_MODAL, 
+        "_Понял!", 
+        GTK_RESPONSE_OK, 
+        NULL);
 
-  // Get the content area
-  GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-  gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
+    // Get the content area
+    GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
 
-  // Create a vertical box for layout
-  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-  gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    // Create a vertical box for layout
+    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
 
-  // Add an image (optional)
-  GtkWidget *image =
-      gtk_image_new_from_icon_name("applications-games", GTK_ICON_SIZE_DIALOG);
-  gtk_box_pack_start(GTK_BOX(vbox), image, FALSE, FALSE, 0);
+    // Add program name
+    GtkWidget *nameLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(
+        GTK_LABEL(nameLabel),
+        "<span size='x-large' weight='bold'>БЛОЧНАЯ РЕВОЛЮЦИЯ</span>\n"
+        "<span size='small'>(Block Revolution)</span>");
+    gtk_box_pack_start(GTK_BOX(vbox), nameLabel, FALSE, FALSE, 5);
 
-  // Add program name
-  GtkWidget *nameLabel = gtk_label_new(NULL);
-  gtk_label_set_markup(
-      GTK_LABEL(nameLabel),
-      "<span size='x-large' weight='bold'>GTK Tetrimone</span>");
-  gtk_box_pack_start(GTK_BOX(vbox), nameLabel, FALSE, FALSE, 5);
+    // Add version (in classic Soviet style)
+    GtkWidget *versionLabel = gtk_label_new("Официальный Выпуск: Производственный Цикл 1.0");
+    gtk_box_pack_start(GTK_BOX(vbox), versionLabel, FALSE, FALSE, 0);
 
-  // Add version
-  GtkWidget *versionLabel = gtk_label_new("Version 1.0");
-  gtk_box_pack_start(GTK_BOX(vbox), versionLabel, FALSE, FALSE, 0);
+    // Add description with humorous Russian flair
+    GtkWidget *descLabel = gtk_label_new(
+        "Передовая Система Геометрической Оптимизации\n"
+        "(Advanced Geometric Optimization System)\n\n"
+        "★ Одобрено Центральным Комитетом Блочного Позиционирования ★\n"
+        "(Approved by the Central Block Positioning Committee)\n\n"
+        "Где нет блоков - там нет прогресса!\n"
+        "(Where there are no blocks, there is no progress!)");
+    gtk_box_pack_start(GTK_BOX(vbox), descLabel, FALSE, FALSE, 10);
 
-  // Add description
-  GtkWidget *descLabel = gtk_label_new(
-      "A feature-rich falling block puzzle game with advanced graphics,\n"
-      "multiple difficulty levels, theme progression, and comprehensive\n"
-      "control options including joystick support.");
-  gtk_box_pack_start(GTK_BOX(vbox), descLabel, FALSE, FALSE, 10);
+    // Humorous Soviet-style achievements
+    GtkWidget *achievementsLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(
+        GTK_LABEL(achievementsLabel),
+        "<span weight='bold'>ДОСТИЖЕНИЯ ГОСУДАРСТВЕННОЙ ВАЖНОСТИ:</span>\n"
+        "• Максимальная эффективность падения блоков\n"
+        "• Абсолютная точность геометрической трансформации\n"
+        "• Непрерывность производственного процесса\n\n"
+        "<i>Каждый падающий блок - удар по капиталистическому хаосу!</i>");
+    gtk_box_pack_start(GTK_BOX(vbox), achievementsLabel, FALSE, FALSE, 5);
 
-  // Add license info
-  GtkWidget *licenseLabel =
-      gtk_label_new("This software is released under the MIT License.");
-  gtk_box_pack_start(GTK_BOX(vbox), licenseLabel, FALSE, FALSE, 5);
+    // Add license info with Soviet humor
+    GtkWidget *licenseLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(
+        GTK_LABEL(licenseLabel),
+        "Распространяется по протоколам Коллективного Программного Обеспечения\n"
+        "<i>(Distributed under Collective Software Protocols)</i>");
+    gtk_box_pack_start(GTK_BOX(vbox), licenseLabel, FALSE, FALSE, 5);
 
-  // Add acknowledgment heading
-  GtkWidget *ackHeadingLabel = gtk_label_new(NULL);
-  gtk_label_set_markup(GTK_LABEL(ackHeadingLabel),
+    // Add website button (in Soviet style)
+    GtkWidget *websiteButton = gtk_link_button_new_with_label(
+        "https://block-revolution.moscow.soviet", 
+        "Государственный Информационный Портал\n(State Information Portal)");
+    gtk_box_pack_start(GTK_BOX(vbox), websiteButton, FALSE, FALSE, 10);
+
+    // Add copyright with Russian twist
+    GtkWidget *copyrightLabel = gtk_label_new(
+        "© Государственное Бюро Управления Блоками, Московское Отделение\n"
+        "(State Block Management Bureau, Moscow Division)");
+    gtk_box_pack_start(GTK_BOX(vbox), copyrightLabel, FALSE, FALSE, 5);
+
+    // Add no warranty disclaimer (Soviet style)
+    GtkWidget *disclaimerLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(
+        GTK_LABEL(disclaimerLabel),
+        "<span color='red'>ВНИМАНИЕ:</span> Производительность гарантирована\n"
+        "высшим государственным авторитетом!\n"
+        "<i>(Performance Guaranteed by Highest State Authority!)</i>\n\n"
+        "Неудача - это всего лишь временное искажение\n"
+        "коллективного потенциала!\n"
+        "<i>(Failure is merely a temporary misalignment\n"
+        "of collective potential!)</i>");
+    gtk_box_pack_start(GTK_BOX(vbox), disclaimerLabel, FALSE, FALSE, 0);
+
+    // Show all content
+    gtk_widget_show_all(dialog);
+
+    // Run the dialog
+    gtk_dialog_run(GTK_DIALOG(dialog));
+
+    // Destroy the dialog when closed
+    gtk_widget_destroy(dialog);
+  } else {
+    // Original about dialog code
+    GtkWidget *dialog = gtk_dialog_new_with_buttons(
+        "About GTK Tetrimone", GTK_WINDOW(app->window), GTK_DIALOG_MODAL, "_OK",
+        GTK_RESPONSE_OK, NULL);
+
+    // Get the content area
+    GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
+
+    // Create a vertical box for layout
+    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+
+    // Add an image (optional)
+    GtkWidget *image =
+        gtk_image_new_from_icon_name("applications-games", GTK_ICON_SIZE_DIALOG);
+    gtk_box_pack_start(GTK_BOX(vbox), image, FALSE, FALSE, 0);
+
+    // Add program name
+    GtkWidget *nameLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(
+        GTK_LABEL(nameLabel),
+        "<span size='x-large' weight='bold'>GTK Tetrimone</span>");
+    gtk_box_pack_start(GTK_BOX(vbox), nameLabel, FALSE, FALSE, 5);
+
+    // Add version
+    GtkWidget *versionLabel = gtk_label_new("Version 1.0");
+    gtk_box_pack_start(GTK_BOX(vbox), versionLabel, FALSE, FALSE, 0);
+
+    // Add description
+    GtkWidget *descLabel = gtk_label_new(
+        "A feature-rich falling block puzzle game with advanced graphics,\n"
+        "multiple difficulty levels, theme progression, and comprehensive\n"
+        "control options including joystick support.");
+    gtk_box_pack_start(GTK_BOX(vbox), descLabel, FALSE, FALSE, 10);
+
+    // Add license info
+    GtkWidget *licenseLabel =
+        gtk_label_new("This software is released under the MIT License.");
+    gtk_box_pack_start(GTK_BOX(vbox), licenseLabel, FALSE, FALSE, 5);
+
+    // Add acknowledgment heading
+    GtkWidget *ackHeadingLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(ackHeadingLabel),
                        "<span weight='bold'>Acknowledgments:</span>");
-  gtk_widget_set_halign(ackHeadingLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(vbox), ackHeadingLabel, FALSE, FALSE, 5);
+    gtk_widget_set_halign(ackHeadingLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(vbox), ackHeadingLabel, FALSE, FALSE, 5);
 
-  // Add acknowledgment text
-  GtkWidget *ackLabel =
-      gtk_label_new("This game is inspired by classic falling block puzzle "
+    // Add acknowledgment text
+    GtkWidget *ackLabel =
+        gtk_label_new("This game is inspired by classic falling block puzzle "
                     "games that originated in the 1980s.\n"
                     "Tetrimone is an independent creation and is not "
                     "affiliated with, endorsed by,\n"
                     "or connected to any commercial puzzle game publishers.");
-  gtk_box_pack_start(GTK_BOX(vbox), ackLabel, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), ackLabel, FALSE, FALSE, 0);
 
-  // Add website button
-  GtkWidget *websiteButton = gtk_link_button_new_with_label(
-      "https://github.com/jasonbrianhall/tetrimone", "Website");
-  gtk_box_pack_start(GTK_BOX(vbox), websiteButton, FALSE, FALSE, 10);
+    // Add website button
+    GtkWidget *websiteButton = gtk_link_button_new_with_label(
+        "https://github.com/jasonbrianhall/tetrimone", "Website");
+    gtk_box_pack_start(GTK_BOX(vbox), websiteButton, FALSE, FALSE, 10);
 
-  // Add copyright
-  GtkWidget *copyrightLabel = gtk_label_new("© 2025 Jason Brian Hall");
-  gtk_box_pack_start(GTK_BOX(vbox), copyrightLabel, FALSE, FALSE, 5);
+    // Add copyright
+    GtkWidget *copyrightLabel = gtk_label_new("© 2025 Jason Brian Hall");
+    gtk_box_pack_start(GTK_BOX(vbox), copyrightLabel, FALSE, FALSE, 5);
 
-  // Add no warranty disclaimer
-  GtkWidget *disclaimerLabel =
-      gtk_label_new("This program comes with absolutely no warranty.");
-  gtk_box_pack_start(GTK_BOX(vbox), disclaimerLabel, FALSE, FALSE, 0);
+    // Add no warranty disclaimer
+    GtkWidget *disclaimerLabel =
+        gtk_label_new("This program comes with absolutely no warranty.");
+    gtk_box_pack_start(GTK_BOX(vbox), disclaimerLabel, FALSE, FALSE, 0);
 
-  GtkWidget *licenseInfoLabel = gtk_label_new(NULL);
-  gtk_label_set_markup(
-      GTK_LABEL(licenseInfoLabel),
-      "See the <a href='https://opensource.org/licenses/MIT'>MIT License</a> "
-      "for details.");
-  gtk_box_pack_start(GTK_BOX(vbox), licenseInfoLabel, FALSE, FALSE, 0);
+    GtkWidget *licenseInfoLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(
+        GTK_LABEL(licenseInfoLabel),
+        "See the <a href='https://opensource.org/licenses/MIT'>MIT License</a> "
+        "for details.");
+    gtk_box_pack_start(GTK_BOX(vbox), licenseInfoLabel, FALSE, FALSE, 0);
 
-  // Show all content
-  gtk_widget_show_all(dialog);
+    // Show all content
+    gtk_widget_show_all(dialog);
 
-  // Run the dialog
-  gtk_dialog_run(GTK_DIALOG(dialog));
+    // Run the dialog
+    gtk_dialog_run(GTK_DIALOG(dialog));
 
-  // Destroy the dialog when closed
-  gtk_widget_destroy(dialog);
+    // Destroy the dialog when closed
+    gtk_widget_destroy(dialog);
+  }
 }
 
 void onInstructionsDialog(GtkMenuItem *menuItem, gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
 
-  // Create dialog
-  GtkWidget *dialog = gtk_dialog_new_with_buttons(
-      "Instructions", GTK_WINDOW(app->window), GTK_DIALOG_MODAL, "_OK",
-      GTK_RESPONSE_OK, NULL);
+  // Check if in retro mode
+  if (app->board->retroModeActive) {
+    // Create dialog with Soviet-style propaganda messaging
+    GtkWidget *dialog = gtk_dialog_new_with_buttons(
+        "ИНСТРУКЦИЯ ПО ПАДАЮЩИМ БЛОКАМ", 
+        GTK_WINDOW(app->window), 
+        GTK_DIALOG_MODAL, 
+        "_Понял! (Understood!)", 
+        GTK_RESPONSE_OK, 
+        NULL);
 
-  // Create content area
-  GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    // Get the content area
+    GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
 
-  // Create label with instructions
-  GtkWidget *label = gtk_label_new(
-      "Tetrimone Instructions:\n\n"
-      "Goal: Arrange falling blocks to complete lines.\n\n"
-      "Controls:\n"
-      "• Left/Right Arrow or A/D: Move block left/right\n"
-      "• Up Arrow or W: Rotate block clockwise\n"
-      "• Z: Rotate block counter-clockwise\n"
-      "• Down Arrow or S: Move block down (soft drop)\n"
-      "• Space: Hard drop (instantly places block at bottom)\n"
-      "• P: Pause/Resume game\n"
-      "• R: Restart game when game over\n"
-      "• N: New game (when paused)\n"
-      "• Q: Quit game (when paused)\n\n"
-      "Controller Support:\n"
-      "• D-pad/Analog: Move piece\n"
-      "• A/B buttons: Rotate piece\n"
-      "• X button: Hard drop\n"
-      "• Start: Pause/Resume\n"
-      "• Custom mapping available in Options menu\n\n"
-      "Scoring:\n"
-      "• 1 line: 40 × level\n"
-      "• 2 lines: 100 × level\n"
-      "• 3 lines: 300 × level\n"
-      "• 4 lines: 1200 × level\n"
-      "• Sequence bonus: 10% extra per consecutive clear\n"
-      "• Consistency bonus: 20% extra for repeating same line count\n"
-      "• Hard drops: 2 points per cell\n\n"
-      "Levels:\n"
-      "• Every 10 lines cleared increases the level\n"
-      "• Higher levels increase speed and points\n"
-      "• Color themes change with level progression\n"
-      "• Difficulty can be adjusted in Options menu\n\n"
-      "Tips:\n"
-      "• Keep the stack low and even\n"
-      "• Save I-pieces for Tetrimone clears (4 lines)\n"
-      "• Watch the preview for the next piece\n"
-      "• Red line indicates the game over zone\n"
-      "• Try to build sequences by clearing lines consecutively");
-  gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
-  gtk_widget_set_margin_start(label, 20);
-  gtk_widget_set_margin_end(label, 20);
-  gtk_widget_set_margin_top(label, 20);
-  gtk_widget_set_margin_bottom(label, 20);
+    // Create a scrolled window with specific size
+    GtkWidget *scrolledWindow = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledWindow), 
+                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+    gtk_widget_set_size_request(scrolledWindow, 800, 600); // Large, explicit size
 
-  gtk_container_add(GTK_CONTAINER(contentArea), label);
-  gtk_widget_show_all(dialog);
+    // Create a text view
+    GtkWidget *textView = gtk_text_view_new();
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(textView), FALSE);
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(textView), GTK_WRAP_WORD);
+    
+    // Set a monospace font to ensure better readability of Russian text
+    PangoFontDescription *font_desc = pango_font_description_from_string("Monospace 10");
+    gtk_widget_override_font(textView, font_desc);
+    pango_font_description_free(font_desc);
 
-  // Set minimum width for dialog
-  gtk_widget_set_size_request(dialog, 400, -1);
+    // Get the buffer and set the text
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textView));
+    gtk_text_buffer_set_text(buffer, 
+        "СОВЕРШЕННО СЕКРЕТНО\n"
+        "(TOP SECRET)\n\n"
+        "ИНСТРУКЦИЯ № 1984/Б-БЛОК\n"
+        "О ПРАВИЛАХ ГОСУДАРСТВЕННОГО ПЕРЕМЕЩЕНИЯ ГЕОМЕТРИЧЕСКИХ ЕДИНИЦ\n\n"
+        "ВНИМАНИЕ, ТОВАРИЩ!\n"
+        "Настоящая инструкция является ОБЯЗАТЕЛЬНОЙ к неукоснительному исполнению.\n"
+        "Несоблюдение может привести к немедленной переквалификации.\n\n"
+        "ОСНОВНЫЕ ДИРЕКТИВЫ УПРАВЛЕНИЯ БЛОКАМИ:\n\n"
+        "1. ПЕРЕМЕЩЕНИЕ ВЛЕВО/ВПРАВО:\n"
+        "   • Точное боковое перемещение СТРОГО по указанию партии\n"
+        "   • Самовольное отклонение карается немедленным переселением в Сибирь\n\n"
+        "2. ВРАЩЕНИЕ:\n"
+        "   • Разрешено ТОЛЬКО по часовой стрелке\n"
+        "   • Против часовой стрелки - признак идеологической диверсии!\n\n"
+        "3. ВЕРТИКАЛЬНОЕ УСКОРЕНИЕ:\n"
+        "   • Мягкое опускание: контролируемое падение\n"
+        "   • Моментальное размещение: высшая форма блочной дисциплины\n\n"
+        "СИСТЕМА ОЦЕНКИ ПРОИЗВОДИТЕЛЬНОСТИ:\n"
+        "• Каждая заполненная линия - удар по капиталистическому хаосу!\n"
+        "• Бонусные очки начисляются за НЕПРЕРЫВНОСТЬ и ДИСЦИПЛИНУ\n"
+        "• Неэффективность приравнивается к САБОТАЖУ\n\n"
+        "ИДЕОЛОГИЧЕСКИЕ ПРЕДУПРЕЖДЕНИЯ:\n"
+        "★ ПОМНИ! Каждый ПАДАЮЩИЙ БЛОК СЛУЖИТ ВЕЛИКОМУ ДЕЛУ ПАРТИИ! ★\n\n"
+        "ОСОБЫЕ УКАЗАНИЯ:\n"
+        "• Красная линия: ЗОНА ГОСУДАРСТВЕННОЙ ОПАСНОСТИ\n"
+        "• Выход за пределы линии равносилен ГОСУДАРСТВЕННОЙ ИЗМЕНЕ\n\n"
+        "НАКАЗАНИЯ ЗА НЕЭФФЕКТИВНОСТЬ:\n"
+        "1. Первое нарушение: Публичное порицание\n"
+        "2. Второе нарушение: Принудительное перевоспитание\n"
+        "3. Третье нарушение: IMMEDIATE VACATION TO SIBERIAN REDESIGN CAMP\n\n"
+        "ПОМНИ, ТОВАРИЩ: \n"
+        "В ИГРЕ, КАК И В ЖИЗНИ - ПАРТИЯ ВСЕГДА ПРАВА!\n\n"
+        "Подпись: Начальник Управления Блочной Дисциплины\n"
+        "Печать: СТРОГО СЕКРЕТНО\n\n"
+        "P.S. Big Brother is watching your blocks!\n", -1);
 
-  // Run dialog
-  gtk_dialog_run(GTK_DIALOG(dialog));
+    // Add text view to scrolled window
+    gtk_container_add(GTK_CONTAINER(scrolledWindow), textView);
 
-  // Destroy dialog when closed
-  gtk_widget_destroy(dialog);
+    // Add scrolled window to content area
+    gtk_container_add(GTK_CONTAINER(contentArea), scrolledWindow);
+
+    // Set window size
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 600);
+
+    // Show all widgets
+    gtk_widget_show_all(dialog);
+
+    // Run dialog
+    gtk_dialog_run(GTK_DIALOG(dialog));
+
+    // Destroy dialog when closed
+    gtk_widget_destroy(dialog);
+  } else {
+    // Original instructions dialog code (similar modifications)
+    GtkWidget *dialog = gtk_dialog_new_with_buttons(
+        "Instructions", GTK_WINDOW(app->window), GTK_DIALOG_MODAL, "_OK",
+        GTK_RESPONSE_OK, NULL);
+
+    // Get the content area
+    GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
+
+    // Create a scrolled window with specific size
+    GtkWidget *scrolledWindow = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledWindow), 
+                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+    gtk_widget_set_size_request(scrolledWindow, 800, 600); // Large, explicit size
+
+    // Create a text view
+    GtkWidget *textView = gtk_text_view_new();
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(textView), FALSE);
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(textView), GTK_WRAP_WORD);
+
+    // Set a monospace font for better readability
+    PangoFontDescription *font_desc = pango_font_description_from_string("Monospace 10");
+    gtk_widget_override_font(textView, font_desc);
+    pango_font_description_free(font_desc);
+
+    // Get the buffer and set the text
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textView));
+    gtk_text_buffer_set_text(buffer, 
+        "Tetrimone Instructions:\n\n"
+        "Goal: Arrange falling blocks to complete lines.\n\n"
+        "Controls:\n"
+        "• Left/Right Arrow or A/D: Move block left/right\n"
+        "• Up Arrow or W: Rotate block clockwise\n"
+        "• Z: Rotate block counter-clockwise\n"
+        "• Down Arrow or S: Move block down (soft drop)\n"
+        "• Space: Hard drop (instantly places block at bottom)\n"
+        "• P: Pause/Resume game\n"
+        "• R: Restart game when game over\n"
+        "• N: New game (when paused)\n"
+        "• Q: Quit game (when paused)\n\n"
+        "Controller Support:\n"
+        "• D-pad/Analog: Move piece\n"
+        "• A/B buttons: Rotate piece\n"
+        "• X button: Hard drop\n"
+        "• Start: Pause/Resume\n"
+        "• Custom mapping available in Options menu\n\n"
+        "Scoring:\n"
+        "• 1 line: 40 × level\n"
+        "• 2 lines: 100 × level\n"
+        "• 3 lines: 300 × level\n"
+        "• 4 lines: 1200 × level\n"
+        "• Sequence bonus: 10% extra per consecutive clear\n"
+        "• Consistency bonus: 20% extra for repeating same line count\n"
+        "• Hard drops: 2 points per cell\n\n"
+        "Levels:\n"
+        "• Every 10 lines cleared increases the level\n"
+        "• Higher levels increase speed and points\n"
+        "• Color themes change with level progression\n"
+        "• Difficulty can be adjusted in Options menu\n\n"
+        "Tips:\n"
+        "• Keep the stack low and even\n"
+        "• Save I-pieces for Tetrimone clears (4 lines)\n"
+        "• Watch the preview for the next piece\n"
+        "• Red line indicates the game over zone\n"
+        "• Try to build sequences by clearing lines consecutively", -1);
+
+    // Add text view to scrolled window
+    gtk_container_add(GTK_CONTAINER(scrolledWindow), textView);
+
+    // Add scrolled window to content area
+    gtk_container_add(GTK_CONTAINER(contentArea), scrolledWindow);
+
+    // Set window size
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 600);
+
+    // Show all widgets
+    gtk_widget_show_all(dialog);
+
+    // Run dialog
+    gtk_dialog_run(GTK_DIALOG(dialog));
+
+    // Destroy dialog when closed
+    gtk_widget_destroy(dialog);
+  }
 }
 
 // Add to startGame function
