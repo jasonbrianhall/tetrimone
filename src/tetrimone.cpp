@@ -1502,10 +1502,10 @@ case GDK_KEY_period:
             }
             
             // Disable music
-            if (app->backgroundMusicPlaying) {
+            /*if (app->backgroundMusicPlaying) {
                 board->pauseBackgroundMusic();
                 app->backgroundMusicPlaying = false;
-            }
+            }*/
             
             // Play a special sound effect
             board->playSound(GameSoundEvent::Select);
