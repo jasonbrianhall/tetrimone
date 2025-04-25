@@ -134,6 +134,11 @@ bool TetrimoneBoard::initializeAudio() {
         loadSoundFromZip(GameSoundEvent::BackgroundMusic3, "TetrimoneB.mp3") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic4, "TetrimoneC.mp3") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic5, "futuristic.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusicRetro, "theme.mid") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic2Retro, "TetrimoneA.mid") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic3Retro, "TetrimoneB.mid") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic4Retro, "TetrimoneC.mid") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic5Retro, "futuristic.mid") &&
         loadSoundFromZip(GameSoundEvent::Single, "single.mp3") &&
         loadSoundFromZip(GameSoundEvent::Double, "double.mp3") &&
         loadSoundFromZip(GameSoundEvent::Triple, "triple.mp3") &&
@@ -286,6 +291,22 @@ if (format == "mid" || format == "midi") {  // Added support for both .mid and .
     case GameSoundEvent::Excellent:
         audioEvent = SoundEvent::Excellent;
         break;
+    case GameSoundEvent::BackgroundMusicRetro:
+        audioEvent = SoundEvent::BackgroundMusicRetro;
+        break;
+    case GameSoundEvent::BackgroundMusic2Retro:
+        audioEvent = SoundEvent::BackgroundMusic2Retro;
+        break;
+    case GameSoundEvent::BackgroundMusic3Retro:
+        audioEvent = SoundEvent::BackgroundMusic3Retro;
+        break;
+    case GameSoundEvent::BackgroundMusic4Retro:
+        audioEvent = SoundEvent::BackgroundMusic4Retro;
+        break;
+    case GameSoundEvent::BackgroundMusic5Retro:
+        audioEvent = SoundEvent::BackgroundMusic5Retro;
+        break;
+
     default:
         std::cerr << "Unknown sound event" << std::endl;
         return false;
@@ -607,6 +628,22 @@ void TetrimoneBoard::playSound(GameSoundEvent event) {
   case GameSoundEvent::Excellent:
     audioEvent = SoundEvent::Excellent;
     break;
+  case GameSoundEvent::BackgroundMusicRetro:
+    audioEvent = SoundEvent::BackgroundMusicRetro;
+    break;
+  case GameSoundEvent::BackgroundMusic2Retro:
+    audioEvent = SoundEvent::BackgroundMusic2Retro;
+    break;
+  case GameSoundEvent::BackgroundMusic3Retro:
+    audioEvent = SoundEvent::BackgroundMusic3Retro;
+    break;
+  case GameSoundEvent::BackgroundMusic4Retro:
+    audioEvent = SoundEvent::BackgroundMusic4Retro;
+    break;
+  case GameSoundEvent::BackgroundMusic5Retro:
+    audioEvent = SoundEvent::BackgroundMusic5Retro;
+    break;
+
   default:
     std::cerr << "Unknown sound event" << std::endl;
     return;
