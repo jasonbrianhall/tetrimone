@@ -34,7 +34,12 @@ enum class GameSoundEvent {
   Select,
   Start,
   Tetrimone,
-  Excellent
+  Excellent,
+  BackgroundMusicRetro,
+  BackgroundMusic2Retro,
+  BackgroundMusic3Retro,
+  BackgroundMusic4Retro,
+  BackgroundMusic5Retro,
 };
 
 extern int currentThemeIndex;
