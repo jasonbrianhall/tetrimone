@@ -211,7 +211,7 @@ bool TetrimoneBoard::loadSoundFromZip(GameSoundEvent event,
     }
 
     // Check if it's an MIDI and convert to WAV
-if (format == "mid") {  // This was incorrectly checking for "mp3"
+if (format == "mid" || format == "midi") {  // Added support for both .mid and .midi extensions
     std::vector<uint8_t> wavData;
     std::cerr << "Converting MIDI to WAV..." << std::endl;
     if (convertMidiToWavInMemory(soundData, wavData)) {
