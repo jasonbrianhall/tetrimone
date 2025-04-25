@@ -13,7 +13,7 @@ FLUIDSYNTH_OPTS = -ni -g 1 -F
 # Compiler settings
 CXX_LINUX = g++
 CXX_WIN = x86_64-w64-mingw32-gcc
-CXXFLAGS_COMMON = -std=c++17 -Wall -Wextra
+CXXFLAGS_COMMON = -std=c++17 -Wall -Wextra -s -fpermissive
 
 # Debug flags
 DEBUG_FLAGS = -g -DDEBUG
@@ -36,7 +36,9 @@ else
 endif
 
 # Source files
-SRCS_COMMON = src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp
+SRCS_COMMON = src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp
+
+
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src/sdlaudioplayer.cpp
 SRCS_WIN_SDL = src/sdlaudioplayer.cpp
