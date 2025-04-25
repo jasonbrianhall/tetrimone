@@ -210,6 +210,25 @@ bool TetrimoneBoard::loadSoundFromZip(GameSoundEvent event,
         }
     }
 
+    // Check if it's an MIDI and convert to WAV
+if (format == "mid") {  // This was incorrectly checking for "mp3"
+    std::vector<uint8_t> wavData;
+    std::cerr << "Converting MIDI to WAV..." << std::endl;
+    if (convertMidiToWavInMemory(soundData, wavData)) {
+        // Replace the original data with the converted WAV data
+        soundData = std::move(wavData);
+        format = "wav";
+        
+        // Update audio length after conversion
+        audioLength = soundData.size();
+        std::cerr << "MIDI conversion successful, WAV size: " << audioLength << " bytes" << std::endl;
+    } else {
+        std::cerr << "Failed to convert MIDI to WAV: " << soundFileName << std::endl;
+        return false;
+    }
+}
+
+
     // Map GameSoundEvent to AudioManager's SoundEvent
     SoundEvent audioEvent;
     switch (event) {

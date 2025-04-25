@@ -36,7 +36,7 @@ else
 endif
 
 # Source files
-SRCS_COMMON = src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp
+SRCS_COMMON = src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp
 
 
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
@@ -274,7 +274,7 @@ pack-backgrounds-all: pack-backgrounds-linux pack-backgrounds-linux-debug pack-b
 .PHONY: pack-sounds
 pack-sounds: convert-wav-to-mp3
 	@echo "Creating sound.zip with MP3 files in sound directory..."
-	cd $(SOUND_DIR) && zip -r $(SOUND_ZIP) *.mp3
+	cd $(SOUND_DIR) && zip -r $(SOUND_ZIP) *.mp3 *.mid
 	@echo "MP3 files packed to $(SOUND_DIR)/$(SOUND_ZIP)"
 	@$(MAKE) link-sound-linux
 
