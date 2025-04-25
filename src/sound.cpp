@@ -443,11 +443,12 @@ void TetrimoneBoard::playBackgroundMusic() {
       };
       
       while (sound_enabled_ && !musicStopFlag.load()) {
+        SoundEvent audioEvent;
+
         if (this->retroModeActive) {
-        {
-            SoundEvent audioEvent = backgroundMusicTracksRetro[currentTrackIndex];
+            audioEvent = backgroundMusicTracksRetro[currentTrackIndex];
         } else {
-            SoundEvent audioEvent = backgroundMusicTracks[currentTrackIndex];
+            audioEvent = backgroundMusicTracks[currentTrackIndex];
         }    
         if (!audioManager.isMuted() && !musicPaused) {
           try {
