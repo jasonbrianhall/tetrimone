@@ -28,7 +28,12 @@ enum class SoundEvent {
   Select,
   Start,
   Tetrimone,
-  Excellent
+  Excellent,
+  BackgroundMusicRetro,
+  BackgroundMusic2Retro,
+  BackgroundMusic3Retro,
+  BackgroundMusic4Retro,
+  BackgroundMusic5Retro,
 };
 
 // Platform-independent class to handle sound playback
