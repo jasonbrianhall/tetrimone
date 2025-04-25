@@ -349,6 +349,15 @@ void TetrimoneBoard::playBackgroundMusic() {
         SoundEvent::BackgroundMusic5
       };
 
+      const std::vector<SoundEvent> backgroundMusicTracksRetro = {
+        SoundEvent::BackgroundMusicRetro,
+        SoundEvent::BackgroundMusic2Retro,
+        SoundEvent::BackgroundMusic3Retro,
+        SoundEvent::BackgroundMusic4Retro,
+        SoundEvent::BackgroundMusic5Retro
+      };
+
+
       AudioManager& audioManager = AudioManager::getInstance();
       size_t currentTrackIndex = 0;
 
@@ -434,8 +443,12 @@ void TetrimoneBoard::playBackgroundMusic() {
       };
       
       while (sound_enabled_ && !musicStopFlag.load()) {
-        SoundEvent audioEvent = backgroundMusicTracks[currentTrackIndex];
-        
+        if (this->retroModeActive) {
+        {
+            SoundEvent audioEvent = backgroundMusicTracksRetro[currentTrackIndex];
+        } else {
+            SoundEvent audioEvent = backgroundMusicTracks[currentTrackIndex];
+        }    
         if (!audioManager.isMuted() && !musicPaused) {
           try {
             // Calculate the duration of this track
@@ -501,8 +514,13 @@ void TetrimoneBoard::playBackgroundMusic() {
       #else
       // Original implementation for non-Windows platforms with track skipping
       while (sound_enabled_ && !musicStopFlag.load()) {
-        SoundEvent audioEvent = backgroundMusicTracks[currentTrackIndex];
+        SoundEvent audioEvent;
+        if (this->retroModeActive) {
+            audioEvent = backgroundMusicTracksRetro[currentTrackIndex];
         
+        } else {
+            audioEvent = backgroundMusicTracks[currentTrackIndex];
+        }
         if (!audioManager.isMuted() && !musicPaused) {
           try {
             audioManager.playSoundAndWait(audioEvent);
