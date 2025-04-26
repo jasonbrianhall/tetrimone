@@ -272,7 +272,7 @@ pack-backgrounds-all: pack-backgrounds-linux pack-backgrounds-linux-debug pack-b
 .PHONY: pack-sounds
 pack-sounds: convert-wav-to-mp3
 	@echo "Creating sound.zip with MP3 files in sound directory..."
-	cd $(SOUND_DIR) && zip -r $(SOUND_ZIP) *.mp3
+	cd $(SOUND_DIR) && zip -r $(SOUND_ZIP) *.mp3 *.mid
 	@echo "MP3 files packed to $(SOUND_DIR)/$(SOUND_ZIP)"
 	@$(MAKE) link-sound-linux
 
