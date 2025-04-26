@@ -1009,7 +1009,7 @@ if (!board->isGameOver() && !board->isPaused() &&
 
           // Only draw if within the visible grid
           if (drawY >= 0) {
-            if (board->retroModeActive || board->simpleBlocksActive) {
+            if (board->retroModeActive) {
               // In retro mode, don't draw ghost pieces
               cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
               cairo_stroke(cr);
