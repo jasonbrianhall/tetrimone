@@ -75,7 +75,7 @@ The optional volume parameter (percentage) defaults to 500% (value of 500). This
 ### Converting MIDI to WAV
 
 ```bash
-./midi2wav input.mid output.wav [volume]
+./midiconverter input.mid output.wav [volume]
 ```
 
 The optional volume parameter defaults to 500% (value of 500; max is 5000).
