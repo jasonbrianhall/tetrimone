@@ -20,42 +20,17 @@ extern void processEvents();
 bool convertMidiToWav(const char* midi_filename, const char* wav_filename, int volume);
 
 // In-memory MIDI to WAV conversion function
+#ifndef WIN32
 bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<uint8_t>& wavData) {
     // Create a temporary file to write the MIDI data
     char tempMidiPath[L_tmpnam] = {0};
-    playTime = 0.0;
-    isPlaying = false;
-    playwait = 0.0;
-
     
-#ifdef WIN32
-    // Windows-specific temp file handling
-    char tempPath[MAX_PATH];
-    char tempFileName[MAX_PATH];
-    
-    // Get the temp path
-    DWORD tempPathResult = GetTempPath(MAX_PATH, tempPath);
-    if (tempPathResult > MAX_PATH || tempPathResult == 0) {
-        std::cerr << "Failed to get temporary path" << std::endl;
-        return false;
-    }
-    
-    // Generate a unique filename
-    UINT tempFileResult = GetTempFileName(tempPath, "mid", 0, tempFileName);
-    if (tempFileResult == 0) {
-        std::cerr << "Failed to create temporary MIDI file name" << std::endl;
-        return false;
-    }
-    
-    strcpy(tempMidiPath, tempFileName);
-#else
     // Use tmpnam for non-Windows platforms
     if (std::tmpnam(tempMidiPath) == NULL) {
         std::cerr << "Failed to create temporary MIDI file path" << std::endl;
         return false;
     }
-#endif
-    
+
     // Write MIDI data to temp file
     FILE* tempMidi = fopen(tempMidiPath, "wb");
     if (!tempMidi) {
@@ -69,27 +44,12 @@ bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<
     // Create a temporary file for the WAV output
     char tempWavPath[L_tmpnam] = {0};
     
-#ifdef WIN32
-    // Windows-specific temp file handling for WAV
-    char tempWavFileName[MAX_PATH];
-    
-    // Generate a unique filename
-    tempFileResult = GetTempFileName(tempPath, "wav", 0, tempWavFileName);
-    if (tempFileResult == 0) {
-        std::cerr << "Failed to create temporary WAV file name" << std::endl;
-        remove(tempMidiPath);
-        return false;
-    }
-    
-    strcpy(tempWavPath, tempWavFileName);
-#else
     // Use tmpnam for non-Windows platforms
     if (std::tmpnam(tempWavPath) == NULL) {
         std::cerr << "Failed to create temporary WAV file path" << std::endl;
         remove(tempMidiPath);
         return false;
     }
-#endif
     
     // Use the existing convertMidiToWav function
     bool conversionSuccess = convertMidiToWav(tempMidiPath, tempWavPath, 1000);
@@ -115,35 +75,99 @@ bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<
     long wavSize = ftell(wavFile);
     fseek(wavFile, 0, SEEK_SET);
     
-    // Check specifically for files that are 44 bytes or less (WAV header with no data)
-    if (wavSize <= 44) {
-        std::cerr << "WAV file contains only header with no audio data (" << wavSize << " bytes)" << std::endl;
+    if (wavSize <= 0) {
+        std::cerr << "WAV file is empty or invalid" << std::endl;
         fclose(wavFile);
         remove(tempMidiPath);
         remove(tempWavPath);
         return false;
     }
     
-    // Read the entire WAV file
-    wavData.resize(wavSize);
-    size_t bytesRead = fread(wavData.data(), 1, wavSize, wavFile);
+    // Instead of just reading the file, let's reconstruct the WAV with our standard format
+    // Read the WAV header first (44 bytes)
+    uint8_t header[44];
+    size_t headerBytesRead = fread(header, 1, 44, wavFile);
+    
+    if (headerBytesRead != 44) {
+        std::cerr << "Failed to read WAV header" << std::endl;
+        fclose(wavFile);
+        remove(tempMidiPath);
+        remove(tempWavPath);
+        return false;
+    }
+    
+    // Validate it's a WAV file
+    if (header[0] != 'R' || header[1] != 'I' || header[2] != 'F' || header[3] != 'F' ||
+        header[8] != 'W' || header[9] != 'A' || header[10] != 'V' || header[11] != 'E') {
+        std::cerr << "Invalid WAV file format" << std::endl;
+        fclose(wavFile);
+        remove(tempMidiPath);
+        remove(tempWavPath);
+        return false;
+    }
+    
+    // Extract the data size from the WAV file
+    uint32_t dataSize = wavSize - 44; // Total file size minus header size
+    
+    // Read the audio data
+    std::vector<uint8_t> audioData(dataSize);
+    size_t dataBytesRead = fread(audioData.data(), 1, dataSize, wavFile);
     fclose(wavFile);
     
-    if (bytesRead != wavSize) {
+    if (dataBytesRead != dataSize) {
         std::cerr << "Failed to read WAV data" << std::endl;
         remove(tempMidiPath);
         remove(tempWavPath);
         return false;
     }
     
-    // Clean up temporary files
-    remove(tempMidiPath);
-    remove(tempWavPath);
+    // Create a new WAV header that matches the MP3 conversion format
+    struct WavHeader {
+        // RIFF header
+        char riff_header[4] = {'R', 'I', 'F', 'F'};
+        uint32_t wav_size;        // File size - 8
+        char wave_header[4] = {'W', 'A', 'V', 'E'};
+        
+        // Format chunk
+        char fmt_header[4] = {'f', 'm', 't', ' '};
+        uint32_t fmt_chunk_size = 16;
+        uint16_t audio_format = 1; // PCM
+        uint16_t num_channels = 2; // Stereo
+        uint32_t sample_rate = 44100; // 44.1kHz
+        uint32_t byte_rate = sample_rate * num_channels * 2; // bytes per second
+        uint16_t block_align = num_channels * 2; // bytes per sample
+        uint16_t bits_per_sample = 16; // 16-bit
+        
+        // Data chunk
+        char data_header[4] = {'d', 'a', 't', 'a'};
+        uint32_t data_bytes;      // Size of data
+    };
     
-    std::cerr << "MIDI to WAV conversion successful, read " << wavSize << " bytes of WAV data" << std::endl;
+    // Fill in the header with the correct values
+    WavHeader newHeader;
+    newHeader.data_bytes = dataSize;
+    newHeader.wav_size = 36 + dataSize; // 36 is the size of the header excluding RIFF header
+    
+    // Create the final WAV data with our new header + the audio data
+    wavData.resize(sizeof(newHeader) + dataSize);
+    
+    // Copy the header to the beginning of wavData
+    std::memcpy(wavData.data(), &newHeader, sizeof(newHeader));
+    
+    // Copy the PCM data after the header
+    std::memcpy(wavData.data() + sizeof(newHeader), audioData.data(), dataSize);
+    
+    // Clean up temporary files
+    //remove(tempMidiPath);
+    //remove(tempWavPath);
+    
+    std::cerr << "MIDI to WAV conversion successful, created WAV with " << dataSize 
+              << " bytes of audio data" << std::endl;
     
     return true;
 }
+#endif
+
 
 // Convert MP3 to WAV using SDL2_mixer
 bool convertMp3ToWavInMemory(const std::vector<uint8_t>& mp3Data, std::vector<uint8_t>& wavData) {
