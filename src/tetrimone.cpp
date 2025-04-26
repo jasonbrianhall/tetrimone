@@ -2134,6 +2134,23 @@ void createMenu(TetrimoneApp *app) {
   g_signal_connect(G_OBJECT(ghostPieceMenuItem), "toggled",
                    G_CALLBACK(onGhostPieceToggled), app);
 
+GtkWidget* simpleBlocksMenuItem = 
+    gtk_check_menu_item_new_with_label("Simple Blocks (No 3D Effect)");
+gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(simpleBlocksMenuItem),
+                             app->board->simpleBlocksActive);
+gtk_menu_shell_append(GTK_MENU_SHELL(graphicsMenu), simpleBlocksMenuItem);
+g_signal_connect(G_OBJECT(simpleBlocksMenuItem), "toggled",
+                 G_CALLBACK(onSimpleBlocksToggled), app);
+
+// In the Sound menu section, after the trackMenuItems section:
+GtkWidget* retroMusicMenuItem = 
+    gtk_check_menu_item_new_with_label("Use Retro Music");
+gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(retroMusicMenuItem),
+                             app->board->retroMusicActive);
+gtk_menu_shell_append(GTK_MENU_SHELL(soundMenu), retroMusicMenuItem);
+g_signal_connect(G_OBJECT(retroMusicMenuItem), "toggled",
+                 G_CALLBACK(onRetroMusicToggled), app);
+
   // *** CONTROLS MENU ***
   GtkWidget *controlsMenu = gtk_menu_new();
   GtkWidget *controlsMenuItem = gtk_menu_item_new_with_label("Controls");
@@ -2307,6 +2324,26 @@ void onGridLinesToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
     
     // Redraw the game area
     gtk_widget_queue_draw(app->gameArea);
+}
+
+void onSimpleBlocksToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    app->board->simpleBlocksActive = gtk_check_menu_item_get_active(menuItem);
+    
+    // Redraw the game area to reflect the change
+    gtk_widget_queue_draw(app->gameArea);
+    gtk_widget_queue_draw(app->nextPieceArea);
+}
+
+void onRetroMusicToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    app->board->retroMusicActive = gtk_check_menu_item_get_active(menuItem);
+    
+    // If music is playing, restart it to apply the change
+    if (app->backgroundMusicPlaying && app->board->sound_enabled_) {
+        app->board->pauseBackgroundMusic();
+        app->board->playBackgroundMusic();  // This will use retroMusicActive
+    }
 }
 
 
