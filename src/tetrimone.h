@@ -34,7 +34,12 @@ enum class GameSoundEvent {
   Select,
   Start,
   Tetrimone,
-  Excellent
+  Excellent,
+  BackgroundMusicRetro,
+  BackgroundMusic2Retro,
+  BackgroundMusic3Retro,
+  BackgroundMusic4Retro,
+  BackgroundMusic5Retro,
 };
 
 extern int currentThemeIndex;
@@ -162,6 +167,8 @@ private:
     
 public:
     bool retroModeActive = false;  // Flag for retro mode
+    bool simpleBlocksActive = false;
+    bool retroMusicActive = false;
     bool showGridLines = false; // Grid lines off by default
     bool isShowingGridLines() const { return showGridLines; }
     void setShowGridLines(bool show) { showGridLines = show; }
@@ -331,6 +338,9 @@ cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t
 void onGhostPieceToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onViewHighScores(GtkMenuItem* menuItem, gpointer userData);
 void setWindowIcon(GtkWindow* window);
+
+void onSimpleBlocksToggled(GtkCheckMenuItem* menuItem, gpointer userData);
+void onRetroMusicToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 
 #endif // TETRIMONE_H
 

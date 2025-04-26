@@ -134,6 +134,11 @@ bool TetrimoneBoard::initializeAudio() {
         loadSoundFromZip(GameSoundEvent::BackgroundMusic3, "TetrimoneB.mp3") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic4, "TetrimoneC.mp3") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic5, "futuristic.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusicRetro, "themeRetro.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic2Retro, "TetrimoneARetro.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic3Retro, "TetrimoneBRetro.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic4Retro, "TetrimoneCRetro.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic5Retro, "futuristicRetro.mp3") &&
         loadSoundFromZip(GameSoundEvent::Single, "single.mp3") &&
         loadSoundFromZip(GameSoundEvent::Double, "double.mp3") &&
         loadSoundFromZip(GameSoundEvent::Triple, "triple.mp3") &&
@@ -210,6 +215,25 @@ bool TetrimoneBoard::loadSoundFromZip(GameSoundEvent event,
         }
     }
 
+    // Check if it's an MIDI and convert to WAV
+if (format == "mid" || format == "midi") {  // Added support for both .mid and .midi extensions
+    std::vector<uint8_t> wavData;
+    std::cerr << "Converting MIDI to WAV..." << std::endl;
+    if (convertMidiToWavInMemory(soundData, wavData)) {
+        // Replace the original data with the converted WAV data
+        soundData = std::move(wavData);
+        format = "wav";
+        
+        // Update audio length after conversion
+        audioLength = soundData.size();
+        std::cerr << "MIDI conversion successful, WAV size: " << audioLength << " bytes" << std::endl;
+    } else {
+        std::cerr << "Failed to convert MIDI to WAV: " << soundFileName << std::endl;
+        return false;
+    }
+}
+
+
     // Map GameSoundEvent to AudioManager's SoundEvent
     SoundEvent audioEvent;
     switch (event) {
@@ -267,6 +291,22 @@ bool TetrimoneBoard::loadSoundFromZip(GameSoundEvent event,
     case GameSoundEvent::Excellent:
         audioEvent = SoundEvent::Excellent;
         break;
+    case GameSoundEvent::BackgroundMusicRetro:
+        audioEvent = SoundEvent::BackgroundMusicRetro;
+        break;
+    case GameSoundEvent::BackgroundMusic2Retro:
+        audioEvent = SoundEvent::BackgroundMusic2Retro;
+        break;
+    case GameSoundEvent::BackgroundMusic3Retro:
+        audioEvent = SoundEvent::BackgroundMusic3Retro;
+        break;
+    case GameSoundEvent::BackgroundMusic4Retro:
+        audioEvent = SoundEvent::BackgroundMusic4Retro;
+        break;
+    case GameSoundEvent::BackgroundMusic5Retro:
+        audioEvent = SoundEvent::BackgroundMusic5Retro;
+        break;
+
     default:
         std::cerr << "Unknown sound event" << std::endl;
         return false;
@@ -308,6 +348,15 @@ void TetrimoneBoard::playBackgroundMusic() {
         SoundEvent::BackgroundMusic4,
         SoundEvent::BackgroundMusic5
       };
+
+      const std::vector<SoundEvent> backgroundMusicTracksRetro = {
+        SoundEvent::BackgroundMusicRetro,
+        SoundEvent::BackgroundMusic2Retro,
+        SoundEvent::BackgroundMusic3Retro,
+        SoundEvent::BackgroundMusic4Retro,
+        SoundEvent::BackgroundMusic5Retro
+      };
+
 
       AudioManager& audioManager = AudioManager::getInstance();
       size_t currentTrackIndex = 0;
@@ -394,8 +443,13 @@ void TetrimoneBoard::playBackgroundMusic() {
       };
       
       while (sound_enabled_ && !musicStopFlag.load()) {
-        SoundEvent audioEvent = backgroundMusicTracks[currentTrackIndex];
-        
+        SoundEvent audioEvent;
+
+        if (this->retroModeActive || this->retroMusicActive) {
+            audioEvent = backgroundMusicTracksRetro[currentTrackIndex];
+        } else {
+            audioEvent = backgroundMusicTracks[currentTrackIndex];
+        }    
         if (!audioManager.isMuted() && !musicPaused) {
           try {
             // Calculate the duration of this track
@@ -461,8 +515,13 @@ void TetrimoneBoard::playBackgroundMusic() {
       #else
       // Original implementation for non-Windows platforms with track skipping
       while (sound_enabled_ && !musicStopFlag.load()) {
-        SoundEvent audioEvent = backgroundMusicTracks[currentTrackIndex];
+        SoundEvent audioEvent;
+        if (this->retroModeActive || this->retroMusicActive) {
+            audioEvent = backgroundMusicTracksRetro[currentTrackIndex];
         
+        } else {
+            audioEvent = backgroundMusicTracks[currentTrackIndex];
+        }
         if (!audioManager.isMuted() && !musicPaused) {
           try {
             audioManager.playSoundAndWait(audioEvent);
@@ -588,6 +647,22 @@ void TetrimoneBoard::playSound(GameSoundEvent event) {
   case GameSoundEvent::Excellent:
     audioEvent = SoundEvent::Excellent;
     break;
+  case GameSoundEvent::BackgroundMusicRetro:
+    audioEvent = SoundEvent::BackgroundMusicRetro;
+    break;
+  case GameSoundEvent::BackgroundMusic2Retro:
+    audioEvent = SoundEvent::BackgroundMusic2Retro;
+    break;
+  case GameSoundEvent::BackgroundMusic3Retro:
+    audioEvent = SoundEvent::BackgroundMusic3Retro;
+    break;
+  case GameSoundEvent::BackgroundMusic4Retro:
+    audioEvent = SoundEvent::BackgroundMusic4Retro;
+    break;
+  case GameSoundEvent::BackgroundMusic5Retro:
+    audioEvent = SoundEvent::BackgroundMusic5Retro;
+    break;
+
   default:
     std::cerr << "Unknown sound event" << std::endl;
     return;
