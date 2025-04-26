@@ -6,6 +6,10 @@
 #include "midiplayer.h"
 #include "dbopl_wrapper.h"
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 // External variables and functions needed from midiplayer.cpp
 extern double playTime;
 extern bool isPlaying;
@@ -19,10 +23,34 @@ bool convertMidiToWav(const char* midi_filename, const char* wav_filename, int v
 bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<uint8_t>& wavData) {
     // Create a temporary file to write the MIDI data
     char tempMidiPath[L_tmpnam] = {0};
+    
+#ifdef WIN32
+    // Windows-specific temp file handling
+    char tempPath[MAX_PATH];
+    char tempFileName[MAX_PATH];
+    
+    // Get the temp path
+    DWORD tempPathResult = GetTempPath(MAX_PATH, tempPath);
+    if (tempPathResult > MAX_PATH || tempPathResult == 0) {
+        std::cerr << "Failed to get temporary path" << std::endl;
+        return false;
+    }
+    
+    // Generate a unique filename
+    UINT tempFileResult = GetTempFileName(tempPath, "mid", 0, tempFileName);
+    if (tempFileResult == 0) {
+        std::cerr << "Failed to create temporary MIDI file name" << std::endl;
+        return false;
+    }
+    
+    strcpy(tempMidiPath, tempFileName);
+#else
+    // Use tmpnam for non-Windows platforms
     if (std::tmpnam(tempMidiPath) == NULL) {
         std::cerr << "Failed to create temporary MIDI file path" << std::endl;
         return false;
     }
+#endif
     
     // Write MIDI data to temp file
     FILE* tempMidi = fopen(tempMidiPath, "wb");
@@ -36,11 +64,28 @@ bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<
     
     // Create a temporary file for the WAV output
     char tempWavPath[L_tmpnam] = {0};
+    
+#ifdef WIN32
+    // Windows-specific temp file handling for WAV
+    char tempWavFileName[MAX_PATH];
+    
+    // Generate a unique filename
+    tempFileResult = GetTempFileName(tempPath, "wav", 0, tempWavFileName);
+    if (tempFileResult == 0) {
+        std::cerr << "Failed to create temporary WAV file name" << std::endl;
+        remove(tempMidiPath);
+        return false;
+    }
+    
+    strcpy(tempWavPath, tempWavFileName);
+#else
+    // Use tmpnam for non-Windows platforms
     if (std::tmpnam(tempWavPath) == NULL) {
         std::cerr << "Failed to create temporary WAV file path" << std::endl;
         remove(tempMidiPath);
         return false;
     }
+#endif
     
     // Use the existing convertMidiToWav function
     bool conversionSuccess = convertMidiToWav(tempMidiPath, tempWavPath, 1000);
