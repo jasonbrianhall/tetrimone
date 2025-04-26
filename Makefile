@@ -1,20 +1,14 @@
-# Last modification 04/26/2025
+# Last modification 04/04/2025
 
 # Makefile for Tetrimone with Windows and Linux Support
 # Configurable audio backend (SDL or PulseAudio)
 # Extended with FFMPEG support for MIDI to WAV conversion
 # Modified to convert WAV to MP3 and only pack MP3 files
-# Added custom midiconverter support
 
 # MIDI Conversion
 FLUIDSYNTH = fluidsynth
 SOUNDFONT = /usr/share/sounds/sf2/default.sf2  # Default soundfont path, adjust as needed
 FLUIDSYNTH_OPTS = -ni -g 1 -F
-
-# Custom MIDI converter
-MIDICONVERTER_DIR = linux_midiconverter
-MIDICONVERTER = $(MIDICONVERTER_DIR)/midiconverter
-MIDICONVERTER_VOLUME = 1000
 
 # Compiler settings
 CXX_LINUX = g++
@@ -43,8 +37,6 @@ endif
 
 # Source files
 SRCS_COMMON = src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp
-
-
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src/sdlaudioplayer.cpp
 SRCS_WIN_SDL = src/sdlaudioplayer.cpp
@@ -112,7 +104,7 @@ SOUND_ZIP = sound.zip
 # Audio conversion settings
 WAV_FILES := $(wildcard $(SOUND_DIR)/*.wav)
 MIDI_FILES := $(wildcard $(SOUND_DIR)/*.mid)
-WAV_FROM_MIDI := $(patsubst %.mid,%Retro.wav,$(MIDI_FILES))
+WAV_FROM_MIDI := $(MIDI_FILES:.mid=.wav)
 MP3_FROM_WAV := $(WAV_FILES:.wav=.mp3) $(WAV_FROM_MIDI:.wav=.mp3)
 
 # FFmpeg command for audio conversion
@@ -127,12 +119,6 @@ $(shell mkdir -p $(BUILD_DIR_LINUX)/src $(BUILD_DIR_WIN)/src \
 # Default target - build for Linux with SDL audio
 .PHONY: all
 all: linux
-
-# Build midiconverter first
-.PHONY: build-midiconverter
-build-midiconverter:
-	@echo "Building custom midiconverter..."
-	@(pushd $(MIDICONVERTER_DIR) && $(MAKE))
 
 # OS-specific builds
 .PHONY: windows
@@ -167,7 +153,7 @@ pulse-debug:
 # Linux build targets
 #
 .PHONY: tetrimone-linux
-tetrimone-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX) pack-backgrounds-linux build-midiconverter convert-midi convert-wav-to-mp3 pack-sounds
+tetrimone-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX) pack-backgrounds-linux convert-midi convert-wav-to-mp3 pack-sounds
 
 $(BUILD_DIR_LINUX)/$(TARGET_LINUX): $(addprefix $(BUILD_DIR_LINUX)/,$(OBJS_LINUX))
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
@@ -180,7 +166,7 @@ $(BUILD_DIR_LINUX)/%.o: %.cpp
 # Linux debug targets
 #
 .PHONY: tetrimone-linux-debug
-tetrimone-linux-debug: $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG) pack-backgrounds-linux-debug build-midiconverter convert-midi convert-wav-to-mp3 pack-sounds link-sound-linux-debug
+tetrimone-linux-debug: $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG) pack-backgrounds-linux-debug convert-midi convert-wav-to-mp3 pack-sounds link-sound-linux-debug
 
 $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG): $(addprefix $(BUILD_DIR_LINUX_DEBUG)/,$(OBJS_LINUX_DEBUG))
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
@@ -193,7 +179,7 @@ $(BUILD_DIR_LINUX_DEBUG)/%.debug.o: %.cpp
 # Windows build targets
 #
 .PHONY: tetrimone-windows
-tetrimone-windows: $(BUILD_DIR_WIN)/$(TARGET_WIN) tetrimone-collect-dlls pack-backgrounds-windows build-midiconverter convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows
+tetrimone-windows: $(BUILD_DIR_WIN)/$(TARGET_WIN) tetrimone-collect-dlls pack-backgrounds-windows convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows
 
 $(BUILD_DIR_WIN)/$(TARGET_WIN): $(addprefix $(BUILD_DIR_WIN)/,$(OBJS_WIN))
 	$(CXX_WIN) $^ -o $@ $(LDFLAGS_WIN)
@@ -206,7 +192,7 @@ $(BUILD_DIR_WIN)/%.win.o: %.cpp
 # Windows debug targets
 #
 .PHONY: tetrimone-windows-debug
-tetrimone-windows-debug: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) tetrimone-collect-debug-dlls pack-backgrounds-windows-debug build-midiconverter convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows-debug
+tetrimone-windows-debug: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) tetrimone-collect-debug-dlls pack-backgrounds-windows-debug convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows-debug
 
 $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG): $(addprefix $(BUILD_DIR_WIN_DEBUG)/,$(OBJS_WIN_DEBUG))
 	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) $^ -o $@ $(LDFLAGS_WIN)
@@ -216,17 +202,15 @@ $(BUILD_DIR_WIN_DEBUG)/%.win.debug.o: %.cpp
 	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) -c $< -o $@
 
 #
-# MIDI to WAV conversion using custom midiconverter
+# MIDI to WAV conversion
 #
 .PHONY: convert-midi
-convert-midi: build-midiconverter $(WAV_FROM_MIDI)
+convert-midi: $(WAV_FROM_MIDI)
 
-# Rule to convert .mid to .wav files with Retro in the name
-$(SOUND_DIR)/%Retro.wav: $(SOUND_DIR)/%.mid
-	@echo "Converting $< to $@ using FluidSynth and midiconverter..."
-	@$(FLUIDSYNTH) $(FLUIDSYNTH_OPTS) $(SOUND_DIR)/$*.wav $(SOUNDFONT) $<
-	@$(MIDICONVERTER) $(SOUND_DIR)/$*.mid $@ $(MIDICONVERTER_VOLUME)
-	@rm -f $(SOUND_DIR)/$*.wav  # Remove the intermediate WAV file
+# Rule to convert .mid to .wav files
+%.wav: %.mid
+	@echo "Converting $< to $@ using FluidSynth..."
+	@$(FLUIDSYNTH) $(FLUIDSYNTH_OPTS) $@ $(SOUNDFONT) $<
 
 #
 # WAV to MP3 conversion
@@ -283,7 +267,7 @@ pack-backgrounds-windows-debug:
 pack-backgrounds-all: pack-backgrounds-linux pack-backgrounds-linux-debug pack-backgrounds-windows pack-backgrounds-windows-debug
 
 #
-# Sound file packing and linking - modified to exclude .mid files
+# Sound file packing and linking
 #
 .PHONY: pack-sounds
 pack-sounds: convert-wav-to-mp3
@@ -332,36 +316,28 @@ clean:
 clean-audio:
 	@echo "Cleaning converted audio files..."
 	@for midi in $(MIDI_FILES); do \
-		basename=$(basename "$midi" .mid); \
-		retro_wav="$(SOUND_DIR)/${basename}Retro.wav"; \
-		retro_mp3="$(SOUND_DIR)/${basename}Retro.mp3"; \
-		if [ -f "$retro_wav" ]; then \
-			echo "Removing $retro_wav"; \
-			rm -f "$retro_wav"; \
+		wav_file="$${midi%.mid}.wav"; \
+		mp3_file="$${midi%.mid}.mp3"; \
+		if [ -f "$$wav_file" ]; then \
+			echo "Removing $$wav_file"; \
+			rm -f "$$wav_file"; \
 		fi; \
-		if [ -f "$retro_mp3" ]; then \
-			echo "Removing $retro_mp3"; \
-			rm -f "$retro_mp3"; \
+		if [ -f "$$mp3_file" ]; then \
+			echo "Removing $$mp3_file"; \
+			rm -f "$$mp3_file"; \
 		fi; \
 	done
 	@for wav in $(WAV_FILES); do \
-		basename=$(basename "$wav" .wav); \
-		mp3_file="$(SOUND_DIR)/${basename}.mp3"; \
-		if [ -f "$mp3_file" ]; then \
-			echo "Removing $mp3_file"; \
-			rm -f "$mp3_file"; \
+		mp3_file="$${wav%.wav}.mp3"; \
+		if [ -f "$$mp3_file" ]; then \
+			echo "Removing $$mp3_file"; \
+			rm -f "$$mp3_file"; \
 		fi; \
 	done
 
-# Clean midiconverter
-.PHONY: clean-midiconverter
-clean-midiconverter:
-	@echo "Cleaning midiconverter..."
-	@(pushd $(MIDICONVERTER_DIR) && $(MAKE) clean)
-
 # Full clean including converted audio files
 .PHONY: clean-all
-clean-all: clean clean-audio clean-midiconverter
+clean-all: clean clean-audio
 
 # Help target
 .PHONY: help
@@ -383,8 +359,7 @@ help:
 	@echo "  make tetrimone-linux  - Build Tetrimone for Linux (with current audio backend)"
 	@echo "  make tetrimone-windows - Build Tetrimone for Windows (requires MinGW)"
 	@echo ""
-	@echo "  make build-midiconverter - Build custom midiconverter tool"
-	@echo "  make convert-midi  - Convert MIDI files to WAV format using custom midiconverter"
+	@echo "  make convert-midi  - Convert MIDI files to WAV format using ffmpeg"
 	@echo "  make convert-wav-to-mp3 - Convert WAV files to MP3 format using ffmpeg"
 	@echo ""
 	@echo "  make pack-backgrounds-all - Pack background images for all build targets"
@@ -396,6 +371,5 @@ help:
 	@echo ""
 	@echo "  make clean         - Remove all build files"
 	@echo "  make clean-audio   - Remove all converted audio files"
-	@echo "  make clean-midiconverter - Clean midiconverter build"
 	@echo "  make clean-all     - Remove all build files and converted audio files"
 	@echo "  make help          - Show this help message"
