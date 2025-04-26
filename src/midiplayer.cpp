@@ -29,11 +29,11 @@ int g_midi_mixer_channel = -1;
 // Platform-specific global variables
 #ifdef _WIN32
 // Windows doesn't need the termios structure
+volatile int keep_running = 1;  // Use int instead of sig_atomic_t for Windows
 #else
 struct termios old_tio;
-#endif
-
 volatile sig_atomic_t keep_running = 1;
+#endif
 
 #ifndef M_PI
 #define M_PI 3.1415926154
@@ -398,9 +398,16 @@ bool loadMidiFile(const char* filename) {
 // Handle a single MIDI event
 void handleMidiEvent(int tk) {
     unsigned char status, data1, data2;
+    // Declare buffer only when needed
+#ifdef _WIN32
+    // Suppress unused variable warning
+    unsigned char evtype;
+    unsigned long len;
+#else
     unsigned char buffer[256];
     unsigned char evtype;
     unsigned long len;
+#endif
     
     // Get file position
     fseek(midiFile, tkPtr[tk], SEEK_SET);
@@ -754,8 +761,8 @@ void generateAudio(void* userdata, Uint8* stream, int len) {
         mixer_write_channel(g_midi_mixer, g_midi_mixer_channel, opl_buffer, samples * AUDIO_CHANNELS);
     }
     
-    // Mix channels
-    size_t mixed_samples = mixer_mix_channels(g_midi_mixer);
+    // Mix channels - even if result is unused, we need to run this function
+    mixer_mix_channels(g_midi_mixer);
     
     // Get mixed output
     size_t output_size;
