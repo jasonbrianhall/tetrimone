@@ -16,67 +16,18 @@ extern void processEvents();
 bool convertMidiToWav(const char* midi_filename, const char* wav_filename, int volume);
 
 // In-memory MIDI to WAV conversion function
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<uint8_t>& wavData) {
-    // Create temporary filenames
-    char tempMidiPath[MAX_PATH];
-    char tempWavPath[MAX_PATH];
-
-#ifdef _WIN32
-    // Windows-specific temp file creation
-    char tempPath[MAX_PATH];
-    if (GetTempPathA(MAX_PATH, tempPath) == 0) {
-        std::cerr << "Failed to get temp path" << std::endl;
+    // Create a temporary file to write the MIDI data
+    char tempMidiPath[L_tmpnam] = {0};
+    if (std::tmpnam(tempMidiPath) == NULL) {
+        std::cerr << "Failed to create temporary MIDI file path" << std::endl;
         return false;
     }
-
-    // Create unique temp MIDI filename
-    if (GetTempFileNameA(tempPath, "MID", 0, tempMidiPath) == 0) {
-        std::cerr << "Failed to create temporary MIDI filename" << std::endl;
-        return false;
-    }
-
-    // Create unique temp WAV filename
-    if (GetTempFileNameA(tempPath, "WAV", 0, tempWavPath) == 0) {
-        std::cerr << "Failed to create temporary WAV filename" << std::endl;
-        DeleteFileA(tempMidiPath);
-        return false;
-    }
-#else
-    // Unix-like systems fallback
-    snprintf(tempMidiPath, sizeof(tempMidiPath), "/tmp/midi_temp_XXXXXX.mid");
-    snprintf(tempWavPath, sizeof(tempWavPath), "/tmp/wav_temp_XXXXXX.wav");
-    
-    int midifd = mkstemp(tempMidiPath);
-    if (midifd == -1) {
-        std::cerr << "Failed to create temporary MIDI file" << std::endl;
-        return false;
-    }
-    close(midifd);
-    
-    int wavfd = mkstemp(tempWavPath);
-    if (wavfd == -1) {
-        std::cerr << "Failed to create temporary WAV file" << std::endl;
-        unlink(tempMidiPath);
-        return false;
-    }
-    close(wavfd);
-#endif
     
     // Write MIDI data to temp file
     FILE* tempMidi = fopen(tempMidiPath, "wb");
     if (!tempMidi) {
         std::cerr << "Failed to open temporary MIDI file for writing" << std::endl;
-#ifdef _WIN32
-        DeleteFileA(tempMidiPath);
-        DeleteFileA(tempWavPath);
-#else
-        unlink(tempMidiPath);
-        unlink(tempWavPath);
-#endif
         return false;
     }
     
@@ -84,18 +35,20 @@ bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<
     fclose(tempMidi);
     
     // Create a temporary file for the WAV output
+    char tempWavPath[L_tmpnam] = {0};
+    if (std::tmpnam(tempWavPath) == NULL) {
+        std::cerr << "Failed to create temporary WAV file path" << std::endl;
+        remove(tempMidiPath);
+        return false;
+    }
+    
     // Use the existing convertMidiToWav function
     bool conversionSuccess = convertMidiToWav(tempMidiPath, tempWavPath, 1000);
     
     if (!conversionSuccess) {
         std::cerr << "MIDI to WAV conversion failed" << std::endl;
-#ifdef _WIN32
-        DeleteFileA(tempMidiPath);
-        DeleteFileA(tempWavPath);
-#else
-        unlink(tempMidiPath);
-        unlink(tempWavPath);
-#endif
+        remove(tempMidiPath);
+        remove(tempWavPath);
         return false;
     }
     
@@ -103,13 +56,8 @@ bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<
     FILE* wavFile = fopen(tempWavPath, "rb");
     if (!wavFile) {
         std::cerr << "Failed to open temporary WAV file for reading" << std::endl;
-#ifdef _WIN32
-        DeleteFileA(tempMidiPath);
-        DeleteFileA(tempWavPath);
-#else
-        unlink(tempMidiPath);
-        unlink(tempWavPath);
-#endif
+        remove(tempMidiPath);
+        remove(tempWavPath);
         return false;
     }
     
@@ -121,13 +69,8 @@ bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<
     if (wavSize <= 0) {
         std::cerr << "WAV file is empty or invalid" << std::endl;
         fclose(wavFile);
-#ifdef _WIN32
-        DeleteFileA(tempMidiPath);
-        DeleteFileA(tempWavPath);
-#else
-        unlink(tempMidiPath);
-        unlink(tempWavPath);
-#endif
+        remove(tempMidiPath);
+        remove(tempWavPath);
         return false;
     }
     
@@ -139,13 +82,8 @@ bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<
     if (headerBytesRead != 44) {
         std::cerr << "Failed to read WAV header" << std::endl;
         fclose(wavFile);
-#ifdef _WIN32
-        DeleteFileA(tempMidiPath);
-        DeleteFileA(tempWavPath);
-#else
-        unlink(tempMidiPath);
-        unlink(tempWavPath);
-#endif
+        remove(tempMidiPath);
+        remove(tempWavPath);
         return false;
     }
     
@@ -154,13 +92,8 @@ bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<
         header[8] != 'W' || header[9] != 'A' || header[10] != 'V' || header[11] != 'E') {
         std::cerr << "Invalid WAV file format" << std::endl;
         fclose(wavFile);
-#ifdef _WIN32
-        DeleteFileA(tempMidiPath);
-        DeleteFileA(tempWavPath);
-#else
-        unlink(tempMidiPath);
-        unlink(tempWavPath);
-#endif
+        remove(tempMidiPath);
+        remove(tempWavPath);
         return false;
     }
     
@@ -174,13 +107,8 @@ bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<
     
     if (dataBytesRead != dataSize) {
         std::cerr << "Failed to read WAV data" << std::endl;
-#ifdef _WIN32
-        DeleteFileA(tempMidiPath);
-        DeleteFileA(tempWavPath);
-#else
-        unlink(tempMidiPath);
-        unlink(tempWavPath);
-#endif
+        remove(tempMidiPath);
+        remove(tempWavPath);
         return false;
     }
     
@@ -221,13 +149,8 @@ bool convertMidiToWavInMemory(const std::vector<uint8_t>& midiData, std::vector<
     std::memcpy(wavData.data() + sizeof(newHeader), audioData.data(), dataSize);
     
     // Clean up temporary files
-#ifdef _WIN32
-    DeleteFileA(tempMidiPath);
-    DeleteFileA(tempWavPath);
-#else
-    unlink(tempMidiPath);
-    unlink(tempWavPath);
-#endif
+    remove(tempMidiPath);
+    remove(tempWavPath);
     
     std::cerr << "MIDI to WAV conversion successful, created WAV with " << dataSize 
               << " bytes of audio data" << std::endl;
