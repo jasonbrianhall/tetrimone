@@ -22,7 +22,7 @@ To build the project, you'll need:
 
 - C/C++ compiler (GCC, Clang, or MSVC)
 - SDL2 development libraries
-- CMake (optional, for easier building)
+- Make (optional, for easier building)
 
 ### Linux
 
@@ -31,8 +31,6 @@ To build the project, you'll need:
 sudo apt-get install gcc g++ libsdl2-dev cmake
 
 # Build
-mkdir build && cd build
-cmake ..
 make
 ```
 
@@ -40,11 +38,10 @@ make
 
 ```bash
 # Install dependencies with Homebrew
-brew install sdl2 cmake
+brew install sdl2
 
 # Build
-mkdir build && cd build
-cmake ..
+
 make
 ```
 
@@ -54,11 +51,9 @@ Using MSYS2/MinGW:
 
 ```bash
 # Install dependencies
-pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-sdl2 mingw-w64-x86_64-cmake
+pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-sdl2
 
 # Build
-mkdir build && cd build
-cmake ..
 make
 ```
 
@@ -67,12 +62,12 @@ make
 ### Converting MIDI to WAV
 
 ```bash
-./midi2wav input.mid output.wav [volume]
+./midiconverter input.mid output.wav [volume]
 ```
 
 Example:
 ```bash
-./midi2wav song.mid song.wav 400
+./midiconverter song.mid song.wav 400
 ```
 
 The optional volume parameter (percentage) defaults to 500% (value of 500). This allows you to adjust the output volume to get appropriate levels in the generated WAV file. If your output is too quiet or distorted, try adjusting this value.
@@ -83,7 +78,7 @@ The optional volume parameter (percentage) defaults to 500% (value of 500). This
 ./midi2wav input.mid output.wav [volume]
 ```
 
-The optional volume parameter defaults to 500% (value of 500).
+The optional volume parameter defaults to 500% (value of 500; max is 5000).
 
 ## Technical Details
 
