@@ -167,6 +167,8 @@ private:
     
 public:
     bool retroModeActive = false;  // Flag for retro mode
+    bool simpleBlocksActive = true;
+    bool retroMusicActive = true;
     bool showGridLines = false; // Grid lines off by default
     bool isShowingGridLines() const { return showGridLines; }
     void setShowGridLines(bool show) { showGridLines = show; }

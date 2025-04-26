@@ -445,7 +445,7 @@ void TetrimoneBoard::playBackgroundMusic() {
       while (sound_enabled_ && !musicStopFlag.load()) {
         SoundEvent audioEvent;
 
-        if (this->retroModeActive) {
+        if (this->retroModeActive || this->retroMusicActive) {
             audioEvent = backgroundMusicTracksRetro[currentTrackIndex];
         } else {
             audioEvent = backgroundMusicTracks[currentTrackIndex];
@@ -516,7 +516,7 @@ void TetrimoneBoard::playBackgroundMusic() {
       // Original implementation for non-Windows platforms with track skipping
       while (sound_enabled_ && !musicStopFlag.load()) {
         SoundEvent audioEvent;
-        if (this->retroModeActive) {
+        if (this->retroModeActive || this->retroMusicActive) {
             audioEvent = backgroundMusicTracksRetro[currentTrackIndex];
         
         } else {

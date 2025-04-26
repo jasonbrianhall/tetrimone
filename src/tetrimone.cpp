@@ -815,7 +815,7 @@ for (int y = 0; y < GRID_HEIGHT; ++y) {
       auto color = TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
       cairo_set_source_rgb(cr, color[0], color[1], color[2]);
 
-      if (board->retroModeActive) {
+      if (board->retroModeActive || board->simpleBlocksActive) {
         // In retro mode, draw simple blocks without 3D effects
         cairo_rectangle(cr, x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
         cairo_fill(cr);
@@ -951,7 +951,7 @@ if (!board->isGameOver() && !board->isPaused() &&
 
         // Only draw if within the visible grid
         if (drawY >= 0) {
-          if (board->retroModeActive) {
+          if (board->retroModeActive || board->simpleBlocksActive) {
             // In retro mode, draw simple blocks without 3D effects
             cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
             cairo_fill(cr);
@@ -1009,10 +1009,10 @@ if (!board->isGameOver() && !board->isPaused() &&
 
           // Only draw if within the visible grid
           if (drawY >= 0) {
-            if (board->retroModeActive) {
+            if (board->retroModeActive || board->simpleBlocksActive) {
               // In retro mode, don't draw ghost pieces
-              //cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
-              //cairo_stroke();
+              cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+              cairo_stroke(cr);
             } else {
               // Regular mode with 3D effects
               // Draw ghost block (just outline)
@@ -1300,7 +1300,7 @@ gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
           if (shape[y][x] == 1) {
             int drawX = offsetX + x * previewBlockSize;
             int drawY = offsetY + y * previewBlockSize;
-     if (board->retroModeActive) {
+     if (board->retroModeActive || board->simpleBlocksActive) {
         // In retro mode, draw simple blocks without 3D effects
         cairo_rectangle(cr, drawX, drawY, previewBlockSize, previewBlockSize);
         cairo_fill(cr);
