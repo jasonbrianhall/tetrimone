@@ -3,19 +3,36 @@
 #include <string.h>
 #include <stdbool.h>
 #include <math.h>
+
+// Platform-specific includes
+#ifdef _WIN32
+#include <windows.h>
+#include <conio.h>
+#else
 #include <pthread.h>
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#endif
+
 #include "midiplayer.h"
 #include "dbopl_wrapper.h"
 #include "virtual_mixer.h"
 
+// SDL includes (should work on both platforms)
+#include <SDL2/SDL.h>
+
 VirtualMixer* g_midi_mixer = NULL;
 int g_midi_mixer_channel = -1;
 
+// Platform-specific global variables
+#ifdef _WIN32
+// Windows doesn't need the termios structure
+#else
 struct termios old_tio;
+#endif
+
 volatile sig_atomic_t keep_running = 1;
 
 #ifndef M_PI
@@ -61,9 +78,29 @@ int ChVibrato[16] = {0};
 // SDL Audio
 SDL_AudioDeviceID audioDevice;
 SDL_AudioSpec audioSpec;
+#ifdef _WIN32
+CRITICAL_SECTION audioMutex;
+#else
 pthread_mutex_t audioMutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
+// Forward declarations
+void cleanup();
+void updateVolume(int change);
+void toggleNormalization();
+void generateAudio(void* userdata, Uint8* stream, int len);
+void processEvents();
+void handleMidiEvent(int tk);
+bool loadMidiFile(const char* filename);
+unsigned long readVarLen(FILE* f);
+int readString(FILE* f, int len, char* str);
+unsigned long convertInteger(char* str, int len);
+
+// Cross-platform kbhit implementation
 int kbhit() {
+#ifdef _WIN32
+    return _kbhit();
+#else
     struct termios oldt, newt;
     int ch;
     int oldf;
@@ -86,7 +123,67 @@ int kbhit() {
     }
 
     return 0;
+#endif
 }
+
+// Cross-platform getch implementation
+int getch() {
+#ifdef _WIN32
+    return _getch();
+#else
+    struct termios oldt, newt;
+    int ch;
+    
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    
+    ch = getchar();
+    
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    
+    return ch;
+#endif
+}
+
+// Platform-specific signal handlers
+#ifdef _WIN32
+BOOL WINAPI handle_console_ctrl(DWORD ctrl_type) {
+    if (ctrl_type == CTRL_C_EVENT) {
+        keep_running = 0;
+        
+        // Stop audio and perform cleanup
+        isPlaying = false;
+        SDL_PauseAudioDevice(audioDevice, 1);
+        
+        printf("\nPlayback interrupted. Cleaning up...\n");
+        cleanup();
+        
+        // Exit the program
+        exit(0);
+        return TRUE;
+    }
+    
+    return FALSE;
+}
+#else
+void handle_sigint(int sig) {
+    keep_running = 0;
+    // Restore terminal settings
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+    
+    // Stop audio and perform cleanup
+    isPlaying = false;
+    SDL_PauseAudioDevice(audioDevice, 1);
+    
+    printf("\nPlayback interrupted. Cleaning up...\n");
+    cleanup();
+    
+    // Exit the program
+    exit(0);
+}
+#endif
 
 // SDL Audio initialization
 bool initSDL() {
@@ -101,6 +198,11 @@ bool initSDL() {
         fprintf(stderr, "Failed to initialize virtual mixer\n");
         return false;
     }
+    
+    // Initialize mutex for Windows
+#ifdef _WIN32
+    InitializeCriticalSection(&audioMutex);
+#endif
     
     // Allocate a mixer channel for MIDI audio
     g_midi_mixer_channel = mixer_allocate_channel(g_midi_mixer);
@@ -150,6 +252,32 @@ void cleanup() {
         fclose(midiFile);
         midiFile = NULL;
     }
+
+#ifdef _WIN32
+    DeleteCriticalSection(&audioMutex);
+#endif
+
+#ifndef _WIN32
+    // Restore terminal settings on Unix-like systems
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+#endif
+}
+
+// Platform-specific mutex lock/unlock functions
+void lock_audio_mutex() {
+#ifdef _WIN32
+    EnterCriticalSection(&audioMutex);
+#else
+    pthread_mutex_lock(&audioMutex);
+#endif
+}
+
+void unlock_audio_mutex() {
+#ifdef _WIN32
+    LeaveCriticalSection(&audioMutex);
+#else
+    pthread_mutex_unlock(&audioMutex);
+#endif
 }
 
 // Helper: Read variable length value from MIDI file
@@ -266,23 +394,6 @@ bool loadMidiFile(const char* filename) {
     
     return true;
 }
-
-void handle_sigint(int sig) {
-    keep_running = 0;
-    // Restore terminal settings
-    tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
-    
-    // Stop audio and perform cleanup
-    isPlaying = false;
-    SDL_PauseAudioDevice(audioDevice, 1);
-    
-    printf("\nPlayback interrupted. Cleaning up...\n");
-    cleanup();
-    
-    // Exit the program
-    exit(0);
-}
-
 
 // Handle a single MIDI event
 void handleMidiEvent(int tk) {
@@ -554,7 +665,7 @@ void processEvents() {
         }
     }
     
-// Handle loop points
+    // Handle loop points
     if (loopStart) {
         // Save loop beginning point
         for (int tk = 0; tk < TrackCount; tk++) {
@@ -631,7 +742,7 @@ void generateAudio(void* userdata, Uint8* stream, int len) {
         return;
     }
     
-    pthread_mutex_lock(&audioMutex);
+    lock_audio_mutex();
     
     // Generate OPL audio into mixer channel
     int16_t opl_buffer[1024 * 2];
@@ -662,7 +773,7 @@ void generateAudio(void* userdata, Uint8* stream, int len) {
         processEvents();
     }
     
-    pthread_mutex_unlock(&audioMutex);
+    unlock_audio_mutex();
 }
 
 // Initialize everything and start playback
@@ -698,7 +809,11 @@ void playMidiFile() {
     printf("  n - Toggle Volume Normalization\n");
     printf("  Ctrl+C - Stop Playback\n");
     
-    // Disable input buffering
+    // Set up terminal for non-blocking input
+#ifdef _WIN32
+    // Set up Windows console control handler
+    SetConsoleCtrlHandler(handle_console_ctrl, TRUE);
+#else
     struct termios new_tio;
     tcgetattr(STDIN_FILENO, &old_tio);
     new_tio = old_tio;
@@ -707,6 +822,7 @@ void playMidiFile() {
     
     // Set up signal handler for SIGINT (CTRL+C)
     signal(SIGINT, handle_sigint);
+#endif
     
     // Reset keep_running flag
     keep_running = 1;
@@ -715,7 +831,7 @@ void playMidiFile() {
     while (isPlaying && keep_running) {
         // Check for key press without blocking
         if (kbhit()) {
-            int ch = getchar();
+            int ch = getch();  // Use our cross-platform getch function
             switch (ch) {
                 case ' ':
                     paused = !paused;
@@ -738,11 +854,17 @@ void playMidiFile() {
         }
         
         // Sleep to prevent CPU hogging
+#ifdef _WIN32
+        Sleep(10); // 10 milliseconds
+#else
         usleep(10000); // 10 milliseconds
+#endif
     }
     
     // Restore original terminal settings
+#ifndef _WIN32
     tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+#endif
     
     // Stop audio
     SDL_PauseAudioDevice(audioDevice, 1);
@@ -752,27 +874,27 @@ void playMidiFile() {
 
 // Update global volume
 void updateVolume(int change) {
-    pthread_mutex_lock(&audioMutex);
+    lock_audio_mutex();
     
     globalVolume += change;
     if (globalVolume < 10) globalVolume = 10;
     if (globalVolume > 300) globalVolume = 300;
     
-    // Remove the loop that calls OPL_SetVolume for all channels
-    // The global volume will be applied in OPL_Generate instead
+    // Apply global volume scaling in OPL_Generate
     
-    pthread_mutex_unlock(&audioMutex);
+    unlock_audio_mutex();
     
     printf("Volume: %d%%\n", globalVolume);
 }
 
 // Toggle volume normalization
 void toggleNormalization() {
-    pthread_mutex_lock(&audioMutex);
+    lock_audio_mutex();
     
     enableNormalization = !enableNormalization;
     
-    pthread_mutex_unlock(&audioMutex);
+    unlock_audio_mutex();
     
     printf("Normalization: %s\n", enableNormalization ? "ON" : "OFF");
 }
+
