@@ -2,30 +2,99 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <mutex>
 #include "midiplayer.h"
 #include "wav_converter.h"
 #include "dbopl_wrapper.h"
 #include "audioconverter.h"
 
-// Declare external variables and functions needed for conversion
+// Declare external variables for MIDI state
 extern double playTime;
 extern bool isPlaying;
 extern double playwait;
 extern int globalVolume;
 extern void processEvents(void);
 
+// Additional external variables (add these)
+extern int tkPtr[MAX_TRACKS];
+extern double tkDelay[MAX_TRACKS];
+extern int tkStatus[MAX_TRACKS];
+extern bool loopStart;
+extern bool loopEnd;
+extern int loPtr[MAX_TRACKS];
+extern double loDelay[MAX_TRACKS];
+extern int loStatus[MAX_TRACKS];
+extern double loopwait;
+extern int rbPtr[MAX_TRACKS];
+extern double rbDelay[MAX_TRACKS];
+extern int rbStatus[MAX_TRACKS];
+extern int TrackCount;
+extern double Tempo;
+extern int DeltaTicks;
+extern int ChPatch[16];
+extern double ChBend[16];
+extern int ChVolume[16];
+extern int ChPanning[16];
+extern int ChVibrato[16];
+extern FILE* midiFile;
+
+// Add a mutex to protect the entire function
+static std::mutex conversion_mutex;
+
 // Function to convert MIDI to WAV
 bool convertMidiToWav(const char* midi_filename, const char* wav_filename, int volume) {
+    // Lock the mutex at the beginning of the function
+    conversion_mutex.lock();
+    
     // Reset global state variables
-    playTime = 0;
+    playTime = 0.0;
+    isPlaying = false;  // Start with false
+    playwait = 0.0;
+    
+    // Reset all state variables completely
+    for (int tk = 0; tk < MAX_TRACKS; tk++) {
+        tkPtr[tk] = 0;
+        tkDelay[tk] = 0;
+        tkStatus[tk] = 0;
+        loPtr[tk] = 0;
+        loDelay[tk] = 0;
+        loStatus[tk] = 0;
+        rbPtr[tk] = 0;
+        rbDelay[tk] = 0;
+        rbStatus[tk] = 0;
+    }
+    
+    TrackCount = 0;
+    Tempo = 500000;  // Default 120 BPM
+    DeltaTicks = 0;
+    
+    // Reset channel state
+    for (int i = 0; i < 16; i++) {
+        ChPatch[i] = 0;
+        ChBend[i] = 0;
+        ChVolume[i] = 127;
+        ChPanning[i] = 0;
+        ChVibrato[i] = 0;
+    }
+    
+    // Reset loop state
+    loopStart = false;
+    loopEnd = false;
+    loopwait = 0;
+    
+    // Reset OPL state completely
+    OPL_Shutdown();
+    
+    // Now it's safe to start playing
     isPlaying = true;
     
-    // Set global volume (default is already set, this allows override)
+    // Set global volume
     globalVolume = volume;
     
     // Initialize SDL and audio systems
     if (!initSDL()) {
         fprintf(stderr, "Failed to initialize SDL\n");
+        conversion_mutex.unlock();
         return false;
     }
     
@@ -34,6 +103,7 @@ bool convertMidiToWav(const char* midi_filename, const char* wav_filename, int v
     if (!loadMidiFile(midi_filename)) {
         fprintf(stderr, "Failed to load MIDI file\n");
         cleanup();
+        conversion_mutex.unlock();
         return false;
     }
     
@@ -47,6 +117,7 @@ bool convertMidiToWav(const char* midi_filename, const char* wav_filename, int v
     if (!wav_converter) {
         fprintf(stderr, "Failed to create WAV converter\n");
         cleanup();
+        conversion_mutex.unlock();
         return false;
     }
     
@@ -80,8 +151,6 @@ bool convertMidiToWav(const char* midi_filename, const char* wav_filename, int v
         playTime += buffer_duration;
         
         // Process events if needed
-        // The critical fix: decrease playwait by exactly the buffer duration
-        // This ensures events are processed at the right time
         playwait -= buffer_duration;
         
         // Process events when timer reaches zero or below
@@ -106,6 +175,19 @@ bool convertMidiToWav(const char* midi_filename, const char* wav_filename, int v
     
     // Cleanup
     //cleanup();
+    
+    // Reset state variables before unlocking
+    playTime = 0;
+    isPlaying = false;
+    playwait = 0.0;
+    
+    // Make sure midiFile is NULL
+    if (midiFile) {
+        fclose(midiFile);
+        midiFile = NULL;
+    }
+    
+    conversion_mutex.unlock();
     
     return true;
 }
