@@ -134,11 +134,11 @@ bool TetrimoneBoard::initializeAudio() {
         loadSoundFromZip(GameSoundEvent::BackgroundMusic3, "TetrimoneB.mp3") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic4, "TetrimoneC.mp3") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic5, "futuristic.mp3") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusicRetro, "theme.mid") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusic2Retro, "TetrimoneA.mid") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusic3Retro, "TetrimoneB.mid") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusic4Retro, "TetrimoneC.mid") &&
-        loadSoundFromZip(GameSoundEvent::BackgroundMusic5Retro, "futuristic.mid") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusicRetro, "themeretro.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic2Retro, "TetrimoneAretro.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic3Retro, "TetrimoneBretro.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic4Retro, "TetrimoneCretro.mp3") &&
+        loadSoundFromZip(GameSoundEvent::BackgroundMusic5Retro, "futuristicretro.mp3") &&
         loadSoundFromZip(GameSoundEvent::Single, "single.mp3") &&
         loadSoundFromZip(GameSoundEvent::Double, "double.mp3") &&
         loadSoundFromZip(GameSoundEvent::Triple, "triple.mp3") &&
