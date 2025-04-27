@@ -434,7 +434,7 @@ if (level > currentlevel) {
     // Only change theme if retro mode is not enabled
     if (!retroModeActive) {
         // Every Level, change theme; wrap around except for retro theme
-        currentThemeIndex = (currentThemeIndex + 1) % NUM_COLOR_THEMES-1;
+        currentThemeIndex = (currentThemeIndex + 1) % NUM_COLOR_THEMES;
 
         // Add this section to change background on level up
         if (useBackgroundZip && !backgroundImages.empty()) {
@@ -454,13 +454,6 @@ void TetrimoneBoard::generateNewPiece() {
     for (int i = 0; i < 3; i++) {
       // Use the existing piece generation logic to create each piece
       std::vector<int> validPieces;
-
-      // When in retro mode, only allow standard tetrominos (types 0-6)
-      if (retroModeActive) {
-        for (int j = 0; j <= 6; ++j) {
-          validPieces.push_back(j);
-        }
-      } else {
         // Otherwise use the regular minBlockSize rules
         switch (minBlockSize) {
         case 1: // All pieces
@@ -494,13 +487,12 @@ void TetrimoneBoard::generateNewPiece() {
           }
           break;
         default:
-          // Fallback to standard tetrimones
+          // Fallback to standard tetromones
           for (int j = 0; j <= 6; ++j) {
             validPieces.push_back(j);
           }
           break;
         }
-      }
 
       // If no valid pieces found, fallback to standard Tetrimones
       if (validPieces.empty()) {
@@ -531,12 +523,6 @@ void TetrimoneBoard::generateNewPiece() {
     // Generate a new piece for the last position
     std::vector<int> validPieces;
 
-    // When in retro mode, only allow standard tetrominos (types 0-6)
-    if (retroModeActive) {
-      for (int j = 0; j <= 6; ++j) {
-        validPieces.push_back(j);
-      }
-    } else {
       // Otherwise use the regular minBlockSize rules
       switch (minBlockSize) {
       case 1: // All pieces
@@ -576,7 +562,6 @@ void TetrimoneBoard::generateNewPiece() {
         }
         break;
       }
-    }
 
     // If no valid pieces found, fallback to standard Tetromones
     if (validPieces.empty()) {
