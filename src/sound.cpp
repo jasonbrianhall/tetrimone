@@ -143,6 +143,7 @@ bool TetrimoneBoard::initializeAudio() {
         loadSoundFromZip(GameSoundEvent::Double, "double.mp3") &&
         loadSoundFromZip(GameSoundEvent::Triple, "triple.mp3") &&
         loadSoundFromZip(GameSoundEvent::Gameover, "gameover.mp3") &&
+        loadSoundFromZip(GameSoundEvent::GameoverRetro, "gameoverretro.mp3") &&
         loadSoundFromZip(GameSoundEvent::Clear, "clear.mp3") &&
         loadSoundFromZip(GameSoundEvent::Drop, "drop.mp3") &&
         loadSoundFromZip(GameSoundEvent::LateralMove, "lateralmove.mp3") &&
@@ -263,6 +264,9 @@ if (format == "mid" || format == "midi") {  // Added support for both .mid and .
         break;
     case GameSoundEvent::Gameover:
         audioEvent = SoundEvent::Gameover;
+        break;
+    case GameSoundEvent::GameoverRetro:
+        audioEvent = SoundEvent::GameoverRetro;
         break;
     case GameSoundEvent::Clear:
         audioEvent = SoundEvent::Clear;
@@ -620,6 +624,10 @@ void TetrimoneBoard::playSound(GameSoundEvent event) {
   case GameSoundEvent::Gameover:
     audioEvent = SoundEvent::Gameover;
     break;
+  case GameSoundEvent::GameoverRetro:
+    audioEvent = SoundEvent::GameoverRetro;
+    break;
+
   case GameSoundEvent::Clear:
     audioEvent = SoundEvent::Clear;
     break;

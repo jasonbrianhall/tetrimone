@@ -1510,10 +1510,12 @@ case GDK_KEY_period:
         if (board->retroModeActive) {
             // Store current theme before switching to retro mode
             savedThemeIndex = currentThemeIndex;
-            
+            gtk_window_set_title(GTK_WINDOW(app->window), "БЛОЧНАЯ РЕВОЛЮЦИЯ");
             // Set to Soviet Retro theme (last theme in the list)
             currentThemeIndex = NUM_COLOR_THEMES - 1;
-            
+            gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
+                     app->board->getDifficultyText(app->difficulty).c_str());
+           gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>ПАРТИЙНЫЕ ДИРЕКТИВЫ</b>");
             // Disable background image
             if (board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) {
                 board->setUseBackgroundImage(false);
@@ -1530,9 +1532,12 @@ case GDK_KEY_period:
             // Play a special sound effect
             board->playSound(GameSoundEvent::Select);
         } else {
+            gtk_window_set_title(GTK_WINDOW(app->window), "Tetrimone");
             // Restore previous theme
             currentThemeIndex = savedThemeIndex;
-            
+            gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
+                     app->board->getDifficultyText(app->difficulty).c_str());
+           gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>Controls</b>");
             // Re-enable background if it was enabled before
             if (board->getBackgroundImage() != nullptr) {
                 board->setUseBackgroundImage(true);
@@ -1925,22 +1930,14 @@ gtk_label_set_markup(GTK_LABEL(tetrimoneApp->difficultyLabel),
                      FALSE, 0);
 
   // Add controls info
-  GtkWidget *controlsLabel = gtk_label_new(NULL);
-  gtk_label_set_markup(GTK_LABEL(controlsLabel), "<b>Controls</b>");
+GtkWidget *controlsLabel = gtk_label_new(NULL);
+if (tetrimoneApp->board->retroModeActive) {
+    gtk_label_set_markup(GTK_LABEL(controlsLabel), "<b>ПАРТИЙНЫЕ ДИРЕКТИВЫ</b>");
+} else {
+    gtk_label_set_markup(GTK_LABEL(controlsLabel), "<b>Controls</b>");
+}   
   gtk_widget_set_halign(controlsLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(sideBox), controlsLabel, FALSE, FALSE, 10);
-
-  /*GtkWidget *controls = gtk_label_new("Keyboard Controls:\n"
-                                      "• Left/Right/A/D: Move block\n"
-                                      "• Up/W: Rotate clockwise\n"
-                                      "• Z: Rotate counter-clockwise\n"
-                                      "• Down/S: Soft drop\n"
-                                      "• Space: Hard drop\n"
-                                      "• P: Pause/Resume game\n"
-                                      "• R: Restart game\n"
-                                      "• M: Toggle music\n\n"
-                                      "Controller support is available.\n"
-                                      "Configure in Controls menu."); */
 
 
   tetrimoneApp->controlsLabel = gtk_label_new(
@@ -1968,6 +1965,7 @@ gtk_label_set_markup(GTK_LABEL(tetrimoneApp->difficultyLabel),
     "Controller support is available.\n"
     "Configure in Controls menu.");
 
+  tetrimoneApp->controlsHeaderLabel = controlsLabel;
   gtk_widget_set_halign(tetrimoneApp->controlsLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(sideBox), tetrimoneApp->controlsLabel, FALSE, FALSE, 0);
 
@@ -3312,7 +3310,12 @@ bool TetrimoneBoard::isGameOver() const {
   if (gameOver && !soundPlayed) {
     // Cast away const to allow calling non-const member function
     TetrimoneBoard *nonConstThis = const_cast<TetrimoneBoard *>(this);
-    nonConstThis->playSound(GameSoundEvent::Gameover);
+    if (retroModeActive) {
+        nonConstThis->playSound(GameSoundEvent::GameoverRetro);
+    } else {
+        nonConstThis->playSound(GameSoundEvent::Gameover);
+    }    
+    
     soundPlayed = true;
   }
 

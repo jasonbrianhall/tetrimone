@@ -20,6 +20,7 @@ enum class SoundEvent {
   Double,
   Triple,
   Gameover,
+  GameoverRetro,
   Clear,
   Drop,
   LateralMove,

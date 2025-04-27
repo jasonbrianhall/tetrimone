@@ -26,6 +26,7 @@ enum class GameSoundEvent {
   Double,
   Triple,
   Gameover,
+  GameoverRetro,
   Clear,
   Drop,
   LateralMove,
@@ -133,7 +134,7 @@ struct TetrimoneApp {
     GtkWidget* sequenceLabel;
     GtkWidget* controlsLabel;
     int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard, 0 = Zen, 4 = Extreme
-
+    GtkWidget* controlsHeaderLabel;
     SDL_Joystick* joystick;
     bool joystickEnabled;
     guint joystickTimerId;
@@ -172,7 +173,7 @@ public:
     bool showGridLines = false; // Grid lines off by default
     bool isShowingGridLines() const { return showGridLines; }
     void setShowGridLines(bool show) { showGridLines = show; }
-
+std::string getDifficultyText(int difficulty) const;
     TetrimoneBoard();
     ~TetrimoneBoard();
     bool checkAndRecordHighScore(TetrimoneApp* app);
@@ -298,7 +299,6 @@ void onSoundToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onDifficultyChanged(GtkRadioMenuItem* menuItem, gpointer userData);
 void onAboutDialog(GtkMenuItem* menuItem, gpointer userData);
 void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData);
-std::string getDifficultyText(int difficulty);
 void adjustDropSpeed(TetrimoneApp* app);
 void calculateBlockSize(TetrimoneApp* app);
 gboolean pollJoystick(gpointer data);
