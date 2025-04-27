@@ -413,7 +413,7 @@ if (linesCleared > 0 && retroModeActive) {
         if (linesCleared == lastClearCount) {
           sequenceBonus += baseScore * 0.2; // 20% bonus for consistent clears
           playSound(
-              GameSoundEvent::LevelUp); // Special sound for consistent sequence
+              retroModeActive ? GameSoundEvent::LevelUpRetro : GameSoundEvent::LevelUp); // Special sound for consistent sequence
         }
 
         // Notify player about sequence
@@ -448,7 +448,7 @@ if (linesCleared > 0 && retroModeActive) {
   }
 
 if (level > currentlevel) {
-    playSound(GameSoundEvent::LevelUp);
+    playSound(retroModeActive ? GameSoundEvent::LevelUpRetro : GameSoundEvent::LevelUp);
     
     // Only change theme if retro mode is not enabled
     if (!retroModeActive) {

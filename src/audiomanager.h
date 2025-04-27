@@ -25,6 +25,7 @@ enum class SoundEvent {
   Drop,
   LateralMove,
   LevelUp,
+  LevelUpRetro,
   Rotate,
   Select,
   Start,
