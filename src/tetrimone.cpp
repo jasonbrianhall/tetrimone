@@ -341,6 +341,25 @@ int TetrimoneBoard::clearLines() {
     }
   }
 
+
+if (linesCleared > 0 && retroModeActive) {
+  // Soviet propaganda messages for line clears
+  std::vector<std::string> propagandaMessages = {
+    "GLORY TO THE SOVIET BLOCK SYSTEM!",
+    "WESTERN DECADENCE ELIMINATED!",
+    "ENEMIES OF THE STATE CRUSHED!",
+    "PRODUCTION QUOTA EXCEEDED BY 250%!",
+    "PARTY OFFICIALS PLEASED WITH YOUR EFFICIENCY!",
+    "GEOMETRIC ALIGNMENT FOR THE PEOPLE!",
+    "LONG LIVE THE REVOLUTION OF FALLING BLOCKS!"
+  };
+  
+  // Display random message
+  std::uniform_int_distribution<int> dist(0, propagandaMessages.size() - 1);
+  int msgIndex = dist(rng);
+  std::cout << propagandaMessages[msgIndex] << std::endl;
+}
+
   // Update score based on lines cleared
   if (linesCleared > 0) {
     // Play appropriate sound based on number of lines cleared
@@ -1013,20 +1032,20 @@ if (!board->isGameOver() && !board->isPaused() &&
   }
 }
   // Draw enhanced pause menu if paused
-  if (board->isPaused() && !board->isGameOver()) {
+if (board->isPaused() && !board->isGameOver()) {
     cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
     cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
                     GRID_HEIGHT * BLOCK_SIZE);
     cairo_fill(cr);
 
     cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL,
-                           CAIRO_FONT_WEIGHT_BOLD);
+                          CAIRO_FONT_WEIGHT_BOLD);
     cairo_set_font_size(cr, 30);
     cairo_set_source_rgb(cr, 1, 1, 1);
 
     // Center the text
     cairo_text_extents_t extents;
-    const char *text = "PAUSED";
+    const char *text = board->retroModeActive ? "ПРИОСТАНОВЛЕНО ПО ПРИКАЗУ ПАРТИИ" : "PAUSED";
     cairo_text_extents(cr, text, &extents);
 
     double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
@@ -1035,10 +1054,19 @@ if (!board->isGameOver() && !board->isPaused() &&
     cairo_move_to(cr, x, y);
     cairo_show_text(cr, text);
 
-    // Draw pause menu options
+    // Draw pause menu options with Soviet bureaucracy names if in retro mode
     const int numOptions = 3;
-    const char *menuOptions[numOptions] = {"Continue (P)", "New Game (N)",
-                                           "Quit (Q)"};
+    const char *menuOptions[numOptions];
+    
+    if (board->retroModeActive) {
+        menuOptions[0] = "Продолжить Трудовой Подвиг (P)";
+        menuOptions[1] = "Новая Пятилетка (N)";
+        menuOptions[2] = "Дезертировать с Поля Боя (Q)";
+    } else {
+        menuOptions[0] = "Continue (P)";
+        menuOptions[1] = "New Game (N)";
+        menuOptions[2] = "Quit (Q)";
+    }
 
     cairo_set_font_size(cr, 20);
 
@@ -1047,51 +1075,58 @@ if (!board->isGameOver() && !board->isPaused() &&
 
     // Draw menu options
     for (int i = 0; i < numOptions; i++) {
-      cairo_text_extents(cr, menuOptions[i], &extents);
-      x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
+        cairo_text_extents(cr, menuOptions[i], &extents);
+        x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
 
-      cairo_move_to(cr, x, y);
-      cairo_show_text(cr, menuOptions[i]);
+        cairo_move_to(cr, x, y);
+        cairo_show_text(cr, menuOptions[i]);
 
-      y += 40;
+        y += 40;
     }
-  }
+}
 
   // Draw game over text if needed
-  if (board->isGameOver()) {
+if (board->isGameOver()) {
     cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
     cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
                     GRID_HEIGHT * BLOCK_SIZE);
     cairo_fill(cr);
-
     cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_BOLD);
     cairo_set_font_size(cr, 30);
     cairo_set_source_rgb(cr, 1, 0, 0);
-
+    
     // Center the text
     cairo_text_extents_t extents;
-    const char *text = "GAME OVER";
+    const char *text = board->retroModeActive ? "ИНФОРМАЦИЯ ЗАПРЕЩЕНА" : "GAME OVER";
     cairo_text_extents(cr, text, &extents);
-
     double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
     double y = (GRID_HEIGHT * BLOCK_SIZE) / 2;
-
     cairo_move_to(cr, x, y);
     cairo_show_text(cr, text);
-
-    // Show "Press R to restart" message
+    
+    // Show funny restart message in retro mode
     cairo_set_font_size(cr, 16);
-    const char *restartText = "Press R to restart";
+    const char *restartText = board->retroModeActive ? 
+                              "НАЖМИТЕ R ДЛЯ ТРУДОВОГО ПЕРЕВОСПИТАНИЯ" : 
+                              "Press R to restart";
     cairo_text_extents(cr, restartText, &extents);
-
     x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
     y += 40;
-
     cairo_move_to(cr, x, y);
     cairo_show_text(cr, restartText);
-  }
-
+    
+    // Add a second line with translation for non-Russian speakers
+    if (board->retroModeActive) {
+        cairo_set_font_size(cr, 12);
+        const char *translationText = "(Press R for labor re-education)";
+        cairo_text_extents(cr, translationText, &extents);
+        x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
+        y += 25;
+        cairo_move_to(cr, x, y);
+        cairo_show_text(cr, translationText);
+    }
+}
   return FALSE;
 }
 
@@ -1609,10 +1644,8 @@ gboolean onTimerTick(gpointer data) {
 
   if (!board->isPaused()) {
     board->updateGame();
-
     // If the game just ended after this update, check for high score
     if (board->isGameOver()) {
-
       if (!board->highScoreAlreadyProcessed) {
            board->highScoreAlreadyProcessed=true;
            bool isHighScore = board->checkAndRecordHighScore(app);
@@ -1628,37 +1661,100 @@ gboolean onTimerTick(gpointer data) {
     updateLabels(app);
   }
 
+  if (!board->isPaused() && !board->isGameOver() && board->retroModeActive) {
+    // 1 in 1000 chance of KGB inspection
+    static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
+    std::uniform_int_distribution<int> dist(1, 1000);
+    if (dist(rng) == 1) {
+      // Pause the game briefly
+      app->board->setPaused(true);
+      
+      // Create popup message
+      GtkWidget *dialog = gtk_message_dialog_new(
+          GTK_WINDOW(app->window),
+          GTK_DIALOG_MODAL,
+          GTK_MESSAGE_WARNING,
+          GTK_BUTTONS_NONE,
+          "КГБ ИНСПЕКЦИЯ В ПРОЦЕССЕ...\n(KGB INSPECTION IN PROGRESS...)");
+      
+      // Auto-close after 2 seconds
+      g_timeout_add(2000, 
+        [](gpointer user_data) -> gboolean {
+          GtkWidget *dialog = static_cast<GtkWidget*>(user_data);
+          gtk_widget_destroy(dialog);
+          return G_SOURCE_REMOVE;
+        }, 
+        dialog);
+      
+      // Show dialog
+      gtk_widget_show_all(dialog);
+      
+      // Resume the game after 2 seconds
+      g_timeout_add(2100, 
+        [](gpointer user_data) -> gboolean {
+          TetrimoneApp *app = static_cast<TetrimoneApp *>(user_data);
+          app->board->setPaused(false);
+          return G_SOURCE_REMOVE;
+        }, 
+        app);
+    }
+  }
+  
   return TRUE; // Keep the timer running
 }
 
 void updateLabels(TetrimoneApp *app) {
   TetrimoneBoard *board = app->board;
 
-  // Update score label
-  std::string score_text = "<b>Score:</b> " + std::to_string(board->getScore());
+  // Update score label with Soviet-style text in retro mode
+  std::string score_text;
+  if (board->retroModeActive) {
+    score_text = "<b>Партийная Лояльность:</b> " + std::to_string(board->getScore()) + "%";
+  } else {
+    score_text = "<b>Score:</b> " + std::to_string(board->getScore());
+  }
   gtk_label_set_markup(GTK_LABEL(app->scoreLabel), score_text.c_str());
 
-  // Update level label
-  std::string level_text = "<b>Level:</b> " + std::to_string(board->getLevel());
+  // Update level label with Soviet-style text in retro mode
+  std::string level_text;
+  if (board->retroModeActive) {
+    level_text = "<b>Пятилетка:</b> " + std::to_string(board->getLevel());
+  } else {
+    level_text = "<b>Level:</b> " + std::to_string(board->getLevel());
+  }
   gtk_label_set_markup(GTK_LABEL(app->levelLabel), level_text.c_str());
 
-  // Update lines label
-  std::string lines_text =
-      "<b>Lines:</b> " + std::to_string(board->getLinesCleared());
+  // Update lines label with Soviet propaganda in retro mode
+  std::string lines_text;
+  if (board->retroModeActive) {
+    lines_text = "<b>Уничтожено врагов народа:</b> " + std::to_string(board->getLinesCleared());
+  } else {
+    lines_text = "<b>Lines:</b> " + std::to_string(board->getLinesCleared());
+  }
   gtk_label_set_markup(GTK_LABEL(app->linesLabel), lines_text.c_str());
 
   // Update sequence label
   std::string sequence_text;
   if (board->isSequenceActive() && board->getConsecutiveClears() > 1) {
-    sequence_text =
-        "<b>Sequence:</b> " + std::to_string(board->getConsecutiveClears()) +
+    if (board->retroModeActive) {
+      sequence_text = "<b>Коллективная эффективность:</b> " + 
+        std::to_string(board->getConsecutiveClears()) + " (Рекорд: " + 
+        std::to_string(board->getMaxConsecutiveClears()) + ")";
+    } else {
+      sequence_text = "<b>Sequence:</b> " + std::to_string(board->getConsecutiveClears()) +
         " (Max: " + std::to_string(board->getMaxConsecutiveClears()) + ")";
+    }
     // Make it stand out when active
     sequence_text = "<span foreground='#00AA00'>" + sequence_text + "</span>";
   } else {
-    sequence_text =
-        "<b>Sequence:</b> " + std::to_string(board->getConsecutiveClears()) +
+    if (board->retroModeActive) {
+      sequence_text = "<b>Коллективная эффективность:</b> " + 
+        std::to_string(board->getConsecutiveClears()) + " (Рекорд: " + 
+        std::to_string(board->getMaxConsecutiveClears()) + ")";
+    } else {
+      sequence_text = "<b>Sequence:</b> " + std::to_string(board->getConsecutiveClears()) +
         " (Max: " + std::to_string(board->getMaxConsecutiveClears()) + ")";
+    }
   }
   gtk_label_set_markup(GTK_LABEL(app->sequenceLabel), sequence_text.c_str());
 }
@@ -1821,8 +1917,9 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
 
   // Add difficulty label
   tetrimoneApp->difficultyLabel = gtk_label_new(NULL);
-  gtk_label_set_markup(GTK_LABEL(tetrimoneApp->difficultyLabel),
-                       getDifficultyText(tetrimoneApp->difficulty).c_str());
+gtk_label_set_markup(GTK_LABEL(tetrimoneApp->difficultyLabel),
+                     tetrimoneApp->board->getDifficultyText(tetrimoneApp->difficulty).c_str());
+                     
   gtk_widget_set_halign(tetrimoneApp->difficultyLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(sideBox), tetrimoneApp->difficultyLabel, FALSE,
                      FALSE, 0);
@@ -2666,9 +2763,8 @@ void onDifficultyChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
     app->difficulty = newDifficulty;
 
     // Update difficulty label
-    gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
-                         getDifficultyText(app->difficulty).c_str());
-
+gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
+                     app->board->getDifficultyText(app->difficulty).c_str());
     // Recalculate drop speed based on difficulty and level
     adjustDropSpeed(app);
 
@@ -2700,22 +2796,41 @@ void onDifficultyChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
   }
 }
 
-std::string getDifficultyText(int difficulty) {
-  switch (difficulty) {
-  case 0:
-    return "<b>Difficulty:</b> Zen";
-  case 1:
-    return "<b>Difficulty:</b> Easy";
-  case 2:
-    return "<b>Difficulty:</b> Medium";
-  case 3:
-    return "<b>Difficulty:</b> Hard";
-  case 4:
-    return "<b>Difficulty:</b> Extreme";
-  case 5:
-    return "<b>Difficulty:</b> Insane";
-  default:
-    return "<b>Difficulty:</b> Medium";
+std::string TetrimoneBoard::getDifficultyText(int difficulty) const {
+  if (retroModeActive) {
+    switch (difficulty) {
+    case 0:
+      return "<b>Сложность:</b> Санаторий для Партийной Элиты"; // Luxury Sanatorium for Party Elite
+    case 1:
+      return "<b>Сложность:</b> Стахановское Движение для Начинающих"; // Stakhanovite Movement for Beginners
+    case 2:
+      return "<b>Сложность:</b> Стандартный Рабочий Режим"; // Standard Worker Mode
+    case 3:
+      return "<b>Сложность:</b> Ударный Труд"; // Shock Work
+    case 4:
+      return "<b>Сложность:</b> Сибирская Зима"; // Siberian Winter
+    case 5:
+      return "<b>Сложность:</b> ГУЛАГ"; // GULAG
+    default:
+      return "<b>Сложность:</b> Стандартный Рабочий Режим";
+    }
+  } else {
+    switch (difficulty) {
+    case 0:
+      return "<b>Difficulty:</b> Zen";
+    case 1:
+      return "<b>Difficulty:</b> Easy";
+    case 2:
+      return "<b>Difficulty:</b> Medium";
+    case 3:
+      return "<b>Difficulty:</b> Hard";
+    case 4:
+      return "<b>Difficulty:</b> Extreme";
+    case 5:
+      return "<b>Difficulty:</b> Insane";
+    default:
+      return "<b>Difficulty:</b> Medium";
+    }
   }
 }
 
@@ -3361,8 +3476,8 @@ void rebuildGameUI(TetrimoneApp *app) {
 
   // Recreate difficulty label
   app->difficultyLabel = gtk_label_new(NULL);
-  gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
-                       getDifficultyText(app->difficulty).c_str());
+gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
+                     app->board->getDifficultyText(app->difficulty).c_str());
   gtk_widget_set_halign(app->difficultyLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(sideBox), app->difficultyLabel, FALSE, FALSE, 0);
 
