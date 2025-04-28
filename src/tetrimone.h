@@ -342,6 +342,7 @@ void setWindowIcon(GtkWindow* window);
 
 void onSimpleBlocksToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onRetroMusicToggled(GtkCheckMenuItem* menuItem, gpointer userData);
+void onTestSound(GtkButton* button, gpointer userData);
 
 #endif // TETRIMONE_H
 
