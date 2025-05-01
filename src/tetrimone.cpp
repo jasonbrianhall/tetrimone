@@ -3417,7 +3417,7 @@ void rebuildGameUI(TetrimoneApp *app) {
                    app);
 
   // Add game area back to its container
-  // First, let's find and empty the mainBox (keep the side panel)
+  // First, find and empty the mainBox (keep the side panel)
   GList *children = gtk_container_get_children(GTK_CONTAINER(app->mainBox));
   for (GList *child = children; child != NULL; child = child->next) {
     gtk_container_remove(GTK_CONTAINER(app->mainBox), GTK_WIDGET(child->data));
@@ -3436,8 +3436,7 @@ void rebuildGameUI(TetrimoneApp *app) {
   gtk_box_pack_start(GTK_BOX(sideBox), nextPieceFrame, FALSE, FALSE, 0);
 
   // Create the next piece drawing area - sized for 3 horizontal pieces with
-  // half-size blocks Width: 3 sections with enough space for pieces at half
-  // size Height: enough space for the pieces plus header space
+  // half-size blocks
   int previewBlockSize = BLOCK_SIZE / 2;
   int previewWidth =
       3 * 4 * previewBlockSize; // 3 sections, each 4 blocks wide at half size
@@ -3452,52 +3451,108 @@ void rebuildGameUI(TetrimoneApp *app) {
 
   // Create score, level, and lines labels
   app->scoreLabel = gtk_label_new(NULL);
-  std::string score_text =
-      "<b>Score:</b> " + std::to_string(app->board->getScore());
+  std::string score_text;
+  if (app->board->retroModeActive) {
+    score_text = "<b>Партийная Лояльность:</b> " + std::to_string(app->board->getScore()) + "%";
+  } else {
+    score_text = "<b>Score:</b> " + std::to_string(app->board->getScore());
+  }
   gtk_label_set_markup(GTK_LABEL(app->scoreLabel), score_text.c_str());
   gtk_widget_set_halign(app->scoreLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(sideBox), app->scoreLabel, FALSE, FALSE, 0);
 
   app->levelLabel = gtk_label_new(NULL);
-  std::string level_text =
-      "<b>Level:</b> " + std::to_string(app->board->getLevel());
+  std::string level_text;
+  if (app->board->retroModeActive) {
+    level_text = "<b>Пятилетка:</b> " + std::to_string(app->board->getLevel());
+  } else {
+    level_text = "<b>Level:</b> " + std::to_string(app->board->getLevel());
+  }
   gtk_label_set_markup(GTK_LABEL(app->levelLabel), level_text.c_str());
   gtk_widget_set_halign(app->levelLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(sideBox), app->levelLabel, FALSE, FALSE, 0);
 
   app->linesLabel = gtk_label_new(NULL);
-  std::string lines_text =
-      "<b>Lines:</b> " + std::to_string(app->board->getLinesCleared());
+  std::string lines_text;
+  if (app->board->retroModeActive) {
+    lines_text = "<b>Уничтожено врагов народа:</b> " + std::to_string(app->board->getLinesCleared());
+  } else {
+    lines_text = "<b>Lines:</b> " + std::to_string(app->board->getLinesCleared());
+  }
   gtk_label_set_markup(GTK_LABEL(app->linesLabel), lines_text.c_str());
   gtk_widget_set_halign(app->linesLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(sideBox), app->linesLabel, FALSE, FALSE, 0);
 
   app->sequenceLabel = gtk_label_new(NULL);
-  gtk_label_set_markup(GTK_LABEL(app->sequenceLabel), "<b>Sequence:</b> 0");
+  std::string sequence_text;
+  if (app->board->isSequenceActive() && app->board->getConsecutiveClears() > 1) {
+    if (app->board->retroModeActive) {
+      sequence_text = "<b>Коллективная эффективность:</b> " + 
+        std::to_string(app->board->getConsecutiveClears()) + " (Рекорд: " + 
+        std::to_string(app->board->getMaxConsecutiveClears()) + ")";
+    } else {
+      sequence_text = "<b>Sequence:</b> " + std::to_string(app->board->getConsecutiveClears()) +
+        " (Max: " + std::to_string(app->board->getMaxConsecutiveClears()) + ")";
+    }
+    // Make it stand out when active
+    sequence_text = "<span foreground='#00AA00'>" + sequence_text + "</span>";
+  } else {
+    if (app->board->retroModeActive) {
+      sequence_text = "<b>Коллективная эффективность:</b> " + 
+        std::to_string(app->board->getConsecutiveClears()) + " (Рекорд: " + 
+        std::to_string(app->board->getMaxConsecutiveClears()) + ")";
+    } else {
+      sequence_text = "<b>Sequence:</b> " + std::to_string(app->board->getConsecutiveClears()) +
+        " (Max: " + std::to_string(app->board->getMaxConsecutiveClears()) + ")";
+    }
+  }
+  gtk_label_set_markup(GTK_LABEL(app->sequenceLabel), sequence_text.c_str());
   gtk_widget_set_halign(app->sequenceLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(sideBox), app->sequenceLabel, FALSE, FALSE, 0);
 
   // Recreate difficulty label
   app->difficultyLabel = gtk_label_new(NULL);
-gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
+  gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
                      app->board->getDifficultyText(app->difficulty).c_str());
   gtk_widget_set_halign(app->difficultyLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(sideBox), app->difficultyLabel, FALSE, FALSE, 0);
 
   // Add controls info
-  GtkWidget *controlsLabel = gtk_label_new(NULL);
-  gtk_label_set_markup(GTK_LABEL(controlsLabel), "<b>Controls</b>");
-  gtk_widget_set_halign(controlsLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(sideBox), controlsLabel, FALSE, FALSE, 10);
+  app->controlsHeaderLabel = gtk_label_new(NULL);
+  if (app->board->retroModeActive) {
+    gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>ПАРТИЙНЫЕ ДИРЕКТИВЫ</b>");
+  } else {
+    gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>Controls</b>");
+  }
+  gtk_widget_set_halign(app->controlsHeaderLabel, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(sideBox), app->controlsHeaderLabel, FALSE, FALSE, 10);
 
-  GtkWidget *controls = gtk_label_new("Left/Right/A/D: Move\n"
-                                      "Up/W/Z: Rotate\n"
-                                      "Down/S: Soft Drop\n"
-                                      "Space: Hard Drop\n"
-                                      "P: Pause\n"
-                                      "R: Restart");
-  gtk_widget_set_halign(controls, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(sideBox), controls, FALSE, FALSE, 0);
+  app->controlsLabel = gtk_label_new(
+    app->board->retroModeActive ? 
+    "Управление клавиатурой:\n"
+    "• Влево/Вправо/A/D: Перемещение блока\n"
+    "• Вверх/W: Поворот по часовой стрелке\n"
+    "• Z: Поворот против часовой стрелки\n"
+    "• Вниз/S: Мягкое падение\n"
+    "• Пробел: Быстрое падение\n"
+    "• P: Пауза/Продолжение игры\n"
+    "• R: Перезапуск игры\n"
+    "• M: Переключение музыки\n\n"
+    "Поддержка контроллера доступна.\n"
+    "Настройка в меню Управление." :
+    "Keyboard Controls:\n"
+    "• Left/Right/A/D: Move block\n"
+    "• Up/W: Rotate clockwise\n"
+    "• Z: Rotate counter-clockwise\n"
+    "• Down/S: Soft drop\n"
+    "• Space: Hard drop\n"
+    "• P: Pause/Resume game\n"
+    "• R: Restart game\n"
+    "• M: Toggle music\n\n"
+    "Controller support is available.\n"
+    "Configure in Controls menu.");
+  gtk_widget_set_halign(app->controlsLabel, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(sideBox), app->controlsLabel, FALSE, FALSE, 0);
 
   // Show all the new widgets
   gtk_widget_show_all(app->mainBox);
