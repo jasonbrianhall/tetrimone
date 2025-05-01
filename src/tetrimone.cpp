@@ -1851,7 +1851,7 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   gtk_window_set_default_size(GTK_WINDOW(tetrimoneApp->window),
                               GRID_WIDTH * BLOCK_SIZE + 200,
                               GRID_HEIGHT * BLOCK_SIZE + 40);
-  gtk_window_set_resizable(GTK_WINDOW(tetrimoneApp->window), TRUE);
+  gtk_window_set_resizable(GTK_WINDOW(tetrimoneApp->window), FALSE);
 
   // Create main vertical box
   GtkWidget *mainVBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
