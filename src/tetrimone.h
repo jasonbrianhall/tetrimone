@@ -140,6 +140,7 @@ struct TetrimoneApp {
     bool joystickEnabled;
     guint joystickTimerId;
     JoystickMapping joystickMapping;
+    bool pausedByFocusLoss = false;
 };
 
 // Class for the game board
@@ -343,6 +344,7 @@ void setWindowIcon(GtkWindow* window);
 void onSimpleBlocksToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onRetroMusicToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onTestSound(GtkButton* button, gpointer userData);
+gboolean onWindowFocusChanged(GtkWidget *widget, GdkEventFocus *event, gpointer userData);
 
 #endif // TETRIMONE_H
 

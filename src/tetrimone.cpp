@@ -1847,6 +1847,11 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   g_signal_connect(G_OBJECT(tetrimoneApp->window), "delete-event",
                    G_CALLBACK(onDeleteEvent), tetrimoneApp);
 
+  g_signal_connect(G_OBJECT(tetrimoneApp->window), "focus-in-event",
+                 G_CALLBACK(onWindowFocusChanged), tetrimoneApp);
+  g_signal_connect(G_OBJECT(tetrimoneApp->window), "focus-out-event",
+                 G_CALLBACK(onWindowFocusChanged), tetrimoneApp);
+
   // Use the calculated block size for window dimensions
   gtk_window_set_default_size(GTK_WINDOW(tetrimoneApp->window),
                               GRID_WIDTH * BLOCK_SIZE + 200,
@@ -3845,6 +3850,38 @@ void onGameSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
 
   // Destroy dialog
   gtk_widget_destroy(dialog);
+}
+
+gboolean onWindowFocusChanged(GtkWidget *widget, GdkEventFocus *event, gpointer userData) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+  
+  // Only process if the game is currently active (not already paused or game over)
+  if (!app->board->isPaused() && !app->board->isGameOver() && 
+      !app->board->isSplashScreenActive()) {
+    
+    // If focus is lost (in_event is FALSE), pause the game
+    if (!event->in) {
+      // Store the pause state before pausing
+      app->pausedByFocusLoss = true;
+      
+      // Call the existing pause function to ensure proper behavior
+      onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+      
+      // Don't update the menu item text to show this is a special pause
+      gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Resume");
+    }
+    // If focus returns (in_event is TRUE) and pause was caused by focus loss, resume the game
+    else if (event->in && app->pausedByFocusLoss) {
+      app->pausedByFocusLoss = false;
+      
+      // Only resume if still paused (user might have manually interacted with pause)
+      if (app->board->isPaused()) {
+        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+      }
+    }
+  }
+  
+  return FALSE; // Continue event propagation
 }
 
 int main(int argc, char *argv[]) {
