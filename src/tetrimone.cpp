@@ -1507,51 +1507,52 @@ case GDK_KEY_period:
         // Toggle the retro mode flag
         board->retroModeActive = !board->retroModeActive;
         
-        if (board->retroModeActive) {
-            // Store current theme before switching to retro mode
-            savedThemeIndex = currentThemeIndex;
-            gtk_window_set_title(GTK_WINDOW(app->window), "БЛОЧНАЯ РЕВОЛЮЦИЯ");
-            // Set to Soviet Retro theme (last theme in the list)
-            currentThemeIndex = NUM_COLOR_THEMES - 1;
-            gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
-                     app->board->getDifficultyText(app->difficulty).c_str());
-           gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>ПАРТИЙНЫЕ ДИРЕКТИВЫ</b>");
-            // Disable background image
-            if (board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) {
-                board->setUseBackgroundImage(false);
-                board->setUseBackgroundZip(false);
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), FALSE);
-            }
-            
-            // Disable music
-            /*if (app->backgroundMusicPlaying) {
-                board->pauseBackgroundMusic();
-                app->backgroundMusicPlaying = false;
-            }*/
-            
-            // Play a special sound effect
-            board->playSound(GameSoundEvent::Select);
-        } else {
-            gtk_window_set_title(GTK_WINDOW(app->window), "Tetrimone");
-            // Restore previous theme
-            currentThemeIndex = savedThemeIndex;
-            gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
-                     app->board->getDifficultyText(app->difficulty).c_str());
-           gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>Controls</b>");
-            // Re-enable background if it was enabled before
-            if (board->getBackgroundImage() != nullptr) {
-                board->setUseBackgroundImage(true);
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
-            }
-            
-            // Re-enable music if sound is enabled
-            if (!app->backgroundMusicPlaying && board->sound_enabled_) {
-                board->resumeBackgroundMusic();
-                app->backgroundMusicPlaying = true;
-            }
-            
-            std::cout << "Retro mode OFF" << std::endl;
+
+if (board->retroModeActive) {
+    // Store current theme before switching to retro mode
+    savedThemeIndex = currentThemeIndex;
+    gtk_window_set_title(GTK_WINDOW(app->window), "БЛОЧНАЯ РЕВОЛЮЦИЯ");
+    // Set to Soviet Retro theme (last theme in the list)
+    currentThemeIndex = NUM_COLOR_THEMES - 1;
+    gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
+                app->board->getDifficultyText(app->difficulty).c_str());
+    gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>ПАРТИЙНЫЕ ДИРЕКТИВЫ</b>");
+    // Disable background image
+    if (board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) {
+        board->setUseBackgroundImage(false);
+        board->setUseBackgroundZip(false);
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), FALSE);
+    }
+    
+    // Play a special sound effect
+    board->playSound(GameSoundEvent::Select);
+} else {
+    gtk_window_set_title(GTK_WINDOW(app->window), "Tetrimone");
+    // Restore previous theme
+    currentThemeIndex = savedThemeIndex;
+    gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
+                app->board->getDifficultyText(app->difficulty).c_str());
+    gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>Controls</b>");
+    // Re-enable background if it was enabled before
+    if (board->getBackgroundImage() != nullptr) {
+        board->setUseBackgroundImage(true);
+        // Also restore the useBackgroundZip flag if background images were loaded from ZIP
+        if (!board->backgroundZipPath.empty()) {
+            board->setUseBackgroundZip(true);
+            // Trigger a background transition for a nice effect when returning from retro mode
+            board->startBackgroundTransition();
         }
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+    }
+    
+    // Re-enable music if sound is enabled
+    if (!app->backgroundMusicPlaying && board->sound_enabled_) {
+        board->resumeBackgroundMusic();
+        app->backgroundMusicPlaying = true;
+    }
+    
+    std::cout << "Retro mode OFF" << std::endl;
+}
         
         // Update controls text
         gtk_label_set_text(GTK_LABEL(app->controlsLabel), 
