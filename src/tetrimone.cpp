@@ -178,7 +178,7 @@ void TetrimoneBlock::setPosition(int newX, int newY) {
 
 // TetrimoneBoard class implementation
 TetrimoneBoard::TetrimoneBoard()
-    : score(0), level(1), linesCleared(0), gameOver(false), paused(false),
+    : score(0), level(1), linesCleared(0), gameOver(false),paused(false),
       ghostPieceEnabled(true), splashScreenActive(true),
       backgroundImage(nullptr), useBackgroundImage(false),
       backgroundOpacity(0.3), useBackgroundZip(false),
@@ -187,6 +187,10 @@ TetrimoneBoard::TetrimoneBoard()
       consecutiveClears(0), maxConsecutiveClears(0), lastClearCount(0),
       sequenceActive(false) {
   rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
+
+    showPropagandaMessage = false;
+    propagandaTimerId = 0;
+    propagandaMessageDuration = 2000; // 2 seconds display time
 
   // Initialize grid with maximum possible dimensions to avoid reallocation
   grid.resize(MAX_GRID_HEIGHT, std::vector<int>(MAX_GRID_WIDTH, 0));
@@ -358,6 +362,25 @@ if (linesCleared > 0 && retroModeActive) {
   std::uniform_int_distribution<int> dist(0, propagandaMessages.size() - 1);
   int msgIndex = dist(rng);
   std::cout << propagandaMessages[msgIndex] << std::endl;
+
+    // Display random message in the GUI
+    currentPropagandaMessage = propagandaMessages[msgIndex];
+    showPropagandaMessage = true;
+    
+    // Cancel existing timer if any
+    if (propagandaTimerId > 0) {
+        g_source_remove(propagandaTimerId);
+    }
+    
+    // Set timer to hide message after duration
+    propagandaTimerId = g_timeout_add(propagandaMessageDuration, 
+        [](gpointer userData) -> gboolean {
+            TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
+            board->showPropagandaMessage = false;
+            board->propagandaTimerId = 0;
+            return FALSE; // Don't repeat the timer
+        }, 
+        this);
 }
 
   // Update score based on lines cleared
@@ -935,6 +958,64 @@ for (int y = 0; y < GRID_HEIGHT; ++y) {
 
     return FALSE; // Skip drawing the rest
   }
+
+// In the onDrawGameArea function, modify the section where we draw the propaganda message
+if (board->retroModeActive && board->showPropagandaMessage) {
+    // Semi-transparent background for message
+    cairo_set_source_rgba(cr, 0.8, 0.0, 0.0, 0.8); // Soviet red with transparency
+    
+    // Calculate message position - center of screen
+    double msgX = (GRID_WIDTH * BLOCK_SIZE) / 2;
+    double msgY = (GRID_HEIGHT * BLOCK_SIZE) / 2;
+    
+    // Calculate font size based on screen width
+    // We'll scale between 14-26 font size based on screen width
+    double screenWidth = GRID_WIDTH * BLOCK_SIZE;
+    double baseFontSize = screenWidth / 25.0; // Scale factor
+    double fontSize = std::max(14.0, std::min(26.0, baseFontSize));
+    
+    // Set font size
+    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, fontSize);
+    
+    // Draw message background
+    int msgPadding = 20;
+    cairo_text_extents_t extents;
+    cairo_text_extents(cr, board->currentPropagandaMessage.c_str(), &extents);
+    
+    // Make sure the message fits the screen
+    if (extents.width > screenWidth - 40) {
+        // If the message is too wide, use a smaller font
+        fontSize = std::max(12.0, fontSize * (screenWidth - 40) / extents.width);
+        cairo_set_font_size(cr, fontSize);
+        cairo_text_extents(cr, board->currentPropagandaMessage.c_str(), &extents);
+    }
+    
+    cairo_rectangle(cr, 
+                    msgX - extents.width/2 - msgPadding,
+                    msgY - extents.height/2 - msgPadding,
+                    extents.width + msgPadding*2,
+                    extents.height + msgPadding*2);
+    cairo_fill(cr);
+    
+    // Draw white border
+    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+    cairo_set_line_width(cr, 2.0);
+    cairo_rectangle(cr, 
+                    msgX - extents.width/2 - msgPadding,
+                    msgY - extents.height/2 - msgPadding,
+                    extents.width + msgPadding*2,
+                    extents.height + msgPadding*2);
+    cairo_stroke(cr);
+    
+    // Draw text in white
+    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+    cairo_move_to(cr, 
+                  msgX - extents.width/2,
+                  msgY + extents.height/2);
+    cairo_show_text(cr, board->currentPropagandaMessage.c_str());
+}
+
 
   // Draw current piece if game is active
 if (!board->isGameOver() && !board->isPaused() &&

@@ -272,6 +272,15 @@ std::string getDifficultyText(int difficulty) const;
     int getConsecutiveClears() const { return consecutiveClears; }
     int getMaxConsecutiveClears() const { return maxConsecutiveClears; }
     bool isSequenceActive() const { return sequenceActive; }
+    
+        bool isShowingPropagandaMessage() const { return showPropagandaMessage; }
+    const std::string& getCurrentPropagandaMessage() const { return currentPropagandaMessage; }
+    bool showPropagandaMessage;
+    guint propagandaTimerId;
+    int propagandaMessageDuration; // in milliseconds
+    std::string currentPropagandaMessage;
+
+
 };
 
 // Function declarations
