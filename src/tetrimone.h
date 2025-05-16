@@ -14,7 +14,7 @@
 #include "themes.h"
 #include "tetrimoneblock.h"
 #include "highscores.h"
-
+#include "propaganda_messages.h"
 
 enum class GameSoundEvent {
   BackgroundMusic,
@@ -279,7 +279,9 @@ std::string getDifficultyText(int difficulty) const;
     guint propagandaTimerId;
     int propagandaMessageDuration; // in milliseconds
     std::string currentPropagandaMessage;
-
+    double propagandaMessageScale;
+    bool propagandaScalingUp;
+    guint propagandaScaleTimerId;
 
 };
 

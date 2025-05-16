@@ -7,7 +7,7 @@
 #include <commdlg.h>
 #endif
 #include "highscores.h"
-
+#include "propaganda_messages.h"
 
 
 int BLOCK_SIZE = 30; // Default value, will be updated at runtime
@@ -219,16 +219,27 @@ TetrimoneBoard::TetrimoneBoard()
 }
 
 TetrimoneBoard::~TetrimoneBoard() {
-  // Cancel any ongoing transition and clean up resources
-  cancelBackgroundTransition();
+    // Cancel any ongoing transition and clean up resources
+    cancelBackgroundTransition();
 
-  if (backgroundImage != nullptr) {
-    cairo_surface_destroy(backgroundImage);
-    backgroundImage = nullptr;
-  }
+    // Cancel propaganda message timers
+    if (propagandaTimerId > 0) {
+        g_source_remove(propagandaTimerId);
+        propagandaTimerId = 0;
+    }
+    
+    if (propagandaScaleTimerId > 0) {
+        g_source_remove(propagandaScaleTimerId);
+        propagandaScaleTimerId = 0;
+    }
 
-  // Clean up any background images from ZIP
-  cleanupBackgroundImages();
+    if (backgroundImage != nullptr) {
+        cairo_surface_destroy(backgroundImage);
+        backgroundImage = nullptr;
+    }
+
+    // Clean up any background images from ZIP
+    cleanupBackgroundImages();
 }
 
 bool TetrimoneBoard::movePiece(int dx, int dy) {
@@ -347,24 +358,23 @@ int TetrimoneBoard::clearLines() {
 
 
 if (linesCleared > 0 && retroModeActive) {
-  // Soviet propaganda messages for line clears
-  std::vector<std::string> propagandaMessages = {
-    "GLORY TO THE SOVIET BLOCK SYSTEM!",
-    "WESTERN DECADENCE ELIMINATED!",
-    "ENEMIES OF THE STATE CRUSHED!",
-    "PRODUCTION QUOTA EXCEEDED BY 250%!",
-    "PARTY OFFICIALS PLEASED WITH YOUR EFFICIENCY!",
-    "GEOMETRIC ALIGNMENT FOR THE PEOPLE!",
-    "LONG LIVE THE REVOLUTION OF FALLING BLOCKS!"
-  };
-  
-  // Display random message
-  std::uniform_int_distribution<int> dist(0, propagandaMessages.size() - 1);
-  int msgIndex = dist(rng);
-  std::cout << propagandaMessages[msgIndex] << std::endl;
+    // Select a random propaganda message
+    std::uniform_int_distribution<int> dist(0, PROPAGANDA_MESSAGES.size() - 1);
+    int msgIndex = dist(rng);
+    
+    // For 4-line clears (Tetrimone), show a special message
+    std::string message;
+    if (linesCleared == 4) {
+        message = TETRIMONE_EXCELLENCE_MESSAGE;
+    } else {
+        message = PROPAGANDA_MESSAGES[msgIndex];
+    }
+    
+    // Output to console for debugging
+    std::cout << message << std::endl;
 
-    // Display random message in the GUI
-    currentPropagandaMessage = propagandaMessages[msgIndex];
+    // Display message in the GUI
+    currentPropagandaMessage = message;
     showPropagandaMessage = true;
     
     // Cancel existing timer if any
@@ -379,6 +389,36 @@ if (linesCleared > 0 && retroModeActive) {
             board->showPropagandaMessage = false;
             board->propagandaTimerId = 0;
             return FALSE; // Don't repeat the timer
+        }, 
+        this);
+        
+    // Set timer for pulsing animation effect
+    propagandaMessageScale = 0.7; // Start smaller and grow
+    propagandaScalingUp = true;
+    if (propagandaScaleTimerId > 0) {
+        g_source_remove(propagandaScaleTimerId);
+    }
+    propagandaScaleTimerId = g_timeout_add(50, 
+        [](gpointer userData) -> gboolean {
+            TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
+            if (board->showPropagandaMessage) {
+                // Update scale for pulsing effect
+                if (board->propagandaScalingUp) {
+                    board->propagandaMessageScale += 0.04;
+                    if (board->propagandaMessageScale >= 1.2) {
+                        board->propagandaScalingUp = false;
+                    }
+                } else {
+                    board->propagandaMessageScale -= 0.04;
+                    if (board->propagandaMessageScale <= 0.8) {
+                        board->propagandaScalingUp = true;
+                    }
+                }
+                return TRUE; // Continue the timer
+            }
+            // Stop the timer if message is no longer showing
+            board->propagandaScaleTimerId = 0;
+            return FALSE;
         }, 
         this);
 }
