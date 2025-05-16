@@ -356,6 +356,7 @@ void onSimpleBlocksToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onRetroMusicToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onTestSound(GtkButton* button, gpointer userData);
 gboolean onWindowFocusChanged(GtkWidget *widget, GdkEventFocus *event, gpointer userData);
+void showIdeologicalFailureDialog(TetrimoneApp* app);
 
 #endif // TETRIMONE_H
 

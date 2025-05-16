@@ -999,8 +999,6 @@ for (int y = 0; y < GRID_HEIGHT; ++y) {
     return FALSE; // Skip drawing the rest
   }
 
-// In the onDrawGameArea function, modify the section where we draw the propaganda message
-// In the onDrawGameArea function where you draw the propaganda message
 if (board->retroModeActive && board->showPropagandaMessage) {
     // Semi-transparent background for message
     cairo_set_source_rgba(cr, 0.8, 0.0, 0.0, 0.8); // Soviet red with transparency
@@ -1283,10 +1281,10 @@ if (board->isGameOver()) {
     cairo_move_to(cr, x, y);
     cairo_show_text(cr, text);
     
-    // Show funny restart message in retro mode
+    // Show different restart message in retro mode
     cairo_set_font_size(cr, 16);
     const char *restartText = board->retroModeActive ? 
-                              "НАЖМИТЕ R ДЛЯ ТРУДОВОГО ПЕРЕВОСПИТАНИЯ" : 
+                              "ОЖИДАЙТЕ ДОПРОСА. НЕ ДВИГАЙТЕСЬ..." : 
                               "Press R to restart";
     cairo_text_extents(cr, restartText, &extents);
     x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
@@ -1297,7 +1295,7 @@ if (board->isGameOver()) {
     // Add a second line with translation for non-Russian speakers
     if (board->retroModeActive) {
         cairo_set_font_size(cr, 12);
-        const char *translationText = "(Press R for labor re-education)";
+        const char *translationText = "(AWAIT INTERROGATION. DO NOT MOVE...)";
         cairo_text_extents(cr, translationText, &extents);
         x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
         y += 25;
@@ -1837,6 +1835,15 @@ gboolean onTimerTick(gpointer data) {
            // If it's a high score, play a special sound
            if (isHighScore) {
                 board->playSound(GameSoundEvent::Excellent);
+           }
+           
+           if (board->retroModeActive) {
+               // Delay slightly for dramatic effect
+               g_timeout_add(1500, [](gpointer userData) -> gboolean {
+                   TetrimoneApp *app = static_cast<TetrimoneApp*>(userData);
+                   showIdeologicalFailureDialog(app);
+                   return FALSE; // One-time call
+               }, app);
            }
          }
     }
@@ -4061,6 +4068,100 @@ gboolean onWindowFocusChanged(GtkWidget *widget, GdkEventFocus *event, gpointer 
   }
   
   return FALSE; // Continue event propagation
+}
+
+void showIdeologicalFailureDialog(TetrimoneApp* app) {
+    // Only show in retro mode
+    if (!app->board->retroModeActive) {
+        return;
+    }
+    
+    // Create dialog
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        "ОБЪЯСНЕНИЕ ИДЕОЛОГИЧЕСКОГО ПРОВАЛА", 
+        GTK_WINDOW(app->window), 
+        GTK_DIALOG_MODAL,
+        "_Принять наказание", GTK_RESPONSE_OK,
+        NULL);
+    
+    // Set size
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 500, 400);
+    
+    // Get content area
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
+    
+    // Create vbox for content
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    
+    // Add explanatory text
+    GtkWidget* headerLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(headerLabel), 
+        "<span size='large' weight='bold' foreground='red'>"
+        "ВНИМАНИЕ, ГРАЖДАНИН!\n"
+        "ВАШ ИДЕОЛОГИЧЕСКИЙ ПРОВАЛ ТРЕБУЕТ ОБЪЯСНЕНИЯ</span>");
+    gtk_box_pack_start(GTK_BOX(vbox), headerLabel, FALSE, FALSE, 0);
+    
+    // Add sub-heading
+    GtkWidget* subheadLabel = gtk_label_new(
+        "Укажите основную причину вашего антиреволюционного поведения:\n"
+        "(Indicate the main reason for your counter-revolutionary behavior:)");
+    gtk_box_pack_start(GTK_BOX(vbox), subheadLabel, FALSE, FALSE, 10);
+    
+    // Create radio buttons for ideological failings
+    GtkWidget* frame = gtk_frame_new("Самокритика (Self-Criticism)");
+    gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 0);
+    
+    GtkWidget* failureBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_add(GTK_CONTAINER(frame), failureBox);
+    gtk_container_set_border_width(GTK_CONTAINER(failureBox), 10);
+    
+    // Create radio button group
+    GSList* group = NULL;
+    
+    // List of "ideological failings" options
+    const char* failureOptions[] = {
+        "Недостаточная преданность Партии (Insufficient Party loyalty)",
+        "Буржуазные наклонности к неэффективности (Bourgeois tendencies toward inefficiency)",
+        "Западный шпионаж повлиял на мои движения (Western espionage influenced my movements)",
+        "Слишком много времени тратил на чтение непартийной литературы (Too much time spent reading non-Party literature)",
+        "Идеологическая диверсия со стороны капиталистических блоков (Ideological subversion from capitalist blocks)",
+        "Недостаточное потребление пропаганды в свободное время (Insufficient consumption of propaganda during free time)",
+        "Контрреволюционное мышление (Counter-revolutionary thinking)"
+    };
+    
+    // Create a radio button for each option
+    for (int i = 0; i < 7; i++) {
+        GtkWidget* radioButton = gtk_radio_button_new_with_label(group, failureOptions[i]);
+        group = gtk_radio_button_get_group(GTK_RADIO_BUTTON(radioButton));
+        gtk_box_pack_start(GTK_BOX(failureBox), radioButton, FALSE, FALSE, 0);
+        
+        // Select first option by default
+        if (i == 0) {
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radioButton), TRUE);
+        }
+    }
+    
+    // Add warning text at bottom
+    GtkWidget* warningLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(warningLabel), 
+        "<span style='italic' foreground='red'>"
+        "Внимание: Ваш ответ будет записан в ваше личное дело\n"
+        "(Warning: Your answer will be recorded in your personal file)</span>");
+    gtk_box_pack_start(GTK_BOX(vbox), warningLabel, FALSE, FALSE, 10);
+    
+    // Show all widgets
+    gtk_widget_show_all(dialog);
+    
+    // Run the dialog
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    
+    // Clean up
+    gtk_widget_destroy(dialog);
+    
+    // The game will restart after this dialog
+    onRestartGame(NULL, app);
 }
 
 int main(int argc, char *argv[]) {
