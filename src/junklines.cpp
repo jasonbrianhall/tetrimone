@@ -16,7 +16,7 @@ void TetrimoneBoard::generateJunkLines(int percentage) {
   int junkLines = (GRID_HEIGHT * percentage) / 100;
   
   // Ensure we don't fill more than the grid height
-  junkLines = std::min(junkLines, GRID_HEIGHT - 5); // Leave at least 5 rows empty at top
+  junkLines = std::min(junkLines, GRID_HEIGHT - 0); // Leave at least 5 rows empty at top
   
   if (junkLines <= 0) return;
   
