@@ -22,13 +22,19 @@ Prepare for a block-stacking adventure that'll make your neurons dance! GTK Tetr
 - **Classic Tetrimone Mechanics**: Because some legends never die
 - **Keyboard Ninja Controls**: Move, rotate, and drop with lightning reflexes
 - **Gamepad Support**: For those who prefer their tetrominos with analog swagger
-- **20 Color Themes**: Watch your world transform as you level up
+- **30 Color Themes**: Watch your world transform as you level up
 - **Difficulty Levels**: From "Casual Puzzler" to "Tetrimone Terminator"
+- **Initial Block Level**: From 0-50%; Punish yourself with higher initial junk blocks.
+- **Blocks Per Level**: Add anywhere from zero to five junk lines per level; the higher the number, the faster you lose.
+- **Control Block Shapes**: Initial settings include mononomes, dominoes, triominoes, and tetrominoes.  Don't like mononomes, domnioes, or triominoes, remove them.
+- **Retro Blocks**: You like retro blocks, configure it.
 
 ### Audio Awesomeness
 - **Pumping Background Music**: Powered by PulseAudio or SDL2 audio
 - **Sound Effects**: Every block drop, rotation, and line clear has its own sonic personality
 - **Mute Button**: For when you need to sneak in some tetromino action
+- **Retro Music Support**: Wrote a classic MIDI player that plays 8 bit sounds (based on DOSBOX's excellent OPL3SA emulation and some QBASIC code I tactically acquired and converted to C).  Feel like the MS-DOS days.  **NOTE**:  Current music must play through one time for it to change until I fix that.
+- **Custom Music support**: If you don't like the themes, their is a sound.zip file, simply replace with your own music and and sound (mp3, midi, and wav support).  Must use midi for retromode.
 
 ## Controls
 
