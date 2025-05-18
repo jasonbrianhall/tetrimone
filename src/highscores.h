@@ -10,6 +10,8 @@ struct Score {
     int width;         // Grid width
     int height;        // Grid height
     std::string difficulty;
+    int initialJunkPercent;   // Initial junk lines percentage
+    int junkLinesPerLevel;    // Junk lines added per level
 };
 
 class Highscores {
@@ -19,7 +21,8 @@ public:
     const std::vector<Score>& getScores() const;
     std::vector<Score> getScoresByDifficulty(const std::string& difficulty) const;
     // Modified to check score against width and height
-    bool isHighScore(int score, int width, int height, const std::string& difficulty) const;
+    bool isHighScore(int score, int width, int height, const std::string& difficulty, 
+                 int initialJunkPercent, int junkLinesPerLevel) const;
 
 private:
     void loadScores();

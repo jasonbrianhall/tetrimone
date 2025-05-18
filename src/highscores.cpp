@@ -35,17 +35,20 @@ Highscores::Highscores() {
 }
 
 // Helper function to create a unique key for a specific game configuration
-std::string createScoreKey(const std::string& difficulty, int width, int height) {
+std::string createScoreKey(const std::string& difficulty, int width, int height, 
+                          int initialJunkPercent, int junkLinesPerLevel) {
     std::stringstream keyStream;
-    keyStream << difficulty << "_w" << width << "_h" << height;
+    keyStream << difficulty << "_w" << width << "_h" << height 
+              << "_jp" << initialJunkPercent << "_jl" << junkLinesPerLevel;
     return keyStream.str();
 }
 
 void Highscores::addScore(const Score& score) {
     scores.push_back(score);
     
-    // Create a key combining difficulty, width, and height
-    std::string key = createScoreKey(score.difficulty, score.width, score.height);
+    // Create a key combining difficulty, dimensions, and junk settings
+    std::string key = createScoreKey(score.difficulty, score.width, score.height, 
+                                     score.initialJunkPercent, score.junkLinesPerLevel);
     scoresByDifficultyAndSize[key].push_back(score);
     
     // Sort scores for this configuration by score (higher is better)
@@ -100,9 +103,10 @@ std::vector<Score> Highscores::getScoresByDifficulty(const std::string& difficul
     return difficultyScores;
 }
 
-bool Highscores::isHighScore(int score, int width, int height, const std::string& difficulty) const {
-    // Create a key combining difficulty, width, and height
-    std::string key = createScoreKey(difficulty, width, height);
+bool Highscores::isHighScore(int score, int width, int height, const std::string& difficulty,
+                            int initialJunkPercent, int junkLinesPerLevel) const {
+    // Create a key combining difficulty, dimensions, and junk settings
+    std::string key = createScoreKey(difficulty, width, height, initialJunkPercent, junkLinesPerLevel);
         
     auto it = scoresByDifficultyAndSize.find(key);
     if (it == scoresByDifficultyAndSize.end()) {
@@ -131,25 +135,34 @@ void Highscores::loadScores() {
     
     std::string line;
     while (std::getline(file, line)) {
-        size_t pos1 = line.find('|');
-        size_t pos2 = line.find('|', pos1 + 1);
-        size_t pos3 = line.find('|', pos2 + 1);
-        size_t pos4 = line.find('|', pos3 + 1);
+        std::vector<std::string> parts;
+        std::string part;
+        std::istringstream iss(line);
         
-        if (pos1 != std::string::npos && pos2 != std::string::npos && 
-            pos3 != std::string::npos && pos4 != std::string::npos) {
-            
+        while (std::getline(iss, part, '|')) {
+            parts.push_back(part);
+        }
+        
+        // Check if we have the expected number of parts
+        // Old format: name|score|width|height|difficulty
+        // New format: name|score|width|height|difficulty|initialJunkPercent|junkLinesPerLevel
+        if (parts.size() >= 5) {
             Score score;
-            score.name = line.substr(0, pos1);
-            score.score = std::stoi(line.substr(pos1 + 1, pos2 - pos1 - 1));
-            score.width = std::stoi(line.substr(pos2 + 1, pos3 - pos2 - 1));
-            score.height = std::stoi(line.substr(pos3 + 1, pos4 - pos3 - 1));
-            score.difficulty = line.substr(pos4 + 1);
+            score.name = parts[0];
+            score.score = std::stoi(parts[1]);
+            score.width = std::stoi(parts[2]);
+            score.height = std::stoi(parts[3]);
+            score.difficulty = parts[4];
+            
+            // Handle additional junk settings if they exist (for backwards compatibility)
+            score.initialJunkPercent = (parts.size() > 5) ? std::stoi(parts[5]) : 0;
+            score.junkLinesPerLevel = (parts.size() > 6) ? std::stoi(parts[6]) : 0;
             
             scores.push_back(score);
             
             // Create key and store in map
-            std::string key = createScoreKey(score.difficulty, score.width, score.height);
+            std::string key = createScoreKey(score.difficulty, score.width, score.height, 
+                                            score.initialJunkPercent, score.junkLinesPerLevel);
             scoresByDifficultyAndSize[key].push_back(score);
         }
     }
@@ -183,7 +196,9 @@ void Highscores::saveScores() {
              << score.score << '|'
              << score.width << '|'
              << score.height << '|'
-             << score.difficulty << '\n';
+             << score.difficulty << '|'
+             << score.initialJunkPercent << '|'
+             << score.junkLinesPerLevel << '\n';
     }
 }
 
@@ -201,8 +216,9 @@ bool TetrimoneBoard::checkAndRecordHighScore(TetrimoneApp* app) {
         default: difficultyName = "Unknown";
     }
 
-    // Check if this is a high score for the current grid size and difficulty
-    if (highScores.isHighScore(score, GRID_WIDTH, GRID_HEIGHT, difficultyName)) {
+    // Check if this is a high score for the current configuration
+    if (highScores.isHighScore(score, GRID_WIDTH, GRID_HEIGHT, difficultyName, 
+                              junkLinesPercentage, junkLinesPerLevel)) {
         // Show dialog for name entry
         GtkWidget* dialog = gtk_dialog_new_with_buttons(
             "High Score!",
@@ -236,6 +252,13 @@ bool TetrimoneBoard::checkAndRecordHighScore(TetrimoneApp* app) {
         snprintf(diffBuf, sizeof(diffBuf), "Difficulty: %s", difficultyName.c_str());
         GtkWidget* diffLabel = gtk_label_new(diffBuf);
         gtk_box_pack_start(GTK_BOX(contentArea), diffLabel, FALSE, FALSE, 5);
+        
+        // Add junk lines info
+        char junkBuf[100];
+        snprintf(junkBuf, sizeof(junkBuf), "Junk: Initial %d%%, Per Level %d", 
+                junkLinesPercentage, junkLinesPerLevel);
+        GtkWidget* junkLabel = gtk_label_new(junkBuf);
+        gtk_box_pack_start(GTK_BOX(contentArea), junkLabel, FALSE, FALSE, 5);
     
         // Add name entry field
         GtkWidget* entry = gtk_entry_new();
@@ -265,13 +288,14 @@ bool TetrimoneBoard::checkAndRecordHighScore(TetrimoneApp* app) {
         newScore.width = GRID_WIDTH;
         newScore.height = GRID_HEIGHT;
         newScore.difficulty = difficultyName;
+        newScore.initialJunkPercent = junkLinesPercentage;
+        newScore.junkLinesPerLevel = junkLinesPerLevel;
         
         highScores.addScore(newScore);
         return true;
     }
     return false;
 }
-
 void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
@@ -283,7 +307,7 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
         "_Close", GTK_RESPONSE_CLOSE,
         NULL
     );
-    gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 600);
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 900, 600);
     
     // Get content area
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -321,12 +345,14 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
         gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrollWindow), GTK_SHADOW_ETCHED_IN);
         
         // Create list store and tree view
-        GtkListStore* listStore = gtk_list_store_new(5, 
+        GtkListStore* listStore = gtk_list_store_new(7, 
             G_TYPE_STRING,  // Name
             G_TYPE_INT,     // Score
             G_TYPE_STRING,  // Difficulty
             G_TYPE_STRING,  // Grid Size
-            G_TYPE_INT      // Unused column for potential sorting
+            G_TYPE_STRING,  // Junk Settings
+            G_TYPE_INT,     // Initial Junk % (hidden)
+            G_TYPE_INT      // Junk per Level (hidden)
         );
         
         // Populate list store
@@ -337,12 +363,19 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
             char gridSizeBuffer[50];
             snprintf(gridSizeBuffer, sizeof(gridSizeBuffer), "%d x %d", score.width, score.height);
             
+            // Create junk settings string
+            char junkBuffer[50];
+            snprintf(junkBuffer, sizeof(junkBuffer), "Init: %d%%, Level: %d", 
+                    score.initialJunkPercent, score.junkLinesPerLevel);
+            
             gtk_list_store_set(listStore, &iter, 
                 0, score.name.c_str(),
                 1, score.score,
                 2, score.difficulty.c_str(), 
                 3, gridSizeBuffer,
-                4, score.score,  // Duplicate score for potential sorting
+                4, junkBuffer,
+                5, score.initialJunkPercent,
+                6, score.junkLinesPerLevel,
                 -1
             );
         }
@@ -392,6 +425,15 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
         gtk_tree_view_column_set_sort_column_id(sizeColumn, 3);
         gtk_tree_view_column_set_resizable(sizeColumn, TRUE);
         gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), sizeColumn);
+        
+        // Junk Settings column
+        GtkTreeViewColumn* junkColumn = gtk_tree_view_column_new_with_attributes(
+            "Junk Lines", renderer, "text", 4, NULL
+        );
+        gtk_tree_view_column_set_expand(junkColumn, TRUE);
+        gtk_tree_view_column_set_sort_column_id(junkColumn, 5); // Sort by initial junk %
+        gtk_tree_view_column_set_resizable(junkColumn, TRUE);
+        gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), junkColumn);
         
         // Add some form of interaction
         gtk_tree_view_set_headers_clickable(GTK_TREE_VIEW(treeView), TRUE);
