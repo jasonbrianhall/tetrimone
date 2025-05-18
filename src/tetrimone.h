@@ -172,7 +172,10 @@ public:
     int junkLinesPercentage = 0; // Default 0% (no junk lines)
     int initialLevel = 1;        // Default starting level
     void generateJunkLines(int percentage);
+    int junkLinesPerLevel = 0;
+    void addJunkLinesFromBottom(int numLines);
 
+    
     bool retroModeActive = false;  // Flag for retro mode
     bool simpleBlocksActive = false;
     bool retroMusicActive = false;
