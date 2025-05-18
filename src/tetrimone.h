@@ -169,6 +169,10 @@ private:
 
     
 public:
+    int junkLinesPercentage = 0; // Default 0% (no junk lines)
+    int initialLevel = 1;        // Default starting level
+    void generateJunkLines(int percentage);
+
     bool retroModeActive = false;  // Flag for retro mode
     bool simpleBlocksActive = false;
     bool retroMusicActive = false;
@@ -357,6 +361,7 @@ void onRetroMusicToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onTestSound(GtkButton* button, gpointer userData);
 gboolean onWindowFocusChanged(GtkWidget *widget, GdkEventFocus *event, gpointer userData);
 void showIdeologicalFailureDialog(TetrimoneApp* app);
+void onGameSetupDialog(GtkMenuItem* menuItem, gpointer userData);
 
 #endif // TETRIMONE_H
 
