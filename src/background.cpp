@@ -747,3 +747,88 @@ bool TetrimoneBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
     std::cout << "Successfully loaded " << imageCount << " background images from ZIP" << std::endl;
     return true;
 }
+
+void onBackgroundOpacityDialog(GtkMenuItem *menuItem, gpointer userData) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+
+  // Create dialog
+  GtkWidget *dialog = gtk_dialog_new_with_buttons(
+      "Background Opacity", GTK_WINDOW(app->window), GTK_DIALOG_MODAL, "_OK",
+      GTK_RESPONSE_OK, NULL);
+
+  // Make it a reasonable size
+  gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 150);
+
+  // Create content area
+  GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
+
+  // Create a vertical box for content
+  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+  gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+
+  // Add a label
+  GtkWidget *label = gtk_label_new("Adjust background opacity:");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+
+  // Create a horizontal scale (slider)
+  GtkWidget *scale =
+      gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 1.0, 0.05);
+  gtk_range_set_value(GTK_RANGE(scale), app->board->getBackgroundOpacity());
+  gtk_scale_set_digits(GTK_SCALE(scale), 2); // 2 decimal places
+  gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
+  gtk_box_pack_start(GTK_BOX(vbox), scale, FALSE, FALSE, 0);
+
+  // Add min/max labels
+  GtkWidget *rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), rangeBox, FALSE, FALSE, 0);
+
+  GtkWidget *minLabel = gtk_label_new("Transparent");
+  gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
+
+  GtkWidget *maxLabel = gtk_label_new("Opaque");
+  gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
+  gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
+
+  // Connect value-changed signal to update the opacity in real-time
+  g_signal_connect(G_OBJECT(scale), "value-changed",
+                   G_CALLBACK(onOpacityValueChanged), app);
+
+  // Show all dialog widgets
+  gtk_widget_show_all(dialog);
+
+  // Run the dialog
+  gtk_dialog_run(GTK_DIALOG(dialog));
+
+  // Destroy dialog
+  gtk_widget_destroy(dialog);
+}
+
+void onOpacityValueChanged(GtkRange *range, gpointer userData) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+
+  // Update the opacity in the board
+  double opacity = gtk_range_get_value(range);
+
+  // Early return if the background image isn't valid
+  if (!app->board->isUsingBackgroundImage() ||
+      app->board->getBackgroundImage() == nullptr) {
+    return;
+  }
+
+  // Check surface status before attempting to draw
+  cairo_status_t status =
+      cairo_surface_status(app->board->getBackgroundImage());
+  if (status != CAIRO_STATUS_SUCCESS) {
+    std::cerr << "Invalid background image surface during opacity change: "
+              << cairo_status_to_string(status) << std::endl;
+    return;
+  }
+
+  app->board->setBackgroundOpacity(opacity);
+
+  // Queue a redraw rather than forcing immediate redraw
+  gtk_widget_queue_draw(app->gameArea);
+}
