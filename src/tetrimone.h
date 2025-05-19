@@ -365,6 +365,10 @@ void onTestSound(GtkButton* button, gpointer userData);
 gboolean onWindowFocusChanged(GtkWidget *widget, GdkEventFocus *event, gpointer userData);
 void showIdeologicalFailureDialog(TetrimoneApp* app);
 void onGameSetupDialog(GtkMenuItem* menuItem, gpointer userData);
+bool saveGameSettings(TetrimoneApp* app);
+bool loadGameSettings(TetrimoneApp* app);
+void resetGameSettings(TetrimoneApp* app);
+void onResetSettings(GtkMenuItem* menuItem, gpointer userData);
 
 #endif // TETRIMONE_H
 
