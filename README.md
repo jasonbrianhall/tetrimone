@@ -82,6 +82,11 @@ When in retro mode (press the `.` key), line clears transform into authentic **S
 - **Opacity Control**: Customizable background transparency
 - **Scaling Technology**: Perfect aspect ratio maintenance
 
+#### 🌈 Theme Transition Support
+- **Transition Technology** 3-second smooth color morphing between themes with cubic ease-in-out
+
+#### 
+
 ### Performance Optimization
 
 #### ⚡ 60 FPS Rendering
