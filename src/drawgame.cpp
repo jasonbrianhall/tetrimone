@@ -157,24 +157,64 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
           // Get animation progress (0.0 to 1.0)
           double progress = board->getLineClearProgress();
           
-          // Create different effects based on animation phase
-          if (progress < 0.2) {
-            // Flash effect - rapid opacity changes but keep normal size
-            alpha = 0.4 + 0.6 * sin(progress * 25.0);
-            scale = 1.0; // Keep original size during flash
-          } else if (progress < 0.6) {
-            // Scale down effect - smooth shrinking
-            double scaleProgress = (progress - 0.2) / 0.4;
-            scale = 1.0 - scaleProgress * 0.8; // Shrink more dramatically
-            alpha = 1.0 - scaleProgress * 0.4;
+          if (board->retroModeActive) {
+            // Soviet-era computer animation: Simple scan line effect
+            if (progress < 0.3) {
+              // Horizontal scan line sweep from left to right
+              double scanProgress = progress / 0.3;
+              int scanX = (int)(scanProgress * GRID_WIDTH);
+              
+              // Only affect blocks that have been "scanned"
+              if (x <= scanX) {
+                alpha = 0.3 + 0.4 * sin(progress * 20.0); // Subtle flicker
+              } else {
+                alpha = 1.0; // Normal until scanned
+              }
+              scale = 1.0;
+            } else if (progress < 0.7) {
+              // All blocks flash in unison (like old CRT monitors)
+              double flashProgress = (progress - 0.3) / 0.4;
+              alpha = 1.0 - flashProgress * 0.7;
+              
+              // Simulate old monitor "collapse" effect - vertical compression
+              scale = 1.0;
+              offsetY = flashProgress * BLOCK_SIZE * 0.3; // Slight downward compression
+            } else {
+              // Final "wipe" effect - blocks disappear in chunks
+              double wipeProgress = (progress - 0.7) / 0.3;
+              
+              // Divide line into segments that disappear sequentially
+              int segment = x / 3; // 3-block segments
+              double segmentDelay = segment * 0.2;
+              
+              if (wipeProgress > segmentDelay) {
+                alpha = 0.0; // Instant disappear once segment is reached
+                scale = 0.0;
+              } else {
+                alpha = 1.0 - wipeProgress * 0.5;
+                scale = 1.0;
+              }
+            }
           } else {
-            // Final fade and scatter effect
-            double fadeProgress = (progress - 0.6) / 0.4;
-            alpha = (1.0 - fadeProgress * 0.6) * 0.6; // Start fading from reduced alpha
-            scale = 0.2 - fadeProgress * 0.2; // Continue shrinking to nearly nothing
-            // Add slight random offset for scatter effect
-            offsetX = (rand() % 8 - 4) * fadeProgress * 3;
-            offsetY = (rand() % 8 - 4) * fadeProgress * 3;
+            // Modern smooth animation (your existing code)
+            if (progress < 0.2) {
+              // Flash effect - rapid opacity changes but keep normal size
+              alpha = 0.4 + 0.6 * sin(progress * 25.0);
+              scale = 1.0; // Keep original size during flash
+            } else if (progress < 0.6) {
+              // Scale down effect - smooth shrinking
+              double scaleProgress = (progress - 0.2) / 0.4;
+              scale = 1.0 - scaleProgress * 0.8; // Shrink more dramatically
+              alpha = 1.0 - scaleProgress * 0.4;
+            } else {
+              // Final fade and scatter effect
+              double fadeProgress = (progress - 0.6) / 0.4;
+              alpha = (1.0 - fadeProgress * 0.6) * 0.6; // Start fading from reduced alpha
+              scale = 0.2 - fadeProgress * 0.2; // Continue shrinking to nearly nothing
+              // Add slight random offset for scatter effect
+              offsetX = (rand() % 8 - 4) * fadeProgress * 3;
+              offsetY = (rand() % 8 - 4) * fadeProgress * 3;
+            }
           }
         }
 
