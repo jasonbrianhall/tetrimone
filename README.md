@@ -36,12 +36,12 @@ Prepare for a block-stacking adventure that'll make your neurons dance! GTK Tetr
 - **Retro Music Support**: Wrote a classic MIDI player that plays 8 bit sounds (based on DOSBOX's excellent OPL3SA emulation and some QBASIC code I tactically acquired and converted to C).  Feel like the MS-DOS days.  **NOTE**:  Current music must play through one time for it to change until I fix that.
 - **Custom Music support**: If you don't like the themes, their is a sound.zip file, simply replace with your own music and and sound (mp3, midi, and wav support).  Must use midi for retromode.
 
-# 🎬 Animation Spectacular: Where Blocks Come Alive! ✨
+## 🎬 Animation Spectacular: Where Blocks Come Alive! ✨
 
-## Smooth Movement System
+### Smooth Movement System
 Your tetrominos don't just teleport—they **glide** with cinematic grace! Every piece movement is interpolated with silky-smooth 60 FPS animations using advanced easing functions. Watch as your blocks flow across the grid like digital poetry in motion.
 
-## Epic Line Clear Animations 🌟
+### Epic Line Clear Animations 🌟
 
 When you clear lines, prepare for a visual feast! Tetrimone features **11 spectacular line clearing animations** that transform mundane line clears into jaw-dropping spectacles:
 
