@@ -160,16 +160,13 @@ std::vector<std::vector<int>> TetrimoneBlock::getShape() const {
 }
 
 std::array<double, 3> TetrimoneBlock::getColor() const {
-  // Get the current level (need to add a way to pass this info to the
-  // TetrimoneBlock)
-  int themeIndex = currentThemeIndex;
-
-  // Cap at the max theme index
-  if (themeIndex >= TETRIMONEBLOCK_COLOR_THEMES.size()) {
-    themeIndex = TETRIMONEBLOCK_COLOR_THEMES.size() - 1;
-  }
-
-  return TETRIMONEBLOCK_COLOR_THEMES[themeIndex][type];
+    // This is a bit tricky since TetrimoneBlock doesn't have access to TetrimoneBoard
+    // We'll need to modify this differently - see the drawing code changes below
+    int themeIndex = currentThemeIndex;
+    if (themeIndex >= TETRIMONEBLOCK_COLOR_THEMES.size()) {
+        themeIndex = TETRIMONEBLOCK_COLOR_THEMES.size() - 1;
+    }
+    return TETRIMONEBLOCK_COLOR_THEMES[themeIndex][type];
 }
 
 void TetrimoneBlock::setPosition(int newX, int newY) {
@@ -188,7 +185,9 @@ TetrimoneBoard::TetrimoneBoard()
       consecutiveClears(0), maxConsecutiveClears(0), lastClearCount(0),
       sequenceActive(false), lineClearActive(false), lineClearProgress(0.0), lineClearAnimationTimer(0),
 currentPieceInterpolatedX(0), currentPieceInterpolatedY(0),
-lastPieceX(0), lastPieceY(0), smoothMovementTimer(0), movementProgress(0.0) {
+lastPieceX(0), lastPieceY(0), smoothMovementTimer(0), movementProgress(0.0),
+      isThemeTransitioning(false), oldThemeIndex(0), newThemeIndex(0),
+      themeTransitionProgress(0.0), themeTransitionTimer(0) {
   rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
 
     showPropagandaMessage = false;
@@ -239,6 +238,11 @@ TetrimoneBoard::~TetrimoneBoard() {
     if (backgroundImage != nullptr) {
         cairo_surface_destroy(backgroundImage);
         backgroundImage = nullptr;
+    }
+
+    if (themeTransitionTimer > 0) {
+        g_source_remove(themeTransitionTimer);
+        themeTransitionTimer = 0;
     }
 
 if (lineClearAnimationTimer > 0) {
@@ -515,23 +519,26 @@ int TetrimoneBoard::clearLines() {
     sequenceActive = false;
   }
 
-  if (level > currentlevel) {
+if (level > currentlevel) {
     playSound(retroModeActive ? GameSoundEvent::LevelUpRetro : GameSoundEvent::LevelUp);
     if (junkLinesPerLevel > 0) {
-      addJunkLinesFromBottom(junkLinesPerLevel);
+        addJunkLinesFromBottom(junkLinesPerLevel);
     }
+    
     // Only change theme if retro mode is not enabled
     if (!retroModeActive) {
-        // Every Level, change theme; wrap around except for retro theme
-        currentThemeIndex = (currentThemeIndex + 1) % NUM_COLOR_THEMES;
-
-        // Add this section to change background on level up
+        // Calculate next theme with wrap-around
+        int nextTheme = (currentThemeIndex + 1) % NUM_COLOR_THEMES;
+        
+        // Start smooth theme transition instead of immediate change
+        startThemeTransition(nextTheme);
+        
+        // Add background transition if using background zip
         if (useBackgroundZip && !backgroundImages.empty()) {
-            // Change to a random background on level up if using background zip
             startBackgroundTransition();
         }
     }
-  }
+}
 
   return linesCleared;
 }

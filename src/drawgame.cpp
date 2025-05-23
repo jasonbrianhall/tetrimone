@@ -434,7 +434,10 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
         }
 
         // Get color from tetrimoneblock colors
-        auto color = TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
+        auto color = board->isInThemeTransition() ? 
+    board->getInterpolatedColor(value - 1, board->getThemeTransitionProgress()) :
+    TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
+
         cairo_set_source_rgba(cr, color[0], color[1], color[2], alpha);
 
         // Calculate position with animation offsets
@@ -671,7 +674,9 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
   if (!board->isGameOver() && !board->isPaused() && !board->isSplashScreenActive()) {
     const TetrimoneBlock &piece = board->getCurrentPiece();
     auto shape = piece.getShape();
-    auto color = piece.getColor();
+    auto color = board->isInThemeTransition() ? 
+    board->getInterpolatedColor(piece.getType(), board->getThemeTransitionProgress()) :
+    piece.getColor();
     
     // Get interpolated position for smooth movement
     double pieceX, pieceY;
@@ -1128,5 +1133,86 @@ gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
   }
 
   return FALSE;
+}
+
+void TetrimoneBoard::startThemeTransition(int targetTheme) {
+    // Don't start transition if already transitioning to the same theme
+    if (isThemeTransitioning && newThemeIndex == targetTheme) {
+        return;
+    }
+    
+    // Cancel any existing transition
+    if (themeTransitionTimer > 0) {
+        g_source_remove(themeTransitionTimer);
+    }
+    
+    // Set up transition
+    oldThemeIndex = currentThemeIndex;
+    newThemeIndex = targetTheme;
+    isThemeTransitioning = true;
+    themeTransitionProgress = 0.0;
+    
+    // Start transition timer
+    themeTransitionTimer = g_timeout_add(16, // ~60 FPS
+        [](gpointer userData) -> gboolean {
+            TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
+            board->updateThemeTransition();
+            return TRUE;
+        }, this);
+}
+
+void TetrimoneBoard::updateThemeTransition() {
+    themeTransitionProgress += 16.0 / THEME_TRANSITION_DURATION; // 16ms timestep
+    
+    if (themeTransitionProgress >= 1.0) {
+        // Transition complete
+        themeTransitionProgress = 1.0;
+        currentThemeIndex = newThemeIndex;
+        
+        // Clean up
+        if (themeTransitionTimer > 0) {
+            g_source_remove(themeTransitionTimer);
+            themeTransitionTimer = 0;
+        }
+        
+        isThemeTransitioning = false;
+    }
+}
+
+void TetrimoneBoard::cancelThemeTransition() {
+    if (themeTransitionTimer > 0) {
+        g_source_remove(themeTransitionTimer);
+        themeTransitionTimer = 0;
+    }
+    
+    isThemeTransitioning = false;
+    themeTransitionProgress = 0.0;
+}
+
+std::array<double, 3> TetrimoneBoard::getInterpolatedColor(int blockType, double progress) const {
+    if (!isThemeTransitioning) {
+        return TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][blockType];
+    }
+    
+    // Get colors from old and new themes
+    auto oldColor = TETRIMONEBLOCK_COLOR_THEMES[oldThemeIndex][blockType];
+    auto newColor = TETRIMONEBLOCK_COLOR_THEMES[newThemeIndex][blockType];
+    
+    // Use a more gentle easing function for the longer transition
+    // Cubic ease-in-out for smoother, more noticeable transitions
+    double t = themeTransitionProgress;
+    if (t < 0.5) {
+        t = 4 * t * t * t; // Ease-in cubic
+    } else {
+        t = 1 - pow(-2 * t + 2, 3) / 2; // Ease-out cubic
+    }
+    
+    // Interpolate between colors
+    std::array<double, 3> interpolatedColor;
+    for (int i = 0; i < 3; i++) {
+        interpolatedColor[i] = oldColor[i] + (newColor[i] - oldColor[i]) * t;
+    }
+    
+    return interpolatedColor;
 }
 
