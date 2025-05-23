@@ -158,22 +158,23 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
           double progress = board->getLineClearProgress();
           
           // Create different effects based on animation phase
-          if (progress < 0.3) {
-            // Flash effect - rapid opacity changes
-            alpha = 0.3 + 0.7 * sin(progress * 30.0);
-          } else if (progress < 0.7) {
-            // Scale down effect
-            double scaleProgress = (progress - 0.3) / 0.4;
-            scale = 1.0 - scaleProgress * 0.5;
-            alpha = 1.0 - scaleProgress * 0.3;
+          if (progress < 0.2) {
+            // Flash effect - rapid opacity changes but keep normal size
+            alpha = 0.4 + 0.6 * sin(progress * 25.0);
+            scale = 1.0; // Keep original size during flash
+          } else if (progress < 0.6) {
+            // Scale down effect - smooth shrinking
+            double scaleProgress = (progress - 0.2) / 0.4;
+            scale = 1.0 - scaleProgress * 0.8; // Shrink more dramatically
+            alpha = 1.0 - scaleProgress * 0.4;
           } else {
-            // Fade and scatter effect
-            double fadeProgress = (progress - 0.7) / 0.3;
-            alpha = 1.0 - fadeProgress;
-            scale = 1.0 - fadeProgress * 0.5;
+            // Final fade and scatter effect
+            double fadeProgress = (progress - 0.6) / 0.4;
+            alpha = (1.0 - fadeProgress * 0.6) * 0.6; // Start fading from reduced alpha
+            scale = 0.2 - fadeProgress * 0.2; // Continue shrinking to nearly nothing
             // Add slight random offset for scatter effect
-            offsetX = (rand() % 10 - 5) * fadeProgress * 2;
-            offsetY = (rand() % 10 - 5) * fadeProgress * 2;
+            offsetX = (rand() % 8 - 4) * fadeProgress * 3;
+            offsetY = (rand() % 8 - 4) * fadeProgress * 3;
           }
         }
 
@@ -604,6 +605,7 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
   
   return FALSE;
 }
+
 
 void TetrimoneBoard::getCurrentPieceInterpolatedPosition(double &x, double &y) const {
   if (currentPiece) {
