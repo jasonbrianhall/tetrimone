@@ -166,6 +166,7 @@ private:
     int lastClearCount;
     bool sequenceActive;
     Highscores highScores;
+    int currentAnimationType;
 
 bool lineClearActive;
 std::vector<int> linesBeingCleared;
@@ -184,6 +185,8 @@ static const int MOVEMENT_ANIMATION_DURATION = 100; // milliseconds
 
     
 public:
+    int getCurrentAnimationType() const { return currentAnimationType; }
+
     int junkLinesPercentage = 0; // Default 0% (no junk lines)
     int initialLevel = 1;        // Default starting level
     void generateJunkLines(int percentage);

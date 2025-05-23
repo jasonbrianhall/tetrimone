@@ -11,6 +11,11 @@
 #include "highscores.h"
 #include "propaganda_messages.h"
 
+// Define M_PI for Windows compatibility
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
   TetrimoneBoard *board = app->board;
@@ -196,7 +201,7 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
               }
             }
           } else {
-            // Modern animations - 5 different types selected randomly
+            // Modern animations - 10 different types selected randomly
             int animationType = board->getCurrentAnimationType();
             
             switch (animationType) {
@@ -219,9 +224,8 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
                 
               case 1: // Dissolve (blocks fade randomly)
                 {
-                  // Use block position as seed for consistent per-block randomness
                   int blockSeed = (x * 31 + y * 17) % 100;
-                  double blockDelay = (blockSeed / 100.0) * 0.3; // 0-30% of animation
+                  double blockDelay = (blockSeed / 100.0) * 0.3;
                   
                   if (progress < blockDelay) {
                     alpha = 1.0;
@@ -240,8 +244,8 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
               case 2: // Ripple Wave (from center outward)
                 {
                   double centerX = GRID_WIDTH / 2.0;
-                  double distance = abs(x - centerX) / centerX; // 0.0 at center, 1.0 at edges
-                  double waveDelay = distance * 0.3; // Wave spreads over 30% of animation
+                  double distance = abs(x - centerX) / centerX;
+                  double waveDelay = distance * 0.3;
                   
                   if (progress < waveDelay) {
                     alpha = 1.0;
@@ -249,8 +253,8 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
                   } else if (progress < waveDelay + 0.5) {
                     double waveProgress = (progress - waveDelay) / 0.5;
                     alpha = 1.0 - waveProgress;
-                    scale = 1.0 + sin(waveProgress * M_PI) * 0.3; // Slight bulge then shrink
-                    offsetY = sin(waveProgress * M_PI * 2) * 5; // Wobble effect
+                    scale = 1.0 + sin(waveProgress * M_PI) * 0.3;
+                    offsetY = sin(waveProgress * M_PI * 2) * 5;
                   } else {
                     alpha = 0.0;
                     scale = 0.0;
@@ -261,16 +265,15 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
               case 3: // Explosion (blocks shoot outward)
                 if (progress < 0.15) {
                   alpha = 1.0;
-                  scale = 1.0 + progress * 2; // Quick expansion
+                  scale = 1.0 + progress * 2;
                 } else if (progress < 0.6) {
                   double explodeProgress = (progress - 0.15) / 0.45;
                   alpha = 1.0 - explodeProgress * 0.7;
                   scale = 1.3 - explodeProgress * 0.5;
                   
-                  // Outward movement based on position from center
                   double centerX = GRID_WIDTH / 2.0;
                   double forceX = (x - centerX) * explodeProgress * 15;
-                  double forceY = -explodeProgress * 20; // Upward force
+                  double forceY = -explodeProgress * 20;
                   offsetX = forceX;
                   offsetY = forceY;
                 } else {
@@ -278,10 +281,9 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
                   alpha = 0.3 - finalProgress * 0.3;
                   scale = 0.8 - finalProgress * 0.8;
                   
-                  // Continue outward movement with gravity
                   double centerX = GRID_WIDTH / 2.0;
                   double forceX = (x - centerX) * (1.0 + finalProgress) * 15;
-                  double forceY = -20 + finalProgress * 40; // Gravity pulls down
+                  double forceY = -20 + finalProgress * 40;
                   offsetX = forceX;
                   offsetY = forceY;
                 }
@@ -291,7 +293,6 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
                 if (progress < 0.3) {
                   alpha = 1.0;
                   scale = 1.0;
-                  // Start rotating (simulate with slight offset oscillation)
                   double rotationSpeed = progress * 20;
                   offsetX = sin(rotationSpeed) * 3;
                   offsetY = cos(rotationSpeed) * 3;
@@ -300,7 +301,6 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
                   alpha = 1.0 - spinProgress * 0.8;
                   scale = 1.0 - spinProgress * 0.7;
                   
-                  // Faster rotation and shrinking
                   double rotationSpeed = (progress * 40) + (spinProgress * 60);
                   offsetX = sin(rotationSpeed) * (3 - spinProgress * 3);
                   offsetY = cos(rotationSpeed) * (3 - spinProgress * 3);
@@ -308,6 +308,123 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
                   double finalProgress = (progress - 0.8) / 0.2;
                   alpha = 0.2 - finalProgress * 0.2;
                   scale = 0.3 - finalProgress * 0.3;
+                  offsetX = 0;
+                  offsetY = 0;
+                }
+                break;
+                
+              case 5: // Left-to-Right Sweep
+                {
+                  double sweepProgress = progress;
+                  double blockDelay = (x / (double)GRID_WIDTH) * 0.4; // Spread over 40% of animation
+                  
+                  if (sweepProgress < blockDelay) {
+                    alpha = 1.0;
+                    scale = 1.0;
+                  } else if (sweepProgress < blockDelay + 0.3) {
+                    double localProgress = (sweepProgress - blockDelay) / 0.3;
+                    alpha = 1.0 - localProgress;
+                    scale = 1.0 - localProgress * 0.6;
+                    offsetX = localProgress * 20; // Slide right as they fade
+                  } else {
+                    alpha = 0.0;
+                    scale = 0.4;
+                    offsetX = 20;
+                  }
+                }
+                break;
+                
+              case 6: // Bounce & Pop
+                if (progress < 0.2) {
+                  alpha = 1.0;
+                  scale = 1.0 + sin(progress * 15) * 0.2; // Quick bounce
+                } else if (progress < 0.5) {
+                  double bounceProgress = (progress - 0.2) / 0.3;
+                  alpha = 1.0;
+                  scale = 1.0 + bounceProgress * 0.8; // Inflate
+                  offsetY = -bounceProgress * 10; // Lift up
+                } else if (progress < 0.7) {
+                  double popProgress = (progress - 0.5) / 0.2;
+                  alpha = 1.0 - popProgress * 0.9;
+                  scale = 1.8 + popProgress * 0.5; // Pop bigger
+                  offsetY = -10 - popProgress * 5;
+                } else {
+                  double fadeProgress = (progress - 0.7) / 0.3;
+                  alpha = 0.1 - fadeProgress * 0.1;
+                  scale = 2.3 - fadeProgress * 2.3;
+                  offsetY = -15;
+                }
+                break;
+                
+              case 7: // Melt Down
+                if (progress < 0.3) {
+                  alpha = 1.0;
+                  scale = 1.0;
+                  offsetY = progress * 5; // Start sinking slightly
+                } else if (progress < 0.7) {
+                  double meltProgress = (progress - 0.3) / 0.4;
+                  alpha = 1.0 - meltProgress * 0.6;
+                  scale = 1.0; // Keep width
+                  offsetY = 5 + meltProgress * 15; // Sink down
+                } else {
+                  double finalProgress = (progress - 0.7) / 0.3;
+                  alpha = 0.4 - finalProgress * 0.4;
+                  scale = 1.0;
+                  offsetY = 20 + finalProgress * 10;
+                }
+                break;
+                
+              case 8: // Zigzag Wipe
+                {
+                  // Create zigzag pattern based on x position
+                  int zigzagOffset = (x % 4 < 2) ? 0 : 2; // Alternating pattern every 2 blocks
+                  double zigzagDelay = ((x + zigzagOffset) / (double)GRID_WIDTH) * 0.5;
+                  
+                  if (progress < zigzagDelay) {
+                    alpha = 1.0;
+                    scale = 1.0;
+                  } else if (progress < zigzagDelay + 0.4) {
+                    double wipeProgress = (progress - zigzagDelay) / 0.4;
+                    alpha = 1.0 - wipeProgress;
+                    scale = 1.0 - wipeProgress * 0.8;
+                    
+                    // Zigzag motion
+                    offsetX = sin(wipeProgress * M_PI * 4) * 8;
+                    offsetY = wipeProgress * 12;
+                  } else {
+                    alpha = 0.0;
+                    scale = 0.2;
+                  }
+                }
+                break;
+                
+              case 9: // Fireworks Burst
+                if (progress < 0.1) {
+                  alpha = 1.0;
+                  scale = 1.0;
+                } else if (progress < 0.25) {
+                  double chargeProgress = (progress - 0.1) / 0.15;
+                  alpha = 1.0;
+                  scale = 1.0 - chargeProgress * 0.3; // Compress before burst
+                  offsetY = -chargeProgress * 8;
+                } else if (progress < 0.4) {
+                  double burstProgress = (progress - 0.25) / 0.15;
+                  alpha = 1.0;
+                  scale = 0.7 + burstProgress * 1.0; // Sudden expansion
+                  offsetY = -8 + burstProgress * 3;
+                } else if (progress < 0.8) {
+                  double sparkleProgress = (progress - 0.4) / 0.4;
+                  alpha = 1.0 - sparkleProgress * 0.7;
+                  scale = 1.7 - sparkleProgress * 0.9;
+                  
+                  // Sparkle effect - random small movements
+                  int sparkSeed = (x * 23 + y * 41 + (int)(progress * 100)) % 100;
+                  offsetX = (sparkSeed % 20 - 10) * sparkleProgress * 0.8;
+                  offsetY = -5 + ((sparkSeed / 20) % 20 - 10) * sparkleProgress * 0.8;
+                } else {
+                  double fadeProgress = (progress - 0.8) / 0.2;
+                  alpha = 0.3 - fadeProgress * 0.3;
+                  scale = 0.8 - fadeProgress * 0.8;
                   offsetX = 0;
                   offsetY = 0;
                 }
@@ -745,6 +862,7 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
 }
 
 
+
 void TetrimoneBoard::getCurrentPieceInterpolatedPosition(double &x, double &y) const {
   if (currentPiece) {
     if (smoothMovementTimer > 0 && movementProgress < 1.0) {
@@ -810,7 +928,7 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
   
   // Randomly select animation type for modern mode (0-4)
   if (!retroModeActive) {
-    std::uniform_int_distribution<int> animDist(0, 4);
+    std::uniform_int_distribution<int> animDist(0, 9);
     currentAnimationType = animDist(rng);
   }
   
@@ -818,42 +936,71 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
     g_source_remove(lineClearAnimationTimer);
   }
   
-  lineClearAnimationTimer = g_timeout_add(16, // ~60 FPS
+  lineClearAnimationTimer = g_timeout_add(16, // ~60 FPS; Larger numbers make the animation slower; smaller makes it faster
     [](gpointer userData) -> gboolean {
       TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
       board->updateLineClearAnimation();
       return TRUE;
     }, this);
 }
+
 void TetrimoneBoard::updateLineClearAnimation() {
   lineClearProgress += 16.0 / LINE_CLEAR_ANIMATION_DURATION; // 16ms timestep
   
   if (lineClearProgress >= 1.0) {
-    // Animation complete - actually remove the lines now
-    lineClearActive = false;
-    lineClearProgress = 0.0;
-    
+    // Animation complete - stop timer first
     if (lineClearAnimationTimer > 0) {
       g_source_remove(lineClearAnimationTimer);
       lineClearAnimationTimer = 0;
     }
     
-    // Remove the lines from the grid
-    for (int lineY : linesBeingCleared) {
-      // Move all rows above down
-      for (int moveY = lineY; moveY > 0; --moveY) {
-        for (int x = 0; x < GRID_WIDTH; ++x) {
-          grid[moveY][x] = grid[moveY - 1][x];
+    // Set progress to exactly 1.0
+    lineClearProgress = 1.0;
+    
+    // Sort lines in descending order (bottom to top) to remove correctly
+    std::vector<int> sortedLines = linesBeingCleared;
+    std::sort(sortedLines.begin(), sortedLines.end(), std::greater<int>());
+    
+    // Remove the lines from the grid (bottom to top)
+    // We need to remove them one at a time and shift everything down
+    for (int lineY : sortedLines) {
+      // Verify this line actually needs to be cleared
+      bool lineIsFull = true;
+      for (int x = 0; x < GRID_WIDTH; ++x) {
+        if (grid[lineY][x] == 0) {
+          lineIsFull = false;
+          break;
         }
       }
       
-      // Clear top row
-      for (int x = 0; x < GRID_WIDTH; ++x) {
-        grid[0][x] = 0;
+      // Only remove if line is actually full
+      if (lineIsFull) {
+        // Move all rows above this line down by one
+        for (int moveY = lineY; moveY > 0; --moveY) {
+          for (int x = 0; x < GRID_WIDTH; ++x) {
+            grid[moveY][x] = grid[moveY - 1][x];
+          }
+        }
+        
+        // Clear the top row
+        for (int x = 0; x < GRID_WIDTH; ++x) {
+          grid[0][x] = 0;
+        }
+        
+        // After removing this line, we need to adjust the positions of any remaining 
+        // lines in our sorted list that are above this one
+        for (int& otherLineY : sortedLines) {
+          if (otherLineY < lineY) {
+            otherLineY++; // Line numbers shift down after removal
+          }
+        }
       }
     }
     
+    // Clean up animation state
     linesBeingCleared.clear();
+    lineClearActive = false;
+    lineClearProgress = 0.0;
   }
 }
 
