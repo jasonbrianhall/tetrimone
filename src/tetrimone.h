@@ -167,6 +167,21 @@ private:
     bool sequenceActive;
     Highscores highScores;
 
+bool lineClearActive;
+std::vector<int> linesBeingCleared;
+double lineClearProgress;
+guint lineClearAnimationTimer;
+static const int LINE_CLEAR_ANIMATION_DURATION = 600; // milliseconds
+
+// Smooth movement variables
+double currentPieceInterpolatedX;
+double currentPieceInterpolatedY;
+int lastPieceX;
+int lastPieceY;
+guint smoothMovementTimer;
+double movementProgress;
+static const int MOVEMENT_ANIMATION_DURATION = 100; // milliseconds
+
     
 public:
     int junkLinesPercentage = 0; // Default 0% (no junk lines)
@@ -289,6 +304,15 @@ std::string getDifficultyText(int difficulty) const;
     double propagandaMessageScale;
     bool propagandaScalingUp;
     guint propagandaScaleTimerId;
+
+bool isLineClearActive() const { return lineClearActive; }
+bool isLineBeingCleared(int y) const;
+double getLineClearProgress() const { return lineClearProgress; }
+void getCurrentPieceInterpolatedPosition(double &x, double &y) const;
+void startLineClearAnimation(const std::vector<int> &clearedLines);
+void updateLineClearAnimation();
+void startSmoothMovement(int newX, int newY);
+void updateSmoothMovement();
 
 };
 
