@@ -36,16 +36,16 @@ Prepare for a block-stacking adventure that'll make your neurons dance! GTK Tetr
 - **Retro Music Support**: Wrote a classic MIDI player that plays 8 bit sounds (based on DOSBOX's excellent OPL3SA emulation and some QBASIC code I tactically acquired and converted to C).  Feel like the MS-DOS days.  **NOTE**:  Current music must play through one time for it to change until I fix that.
 - **Custom Music support**: If you don't like the themes, their is a sound.zip file, simply replace with your own music and and sound (mp3, midi, and wav support).  Must use midi for retromode.
 
-## 🎬 Animation Spectacular: Where Blocks Come Alive! ✨
+### 🎬 Animation Spectacular: Where Blocks Come Alive! ✨
 
-### Smooth Movement System
+#### Smooth Movement System
 Your tetrominos don't just teleport—they **glide** with cinematic grace! Every piece movement is interpolated with silky-smooth 60 FPS animations using advanced easing functions. Watch as your blocks flow across the grid like digital poetry in motion.
 
-### Epic Line Clear Animations 🌟
+#### Epic Line Clear Animations 🌟
 
 When you clear lines, prepare for a visual feast! Tetrimone features **11 spectacular line clearing animations** that transform mundane line clears into jaw-dropping spectacles:
 
-### 🔥 Modern Animation Arsenal (10 Types)
+#### 🔥 Modern Animation Arsenal (10 Types)
 Each line clear randomly selects from these visual masterpieces:
 
 1. **🌀 Classic Shrink & Scatter**: Blocks flash, shrink, then scatter like digital confetti
@@ -59,49 +59,49 @@ Each line clear randomly selects from these visual masterpieces:
 9. **⚡ Zigzag Wipe**: Blocks disappear in a mesmerizing zigzag pattern
 10. **🎆 Fireworks Burst**: Blocks compress, explode, then sparkle like fireworks
 
-### 🚩 Soviet Retro Mode Animation
+#### 🚩 Soviet Retro Mode Animation
 When in retro mode (press the `.` key), line clears transform into authentic **Soviet-era computer animations**:
 - **Scan Line Sweep**: Horizontal scan lines sweep across like old CRT monitors
 - **Flash & Collapse**: Blocks flash in unison with vintage monitor effects  
 - **Segment Wipe**: Blocks disappear in chunks, mimicking 1980s computer graphics
 
-## Visual Polish Features
+### Visual Polish Features
 
-### 🎨 3D Block Rendering
+#### 🎨 3D Block Rendering
 - **Highlight Effects**: Each block features realistic 3D lighting
 - **Shadow System**: Dynamic shadows create depth and dimensionality
 - **Retro Mode Override**: Simple flat blocks for authentic vintage feel
 
-### 👻 Ghost Piece Technology
+#### 👻 Ghost Piece Technology
 - **Predictive Positioning**: See exactly where your piece will land
 - **Semi-Transparent Rendering**: Subtle visual guidance without distraction
 - **Smart Visibility**: Only appears when different from current piece position
 
-### 🎭 Background Animation Support
+#### 🎭 Background Animation Support
 - **Image Transitions**: Smooth fading between background images
 - **Opacity Control**: Customizable background transparency
 - **Scaling Technology**: Perfect aspect ratio maintenance
 
-## Performance Optimization
+### Performance Optimization
 
-### ⚡ 60 FPS Rendering
+#### ⚡ 60 FPS Rendering
 - **16ms Update Cycles**: Buttery-smooth 60 frames per second
 - **Efficient Animation Timers**: Minimal CPU overhead
 - **Smart Animation Culling**: Only animates visible elements
 
-### 🧠 Memory Management
+#### 🧠 Memory Management
 - **Timer Cleanup**: Automatic cleanup prevents memory leaks
 - **State Tracking**: Efficient animation state management
 - **Resource Optimization**: Minimal memory footprint
 
-## Animation Control
+### Animation Control
 
-### 🎛️ Customization Options
+#### 🎛️ Customization Options
 - **Animation Duration**: Configurable timing (default: 800ms)
 - **Retro Mode Toggle**: Instant switching between modern and vintage effects
 - **Performance Scaling**: Adapts to system capabilities
 
-### 🎯 Technical Details
+#### 🎯 Technical Details
 - **Interpolation**: Smoothstep easing functions for natural motion
 - **Multi-line Support**: Handles singles, doubles, triples, and TETRIS simultaneously
 - **Race Condition Prevention**: Bulletproof timing synchronization
