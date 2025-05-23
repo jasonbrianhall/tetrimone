@@ -186,7 +186,9 @@ TetrimoneBoard::TetrimoneBoard()
       currentBackgroundIndex(0), isTransitioning(false), transitionOpacity(0.0),
       transitionDirection(0), oldBackground(nullptr), transitionTimerId(0),
       consecutiveClears(0), maxConsecutiveClears(0), lastClearCount(0),
-      sequenceActive(false) {
+      sequenceActive(false), lineClearActive(false), lineClearProgress(0.0), lineClearAnimationTimer(0),
+currentPieceInterpolatedX(0), currentPieceInterpolatedY(0),
+lastPieceX(0), lastPieceY(0), smoothMovementTimer(0), movementProgress(0.0) {
   rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
 
     showPropagandaMessage = false;
@@ -239,6 +241,16 @@ TetrimoneBoard::~TetrimoneBoard() {
         backgroundImage = nullptr;
     }
 
+if (lineClearAnimationTimer > 0) {
+    g_source_remove(lineClearAnimationTimer);
+    lineClearAnimationTimer = 0;
+}
+
+if (smoothMovementTimer > 0) {
+    g_source_remove(smoothMovementTimer);
+    smoothMovementTimer = 0;
+}
+
     // Clean up any background images from ZIP
     cleanupBackgroundImages();
 }
@@ -247,15 +259,22 @@ bool TetrimoneBoard::movePiece(int dx, int dy) {
   if (gameOver || paused)
     return false;
 
+  int oldX = currentPiece->getX();
+  int oldY = currentPiece->getY();
+  
   currentPiece->move(dx, dy);
 
   if (checkCollision(*currentPiece)) {
     currentPiece->move(-dx, -dy); // Move back if collision
     return false;
   }
-
+  
+  // Start smooth movement animation
+  startSmoothMovement(oldX, oldY);
+  
   return true;
 }
+
 
 bool TetrimoneBoard::rotatePiece(bool clockwise) {
   if (gameOver || paused)
@@ -323,113 +342,101 @@ void TetrimoneBoard::lockPiece() {
 }
 
 int TetrimoneBoard::clearLines() {
-  int linesCleared = 0;
+  std::vector<int> linesToClear;
   int currentlevel = (this->linesCleared / 10) + initialLevel;
-  // Check each row from bottom to top
+  
+  // Check each row from bottom to top to find full lines
   for (int y = GRID_HEIGHT - 1; y >= 0; --y) {
     bool isFullLine = true;
-
-    // Check if row is full
+    
     for (int x = 0; x < GRID_WIDTH; ++x) {
       if (grid[y][x] == 0) {
         isFullLine = false;
         break;
       }
     }
-
+    
     if (isFullLine) {
-      linesCleared++;
-
-      // Move all rows above down
-      for (int moveY = y; moveY > 0; --moveY) {
-        for (int x = 0; x < GRID_WIDTH; ++x) {
-          grid[moveY][x] = grid[moveY - 1][x];
-        }
-      }
-
-      // Clear top row
-      for (int x = 0; x < GRID_WIDTH; ++x) {
-        grid[0][x] = 0;
-      }
-
-      // We need to check this row again since we moved everything down
-      y++;
+      linesToClear.push_back(y);
     }
   }
-
-
-if (linesCleared > 0 && retroModeActive) {
-    // Select a random propaganda message
-    std::uniform_int_distribution<int> dist(0, PROPAGANDA_MESSAGES.size() - 1);
-    int msgIndex = dist(rng);
-    
-    // For 4-line clears (Tetrimone), show a special message
-    std::string message;
-    if (linesCleared == 4) {
-        message = TETRIMONE_EXCELLENCE_MESSAGE;
-    } else {
-        message = PROPAGANDA_MESSAGES[msgIndex];
-    }
-    
-    // Output to console for debugging
-    std::cout << message << std::endl;
-
-    // Display message in the GUI
-    currentPropagandaMessage = message;
-    showPropagandaMessage = true;
-    
-    // Cancel existing timer if any
-    if (propagandaTimerId > 0) {
-        g_source_remove(propagandaTimerId);
-    }
-    
-    // Set timer to hide message after duration
-    propagandaTimerId = g_timeout_add(propagandaMessageDuration, 
-        [](gpointer userData) -> gboolean {
-            TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
-            board->showPropagandaMessage = false;
-            board->propagandaTimerId = 0;
-            return FALSE; // Don't repeat the timer
-        }, 
-        this);
-        
-    // Set timer for pulsing animation effect
-    propagandaMessageScale = 0.7; // Start smaller and grow
-    propagandaScalingUp = true;
-    if (propagandaScaleTimerId > 0) {
-        g_source_remove(propagandaScaleTimerId);
-    }
-    propagandaScaleTimerId = g_timeout_add(50, 
-        [](gpointer userData) -> gboolean {
-            TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
-            if (board->showPropagandaMessage) {
-                // Update scale for pulsing effect
-                if (board->propagandaScalingUp) {
-                    board->propagandaMessageScale += 0.04;
-                    if (board->propagandaMessageScale >= 1.2) {
-                        board->propagandaScalingUp = false;
-                    }
-                } else {
-                    board->propagandaMessageScale -= 0.04;
-                    if (board->propagandaMessageScale <= 0.8) {
-                        board->propagandaScalingUp = true;
-                    }
-                }
-                return TRUE; // Continue the timer
-            }
-            // Stop the timer if message is no longer showing
-            board->propagandaScaleTimerId = 0;
-            return FALSE;
-        }, 
-        this);
-}
-
-  // Update score based on lines cleared
+  
+  int linesCleared = linesToClear.size();
+  
   if (linesCleared > 0) {
+    // Start the line clearing animation instead of immediately removing lines
+    startLineClearAnimation(linesToClear);
+    
+    // Show propaganda message in retro mode
+    if (retroModeActive) {
+      // Select a random propaganda message
+      std::uniform_int_distribution<int> dist(0, PROPAGANDA_MESSAGES.size() - 1);
+      int msgIndex = dist(rng);
+      
+      // For 4-line clears (Tetrimone), show a special message
+      std::string message;
+      if (linesCleared == 4) {
+          message = TETRIMONE_EXCELLENCE_MESSAGE;
+      } else {
+          message = PROPAGANDA_MESSAGES[msgIndex];
+      }
+      
+      // Output to console for debugging
+      std::cout << message << std::endl;
+
+      // Display message in the GUI
+      currentPropagandaMessage = message;
+      showPropagandaMessage = true;
+      
+      // Cancel existing timer if any
+      if (propagandaTimerId > 0) {
+          g_source_remove(propagandaTimerId);
+      }
+      
+      // Set timer to hide message after duration
+      propagandaTimerId = g_timeout_add(propagandaMessageDuration, 
+          [](gpointer userData) -> gboolean {
+              TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
+              board->showPropagandaMessage = false;
+              board->propagandaTimerId = 0;
+              return FALSE; // Don't repeat the timer
+          }, 
+          this);
+          
+      // Set timer for pulsing animation effect
+      propagandaMessageScale = 0.7; // Start smaller and grow
+      propagandaScalingUp = true;
+      if (propagandaScaleTimerId > 0) {
+          g_source_remove(propagandaScaleTimerId);
+      }
+      propagandaScaleTimerId = g_timeout_add(50, 
+          [](gpointer userData) -> gboolean {
+              TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
+              if (board->showPropagandaMessage) {
+                  // Update scale for pulsing effect
+                  if (board->propagandaScalingUp) {
+                      board->propagandaMessageScale += 0.04;
+                      if (board->propagandaMessageScale >= 1.2) {
+                          board->propagandaScalingUp = false;
+                      }
+                  } else {
+                      board->propagandaMessageScale -= 0.04;
+                      if (board->propagandaMessageScale <= 0.8) {
+                          board->propagandaScalingUp = true;
+                      }
+                  }
+                  return TRUE; // Continue the timer
+              }
+              // Stop the timer if message is no longer showing
+              board->propagandaScaleTimerId = 0;
+              return FALSE;
+          }, 
+          this);
+    }
+
     // Play appropriate sound based on number of lines cleared
     if (linesCleared == 4) {
-      playSound(GameSoundEvent::Excellent); // Play Tetrimone/Excellent sound
-                                            // for 4 lines
+      playSound(GameSoundEvent::Excellent); // Play Tetrimone/Excellent sound for 4 lines
     } else if (linesCleared > 0) {
       playSound(GameSoundEvent::Clear); // Play normal clear sound for 1-3 lines
       if (linesCleared == 1) {
@@ -466,18 +473,15 @@ if (linesCleared > 0 && retroModeActive) {
       if (lastClearCount > 0) {
         // Player cleared lines in consecutive moves
         consecutiveClears++;
-        maxConsecutiveClears =
-            std::max(maxConsecutiveClears, consecutiveClears);
+        maxConsecutiveClears = std::max(maxConsecutiveClears, consecutiveClears);
 
         // Bonus increases with each consecutive clear
-        sequenceBonus = baseScore * (consecutiveClears *
-                                     0.1); // 10% bonus per consecutive clear
+        sequenceBonus = baseScore * (consecutiveClears * 0.1); // 10% bonus per consecutive clear
 
         // Extra bonus for maintaining the same number of lines cleared
         if (linesCleared == lastClearCount) {
           sequenceBonus += baseScore * 0.2; // 20% bonus for consistent clears
-          playSound(
-              retroModeActive ? GameSoundEvent::LevelUpRetro : GameSoundEvent::LevelUp); // Special sound for consistent sequence
+          playSound(retroModeActive ? GameSoundEvent::LevelUpRetro : GameSoundEvent::LevelUp); // Special sound for consistent sequence
         }
 
         // Notify player about sequence
@@ -511,8 +515,7 @@ if (linesCleared > 0 && retroModeActive) {
     sequenceActive = false;
   }
 
-
-if (level > currentlevel) {
+  if (level > currentlevel) {
     playSound(retroModeActive ? GameSoundEvent::LevelUpRetro : GameSoundEvent::LevelUp);
     if (junkLinesPerLevel > 0) {
       addJunkLinesFromBottom(junkLinesPerLevel);
@@ -528,7 +531,7 @@ if (level > currentlevel) {
             startBackgroundTransition();
         }
     }
-}
+  }
 
   return linesCleared;
 }
@@ -748,800 +751,6 @@ void TetrimoneBoard::restart() {
   lastClearCount = 0;
   sequenceActive = false;
   highScoreAlreadyProcessed = false;
-}
-
-// GTK+ callback functions
-gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
-  TetrimoneBoard *board = app->board;
-
-  // Get widget dimensions
-  GtkAllocation allocation;
-  gtk_widget_get_allocation(widget, &allocation);
-
-  // Draw background
-  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
-  cairo_rectangle(cr, 0, 0, allocation.width, allocation.height);
-  cairo_fill(cr);
-
-  // Draw background image if enabled
-  if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) &&
-      board->getBackgroundImage() != nullptr) {
-    // Save the current state
-    cairo_save(cr);
-
-    // Check if we're in a transition
-    if (board->isInBackgroundTransition()) {
-      // If fading out, draw old background first
-      if (board->getTransitionDirection() == -1 &&
-          board->getOldBackground() != nullptr) {
-        // Get the image dimensions
-        int imgWidth = cairo_image_surface_get_width(board->getOldBackground());
-        int imgHeight =
-            cairo_image_surface_get_height(board->getOldBackground());
-
-        // Calculate scaling to fill the game area while maintaining aspect
-        // ratio
-        double scaleX = static_cast<double>(allocation.width) / imgWidth;
-        double scaleY = static_cast<double>(allocation.height) / imgHeight;
-        double scale = std::max(scaleX, scaleY);
-
-        // Calculate position to center the image
-        double x = (allocation.width - imgWidth * scale) / 2;
-        double y = (allocation.height - imgHeight * scale) / 2;
-
-        // Apply the transformation
-        cairo_translate(cr, x, y);
-        cairo_scale(cr, scale, scale);
-
-        // Draw the old image with current transition opacity
-        cairo_set_source_surface(cr, board->getOldBackground(), 0, 0);
-        cairo_paint_with_alpha(cr, board->getTransitionOpacity());
-
-        // Reset transformation for next drawing
-        cairo_restore(cr);
-        cairo_save(cr);
-      } else if (board->getTransitionDirection() == 1) {
-        // Fading in - draw new background with transition opacity
-        // Get the image dimensions
-        int imgWidth =
-            cairo_image_surface_get_width(board->getBackgroundImage());
-        int imgHeight =
-            cairo_image_surface_get_height(board->getBackgroundImage());
-
-        // Calculate scaling to fill the game area while maintaining aspect
-        // ratio
-        double scaleX = static_cast<double>(allocation.width) / imgWidth;
-        double scaleY = static_cast<double>(allocation.height) / imgHeight;
-        double scale = std::max(scaleX, scaleY);
-
-        // Calculate position to center the image
-        double x = (allocation.width - imgWidth * scale) / 2;
-        double y = (allocation.height - imgHeight * scale) / 2;
-
-        // Apply the transformation
-        cairo_translate(cr, x, y);
-        cairo_scale(cr, scale, scale);
-
-        // Draw the new image with transition opacity
-        cairo_set_source_surface(cr, board->getBackgroundImage(), 0, 0);
-        cairo_paint_with_alpha(cr, board->getTransitionOpacity());
-      }
-    } else {
-      // Normal drawing (no transition)
-      // Get the image dimensions
-      int imgWidth = cairo_image_surface_get_width(board->getBackgroundImage());
-      int imgHeight =
-          cairo_image_surface_get_height(board->getBackgroundImage());
-
-      // Calculate scaling to fill the game area while maintaining aspect ratio
-      double scaleX = static_cast<double>(allocation.width) / imgWidth;
-      double scaleY = static_cast<double>(allocation.height) / imgHeight;
-      double scale = std::max(scaleX, scaleY);
-
-      // Calculate position to center the image
-      double x = (allocation.width - imgWidth * scale) / 2;
-      double y = (allocation.height - imgHeight * scale) / 2;
-
-      // Apply the transformation
-      cairo_translate(cr, x, y);
-      cairo_scale(cr, scale, scale);
-
-      // Draw the image with normal opacity
-      cairo_set_source_surface(cr, board->getBackgroundImage(), 0, 0);
-      cairo_paint_with_alpha(cr, board->getBackgroundOpacity());
-    }
-
-    // Restore the original state
-    cairo_restore(cr);
-  }
-
-if (board->isShowingGridLines()) {
-    cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
-    cairo_set_line_width(cr, 1);
-
-    // Vertical lines
-    for (int x = 1; x < GRID_WIDTH; ++x) {
-        cairo_move_to(cr, x * BLOCK_SIZE, 0);
-        cairo_line_to(cr, x * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
-    }
-
-    // Horizontal lines
-    for (int y = 1; y < GRID_HEIGHT; ++y) {
-        cairo_move_to(cr, 0, y * BLOCK_SIZE);
-        cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, y * BLOCK_SIZE);
-    }
-
-    cairo_stroke(cr);
-}
-
-  int failureLineY = 2; // Position the line at the second row
-  cairo_set_source_rgb(cr, 1.0, 0.2, 0.2); // Bright red for visibility
-  cairo_set_line_width(cr, 1.0);
-  cairo_move_to(cr, 0, failureLineY * BLOCK_SIZE);
-  cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, failureLineY * BLOCK_SIZE);
-  cairo_stroke(cr);
-
-// Draw placed blocks
-for (int y = 0; y < GRID_HEIGHT; ++y) {
-  for (int x = 0; x < GRID_WIDTH; ++x) {
-    int value = board->getGridValue(x, y);
-    if (value > 0) {
-      // Get color from tetrimoneblock colors (value-1 because grid values are 1-based)
-      auto color = TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
-      cairo_set_source_rgb(cr, color[0], color[1], color[2]);
-
-      if (board->retroModeActive || board->simpleBlocksActive) {
-        // In retro mode, draw simple blocks without 3D effects
-        cairo_rectangle(cr, x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-        cairo_fill(cr);
-      } else {
-        // Regular mode with 3D effects
-        // Draw block with a small margin
-        cairo_rectangle(cr, x * BLOCK_SIZE + 1, y * BLOCK_SIZE + 1,
-                        BLOCK_SIZE - 2, BLOCK_SIZE - 2);
-        cairo_fill(cr);
-
-        // Draw highlight (3D effect)
-        cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
-        cairo_move_to(cr, x * BLOCK_SIZE + 1, y * BLOCK_SIZE + 1);
-        cairo_line_to(cr, x * BLOCK_SIZE + BLOCK_SIZE - 1, y * BLOCK_SIZE + 1);
-        cairo_line_to(cr, x * BLOCK_SIZE + 1, y * BLOCK_SIZE + BLOCK_SIZE - 1);
-        cairo_close_path(cr);
-        cairo_fill(cr);
-
-        // Draw shadow (3D effect)
-        cairo_set_source_rgba(cr, 0, 0, 0, 0.3);
-        cairo_move_to(cr, x * BLOCK_SIZE + BLOCK_SIZE - 1, y * BLOCK_SIZE + 1);
-        cairo_line_to(cr, x * BLOCK_SIZE + BLOCK_SIZE - 1,
-                      y * BLOCK_SIZE + BLOCK_SIZE - 1);
-        cairo_line_to(cr, x * BLOCK_SIZE + 1, y * BLOCK_SIZE + BLOCK_SIZE - 1);
-        cairo_close_path(cr);
-        cairo_fill(cr);
-      }
-    }
-  }
-}
-
-  // Draw splash screen if active
- if (board->isSplashScreenActive()) {
-    // Semi-transparent overlay
-    cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
-    cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
-                    GRID_HEIGHT * BLOCK_SIZE);
-    cairo_fill(cr);
-
-    // Draw title
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL,
-                           CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 40 * BLOCK_SIZE / 47);
-    cairo_set_source_rgb(cr, 1, 1, 1);
-
-    // Center the title
-    cairo_text_extents_t extents;
-    const char *title = board->retroModeActive ? 
-        "БЛОЧНАЯ РЕВОЛЮЦИЯ" : "TETRIMONE";
-    cairo_text_extents(cr, title, &extents);
-
-    double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-    double y = (GRID_HEIGHT * BLOCK_SIZE) / 3;
-
-    cairo_move_to(cr, x, y);
-    cairo_show_text(cr, title);
-
-    // Draw colored blocks for decoration
-    int blockSize = 30;
-    int startX = (GRID_WIDTH * BLOCK_SIZE - 4 * BLOCK_SIZE) / 2;
-    int startY = y + 20;
-
-    // Draw I piece (cyan)
-    cairo_set_source_rgb(cr, 0.0, 0.7, 0.9);
-    for (int i = 0; i < 4; i++) {
-      cairo_rectangle(cr, startX + i * BLOCK_SIZE, startY, BLOCK_SIZE - 2,
-                      BLOCK_SIZE - 2);
-      cairo_fill(cr);
-    }
-
-    // Draw T piece (purple)
-    cairo_set_source_rgb(cr, 0.8, 0.0, 0.8);
-    startY += BLOCK_SIZE * 1.5;
-    cairo_rectangle(cr, startX + BLOCK_SIZE, startY, BLOCK_SIZE - 2,
-                    BLOCK_SIZE - 2);
-    cairo_fill(cr);
-    cairo_rectangle(cr, startX, startY + BLOCK_SIZE, BLOCK_SIZE - 2,
-                    BLOCK_SIZE - 2);
-    cairo_fill(cr);
-    cairo_rectangle(cr, startX + BLOCK_SIZE, startY + BLOCK_SIZE,
-                    BLOCK_SIZE - 2, BLOCK_SIZE - 2);
-    cairo_fill(cr);
-    cairo_rectangle(cr, startX + BLOCK_SIZE * 2, startY + BLOCK_SIZE,
-                    BLOCK_SIZE - 2, BLOCK_SIZE - 2);
-    cairo_fill(cr);
-
-    // Draw press space message
-    cairo_set_font_size(cr, 20 * BLOCK_SIZE / 47);
-    const char *startText = board->retroModeActive ? 
-        "Нажмите ПРОБЕЛ для начала" : "Press SPACE to Start";
-    cairo_text_extents(cr, startText, &extents);
-
-    x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-    y = (GRID_HEIGHT * BLOCK_SIZE) * 0.75;
-
-    cairo_move_to(cr, x, y);
-    cairo_show_text(cr, startText);
-
-    // Draw joystick message if enabled
-    if (app->joystickEnabled) {
-      cairo_set_font_size(cr, 16 * BLOCK_SIZE / 47);
-      const char *joystickText = board->retroModeActive ? 
-          "или Нажмите СТАРТ на контроллере" : 
-          "or Press START on Controller";
-      cairo_text_extents(cr, joystickText, &extents);
-
-      x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-      y += 30;
-
-      cairo_move_to(cr, x, y);
-      cairo_show_text(cr, joystickText);
-    }
-
-    return FALSE; // Skip drawing the rest
-  }
-
-if (board->retroModeActive && board->showPropagandaMessage) {
-    // Semi-transparent background for message
-    cairo_set_source_rgba(cr, 0.8, 0.0, 0.0, 0.8); // Soviet red with transparency
-    
-    // Calculate message position - center of screen
-    double msgX = (GRID_WIDTH * BLOCK_SIZE) / 2;
-    double msgY = (GRID_HEIGHT * BLOCK_SIZE) / 2;
-    
-    // Calculate font size based on screen width
-    // We'll scale between 14-26 font size based on screen width
-    double screenWidth = GRID_WIDTH * BLOCK_SIZE;
-    double baseFontSize = screenWidth / 25.0; // Scale factor
-    double fontSize = std::max(14.0, std::min(26.0, baseFontSize));
-    
-    // Set font size
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, fontSize);
-    
-    // Get original message
-    std::string originalMessage = board->currentPropagandaMessage;
-    std::string formattedMessage = originalMessage;
-    
-    // Check if message is too long
-    cairo_text_extents_t extents;
-    cairo_text_extents(cr, originalMessage.c_str(), &extents);
-    
-    // If message is too wide for the screen, add a line break
-    if (extents.width > screenWidth - 40) {
-        // Find approximate middle position to break the text
-        int halfLength = originalMessage.length() / 2;
-        
-        // Find the closest space to the middle
-        size_t spacePos = originalMessage.rfind(' ', halfLength);
-        if (spacePos != std::string::npos) {
-            // Replace the space with a newline
-            formattedMessage = originalMessage.substr(0, spacePos) + 
-                              "\n" + 
-                              originalMessage.substr(spacePos + 1);
-        }
-    }
-    
-    // Get extents of the potentially reformatted message (could now be 2 lines)
-    cairo_text_extents_t newExtents;
-    cairo_text_extents(cr, formattedMessage.c_str(), &newExtents);
-    
-    // Make sure the message fits the screen even after reformatting
-    if (newExtents.width > screenWidth - 40) {
-        // If still too wide, use a smaller font
-        fontSize = std::max(12.0, fontSize * (screenWidth - 40) / newExtents.width);
-        cairo_set_font_size(cr, fontSize);
-        cairo_text_extents(cr, formattedMessage.c_str(), &newExtents);
-    }
-    
-    // Calculate background box size - may need to be taller for 2 lines
-    int msgPadding = 20;
-    double boxHeight = newExtents.height + msgPadding*2;
-    // If there's a newline in the message, make the box taller
-    if (formattedMessage.find('\n') != std::string::npos) {
-        boxHeight = newExtents.height * 2.5 + msgPadding*2; // More space for 2 lines
-    }
-    
-    // Draw message background
-    cairo_rectangle(cr, 
-                    msgX - newExtents.width/2 - msgPadding,
-                    msgY - boxHeight/2,
-                    newExtents.width + msgPadding*2,
-                    boxHeight);
-    cairo_fill(cr);
-    
-    // Draw white border
-    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
-    cairo_set_line_width(cr, 2.0);
-    cairo_rectangle(cr, 
-                    msgX - newExtents.width/2 - msgPadding,
-                    msgY - boxHeight/2,
-                    newExtents.width + msgPadding*2,
-                    boxHeight);
-    cairo_stroke(cr);
-    
-    // Draw text in white
-    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
-    
-    if (formattedMessage.find('\n') != std::string::npos) {
-        // If message contains a newline, draw as multiple lines
-        std::string firstLine = formattedMessage.substr(0, formattedMessage.find('\n'));
-        std::string secondLine = formattedMessage.substr(formattedMessage.find('\n') + 1);
-        
-        cairo_text_extents_t firstLineExtents;
-        cairo_text_extents(cr, firstLine.c_str(), &firstLineExtents);
-        
-        // Draw first line
-        cairo_move_to(cr, 
-                      msgX - firstLineExtents.width/2,
-                      msgY - fontSize/2);
-        cairo_show_text(cr, firstLine.c_str());
-        
-        // Draw second line
-        cairo_text_extents_t secondLineExtents;
-        cairo_text_extents(cr, secondLine.c_str(), &secondLineExtents);
-        cairo_move_to(cr, 
-                      msgX - secondLineExtents.width/2,
-                      msgY + fontSize);
-        cairo_show_text(cr, secondLine.c_str());
-    } else {
-        // Single line display
-        cairo_move_to(cr, 
-                      msgX - newExtents.width/2,
-                      msgY + newExtents.height/2);
-        cairo_show_text(cr, formattedMessage.c_str());
-    }
-}
-
-
-  // Draw current piece if game is active
-if (!board->isGameOver() && !board->isPaused() &&
-    !board->isSplashScreenActive()) {
-  const TetrimoneBlock &piece = board->getCurrentPiece();
-  auto shape = piece.getShape();
-  auto color = piece.getColor();
-  int pieceX = piece.getX();
-  int pieceY = piece.getY();
-
-  cairo_set_source_rgb(cr, color[0], color[1], color[2]);
-
-  for (size_t y = 0; y < shape.size(); ++y) {
-    for (size_t x = 0; x < shape[y].size(); ++x) {
-      if (shape[y][x] == 1) {
-        int drawX = (pieceX + x) * BLOCK_SIZE;
-        int drawY = (pieceY + y) * BLOCK_SIZE;
-
-        // Only draw if within the visible grid
-        if (drawY >= 0) {
-          if (board->retroModeActive || board->simpleBlocksActive) {
-            // In retro mode, draw simple blocks without 3D effects
-            cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
-            cairo_fill(cr);
-          } else {
-            // Regular mode with 3D effects
-            // Draw block with a small margin
-            cairo_rectangle(cr, drawX + 1, drawY + 1, BLOCK_SIZE - 2,
-                            BLOCK_SIZE - 2);
-            cairo_fill(cr);
-
-            // Draw highlight (3D effect)
-            cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
-            cairo_move_to(cr, drawX + 1, drawY + 1);
-            cairo_line_to(cr, drawX + BLOCK_SIZE - 1, drawY + 1);
-            cairo_line_to(cr, drawX + 1, drawY + BLOCK_SIZE - 1);
-            cairo_close_path(cr);
-            cairo_fill(cr);
-
-            // Draw shadow (3D effect)
-            cairo_set_source_rgba(cr, 0, 0, 0, 0.3);
-            cairo_move_to(cr, drawX + BLOCK_SIZE - 1, drawY + 1);
-            cairo_line_to(cr, drawX + BLOCK_SIZE - 1, drawY + BLOCK_SIZE - 1);
-            cairo_line_to(cr, drawX + 1, drawY + BLOCK_SIZE - 1);
-            cairo_close_path(cr);
-            cairo_fill(cr);
-
-            // Reset color for next block
-            cairo_set_source_rgb(cr, color[0], color[1], color[2]);
-          }
-        }
-      }
-    }
-  }
-}
-
-if (!board->isGameOver() && !board->isPaused() &&
-    !board->isSplashScreenActive() && board->isGhostPieceEnabled()) {
-
-  const TetrimoneBlock &piece = board->getCurrentPiece();
-  auto shape = piece.getShape();
-  auto color = piece.getColor();
-  int pieceX = piece.getX();
-  int ghostY = board->getGhostPieceY();
-
-  // Only draw ghost if it's in a different position than current piece
-  if (ghostY > piece.getY()) {
-    // Set semi-transparent color for ghost piece
-    cairo_set_source_rgba(cr, color[0], color[1], color[2], 0.3);
-
-    for (size_t y = 0; y < shape.size(); ++y) {
-      for (size_t x = 0; x < shape[y].size(); ++x) {
-        if (shape[y][x] == 1) {
-          int drawX = (pieceX + x) * BLOCK_SIZE;
-          int drawY = (ghostY + y) * BLOCK_SIZE;
-
-          // Only draw if within the visible grid
-          if (drawY >= 0) {
-            if (board->retroModeActive) {
-              // In retro mode, don't draw ghost pieces
-              cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
-              cairo_stroke(cr);
-            } else {
-              // Regular mode with 3D effects
-              // Draw ghost block (just outline)
-              cairo_rectangle(cr, drawX + 1, drawY + 1, BLOCK_SIZE - 2,
-                            BLOCK_SIZE - 2);
-              cairo_stroke_preserve(cr);
-              cairo_fill(cr);
-            }
-          }
-        }
-      }
-    }
-  }
-}
-  // Draw enhanced pause menu if paused
-if (board->isPaused() && !board->isGameOver()) {
-    cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
-    cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
-                    GRID_HEIGHT * BLOCK_SIZE);
-    cairo_fill(cr);
-
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL,
-                          CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 30);
-    cairo_set_source_rgb(cr, 1, 1, 1);
-
-    // Center the text
-    cairo_text_extents_t extents;
-    const char *text = board->retroModeActive ? "ПРИОСТАНОВЛЕНО ПО ПРИКАЗУ ПАРТИИ" : "PAUSED";
-    cairo_text_extents(cr, text, &extents);
-
-    double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-    double y = (GRID_HEIGHT * BLOCK_SIZE) / 4;
-
-    cairo_move_to(cr, x, y);
-    cairo_show_text(cr, text);
-
-    // Draw pause menu options with Soviet bureaucracy names if in retro mode
-    const int numOptions = 3;
-    const char *menuOptions[numOptions];
-    
-    if (board->retroModeActive) {
-        menuOptions[0] = "Продолжить Трудовой Подвиг (P)";
-        menuOptions[1] = "Новая Пятилетка (N)";
-        menuOptions[2] = "Дезертировать с Поля Боя (Q)";
-    } else {
-        menuOptions[0] = "Continue (P)";
-        menuOptions[1] = "New Game (N)";
-        menuOptions[2] = "Quit (Q)";
-    }
-
-    cairo_set_font_size(cr, 20);
-
-    // Calculate center position
-    y = (GRID_HEIGHT * BLOCK_SIZE) / 2;
-
-    // Draw menu options
-    for (int i = 0; i < numOptions; i++) {
-        cairo_text_extents(cr, menuOptions[i], &extents);
-        x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-
-        cairo_move_to(cr, x, y);
-        cairo_show_text(cr, menuOptions[i]);
-
-        y += 40;
-    }
-}
-
-  // Draw game over text if needed
-if (board->isGameOver()) {
-    cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
-    cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
-                    GRID_HEIGHT * BLOCK_SIZE);
-    cairo_fill(cr);
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL,
-                           CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 30);
-    cairo_set_source_rgb(cr, 1, 0, 0);
-    
-    // Center the text
-    cairo_text_extents_t extents;
-    const char *text = board->retroModeActive ? "ИНФОРМАЦИЯ ЗАПРЕЩЕНА" : "GAME OVER";
-    cairo_text_extents(cr, text, &extents);
-    double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-    double y = (GRID_HEIGHT * BLOCK_SIZE) / 2;
-    cairo_move_to(cr, x, y);
-    cairo_show_text(cr, text);
-    
-    // Show different restart message in retro mode
-    cairo_set_font_size(cr, 16);
-    const char *restartText = board->retroModeActive ? 
-                              "ОЖИДАЙТЕ ДОПРОСА. НЕ ДВИГАЙТЕСЬ..." : 
-                              "Press R to restart";
-    cairo_text_extents(cr, restartText, &extents);
-    x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-    y += 40;
-    cairo_move_to(cr, x, y);
-    cairo_show_text(cr, restartText);
-    
-    // Add a second line with translation for non-Russian speakers
-    if (board->retroModeActive) {
-        cairo_set_font_size(cr, 12);
-        const char *translationText = "(AWAIT INTERROGATION. DO NOT MOVE...)";
-        cairo_text_extents(cr, translationText, &extents);
-        x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-        y += 25;
-        cairo_move_to(cr, x, y);
-        cairo_show_text(cr, translationText);
-    }
-}
-  return FALSE;
-}
-
-void onBlockSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
-
-  // Pause the game if it's running
-  bool wasPaused = app->board->isPaused();
-  if (!wasPaused && !app->board->isGameOver() &&
-      !app->board->isSplashScreenActive()) {
-    onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
-  }
-
-  // Store original block size in case user cancels
-  int originalBlockSize = BLOCK_SIZE;
-  int newBlockSize = BLOCK_SIZE; // Working value
-
-  // Create dialog with Apply and Cancel buttons
-  GtkWidget *dialog = gtk_dialog_new_with_buttons(
-      "Block Size", GTK_WINDOW(app->window), GTK_DIALOG_MODAL, "_Cancel",
-      GTK_RESPONSE_CANCEL, "_Apply", GTK_RESPONSE_APPLY, NULL);
-
-  // Make it a reasonable size
-  gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 150);
-
-  // Create content area
-  GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-  gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
-
-  // Create a vertical box for content
-  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
-  gtk_container_add(GTK_CONTAINER(contentArea), vbox);
-
-  // Add a label
-  GtkWidget *label = gtk_label_new("Adjust block size:");
-  gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
-
-  // Create a horizontal scale (slider)
-  GtkWidget *scale = gtk_scale_new_with_range(
-      GTK_ORIENTATION_HORIZONTAL, MIN_BLOCK_SIZE, MAX_BLOCK_SIZE, 1);
-  gtk_range_set_value(GTK_RANGE(scale), BLOCK_SIZE);
-  gtk_scale_set_digits(GTK_SCALE(scale), 0); // No decimal places
-  gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
-  gtk_box_pack_start(GTK_BOX(vbox), scale, FALSE, FALSE, 0);
-
-  // Add min/max labels
-  GtkWidget *rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_pack_start(GTK_BOX(vbox), rangeBox, FALSE, FALSE, 0);
-
-  GtkWidget *minLabel = gtk_label_new("Small");
-  gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
-
-  GtkWidget *maxLabel = gtk_label_new("Large");
-  gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
-  gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
-
-  // Current value label that updates as the slider moves
-  GtkWidget *currentValueLabel = gtk_label_new(NULL);
-  char valueBuf[32];
-  snprintf(valueBuf, sizeof(valueBuf), "Current size: %d", BLOCK_SIZE);
-  gtk_label_set_text(GTK_LABEL(currentValueLabel), valueBuf);
-  gtk_widget_set_halign(currentValueLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(vbox), currentValueLabel, FALSE, FALSE, 0);
-
-  // Note about application
-  GtkWidget *noteLabel = gtk_label_new(
-      "Click Apply to set the new block size.\nThis will reset the game UI.");
-  gtk_widget_set_halign(noteLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(vbox), noteLabel, FALSE, FALSE, 10);
-
-  // Connect value-changed signal to update the value label
-  g_signal_connect(G_OBJECT(scale), "value-changed",
-                   G_CALLBACK(updateSizeValueLabel), currentValueLabel);
-
-  // Show all dialog widgets
-  gtk_widget_show_all(dialog);
-
-  // Run the dialog
-  int response = gtk_dialog_run(GTK_DIALOG(dialog));
-
-  if (response == GTK_RESPONSE_APPLY) {
-    // Get the final block size value from the slider
-    newBlockSize = (int)gtk_range_get_value(GTK_RANGE(scale));
-
-    // Apply the new block size
-    BLOCK_SIZE = newBlockSize;
-
-    // Rebuild the UI with the new block size
-    rebuildGameUI(app);
-  } else {
-    // Reset to original if canceled
-    BLOCK_SIZE = originalBlockSize;
-  }
-
-  // Destroy dialog
-  gtk_widget_destroy(dialog);
-
-  // Resume the game if it wasn't paused before
-  if (!wasPaused && !app->board->isGameOver() &&
-      !app->board->isSplashScreenActive()) {
-    onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
-  }
-}
-
-gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
-  TetrimoneBoard *board = app->board;
-
-  // Get widget dimensions
-  GtkAllocation allocation;
-  gtk_widget_get_allocation(widget, &allocation);
-
-  // Draw background
-  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
-  cairo_rectangle(cr, 0, 0, allocation.width, allocation.height);
-  cairo_fill(cr);
-
-  if (!board->isGameOver()) {
-    // Calculate section width - each piece gets exactly 1/3 of the total width
-    int sectionWidth = allocation.width / 3;
-
-    // Calculate preview block size (half of the normal block size)
-    int previewBlockSize = BLOCK_SIZE / 2;
-
-    // Draw dividers between sections
-    cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
-    cairo_set_line_width(cr, 2);
-    cairo_move_to(cr, sectionWidth, 0);
-    cairo_line_to(cr, sectionWidth, allocation.height);
-    cairo_move_to(cr, sectionWidth * 2, 0);
-    cairo_line_to(cr, sectionWidth * 2, allocation.height);
-    cairo_stroke(cr);
-
-    // Process each piece
-    for (int pieceIndex = 0; pieceIndex < 3; pieceIndex++) {
-      // Calculate the section's X position
-      int sectionX = pieceIndex * sectionWidth;
-
-      // Reserve space for the header
-      int headerHeight = 25;
-
-      // Get the piece information
-      const TetrimoneBlock &piece = board->getNextPiece(pieceIndex);
-      auto shape = piece.getShape();
-      auto color = piece.getColor();
-
-      // Calculate the shape dimensions in blocks
-      int pieceWidth = 0;
-      for (const auto &row : shape) {
-        pieceWidth = std::max(pieceWidth, (int)row.size());
-      }
-      int pieceHeight = shape.size();
-
-      // Center the piece in the available space (using the preview block size)
-      int availableWidth = sectionWidth;
-      int offsetX =
-          sectionX + (availableWidth - pieceWidth * previewBlockSize) / 2;
-      int offsetY = headerHeight + (allocation.height - headerHeight -
-                                    pieceHeight * previewBlockSize) /
-                                       2;
-
-      // Draw piece number label at the top of each section
-      cairo_set_source_rgb(cr, 0.8, 0.8, 0.8);
-      cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL,
-                             CAIRO_FONT_WEIGHT_BOLD);
-
-      // Scale font size with block size
-      double fontSize = std::max(10.0, std::min(16.0, previewBlockSize * 0.5));
-      cairo_set_font_size(cr, fontSize);
-
-      // Use a shorter label to avoid width issues
-      char pieceLabel[10];
-      snprintf(pieceLabel, sizeof(pieceLabel), "%d", pieceIndex + 1);
-
-      cairo_text_extents_t extents;
-      cairo_text_extents(cr, pieceLabel, &extents);
-
-      // Center the text in the section
-      double textX = sectionX + (sectionWidth - extents.width) / 2;
-      cairo_move_to(cr, textX, headerHeight - 5);
-      cairo_show_text(cr, pieceLabel);
-
-      // Set color for drawing
-      cairo_set_source_rgb(cr, color[0], color[1], color[2]);
-
-      // Draw the piece blocks with half size
-      for (size_t y = 0; y < shape.size(); ++y) {
-        for (size_t x = 0; x < shape[y].size(); ++x) {
-          if (shape[y][x] == 1) {
-            int drawX = offsetX + x * previewBlockSize;
-            int drawY = offsetY + y * previewBlockSize;
-     if (board->retroModeActive || board->simpleBlocksActive) {
-        // In retro mode, draw simple blocks without 3D effects
-        cairo_rectangle(cr, drawX, drawY, previewBlockSize, previewBlockSize);
-        cairo_fill(cr);
-      } else {
-            // Draw block with a small margin
-            cairo_rectangle(cr, drawX + 1, drawY + 1, previewBlockSize - 2,
-                            previewBlockSize - 2);
-            cairo_fill(cr);
-
-            // Draw highlight (3D effect)
-            cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
-            cairo_move_to(cr, drawX + 1, drawY + 1);
-            cairo_line_to(cr, drawX + previewBlockSize - 1, drawY + 1);
-            cairo_line_to(cr, drawX + 1, drawY + previewBlockSize - 1);
-            cairo_close_path(cr);
-            cairo_fill(cr);
-
-            // Draw shadow (3D effect)
-            cairo_set_source_rgba(cr, 0, 0, 0, 0.3);
-            cairo_move_to(cr, drawX + previewBlockSize - 1, drawY + 1);
-            cairo_line_to(cr, drawX + previewBlockSize - 1,
-                          drawY + previewBlockSize - 1);
-            cairo_line_to(cr, drawX + 1, drawY + previewBlockSize - 1);
-            cairo_close_path(cr);
-            cairo_fill(cr);
-
-            // Reset color for next block
-            cairo_set_source_rgb(cr, color[0], color[1], color[2]);
-}
-          }
-        }
-      }
-    }
-  }
-
-  return FALSE;
 }
 
 gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
@@ -3637,6 +2846,108 @@ gboolean onWindowFocusChanged(GtkWidget *widget, GdkEventFocus *event, gpointer 
   return FALSE; // Continue event propagation
 }
 
+void onBlockSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+
+  // Pause the game if it's running
+  bool wasPaused = app->board->isPaused();
+  if (!wasPaused && !app->board->isGameOver() &&
+      !app->board->isSplashScreenActive()) {
+    onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+  }
+
+  // Store original block size in case user cancels
+  int originalBlockSize = BLOCK_SIZE;
+  int newBlockSize = BLOCK_SIZE; // Working value
+
+  // Create dialog with Apply and Cancel buttons
+  GtkWidget *dialog = gtk_dialog_new_with_buttons(
+      "Block Size", GTK_WINDOW(app->window), GTK_DIALOG_MODAL, "_Cancel",
+      GTK_RESPONSE_CANCEL, "_Apply", GTK_RESPONSE_APPLY, NULL);
+
+  // Make it a reasonable size
+  gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 150);
+
+  // Create content area
+  GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
+
+  // Create a vertical box for content
+  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+  gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+
+  // Add a label
+  GtkWidget *label = gtk_label_new("Adjust block size:");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+
+  // Create a horizontal scale (slider)
+  GtkWidget *scale = gtk_scale_new_with_range(
+      GTK_ORIENTATION_HORIZONTAL, MIN_BLOCK_SIZE, MAX_BLOCK_SIZE, 1);
+  gtk_range_set_value(GTK_RANGE(scale), BLOCK_SIZE);
+  gtk_scale_set_digits(GTK_SCALE(scale), 0); // No decimal places
+  gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
+  gtk_box_pack_start(GTK_BOX(vbox), scale, FALSE, FALSE, 0);
+
+  // Add min/max labels
+  GtkWidget *rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), rangeBox, FALSE, FALSE, 0);
+
+  GtkWidget *minLabel = gtk_label_new("Small");
+  gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
+
+  GtkWidget *maxLabel = gtk_label_new("Large");
+  gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
+  gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
+
+  // Current value label that updates as the slider moves
+  GtkWidget *currentValueLabel = gtk_label_new(NULL);
+  char valueBuf[32];
+  snprintf(valueBuf, sizeof(valueBuf), "Current size: %d", BLOCK_SIZE);
+  gtk_label_set_text(GTK_LABEL(currentValueLabel), valueBuf);
+  gtk_widget_set_halign(currentValueLabel, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(vbox), currentValueLabel, FALSE, FALSE, 0);
+
+  // Note about application
+  GtkWidget *noteLabel = gtk_label_new(
+      "Click Apply to set the new block size.\nThis will reset the game UI.");
+  gtk_widget_set_halign(noteLabel, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(vbox), noteLabel, FALSE, FALSE, 10);
+
+  // Connect value-changed signal to update the value label
+  g_signal_connect(G_OBJECT(scale), "value-changed",
+                   G_CALLBACK(updateSizeValueLabel), currentValueLabel);
+
+  // Show all dialog widgets
+  gtk_widget_show_all(dialog);
+
+  // Run the dialog
+  int response = gtk_dialog_run(GTK_DIALOG(dialog));
+
+  if (response == GTK_RESPONSE_APPLY) {
+    // Get the final block size value from the slider
+    newBlockSize = (int)gtk_range_get_value(GTK_RANGE(scale));
+
+    // Apply the new block size
+    BLOCK_SIZE = newBlockSize;
+
+    // Rebuild the UI with the new block size
+    rebuildGameUI(app);
+  } else {
+    // Reset to original if canceled
+    BLOCK_SIZE = originalBlockSize;
+  }
+
+  // Destroy dialog
+  gtk_widget_destroy(dialog);
+
+  // Resume the game if it wasn't paused before
+  if (!wasPaused && !app->board->isGameOver() &&
+      !app->board->isSplashScreenActive()) {
+    onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+  }
+}
 
 int main(int argc, char *argv[]) {
   GtkApplication *app;
