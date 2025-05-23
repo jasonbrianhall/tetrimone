@@ -196,24 +196,122 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
               }
             }
           } else {
-            // Modern smooth animation (your existing code)
-            if (progress < 0.2) {
-              // Flash effect - rapid opacity changes but keep normal size
-              alpha = 0.4 + 0.6 * sin(progress * 25.0);
-              scale = 1.0; // Keep original size during flash
-            } else if (progress < 0.6) {
-              // Scale down effect - smooth shrinking
-              double scaleProgress = (progress - 0.2) / 0.4;
-              scale = 1.0 - scaleProgress * 0.8; // Shrink more dramatically
-              alpha = 1.0 - scaleProgress * 0.4;
-            } else {
-              // Final fade and scatter effect
-              double fadeProgress = (progress - 0.6) / 0.4;
-              alpha = (1.0 - fadeProgress * 0.6) * 0.6; // Start fading from reduced alpha
-              scale = 0.2 - fadeProgress * 0.2; // Continue shrinking to nearly nothing
-              // Add slight random offset for scatter effect
-              offsetX = (rand() % 8 - 4) * fadeProgress * 3;
-              offsetY = (rand() % 8 - 4) * fadeProgress * 3;
+            // Modern animations - 5 different types selected randomly
+            int animationType = board->getCurrentAnimationType();
+            
+            switch (animationType) {
+              case 0: // Classic Shrink & Scatter
+                if (progress < 0.2) {
+                  alpha = 0.4 + 0.6 * sin(progress * 25.0);
+                  scale = 1.0;
+                } else if (progress < 0.6) {
+                  double scaleProgress = (progress - 0.2) / 0.4;
+                  scale = 1.0 - scaleProgress * 0.8;
+                  alpha = 1.0 - scaleProgress * 0.4;
+                } else {
+                  double fadeProgress = (progress - 0.6) / 0.4;
+                  alpha = (1.0 - fadeProgress * 0.6) * 0.6;
+                  scale = 0.2 - fadeProgress * 0.2;
+                  offsetX = (rand() % 8 - 4) * fadeProgress * 3;
+                  offsetY = (rand() % 8 - 4) * fadeProgress * 3;
+                }
+                break;
+                
+              case 1: // Dissolve (blocks fade randomly)
+                {
+                  // Use block position as seed for consistent per-block randomness
+                  int blockSeed = (x * 31 + y * 17) % 100;
+                  double blockDelay = (blockSeed / 100.0) * 0.3; // 0-30% of animation
+                  
+                  if (progress < blockDelay) {
+                    alpha = 1.0;
+                    scale = 1.0;
+                  } else if (progress < blockDelay + 0.4) {
+                    double dissolveProgress = (progress - blockDelay) / 0.4;
+                    alpha = 1.0 - dissolveProgress;
+                    scale = 1.0 - dissolveProgress * 0.3;
+                  } else {
+                    alpha = 0.0;
+                    scale = 0.7;
+                  }
+                }
+                break;
+                
+              case 2: // Ripple Wave (from center outward)
+                {
+                  double centerX = GRID_WIDTH / 2.0;
+                  double distance = abs(x - centerX) / centerX; // 0.0 at center, 1.0 at edges
+                  double waveDelay = distance * 0.3; // Wave spreads over 30% of animation
+                  
+                  if (progress < waveDelay) {
+                    alpha = 1.0;
+                    scale = 1.0;
+                  } else if (progress < waveDelay + 0.5) {
+                    double waveProgress = (progress - waveDelay) / 0.5;
+                    alpha = 1.0 - waveProgress;
+                    scale = 1.0 + sin(waveProgress * M_PI) * 0.3; // Slight bulge then shrink
+                    offsetY = sin(waveProgress * M_PI * 2) * 5; // Wobble effect
+                  } else {
+                    alpha = 0.0;
+                    scale = 0.0;
+                  }
+                }
+                break;
+                
+              case 3: // Explosion (blocks shoot outward)
+                if (progress < 0.15) {
+                  alpha = 1.0;
+                  scale = 1.0 + progress * 2; // Quick expansion
+                } else if (progress < 0.6) {
+                  double explodeProgress = (progress - 0.15) / 0.45;
+                  alpha = 1.0 - explodeProgress * 0.7;
+                  scale = 1.3 - explodeProgress * 0.5;
+                  
+                  // Outward movement based on position from center
+                  double centerX = GRID_WIDTH / 2.0;
+                  double forceX = (x - centerX) * explodeProgress * 15;
+                  double forceY = -explodeProgress * 20; // Upward force
+                  offsetX = forceX;
+                  offsetY = forceY;
+                } else {
+                  double finalProgress = (progress - 0.6) / 0.4;
+                  alpha = 0.3 - finalProgress * 0.3;
+                  scale = 0.8 - finalProgress * 0.8;
+                  
+                  // Continue outward movement with gravity
+                  double centerX = GRID_WIDTH / 2.0;
+                  double forceX = (x - centerX) * (1.0 + finalProgress) * 15;
+                  double forceY = -20 + finalProgress * 40; // Gravity pulls down
+                  offsetX = forceX;
+                  offsetY = forceY;
+                }
+                break;
+                
+              case 4: // Spin & Vanish
+                if (progress < 0.3) {
+                  alpha = 1.0;
+                  scale = 1.0;
+                  // Start rotating (simulate with slight offset oscillation)
+                  double rotationSpeed = progress * 20;
+                  offsetX = sin(rotationSpeed) * 3;
+                  offsetY = cos(rotationSpeed) * 3;
+                } else if (progress < 0.8) {
+                  double spinProgress = (progress - 0.3) / 0.5;
+                  alpha = 1.0 - spinProgress * 0.8;
+                  scale = 1.0 - spinProgress * 0.7;
+                  
+                  // Faster rotation and shrinking
+                  double rotationSpeed = (progress * 40) + (spinProgress * 60);
+                  offsetX = sin(rotationSpeed) * (3 - spinProgress * 3);
+                  offsetY = cos(rotationSpeed) * (3 - spinProgress * 3);
+                } else {
+                  double finalProgress = (progress - 0.8) / 0.2;
+                  alpha = 0.2 - finalProgress * 0.2;
+                  scale = 0.3 - finalProgress * 0.3;
+                  offsetX = 0;
+                  offsetY = 0;
+                }
+                break;
             }
           }
         }
@@ -710,6 +808,12 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
   lineClearActive = true;
   lineClearProgress = 0.0;
   
+  // Randomly select animation type for modern mode (0-4)
+  if (!retroModeActive) {
+    std::uniform_int_distribution<int> animDist(0, 4);
+    currentAnimationType = animDist(rng);
+  }
+  
   if (lineClearAnimationTimer > 0) {
     g_source_remove(lineClearAnimationTimer);
   }
@@ -721,7 +825,6 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
       return TRUE;
     }, this);
 }
-
 void TetrimoneBoard::updateLineClearAnimation() {
   lineClearProgress += 16.0 / LINE_CLEAR_ANIMATION_DURATION; // 16ms timestep
   
