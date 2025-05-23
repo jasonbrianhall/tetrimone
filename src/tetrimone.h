@@ -168,23 +168,40 @@ private:
     Highscores highScores;
     int currentAnimationType;
 
-bool lineClearActive;
-std::vector<int> linesBeingCleared;
-double lineClearProgress;
-guint lineClearAnimationTimer;
-static const int LINE_CLEAR_ANIMATION_DURATION = 600; // milliseconds
+    // Theme transition variables
+    bool isThemeTransitioning;
+    int oldThemeIndex;
+    int newThemeIndex;
+    double themeTransitionProgress;
+    guint themeTransitionTimer;
+    static const int THEME_TRANSITION_DURATION = 3000; // milliseconds
 
-// Smooth movement variables
-double currentPieceInterpolatedX;
-double currentPieceInterpolatedY;
-int lastPieceX;
-int lastPieceY;
-guint smoothMovementTimer;
-double movementProgress;
-static const int MOVEMENT_ANIMATION_DURATION = 100; // milliseconds
+    bool lineClearActive;
+    std::vector<int> linesBeingCleared;
+    double lineClearProgress;
+    guint lineClearAnimationTimer;
+    static const int LINE_CLEAR_ANIMATION_DURATION = 600; // milliseconds
+
+    // Smooth movement variables
+    double currentPieceInterpolatedX;
+    double currentPieceInterpolatedY;
+    int lastPieceX;
+    int lastPieceY;
+    guint smoothMovementTimer;
+    double movementProgress;
+    static const int MOVEMENT_ANIMATION_DURATION = 100; // milliseconds
 
     
 public:
+    // Theme transition methods
+    void startThemeTransition(int targetTheme);
+    void updateThemeTransition();
+    void cancelThemeTransition();
+    bool isInThemeTransition() const { return isThemeTransitioning; }
+    double getThemeTransitionProgress() const { return themeTransitionProgress; }
+    int getOldThemeIndex() const { return oldThemeIndex; }
+    std::array<double, 3> getInterpolatedColor(int blockType, double progress) const;
+
     int getCurrentAnimationType() const { return currentAnimationType; }
 
     int junkLinesPercentage = 0; // Default 0% (no junk lines)
@@ -200,7 +217,7 @@ public:
     bool showGridLines = false; // Grid lines off by default
     bool isShowingGridLines() const { return showGridLines; }
     void setShowGridLines(bool show) { showGridLines = show; }
-std::string getDifficultyText(int difficulty) const;
+    std::string getDifficultyText(int difficulty) const;
     TetrimoneBoard();
     ~TetrimoneBoard();
     bool checkAndRecordHighScore(TetrimoneApp* app);
@@ -298,7 +315,7 @@ std::string getDifficultyText(int difficulty) const;
     int getMaxConsecutiveClears() const { return maxConsecutiveClears; }
     bool isSequenceActive() const { return sequenceActive; }
     
-        bool isShowingPropagandaMessage() const { return showPropagandaMessage; }
+    bool isShowingPropagandaMessage() const { return showPropagandaMessage; }
     const std::string& getCurrentPropagandaMessage() const { return currentPropagandaMessage; }
     bool showPropagandaMessage;
     guint propagandaTimerId;
@@ -308,14 +325,14 @@ std::string getDifficultyText(int difficulty) const;
     bool propagandaScalingUp;
     guint propagandaScaleTimerId;
 
-bool isLineClearActive() const { return lineClearActive; }
-bool isLineBeingCleared(int y) const;
-double getLineClearProgress() const { return lineClearProgress; }
-void getCurrentPieceInterpolatedPosition(double &x, double &y) const;
-void startLineClearAnimation(const std::vector<int> &clearedLines);
-void updateLineClearAnimation();
-void startSmoothMovement(int newX, int newY);
-void updateSmoothMovement();
+    bool isLineClearActive() const { return lineClearActive; }
+    bool isLineBeingCleared(int y) const;
+    double getLineClearProgress() const { return lineClearProgress; }
+    void getCurrentPieceInterpolatedPosition(double &x, double &y) const;
+    void startLineClearAnimation(const std::vector<int> &clearedLines);
+    void updateLineClearAnimation();
+    void startSmoothMovement(int newX, int newY);
+    void updateSmoothMovement();
 
 };
 
@@ -398,5 +415,3 @@ void resetGameSettings(TetrimoneApp* app);
 void onResetSettings(GtkMenuItem* menuItem, gpointer userData);
 
 #endif // TETRIMONE_H
-
-
