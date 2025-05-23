@@ -132,6 +132,7 @@ struct TetrimoneApp {
     GtkWidget* extremeMenuItem;
     GtkWidget* insaneMenuItem;
     GtkWidget* trackMenuItems[5];
+    GtkWidget* themeMenuItems[31];
     GtkWidget* sequenceLabel;
     GtkWidget* controlsLabel;
     int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard, 0 = Zen, 4 = Extreme
@@ -141,6 +142,7 @@ struct TetrimoneApp {
     guint joystickTimerId;
     JoystickMapping joystickMapping;
     bool pausedByFocusLoss = false;
+
 };
 
 // Class for the game board
@@ -413,5 +415,6 @@ bool saveGameSettings(TetrimoneApp* app);
 bool loadGameSettings(TetrimoneApp* app);
 void resetGameSettings(TetrimoneApp* app);
 void onResetSettings(GtkMenuItem* menuItem, gpointer userData);
+void onThemeChanged(GtkRadioMenuItem *menuItem, gpointer userData);
 
 #endif // TETRIMONE_H

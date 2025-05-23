@@ -1581,6 +1581,72 @@ void createMenu(TetrimoneApp *app) {
   g_signal_connect(G_OBJECT(soundMenu), "hide", G_CALLBACK(onMenuDeactivated),
                    app);
 
+  GtkWidget *themeMenu = gtk_menu_new();
+  GtkWidget *themeMenuItem = gtk_menu_item_new_with_label("Color Themes");
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(themeMenuItem), themeMenu);
+  gtk_menu_shell_append(GTK_MENU_SHELL(graphicsMenu), themeMenuItem);
+
+  // Connect signals for theme submenu
+  g_signal_connect(G_OBJECT(themeMenu), "show", G_CALLBACK(onMenuActivated), app);
+  g_signal_connect(G_OBJECT(themeMenu), "hide", G_CALLBACK(onMenuDeactivated), app);
+
+  // Create radio group for theme selection
+  GSList *themeGroup = NULL;
+
+  // Theme names (matching the order in themes.h)
+  const char* themeNames[] = {
+    "Watercolor",           // 0
+    "Neon",                 // 1
+    "Pastel",               // 2
+    "Earth Tones",          // 3
+    "Monochrome Blue",      // 4
+    "Monochrome Green",     // 5
+    "Sunset",               // 6
+    "Ocean",                // 7
+    "Grayscale",            // 8
+    "Candy",                // 9
+    "Neon Dark",            // 10
+    "Jewel Tones",          // 11
+    "Retro Gaming",         // 12
+    "Autumn",               // 13
+    "Winter",               // 14
+    "Spring",               // 15
+    "Summer",               // 16
+    "Monochrome Purple",    // 17
+    "Desert",               // 18
+    "Rainbow",              // 19
+    "Art Deco",             // 20
+    "Northern Lights",      // 21
+    "Moroccan Tiles",       // 22
+    "Bioluminescence",      // 23
+    "Fossil",               // 24
+    "Silk Road",            // 25
+    "Digital Glitch",       // 26
+    "Botanical",            // 27
+    "Jazz Age",             // 28
+    "Steampunk",            // 29
+    "Soviet Retro"          // 30 - This should be the last one
+  };
+
+  // Create radio menu items for each theme
+  for (int i = 0; i < NUM_COLOR_THEMES; i++) {
+    app->themeMenuItems[i] = gtk_radio_menu_item_new_with_label(themeGroup, themeNames[i]);
+    themeGroup = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(app->themeMenuItems[i]));
+    
+    // Set the current theme as active
+    if (i == currentThemeIndex) {
+      gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->themeMenuItems[i]), TRUE);
+    }
+    
+    gtk_menu_shell_append(GTK_MENU_SHELL(themeMenu), app->themeMenuItems[i]);
+    
+    // Connect signal - store theme index in widget data
+    g_object_set_data(G_OBJECT(app->themeMenuItems[i]), "theme-index", GINT_TO_POINTER(i));
+    g_signal_connect(G_OBJECT(app->themeMenuItems[i]), "toggled",
+                     G_CALLBACK(onThemeChanged), app);
+  }
+
+
   // Sound menu items
   app->soundToggleMenuItem = gtk_check_menu_item_new_with_label("Enable Sound");
   gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem),
@@ -1824,6 +1890,37 @@ void onGridLinesToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
     
     // Redraw the game area
     gtk_widget_queue_draw(app->gameArea);
+}
+
+// Replace the current onThemeChanged function in tetrimone.cpp with this simplified version:
+
+void onThemeChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+
+  // Only proceed if the item is active (selected)
+  if (!gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menuItem))) {
+    return;
+  }
+
+  // Get the theme index from the widget data
+  int newThemeIndex = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(menuItem), "theme-index"));
+  
+  // Don't change if it's the same theme
+  if (newThemeIndex == currentThemeIndex) {
+    return;
+  }
+
+  // Start smooth theme transition
+  app->board->startThemeTransition(newThemeIndex);
+  
+  // Also trigger background transition if using background zip
+  if (app->board->isUsingBackgroundZip() && !app->board->backgroundImages.empty()) {
+    app->board->startBackgroundTransition();
+  }
+  
+  // Redraw the game area to show the transition
+  gtk_widget_queue_draw(app->gameArea);
+  gtk_widget_queue_draw(app->nextPieceArea);
 }
 
 void onSimpleBlocksToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
