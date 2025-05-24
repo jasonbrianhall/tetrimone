@@ -82,6 +82,19 @@ jobs:
     - name: Create Professional WiX Installer
       working-directory: build/windows
       run: |
+        # List available files for debugging
+        Write-Host "Available files in build directory:"
+        Get-ChildItem -Recurse | Format-Table Name, Length, LastWriteTime
+        
+        # Check for required files
+        $requiredFiles = @("tetrimone.exe", "icon.ico")
+        foreach ($file in $requiredFiles) {
+          if (-not (Test-Path $file)) {
+            Write-Error "Required file missing: $file"
+            exit 1
+          }
+        }
+        
         # Generate DLL entries
         $dllEntries = ""
         Get-ChildItem -Filter "*.dll" | ForEach-Object {
@@ -139,11 +152,13 @@ jobs:
                           Source="tetrimone.exe" 
                           KeyPath="yes" />
                     
-                    <File Id="SoundsZIP" Name="sound.zip" Source="sound.zip"/>
                     <File Id="IconFile" Name="icon.ico" Source="icon.ico"/>
+                    
+                    <!-- Optional files - only include if they exist -->
+                    <!-- <File Id="SoundsZIP" Name="sound.zip" Source="sound.zip"/>
                     <File Id="README" Name="README.md" Source="../../README.md"/>
                     <File Id="LICENSE" Name="LICENSE.md" Source="../../LICENSE.md"/>
-                    <File Id="background" Name="background.zip" Source="background.zip"/>
+                    <File Id="background" Name="background.zip" Source="background.zip"/> -->
                     
                     <!-- DLL files -->
                     $dllEntries
@@ -167,9 +182,10 @@ jobs:
                     <Directory Id="GLib2" Name="glib-2.0">
                       <Directory Id="Schemas" Name="schemas">
                         <Component Id="GtkSchemas" Guid="C7E3D845-B6E1-4F72-8D1E-864F2F9E5F16">
-                          <File Id="GSchemas" 
+                          <CreateFolder />
+                          <!-- <File Id="GSchemas" 
                                 Name="gschemas.compiled" 
-                                Source="share/glib-2.0/schemas/gschemas.compiled"/>
+                                Source="share/glib-2.0/schemas/gschemas.compiled"/> -->
                         </Component>
                       </Directory>
                     </Directory>
@@ -304,8 +320,19 @@ jobs:
 
         # Compile the installer
         Write-Host "Building professional MSI installer with full Windows WiX..."
+        Write-Host "Running candle.exe to compile WXS..."
         candle.exe installer.wxs -ext WixUIExtension
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Candle.exe failed with exit code: $LASTEXITCODE"
+          exit $LASTEXITCODE
+        }
+        
+        Write-Host "Running light.exe to create MSI..."
         light.exe installer.wixobj -ext WixUIExtension -out "../../Tetrimone-GTK.msi"
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Light.exe failed with exit code: $LASTEXITCODE"
+          exit $LASTEXITCODE
+        }
 
     - name: Create ZIP from Windows Build
       working-directory: build/windows  
