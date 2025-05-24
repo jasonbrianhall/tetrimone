@@ -915,7 +915,15 @@ void TetrimoneBoard::startSmoothMovement(int newX, int newY) {
 }
 
 void TetrimoneBoard::updateSmoothMovement() {
-  movementProgress += 16.0 / MOVEMENT_ANIMATION_DURATION; // 16ms timestep
+  static auto lastTime = std::chrono::high_resolution_clock::now();
+  auto now = std::chrono::high_resolution_clock::now();
+  auto deltaMs = std::chrono::duration<double, std::milli>(now - lastTime).count();
+  lastTime = now;
+  
+  // Cap delta time
+  deltaMs = std::min(deltaMs, 50.0);
+  
+  movementProgress += deltaMs / MOVEMENT_ANIMATION_DURATION;
   
   if (movementProgress >= 1.0) {
     movementProgress = 1.0;
@@ -931,7 +939,7 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
   lineClearActive = true;
   lineClearProgress = 0.0;
   
-  // Randomly select animation type for modern mode (0-4)
+  // Randomly select animation type for modern mode (0-9)
   if (!retroModeActive) {
     std::uniform_int_distribution<int> animDist(0, 9);
     currentAnimationType = animDist(rng);
@@ -941,7 +949,7 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
     g_source_remove(lineClearAnimationTimer);
   }
   
-  lineClearAnimationTimer = g_timeout_add(16, // ~60 FPS; Larger numbers make the animation slower; smaller makes it faster
+  lineClearAnimationTimer = g_timeout_add(16, // 60 FPS
     [](gpointer userData) -> gboolean {
       TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
       board->updateLineClearAnimation();
@@ -949,8 +957,17 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
     }, this);
 }
 
+
 void TetrimoneBoard::updateLineClearAnimation() {
-  lineClearProgress += 16.0 / LINE_CLEAR_ANIMATION_DURATION; // 16ms timestep
+  static auto lastTime = std::chrono::high_resolution_clock::now();
+  auto now = std::chrono::high_resolution_clock::now();
+  auto deltaMs = std::chrono::duration<double, std::milli>(now - lastTime).count();
+  lastTime = now;
+  
+  // Cap delta time to prevent huge jumps during pauses/focus loss
+  deltaMs = std::min(deltaMs, 50.0);
+  
+  lineClearProgress += deltaMs / LINE_CLEAR_ANIMATION_DURATION;
   
   if (lineClearProgress >= 1.0) {
     // Animation complete - stop timer first
@@ -967,7 +984,6 @@ void TetrimoneBoard::updateLineClearAnimation() {
     std::sort(sortedLines.begin(), sortedLines.end(), std::greater<int>());
     
     // Remove the lines from the grid (bottom to top)
-    // We need to remove them one at a time and shift everything down
     for (int lineY : sortedLines) {
       // Verify this line actually needs to be cleared
       bool lineIsFull = true;
@@ -992,11 +1008,10 @@ void TetrimoneBoard::updateLineClearAnimation() {
           grid[0][x] = 0;
         }
         
-        // After removing this line, we need to adjust the positions of any remaining 
-        // lines in our sorted list that are above this one
+        // After removing this line, adjust positions of remaining lines
         for (int& otherLineY : sortedLines) {
           if (otherLineY < lineY) {
-            otherLineY++; // Line numbers shift down after removal
+            otherLineY++;
           }
         }
       }
@@ -1153,7 +1168,7 @@ void TetrimoneBoard::startThemeTransition(int targetTheme) {
     themeTransitionProgress = 0.0;
     
     // Start transition timer
-    themeTransitionTimer = g_timeout_add(16, // ~60 FPS
+    themeTransitionTimer = g_timeout_add(16, // 60 FPS
         [](gpointer userData) -> gboolean {
             TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
             board->updateThemeTransition();
@@ -1162,7 +1177,15 @@ void TetrimoneBoard::startThemeTransition(int targetTheme) {
 }
 
 void TetrimoneBoard::updateThemeTransition() {
-    themeTransitionProgress += 16.0 / THEME_TRANSITION_DURATION; // 16ms timestep
+    static auto lastTime = std::chrono::high_resolution_clock::now();
+    auto now = std::chrono::high_resolution_clock::now();
+    auto deltaMs = std::chrono::duration<double, std::milli>(now - lastTime).count();
+    lastTime = now;
+    
+    // Cap delta time
+    deltaMs = std::min(deltaMs, 50.0);
+    
+    themeTransitionProgress += deltaMs / THEME_TRANSITION_DURATION;
     
     if (themeTransitionProgress >= 1.0) {
         // Transition complete
