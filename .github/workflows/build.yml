@@ -95,9 +95,8 @@ jobs:
             <Property Id="ARPNOMODIFY" Value="yes" Secure="yes" />
             
             <!-- Launch condition to check for Windows version -->
-            <Condition Message="This application requires Windows 7 or higher.">
-              <![CDATA[Installed OR (VersionNT >= 601)]]>
-            </Condition>
+            <Launch Message="This application requires Windows 7 or higher." 
+                    Condition="Installed OR (VersionNT >= 601)" />
             
             <!-- Directory structure -->
             <Directory Id="TARGETDIR" Name="SourceDir">
@@ -190,7 +189,6 @@ jobs:
               <!-- Desktop shortcut (optional) -->
               <Directory Id="DesktopFolder" Name="Desktop">
                 <Component Id="DesktopShortcut" Guid="A5B7F8E2-C3D4-4E5F-9A8B-7C6D5E4F3A2B">
-                  <Condition>DESKTOP_SHORTCUT</Condition>
                   <Shortcut Id="DesktopShortcut" 
                            Name="Tetrimone" 
                            Target="[INSTALLFOLDER]tetrimone.exe" 
