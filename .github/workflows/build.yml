@@ -9,6 +9,7 @@ on:
       - 'Makefile'
       - '**/Makefile'
       - '**.yml'
+      - '**.yaml'
   pull_request:
     branches: [ master, dev ]
     paths:
@@ -17,45 +18,66 @@ on:
       - 'Makefile'
       - '**/Makefile'
       - '**.yml'
+      - '**.yaml'
   workflow_dispatch:
 
+env:
+  PRODUCT_VERSION: "1.0.${{ github.run_number }}"
+  UPGRADE_CODE: "15F96C34-8D42-417A-9E1B-CC952F7D6713"
+
 jobs:
-  build-mingw-gtk:
+  build-linux:
     runs-on: ubuntu-latest
     container: 
       image: fedora:41
-    permissions:
-      contents: write
+    outputs:
+      version: ${{ env.PRODUCT_VERSION }}
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Dependencies
+    - name: Install Cross-Compilation Dependencies
       run: |
-        dnf -y install ffmpeg mingw64-gcc mingw64-gcc-c++ mingw64-gtk3 mingw64-gtkmm30 wine wine-devel binutils make zip unzip libzip-devel mingw64-libzip mingw64-SDL2 mingw64-SDL2_mixer fluidsynth sdl12-compat-devel gcc-c++ SDL2-devel
+        dnf -y install \
+          ffmpeg \
+          mingw64-gcc mingw64-gcc-c++ \
+          mingw64-gtk3 mingw64-gtkmm30 \
+          mingw64-libzip mingw64-SDL2 mingw64-SDL2_mixer \
+          wine wine-devel \
+          binutils make zip unzip libzip-devel \
+          fluidsynth sdl12-compat-devel gcc-c++ SDL2-devel
 
-    - name: Build GTK Version
+    - name: Build Windows GTK Version
       run: |
         make windows
 
-    - name: Copy Resources and Collect DLLs
+    - name: Prepare Build Artifacts
       working-directory: build/windows
       run: |
+        # Copy resources
         cp ../../icon.ico .
+        cp ../../README.md .
+        cp ../../LICENSE.md .
+        
+        # Create file list for MSI
+        echo "Creating file inventory..."
+        find . -name "*.dll" -type f | sort > dll_list.txt
+        find . -name "*.exe" -type f | sort > exe_list.txt
+        
+        # Create portable ZIP
+        zip -r ../../Tetrimone-GTK-Portable.zip ./*
 
-    - name: Create ZIP Archive
-      working-directory: build/windows
-      run: |
-        zip -r ../../Tetrimone-GTK.zip ./*
-
-    - name: Upload Build Artifacts for Windows MSI Creation
+    - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: tetrimone-build-${{ github.ref_name }}
-        path: build/windows/
+        name: tetrimone-build
+        path: |
+          build/windows/**/*
+          Tetrimone-GTK-Portable.zip
+        retention-days: 7
 
-  create-professional-msi:
-    needs: [build-mingw-gtk]
+  build-msi-windows:
+    needs: build-linux
     runs-on: windows-latest
     permissions:
       contents: write
@@ -66,405 +88,368 @@ jobs:
     - name: Download Build Artifacts
       uses: actions/download-artifact@v4
       with:
-        name: tetrimone-build-${{ github.ref_name }}
-        path: build/windows/
+        name: tetrimone-build
+        path: artifacts
 
-    - name: Install WiX Toolset
+    - name: Setup WiX Toolset
       run: |
-        # Download and install WiX Toolset
-        Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311.exe" -OutFile "wix311.exe"
-        Start-Process -FilePath "wix311.exe" -ArgumentList "/quiet" -Wait
-        
-        # Add WiX to PATH
-        $env:PATH += ";C:\Program Files (x86)\WiX Toolset v3.11\bin"
-        echo "C:\Program Files (x86)\WiX Toolset v3.11\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        # Download and install WiX Toolset v4
+        Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip" -OutFile "wix.zip"
+        Expand-Archive -Path "wix.zip" -DestinationPath "wix"
+        echo "$env:GITHUB_WORKSPACE\wix" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: Create Professional WiX Installer
-      working-directory: build/windows
+    - name: Create MIT License File
       run: |
-        # List available files for debugging
-        Write-Host "Available files in build directory:"
-        Get-ChildItem -Recurse | Format-Table Name, Length, LastWriteTime
-        
-        # Create MIT license RTF file for EULA
         @"
-        {\rtf1\ansi\deff0 {\fonttbl {\f0 Times New Roman;}}
-        \f0\fs24
         MIT License
-
+        
         Copyright (c) 2025 Jason Hall
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        "@ | Out-File -FilePath "artifacts\build\windows\LICENSE.txt" -Encoding UTF8
 
-        Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-        The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-        }
-        "@ | Out-File -FilePath "License.rtf" -Encoding UTF8
-        
-        Write-Host "Created License.rtf for EULA"
-        
-        # Check for required files
-        $requiredFiles = @("tetrimone.exe", "icon.ico")
-        foreach ($file in $requiredFiles) {
-          if (-not (Test-Path $file)) {
-            Write-Error "Required file missing: $file"
-            exit 1
-          }
-        }
-        
-        # Generate DLL entries - include ALL DLLs
-        $dllEntries = ""
-        Get-ChildItem -Filter "*.dll" | ForEach-Object {
-          $safeId = $_.Name -replace '[^a-zA-Z0-9]', '_'
-          $dllEntries += "                    <File Id=`"$safeId`" Name=`"$($_.Name)`" Source=`"$($_.Name)`"/>`n"
-        }
-        
-        # Generate entries for other files (like .o files, .zip files, etc.)
-        $otherFiles = ""
-        Get-ChildItem | Where-Object { $_.Extension -in @('.o', '.zip', '.ini', '.compiled') -and $_.Name -ne 'icon.ico' } | ForEach-Object {
-          $safeId = ($_.Name -replace '[^a-zA-Z0-9]', '_') + '_file'
-          $otherFiles += "                    <File Id=`"$safeId`" Name=`"$($_.Name)`" Source=`"$($_.Name)`"/>`n"
+    - name: Generate Advanced MSI Installer
+      working-directory: artifacts/build/windows
+      run: |
+        # Generate component entries for all DLLs
+        $dllEntries = Get-ChildItem -Name "*.dll" | ForEach-Object {
+          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
+          "          <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
         }
         
-        # Generate components for subdirectories with files
-        $subdirComponents = ""
-        $subdirComponentRefs = ""
-        
-        # Check for lib directory structure
-        if (Test-Path "lib") {
-          Write-Host "Found lib directory, including GTK runtime files..."
-          $libFiles = Get-ChildItem -Path "lib" -Recurse -File
-          if ($libFiles.Count -gt 0) {
-            $subdirComponents += @"
-            
-                  <Directory Id="LibDirWithFiles" Name="lib">
-                    <Component Id="LibFiles" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
-"@
-            foreach ($file in $libFiles) {
-              $relativePath = $file.FullName.Substring((Get-Location).Path.Length + 1) -replace '\\', '/'
-              $safeId = ($relativePath -replace '[^a-zA-Z0-9]', '_') + '_libfile'
-              $subdirComponents += "`n                      <File Id=`"$safeId`" Name=`"$($file.Name)`" Source=`"$relativePath`"/>"
-            }
-            $subdirComponents += @"
-
-                    </Component>
-                  </Directory>
-"@
-            $subdirComponentRefs += "              <ComponentRef Id=`"LibFiles`" />`n"
-          }
-        }
-        
-        # Check for share directory structure  
-        if (Test-Path "share") {
-          Write-Host "Found share directory, including GTK theme/schema files..."
-          $shareFiles = Get-ChildItem -Path "share" -Recurse -File
-          if ($shareFiles.Count -gt 0) {
-            $subdirComponents += @"
-            
-                  <Directory Id="ShareDirWithFiles" Name="share">
-                    <Component Id="ShareFiles" Guid="B2C3D4E5-F617-8901-BCDE-F23456789012">
-"@
-            foreach ($file in $shareFiles) {
-              $relativePath = $file.FullName.Substring((Get-Location).Path.Length + 1) -replace '\\', '/'
-              $safeId = ($relativePath -replace '[^a-zA-Z0-9]', '_') + '_sharefile'
-              $subdirComponents += "`n                      <File Id=`"$safeId`" Name=`"$($file.Name)`" Source=`"$relativePath`"/>"
-            }
-            $subdirComponents += @"
-
-                    </Component>
-                  </Directory>
-"@
-            $subdirComponentRefs += "              <ComponentRef Id=`"ShareFiles`" />`n"
-          }
-        }
-        
-        Write-Host "Generated $((Get-ChildItem -Filter '*.dll').Count) DLL entries"
-        Write-Host "Generated $((Get-ChildItem | Where-Object { $_.Extension -in @('.o', '.zip', '.ini', '.compiled') -and $_.Name -ne 'icon.ico' }).Count) other file entries"
-
-        # Create professional WiX installer with full Windows features
+        # Create advanced WXS installer
         @"
         <?xml version="1.0" encoding="UTF-8"?>
         <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" 
-             xmlns:ui="http://schemas.microsoft.com/wix/UIExtension">
+             xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
           
           <Product Id="*" 
-                   Name="Tetrimone" 
+                   Name="Tetrimone GTK" 
                    Language="1033" 
-                   Version="1.0.${{ github.run_number }}" 
+                   Version="${{ needs.build-linux.outputs.version }}" 
                    Manufacturer="Jason Hall" 
-                   UpgradeCode="15F96C34-8D42-417A-9E1B-CC952F7D6713">
+                   UpgradeCode="${{ env.UPGRADE_CODE }}"> 
             
             <Package InstallerVersion="500" 
                      Compressed="yes" 
-                     InstallScope="perMachine"
-                     Description="Tetrimone - Falling Block Puzzle Game"
-                     Comments="A modern falling block puzzle game with smooth animations and multiple themes"
-                     Keywords="Puzzle,Game,Blocks,Falling" />
+                     InstallScope="perMachine" 
+                     Description="Tetrimone GTK - Modern Tetris Game"
+                     Comments="Built with GitHub Actions"
+                     Manufacturer="Jason Hall" />
             
-            <!-- Upgrade handling -->
-            <MajorUpgrade DowngradeErrorMessage="A newer version of Tetrimone is already installed." />
+            <!-- Major upgrade configuration -->
+            <MajorUpgrade 
+              DowngradeErrorMessage="A newer version of Tetrimone GTK is already installed. Please uninstall it first." 
+              Schedule="afterInstallInitialize" />
             
-            <!-- Media template -->
-            <MediaTemplate EmbedCab="yes" />
+            <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
             
-            <!-- Properties for Add/Remove Programs -->
-            <Property Id="ARPPRODUCTICON" Value="TetrimoneIcon" />
-            <Property Id="ARPHELPLINK" Value="https://github.com/jasonbrianhall/tetrimone" />
-            <Property Id="ARPURLINFOABOUT" Value="https://github.com/jasonbrianhall/tetrimone" />
-            <Property Id="ARPNOREPAIR" Value="yes" Secure="yes" />
-            <Property Id="ARPNOMODIFY" Value="yes" Secure="yes" />
-            
-            <!-- License Agreement -->
+            <!-- License agreement -->
             <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
             
-            <!-- Launch condition -->
-            <Condition Message="This application requires Windows 7 or higher.">
-              <![CDATA[Installed OR (VersionNT >= 601)]]>
-            </Condition>
+            <!-- Custom properties -->
+            <Property Id="ARPPRODUCTICON" Value="TetrimoneIcon" />
+            <Property Id="ARPURLINFOABOUT" Value="https://github.com/yourusername/tetrimone" />
+            <Property Id="ARPNOREPAIR" Value="yes" />
+            <Property Id="ARPNOMODIFY" Value="yes" />
+            <Property Id="ARPHELPLINK" Value="https://github.com/yourusername/tetrimone/issues" />
             
-            <!-- Directory structure -->
+            <!-- Installation scope choice -->
+            <Property Id="ApplicationFolderName" Value="Tetrimone GTK" />
+            <Property Id="WixAppFolder" Value="WixPerMachineFolder" />
+            <WixVariable Id="WixUISupportPerUser" Value="1" />
+            <WixVariable Id="WixUISupportPerMachine" Value="1" />
+            
             <Directory Id="TARGETDIR" Name="SourceDir">
+              <!-- Program Files installation -->
               <Directory Id="ProgramFilesFolder">
-                <Directory Id="INSTALLFOLDER" Name="Tetrimone">
+                <Directory Id="INSTALLFOLDER" Name="!(bind.Property.ApplicationFolderName)">
                   
-                  <!-- Main application files -->
-                  <Component Id="MainExecutable" Guid="A47D52C8-3E95-48F6-B25F-1E6C9D4A8D34">
+                  <!-- Main application component -->
+                  <Component Id="MainExecutable" 
+                           Guid="A47D52C8-3E95-48F6-B25F-1E6C9D4A8D34"
+                           Win64="no">
                     <File Id="MainEXE" 
                           Name="tetrimone.exe" 
                           Source="tetrimone.exe" 
-                          KeyPath="yes" />
+                          KeyPath="yes">
+                      <!-- File associations could go here -->
+                      <util:InternetShortcut Id="OnlineHelp"
+                                           Name="Tetrimone Help Online"
+                                           Target="https://github.com/yourusername/tetrimone"
+                                           Directory="INSTALLFOLDER" />
+                    </File>
                     
+                    <!-- Application files -->
+                    <File Id="SoundsZIP" Name="sound.zip" Source="sound.zip"/>
                     <File Id="IconFile" Name="icon.ico" Source="icon.ico"/>
+                    <File Id="BackgroundZIP" Name="background.zip" Source="background.zip"/>
+                    <File Id="README" Name="README.md" Source="README.md"/>
+                    <File Id="LICENSE_MD" Name="LICENSE.md" Source="LICENSE.md"/>
+                    <File Id="LICENSE_TXT" Name="LICENSE.txt" Source="LICENSE.txt"/>
                     
-                    <!-- All DLL files -->
-                    $dllEntries
+                    <!-- DLL files -->
+        $($dllEntries -join "`r`n")
                     
-                    <!-- Other required files -->
-                    $otherFiles
+                    <!-- Registry entries for uninstall info -->
+                    <RegistryKey Root="HKLM" Key="SOFTWARE\Tetrimone GTK">
+                      <RegistryValue Type="string" Name="InstallPath" Value="[INSTALLFOLDER]" />
+                      <RegistryValue Type="string" Name="Version" Value="${{ needs.build-linux.outputs.version }}" />
+                      <RegistryValue Type="string" Name="Publisher" Value="Jason Hall" />
+                    </RegistryKey>
                   </Component>
                   
-                  <!-- Dynamic subdirectories with files -->
-                  $subdirComponents
+                  <!-- GTK Runtime directories -->
+                  <Directory Id="LibDir" Name="lib">
+                    <Directory Id="GdkPixbuf" Name="gdk-pixbuf-2.0">
+                      <Component Id="GdkPixbufDir" Guid="F8A3B715-D93A-4E67-A8C2-642D3F9E4D29">
+                        <CreateFolder />
+                        <RemoveFolder Id="RemoveGdkPixbuf" On="uninstall" />
+                        <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
+                                     Type="integer" Name="GdkPixbuf" Value="1" KeyPath="yes"/>
+                      </Component>
+                    </Directory>
+                    <Directory Id="Gtk3" Name="gtk-3.0">
+                      <Component Id="Gtk3Dir" Guid="B1D4C159-8E2B-4F58-B6A3-753D2F9E5A42">
+                        <CreateFolder />
+                        <RemoveFolder Id="RemoveGtk3" On="uninstall" />
+                        <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
+                                     Type="integer" Name="Gtk3" Value="1" KeyPath="yes"/>
+                      </Component>
+                    </Directory>
+                  </Directory>
+                  
+                  <Directory Id="ShareDir" Name="share">
+                    <Directory Id="GLib2" Name="glib-2.0">
+                      <Directory Id="Schemas" Name="schemas">
+                        <Component Id="GtkSchemas" Guid="C7E3D845-B6E1-4F72-8D1E-864F2F9E5F16">
+                          <File Id="GSchemas" Name="gschemas.compiled" 
+                                Source="share/glib-2.0/schemas/gschemas.compiled"/>
+                          <RemoveFolder Id="RemoveSchemas" On="uninstall" />
+                          <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
+                                       Type="integer" Name="Schemas" Value="1" KeyPath="yes"/>
+                        </Component>
+                      </Directory>
+                    </Directory>
+                    <Directory Id="Icons" Name="icons">
+                      <Component Id="IconsDir" Guid="D5E7F371-A4C2-4E83-92F4-975E3F9E6F27">
+                        <CreateFolder />
+                        <RemoveFolder Id="RemoveIcons" On="uninstall" />
+                        <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
+                                     Type="integer" Name="Icons" Value="1" KeyPath="yes"/>
+                      </Component>
+                    </Directory>
+                    <Directory Id="Themes" Name="themes">
+                      <Component Id="ThemesDir" Guid="E2F6G482-B5D3-4F83-A3F5-086G4F9E7F38">
+                        <CreateFolder />
+                        <RemoveFolder Id="RemoveThemes" On="uninstall" />
+                        <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
+                                     Type="integer" Name="Themes" Value="1" KeyPath="yes"/>
+                      </Component>
+                    </Directory>
+                  </Directory>
                 </Directory>
               </Directory>
               
               <!-- Start Menu shortcuts -->
               <Directory Id="ProgramMenuFolder">
-                <Directory Id="ApplicationProgramsFolder" Name="Tetrimone">
+                <Directory Id="ApplicationProgramsFolder" Name="Tetrimone GTK">
                   <Component Id="ApplicationShortcuts" Guid="F8E2D459-F6A1-4B53-9C72-E31D8FE52D69">
                     <Shortcut Id="ApplicationStartMenu" 
-                             Name="Tetrimone" 
+                             Name="Tetrimone GTK" 
                              Target="[INSTALLFOLDER]tetrimone.exe" 
                              WorkingDirectory="INSTALLFOLDER"
-                             Icon="TetrimoneIcon"
-                             Description="Play Tetrimone - Falling Block Puzzle Game" />
-                    
+                             Description="Launch Tetrimone GTK Game"
+                             Icon="TetrimoneIcon"/>
                     <Shortcut Id="UninstallShortcut"
-                             Name="Uninstall Tetrimone"
+                             Name="Uninstall Tetrimone GTK"
                              Target="[SystemFolder]msiexec.exe"
                              Arguments="/x [ProductCode]"
-                             Description="Uninstall Tetrimone" />
-                    
+                             Description="Uninstall Tetrimone GTK" />
+                    <util:InternetShortcut Id="WebsiteShortcut"
+                                         Name="Tetrimone Website"
+                                         Target="https://github.com/yourusername/tetrimone" />
                     <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
-                    <RegistryValue Root="HKCU" 
-                                  Key="Software\Tetrimone" 
-                                  Name="installed" 
-                                  Type="integer" 
-                                  Value="1" 
-                                  KeyPath="yes"/>
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Shortcuts" 
+                                 Name="StartMenu" Type="integer" Value="1" KeyPath="yes"/>
                   </Component>
                 </Directory>
               </Directory>
               
-              <!-- Desktop shortcut -->
+              <!-- Desktop shortcut (optional) -->
               <Directory Id="DesktopFolder" Name="Desktop">
-                <Component Id="DesktopShortcut" Guid="A5B7F8E2-C3D4-4E5F-9A8B-7C6D5E4F3A2B">
+                <Component Id="DesktopShortcut" Guid="A5F8D321-E9B7-4C68-8F1A-D42E6F8E9A73">
+                  <Condition>DESKTOP_SHORTCUT</Condition>
                   <Shortcut Id="DesktopShortcut" 
-                           Name="Tetrimone" 
-                           Target="[INSTALLFOLDER]tetrimone.exe" 
+                           Name="Tetrimone GTK" 
+                           Target="[INSTALLFOLDER]tetrimone.exe"
                            WorkingDirectory="INSTALLFOLDER"
-                           Icon="TetrimoneIcon"
-                           Description="Play Tetrimone - Falling Block Puzzle Game" />
-                  <RegistryValue Root="HKCU" 
-                                Key="Software\Tetrimone" 
-                                Name="DesktopShortcut" 
-                                Type="integer" 
-                                Value="1" 
-                                KeyPath="yes"/>
+                           Description="Launch Tetrimone GTK Game"
+                           Icon="TetrimoneIcon"/>
+                  <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Shortcuts" 
+                               Name="Desktop" Type="integer" Value="1" KeyPath="yes"/>
                 </Component>
               </Directory>
             </Directory>
             
-            <!-- Features -->
-            <Feature Id="MainApplication" 
-                     Title="Tetrimone Game" 
-                     Description="The main Tetrimone application and game files."
-                     Level="1"
-                     Display="expand"
+            <!-- Feature definitions -->
+            <Feature Id="ProductFeature" 
+                     Title="Tetrimone GTK" 
+                     Description="The main Tetrimone GTK application and required runtime files."
+                     Level="1" 
+                     ConfigurableDirectory="INSTALLFOLDER"
                      AllowAdvertise="no">
               <ComponentRef Id="MainExecutable" />
-              $subdirComponentRefs
-              
-              <Feature Id="Shortcuts" 
-                       Title="Start Menu Shortcuts" 
-                       Description="Add shortcuts to the Start Menu."
-                       Level="1">
-                <ComponentRef Id="ApplicationShortcuts" />
-              </Feature>
-              
-              <Feature Id="DesktopShortcutFeature" 
-                       Title="Desktop Shortcut" 
-                       Description="Add a shortcut to the Desktop."
-                       Level="1000">
-                <ComponentRef Id="DesktopShortcut" />
-              </Feature>
+              <ComponentRef Id="ApplicationShortcuts" />
+              <ComponentRef Id="GtkSchemas" />
+              <ComponentRef Id="GdkPixbufDir" />
+              <ComponentRef Id="Gtk3Dir" />
+              <ComponentRef Id="IconsDir" />
+              <ComponentRef Id="ThemesDir" />
             </Feature>
             
-            <!-- Full WiX UI with License Agreement -->
-            <UIRef Id="WixUI_InstallDir" />
-            <UIRef Id="WixUI_ErrorProgressText" />
+            <Feature Id="DesktopShortcutFeature" 
+                     Title="Desktop Shortcut" 
+                     Description="Create a shortcut on the desktop."
+                     Level="1000">
+              <ComponentRef Id="DesktopShortcut" />
+            </Feature>
             
-            <!-- Custom install directory -->
-            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+            <!-- Application icon -->
+            <Icon Id="TetrimoneIcon" SourceFile="icon.ico"/>
             
-            <!-- Launch after install -->
-            <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" 
-                      Value="Launch Tetrimone" />
-            <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
-            
-            <CustomAction Id="LaunchApplication"
-                          BinaryKey="WixCA"
-                          DllEntry="WixShellExec"
-                          Execute="immediate"
-                          Return="ignore"
-                          Impersonate="yes" />
-            
-            <CustomAction Id="SetLaunchApp" 
-                          Property="LaunchApplication"
-                          Value="[INSTALLFOLDER]tetrimone.exe" />
+            <!-- Custom actions for cleanup -->
+            <CustomAction Id="CleanupRegistryOnUninstall" 
+                         Script="vbscript"
+                         Execute="deferred"
+                         Impersonate="no">
+              <![CDATA[
+                On Error Resume Next
+                Set shell = CreateObject("WScript.Shell")
+                shell.RegDelete "HKLM\SOFTWARE\Tetrimone GTK\"
+                shell.RegDelete "HKCU\Software\TetrimoneGTK\"
+              ]]>
+            </CustomAction>
             
             <InstallExecuteSequence>
-              <Custom Action="SetLaunchApp" After="InstallFiles">
-                WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed
-              </Custom>
-              <Custom Action="LaunchApplication" After="SetLaunchApp">
-                WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed
+              <Custom Action="CleanupRegistryOnUninstall" Before="RemoveFiles">
+                REMOVE="ALL"
               </Custom>
             </InstallExecuteSequence>
             
-            <!-- Icon -->
-            <Icon Id="TetrimoneIcon" SourceFile="icon.ico"/>
+            <!-- UI Configuration -->
+            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+            <Property Id="DESKTOP_SHORTCUT" Value="1" />
+            
+            <UIRef Id="WixUI_FeatureTree" />
+            <UIRef Id="WixUI_ErrorProgressText" />
             
           </Product>
         </Wix>
         "@ | Out-File -FilePath "installer.wxs" -Encoding UTF8
 
-        # Compile the installer
-        Write-Host "Building professional MSI installer with full Windows WiX..."
-        Write-Host "Running candle.exe to compile WXS..."
-        candle.exe installer.wxs -ext WixUIExtension -ext WixUtilExtension
-        if ($LASTEXITCODE -ne 0) {
-          Write-Error "Candle.exe failed with exit code: $LASTEXITCODE"
-          exit $LASTEXITCODE
-        }
-        
-        Write-Host "Running light.exe to create MSI..."
-        light.exe installer.wixobj -ext WixUIExtension -ext WixUtilExtension -out "../../Tetrimone-GTK.msi"
-        if ($LASTEXITCODE -ne 0) {
-          Write-Error "Light.exe failed with exit code: $LASTEXITCODE"
-          exit $LASTEXITCODE
-        }
-
-    - name: Create ZIP from Windows Build
-      working-directory: build/windows  
+    - name: Create License RTF for Installer
+      working-directory: artifacts/build/windows
       run: |
-        Compress-Archive -Path * -DestinationPath "../../Tetrimone-GTK.zip"
+        @"
+        {\rtf1\ansi\deff0 {\fonttbl {\f0 Times New Roman;}}
+        \f0\fs24
+        MIT License\par
+        \par
+        Copyright (c) 2025 Jason Hall\par
+        \par
+        Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\par
+        \par
+        The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\par
+        \par
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\par
+        }
+        "@ | Out-File -FilePath "License.rtf" -Encoding UTF8
+
+    - name: Build MSI Installer
+      working-directory: artifacts/build/windows
+      run: |
+        # Compile the installer
+        candle.exe -ext WixUtilExtension installer.wxs
+        light.exe -ext WixUIExtension -ext WixUtilExtension installer.wixobj -o "../../../Tetrimone-GTK.msi"
+
+
 
     - name: Upload Final Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: tetrimone-artifacts-${{ github.ref_name }}
+        name: tetrimone-release
         path: |
           Tetrimone-GTK.msi
-          Tetrimone-GTK.zip
+          Tetrimone-GTK-Portable.zip
 
   create-release:
-    needs: [create-professional-msi]
+    needs: [build-linux, build-msi-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     
     steps:
-    - name: Download Artifacts
+    - name: Download Release Artifacts
       uses: actions/download-artifact@v4
       with:
-        name: tetrimone-artifacts-master
-        path: artifacts
+        name: tetrimone-release
+        path: release
 
-    - name: Create Public Release
-      uses: softprops/action-gh-release@v1
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
       with:
         files: |
-          artifacts/Tetrimone-GTK.msi
-          artifacts/Tetrimone-GTK.zip
-        tag_name: v${{ github.run_number }}
-        name: Release ${{ github.run_number }}
+          release/Tetrimone-GTK.msi
+          release/Tetrimone-GTK-Portable.zip
+        tag_name: ${{ format('v{0}', github.run_number) }}
+        name: ${{ format('Release v{0}', github.run_number) }}
         draft: false
         prerelease: false
-        token: ${{ secrets.GITHUB_TOKEN }}
+        make_latest: true
         body: |
-          Official release build
-          Commit: ${{ github.sha }}
-          Build number: ${{ github.run_number }}
+          ## Stable Release
           
-          This release includes:
-          - Windows GTK installer (Tetrimone-GTK.msi) - Professional installer with custom install directory choice
-          - Windows GTK portable version (Tetrimone-GTK.zip) - Extract and run anywhere
+          **Version:** ${{ needs.build-linux.outputs.version }}  
+          **Commit:** ${{ github.sha }}  
+          **Build:** #${{ github.run_number }}  
           
-          ## Features:
-          - Custom installation directory selection
-          - Optional desktop shortcut
-          - Start Menu shortcuts with uninstaller
-          - "Launch after install" option
-          - Proper Add/Remove Programs integration
-          - Automatic upgrade handling
-
-  create-dev-release:
-    needs: [create-professional-msi]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    
-    steps:
-    - name: Download Artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: tetrimone-artifacts-dev
-        path: artifacts
-
-    - name: Create Private Dev Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          artifacts/Tetrimone-GTK.msi
-          artifacts/Tetrimone-GTK.zip
-        tag_name: dev-${{ github.run_number }}
-        name: Dev Build ${{ github.run_number }}
-        draft: true
-        prerelease: true
-        token: ${{ secrets.GITHUB_TOKEN }}
-        body: |
-          **🔒 PRIVATE DEVELOPMENT BUILD - NOT FOR PUBLIC USE**
+          ### 📦 Downloads
+          - **Tetrimone-GTK.msi** - Windows installer with uninstall support
+          - **Tetrimone-GTK-Portable.zip** - Portable version (no installation required)
           
-          Development build from dev branch
-          Commit: ${{ github.sha }}
-          Build number: ${{ github.run_number }}
+          ### ✨ Installer Features
+          - ✅ User/Machine installation scope choice
+          - ✅ Custom installation directory
+          - ✅ Start menu shortcuts with uninstall option
+          - ✅ Optional desktop shortcut
+          - ✅ Proper uninstall support
+          - ✅ MIT License agreement
+          - ✅ Registry cleanup on uninstall
+          - ✅ Add/Remove Programs integration
           
-          ⚠️ **Warning**: This is an unstable development build that may contain bugs, experimental features, or incomplete functionality.
+          ### 🛠️ Technical Details
+          - Built on: Linux (Fedora 41 container)
+          - MSI compiled on: Windows Latest
+          - GTK3 runtime included
+          - All dependencies bundled
           
-          This release includes:
-          - Windows GTK installer (Tetrimone-GTK.msi) - Professional installer with custom install directory choice
-          - Windows GTK portable version (Tetrimone-GTK.zip) - Extract and run anywhere
+          ---
+          *Built with ❤️ using GitHub Actions*
