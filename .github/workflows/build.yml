@@ -94,10 +94,6 @@ jobs:
             <Property Id="ARPNOREPAIR" Value="yes" Secure="yes" />
             <Property Id="ARPNOMODIFY" Value="yes" Secure="yes" />
             
-            <!-- Launch condition to check for Windows version -->
-            <Launch Message="This application requires Windows 7 or higher." 
-                    Condition="Installed OR (VersionNT >= 601)" />
-            
             <!-- Directory structure -->
             <Directory Id="TARGETDIR" Name="SourceDir">
               <Directory Id="ProgramFilesFolder">
@@ -205,37 +201,20 @@ jobs:
               </Directory>
             </Directory>
             
-            <!-- Features -->
-            <Feature Id="MainApplication" 
-                     Title="Tetrimone Game" 
-                     Description="The main Tetrimone application and game files."
-                     Level="1"
-                     Display="expand"
-                     AllowAdvertise="no">
+            <!-- Features - Simplified for compatibility -->
+            <Feature Id="Complete" Title="Tetrimone" Level="1">
               <ComponentRef Id="MainExecutable" />
+              <ComponentRef Id="ApplicationShortcuts" />
+              <ComponentRef Id="DesktopShortcut" />
               <ComponentRef Id="GtkSchemas" />
               <ComponentRef Id="GdkPixbufDir" />
               <ComponentRef Id="Gtk3Dir" />
               <ComponentRef Id="IconsDir" />
               <ComponentRef Id="ThemesDir" />
-              
-              <Feature Id="Shortcuts" 
-                       Title="Start Menu Shortcuts" 
-                       Description="Add shortcuts to the Start Menu."
-                       Level="1">
-                <ComponentRef Id="ApplicationShortcuts" />
-              </Feature>
-              
-              <Feature Id="DesktopShortcutFeature" 
-                       Title="Desktop Shortcut" 
-                       Description="Add a shortcut to the Desktop."
-                       Level="1000">
-                <ComponentRef Id="DesktopShortcut" />
-              </Feature>
             </Feature>
             
-            <!-- Custom UI -->
-            <UIRef Id="WixUI_FeatureTree" />
+            <!-- Custom UI - Use simpler UI for compatibility -->
+            <UIRef Id="WixUI_InstallDir" />
             <UIRef Id="WixUI_ErrorProgressText" />
             
             <!-- Custom dialogs -->
@@ -243,31 +222,6 @@ jobs:
             
             <!-- Icon -->
             <Icon Id="TetrimoneIcon" SourceFile="icon.ico"/>
-            
-            <!-- Launch application after install -->
-            <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" 
-                      Value="Launch Tetrimone" />
-            <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
-            
-            <CustomAction Id="LaunchApplication"
-                          BinaryKey="WixCA"
-                          DllEntry="WixShellExec"
-                          Execute="immediate"
-                          Return="ignore"
-                          Impersonate="yes" />
-            
-            <CustomAction Id="SetLaunchApp" 
-                          Property="LaunchApplication"
-                          Value="[INSTALLFOLDER]tetrimone.exe" />
-            
-            <InstallExecuteSequence>
-              <Custom Action="SetLaunchApp" After="InstallFiles">
-                WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed
-              </Custom>
-              <Custom Action="LaunchApplication" After="SetLaunchApp">
-                WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed
-              </Custom>
-            </InstallExecuteSequence>
             
           </Product>
         </Wix>
