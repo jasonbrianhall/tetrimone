@@ -192,7 +192,9 @@ private:
     guint smoothMovementTimer;
     double movementProgress;
     static const int MOVEMENT_ANIMATION_DURATION = 100; // milliseconds
-
+    std::chrono::high_resolution_clock::time_point lineClearStartTime;
+    std::chrono::high_resolution_clock::time_point movementStartTime;
+    std::chrono::high_resolution_clock::time_point themeStartTime;
     
 public:
     // Theme transition methods

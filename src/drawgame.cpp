@@ -898,13 +898,16 @@ void TetrimoneBoard::startSmoothMovement(int newX, int newY) {
     lastPieceY = currentPiece->getY();
     movementProgress = 0.0;
     
+    // Set start time for this animation
+    movementStartTime = std::chrono::high_resolution_clock::now();
+    
     // Only start animation if there's actual movement
     if (lastPieceX != newX || lastPieceY != newY) {
       if (smoothMovementTimer > 0) {
         g_source_remove(smoothMovementTimer);
       }
       
-      smoothMovementTimer = g_timeout_add(16, // ~60 FPS
+      smoothMovementTimer = g_timeout_add(16, // 60 FPS
         [](gpointer userData) -> gboolean {
           TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
           board->updateSmoothMovement();
@@ -915,15 +918,10 @@ void TetrimoneBoard::startSmoothMovement(int newX, int newY) {
 }
 
 void TetrimoneBoard::updateSmoothMovement() {
-  static auto lastTime = std::chrono::high_resolution_clock::now();
   auto now = std::chrono::high_resolution_clock::now();
-  auto deltaMs = std::chrono::duration<double, std::milli>(now - lastTime).count();
-  lastTime = now;
+  auto totalMs = std::chrono::duration<double, std::milli>(now - movementStartTime).count();
   
-  // Cap delta time
-  deltaMs = std::min(deltaMs, 50.0);
-  
-  movementProgress += deltaMs / MOVEMENT_ANIMATION_DURATION;
+  movementProgress = totalMs / MOVEMENT_ANIMATION_DURATION;
   
   if (movementProgress >= 1.0) {
     movementProgress = 1.0;
@@ -938,6 +936,9 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
   linesBeingCleared = clearedLines;
   lineClearActive = true;
   lineClearProgress = 0.0;
+  
+  // Set start time for this animation
+  lineClearStartTime = std::chrono::high_resolution_clock::now();
   
   // Randomly select animation type for modern mode (0-9)
   if (!retroModeActive) {
@@ -959,15 +960,10 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
 
 
 void TetrimoneBoard::updateLineClearAnimation() {
-  static auto lastTime = std::chrono::high_resolution_clock::now();
   auto now = std::chrono::high_resolution_clock::now();
-  auto deltaMs = std::chrono::duration<double, std::milli>(now - lastTime).count();
-  lastTime = now;
+  auto totalMs = std::chrono::duration<double, std::milli>(now - lineClearStartTime).count();
   
-  // Cap delta time to prevent huge jumps during pauses/focus loss
-  deltaMs = std::min(deltaMs, 50.0);
-  
-  lineClearProgress += deltaMs / LINE_CLEAR_ANIMATION_DURATION;
+  lineClearProgress = totalMs / LINE_CLEAR_ANIMATION_DURATION;
   
   if (lineClearProgress >= 1.0) {
     // Animation complete - stop timer first
@@ -1023,6 +1019,7 @@ void TetrimoneBoard::updateLineClearAnimation() {
     lineClearProgress = 0.0;
   }
 }
+
 
 gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
@@ -1167,6 +1164,9 @@ void TetrimoneBoard::startThemeTransition(int targetTheme) {
     isThemeTransitioning = true;
     themeTransitionProgress = 0.0;
     
+    // Set start time for this animation
+    themeStartTime = std::chrono::high_resolution_clock::now();
+    
     // Start transition timer
     themeTransitionTimer = g_timeout_add(16, // 60 FPS
         [](gpointer userData) -> gboolean {
@@ -1177,15 +1177,10 @@ void TetrimoneBoard::startThemeTransition(int targetTheme) {
 }
 
 void TetrimoneBoard::updateThemeTransition() {
-    static auto lastTime = std::chrono::high_resolution_clock::now();
     auto now = std::chrono::high_resolution_clock::now();
-    auto deltaMs = std::chrono::duration<double, std::milli>(now - lastTime).count();
-    lastTime = now;
+    auto totalMs = std::chrono::duration<double, std::milli>(now - themeStartTime).count();
     
-    // Cap delta time
-    deltaMs = std::min(deltaMs, 50.0);
-    
-    themeTransitionProgress += deltaMs / THEME_TRANSITION_DURATION;
+    themeTransitionProgress = totalMs / THEME_TRANSITION_DURATION;
     
     if (themeTransitionProgress >= 1.0) {
         // Transition complete
