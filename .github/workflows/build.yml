@@ -321,14 +321,14 @@ jobs:
         # Compile the installer
         Write-Host "Building professional MSI installer with full Windows WiX..."
         Write-Host "Running candle.exe to compile WXS..."
-        candle.exe installer.wxs -ext WixUIExtension
+        candle.exe installer.wxs -ext WixUIExtension -ext WixUtilExtension
         if ($LASTEXITCODE -ne 0) {
           Write-Error "Candle.exe failed with exit code: $LASTEXITCODE"
           exit $LASTEXITCODE
         }
         
         Write-Host "Running light.exe to create MSI..."
-        light.exe installer.wixobj -ext WixUIExtension -out "../../Tetrimone-GTK.msi"
+        light.exe installer.wixobj -ext WixUIExtension -ext WixUtilExtension -out "../../Tetrimone-GTK.msi"
         if ($LASTEXITCODE -ne 0) {
           Write-Error "Light.exe failed with exit code: $LASTEXITCODE"
           exit $LASTEXITCODE
