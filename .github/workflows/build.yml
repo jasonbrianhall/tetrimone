@@ -48,6 +48,15 @@ jobs:
       run: |
         zip -r ../../Tetrimone-GTK.zip ./*
 
+    - name: Install Additional WiX Components
+      run: |
+        # Install WiX toolset with UI extensions if available
+        dnf -y install mingw64-binutils || true
+        
+        # Check if we can get a more complete WiX installation
+        echo "Available WiX packages:"
+        dnf search wix || true
+
     - name: Create Professional GTK MSI Installer
       working-directory: build/windows
       run: |
@@ -61,11 +70,10 @@ jobs:
           fi
         done
 
-        # Create the professional WiX installer file
-        cat > installer.wxs << EOF
+        # Create professional WiX installer with proper UI extensions
+        cat > installer.wxs << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
-        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" 
-             xmlns:ui="http://schemas.microsoft.com/wix/UIExtension">
+        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
           
           <Product Id="*" 
                    Name="Tetrimone" 
@@ -74,12 +82,232 @@ jobs:
                    Manufacturer="Jason Hall" 
                    UpgradeCode="15F96C34-8D42-417A-9E1B-CC952F7D6713">
             
-            <Package InstallerVersion="500" 
+            <Package InstallerVersion="200" 
                      Compressed="yes" 
                      InstallScope="perMachine"
                      Description="Tetrimone - Falling Block Puzzle Game"
-                     Comments="A modern falling block puzzle game with smooth animations and multiple themes"
-                     Keywords="Puzzle,Game,Blocks,Falling" />
+                     Comments="A modern falling block puzzle game with smooth animations and multiple themes" />
+            
+            <!-- Upgrade handling -->
+            <MajorUpgrade DowngradeErrorMessage="A newer version of Tetrimone is already installed." />
+            
+            <!-- Media template -->
+            <MediaTemplate EmbedCab="yes" />
+            
+            <!-- Properties for customization -->
+            <Property Id="ARPPRODUCTICON" Value="TetrimoneIcon" />
+            <Property Id="ARPHELPLINK" Value="https://github.com/jasonbrianhall/tetrimone" />
+            <Property Id="ARPURLINFOABOUT" Value="https://github.com/jasonbrianhall/tetrimone" />
+            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+            <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch Tetrimone" />
+            
+            <!-- Directory structure -->
+            <Directory Id="TARGETDIR" Name="SourceDir">
+              <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLFOLDER" Name="Tetrimone">
+                  
+                  <!-- Main application files -->
+                  <Component Id="MainExecutable" Guid="A47D52C8-3E95-48F6-B25F-1E6C9D4A8D34">
+                    <File Id="MainEXE" 
+                          Name="tetrimone.exe" 
+                          Source="tetrimone.exe" 
+                          KeyPath="yes" />
+                    
+                    <File Id="SoundsZIP" Name="sound.zip" Source="sound.zip"/>
+                    <File Id="IconFile" Name="icon.ico" Source="icon.ico"/>
+                    <File Id="README" Name="README.md" Source="../../README.md"/>
+                    <File Id="LICENSE" Name="LICENSE.md" Source="../../LICENSE.md"/>
+                    <File Id="background" Name="background.zip" Source="background.zip"/>
+        EOF
+
+        # Insert the DLL entries
+        echo "$DLL_ENTRIES" >> installer.wxs
+
+        # Continue with the rest of the installer
+        cat >> installer.wxs << 'EOF'
+                  </Component>
+                  
+                  <!-- GTK Runtime directories -->
+                  <Directory Id="LibDir" Name="lib">
+                    <Directory Id="GdkPixbuf" Name="gdk-pixbuf-2.0">
+                      <Component Id="GdkPixbufDir" Guid="F8A3B715-D93A-4E67-A8C2-642D3F9E4D29">
+                        <CreateFolder />
+                      </Component>
+                    </Directory>
+                    <Directory Id="Gtk3" Name="gtk-3.0">
+                      <Component Id="Gtk3Dir" Guid="B1D4C159-8E2B-4F58-B6A3-753D2F9E5A42">
+                        <CreateFolder />
+                      </Component>
+                    </Directory>
+                  </Directory>
+                  
+                  <Directory Id="ShareDir" Name="share">
+                    <Directory Id="GLib2" Name="glib-2.0">
+                      <Directory Id="Schemas" Name="schemas">
+                        <Component Id="GtkSchemas" Guid="C7E3D845-B6E1-4F72-8D1E-864F2F9E5F16">
+                          <File Id="GSchemas" 
+                                Name="gschemas.compiled" 
+                                Source="share/glib-2.0/schemas/gschemas.compiled"/>
+                        </Component>
+                      </Directory>
+                    </Directory>
+                    <Directory Id="Icons" Name="icons">
+                      <Component Id="IconsDir" Guid="D5E7F371-A4C2-4E83-92F4-975E3F9E6F27">
+                        <CreateFolder />
+                      </Component>
+                    </Directory>
+                    <Directory Id="Themes" Name="themes">
+                      <Component Id="ThemesDir" Guid="E2F6G482-B5D3-4F83-A3F5-086G4F9E7F38">
+                        <CreateFolder />
+                      </Component>
+                    </Directory>
+                  </Directory>
+                </Directory>
+              </Directory>
+              
+              <!-- Start Menu shortcuts -->
+              <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="Tetrimone">
+                  <Component Id="ApplicationShortcuts" Guid="F8E2D459-F6A1-4B53-9C72-E31D8FE52D69">
+                    <Shortcut Id="ApplicationStartMenu" 
+                             Name="Tetrimone" 
+                             Target="[INSTALLFOLDER]tetrimone.exe" 
+                             WorkingDirectory="INSTALLFOLDER"
+                             Icon="TetrimoneIcon"
+                             Description="Play Tetrimone - Falling Block Puzzle Game" />
+                    
+                    <Shortcut Id="UninstallShortcut"
+                             Name="Uninstall Tetrimone"
+                             Target="[SystemFolder]msiexec.exe"
+                             Arguments="/x [ProductCode]"
+                             Description="Uninstall Tetrimone" />
+                    
+                    <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
+                    <RegistryValue Root="HKCU" 
+                                  Key="Software\Tetrimone" 
+                                  Name="installed" 
+                                  Type="integer" 
+                                  Value="1" 
+                                  KeyPath="yes"/>
+                  </Component>
+                </Directory>
+              </Directory>
+              
+              <!-- Desktop shortcut -->
+              <Directory Id="DesktopFolder" Name="Desktop">
+                <Component Id="DesktopShortcut" Guid="A5B7F8E2-C3D4-4E5F-9A8B-7C6D5E4F3A2B">
+                  <Shortcut Id="DesktopShortcut" 
+                           Name="Tetrimone" 
+                           Target="[INSTALLFOLDER]tetrimone.exe" 
+                           WorkingDirectory="INSTALLFOLDER"
+                           Icon="TetrimoneIcon"
+                           Description="Play Tetrimone - Falling Block Puzzle Game" />
+                  <RegistryValue Root="HKCU" 
+                                Key="Software\Tetrimone" 
+                                Name="DesktopShortcut" 
+                                Type="integer" 
+                                Value="1" 
+                                KeyPath="yes"/>
+                </Component>
+              </Directory>
+            </Directory>
+            
+            <!-- Features with proper selection -->
+            <Feature Id="MainApplication" Title="Tetrimone Game" Level="1">
+              <ComponentRef Id="MainExecutable" />
+              <ComponentRef Id="ApplicationShortcuts" />
+              <ComponentRef Id="GtkSchemas" />
+              <ComponentRef Id="GdkPixbufDir" />
+              <ComponentRef Id="Gtk3Dir" />
+              <ComponentRef Id="IconsDir" />
+              <ComponentRef Id="ThemesDir" />
+            </Feature>
+            
+            <Feature Id="DesktopShortcutFeature" Title="Desktop Shortcut" Level="1000">
+              <ComponentRef Id="DesktopShortcut" />
+            </Feature>
+            
+            <!-- Custom UI Elements -->
+            <UI>
+              <!-- Welcome dialog -->
+              <Dialog Id="WelcomeDlg" Width="370" Height="270" Title="Welcome">
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next &gt;" />
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel" />
+                <Control Id="Bitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="234" TabSkip="no" Text="WixUI_Bmp_Dialog" />
+                <Control Id="Title" Type="Text" X="135" Y="20" Width="220" Height="60" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Bigger}Welcome to the Tetrimone Setup" />
+                <Control Id="Description" Type="Text" X="135" Y="70" Width="220" Height="30" Transparent="yes" NoPrefix="yes" Text="This will install Tetrimone on your computer." />
+              </Dialog>
+              
+              <!-- Installation directory dialog -->
+              <Dialog Id="InstallDirDlg" Width="370" Height="270" Title="Installation Directory">
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next &gt;" />
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&lt; &amp;Back" />
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel" />
+                <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Choose Install Location" />
+                <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Choose the folder in which to install Tetrimone." />
+                <Control Id="FolderLabel" Type="Text" X="20" Y="60" Width="290" Height="30" NoPrefix="yes" Text="Install [ProductName] to:" />
+                <Control Id="Folder" Type="PathEdit" X="20" Y="100" Width="320" Height="18" Property="WIXUI_INSTALLDIR" Indirect="yes" />
+                <Control Id="ChangeFolder" Type="PushButton" X="20" Y="120" Width="56" Height="17" Text="&amp;Change..." />
+              </Dialog>
+              
+              <!-- Feature selection dialog -->
+              <Dialog Id="CustomizeDlg" Width="370" Height="270" Title="Custom Setup">
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next &gt;" />
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&lt; &amp;Back" />
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel" />
+                <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Custom Setup" />
+                <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Choose which features to install." />
+                <Control Id="Tree" Type="SelectionTree" X="25" Y="85" Width="175" Height="95" Property="_BrowseProperty" Sunken="yes" TabSkip="no" Text="Tree of selections" />
+                <Control Id="Browse" Type="PushButton" X="304" Y="200" Width="56" Height="17" Text="&amp;Browse" />
+              </Dialog>
+              
+              <!-- Dialog sequence -->
+              <InstallUISequence>
+                <Show Dialog="WelcomeDlg" Before="ProgressDlg">NOT Installed</Show>
+                <Show Dialog="InstallDirDlg" After="WelcomeDlg">NOT Installed</Show>
+                <Show Dialog="CustomizeDlg" After="InstallDirDlg">NOT Installed</Show>
+              </InstallUISequence>
+            </UI>
+            
+            <!-- Icon -->
+            <Icon Id="TetrimoneIcon" SourceFile="icon.ico"/>
+            
+          </Product>
+        </Wix>
+        EOF
+
+        # Create the MSI installer  
+        echo "Building professional MSI installer..."
+        wixl -v installer.wxs -o ../../Tetrimone-GTK.msi
+      working-directory: build/windows
+      run: |
+        # Generate the DLL entries for the WiX template
+        DLL_ENTRIES=""
+        for f in *.dll; do 
+          if [ -f "$f" ]; then
+            # Create a safe ID by removing invalid characters
+            SAFE_ID=$(echo "$f" | sed 's/[^a-zA-Z0-9]/_/g')
+            DLL_ENTRIES="$DLL_ENTRIES<File Id=\"$SAFE_ID\" Name=\"$f\" Source=\"$f\"/>"
+          fi
+        done
+
+        # Create the basic WiX installer file (no UI extensions)
+        cat > installer.wxs << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+          
+          <Product Id="*" 
+                   Name="Tetrimone" 
+                   Language="1033" 
+                   Version="1.0.${{ github.run_number }}" 
+                   Manufacturer="Jason Hall" 
+                   UpgradeCode="15F96C34-8D42-417A-9E1B-CC952F7D6713">
+            
+            <Package InstallerVersion="200" 
+                     Compressed="yes" 
+                     InstallScope="perMachine"
+                     Description="Tetrimone - Falling Block Puzzle Game"
+                     Comments="A modern falling block puzzle game with smooth animations and multiple themes" />
             
             <!-- Upgrade handling -->
             <MajorUpgrade DowngradeErrorMessage="A newer version of Tetrimone is already installed." />
@@ -91,8 +319,6 @@ jobs:
             <Property Id="ARPPRODUCTICON" Value="TetrimoneIcon" />
             <Property Id="ARPHELPLINK" Value="https://github.com/jasonbrianhall/tetrimone" />
             <Property Id="ARPURLINFOABOUT" Value="https://github.com/jasonbrianhall/tetrimone" />
-            <Property Id="ARPNOREPAIR" Value="yes" Secure="yes" />
-            <Property Id="ARPNOMODIFY" Value="yes" Secure="yes" />
             
             <!-- Directory structure -->
             <Directory Id="TARGETDIR" Name="SourceDir">
@@ -182,7 +408,7 @@ jobs:
                 </Directory>
               </Directory>
               
-              <!-- Desktop shortcut (optional) -->
+              <!-- Desktop shortcut -->
               <Directory Id="DesktopFolder" Name="Desktop">
                 <Component Id="DesktopShortcut" Guid="A5B7F8E2-C3D4-4E5F-9A8B-7C6D5E4F3A2B">
                   <Shortcut Id="DesktopShortcut" 
@@ -201,7 +427,7 @@ jobs:
               </Directory>
             </Directory>
             
-            <!-- Features - Simplified for compatibility -->
+            <!-- Simple feature - everything included -->
             <Feature Id="Complete" Title="Tetrimone" Level="1">
               <ComponentRef Id="MainExecutable" />
               <ComponentRef Id="ApplicationShortcuts" />
@@ -212,13 +438,6 @@ jobs:
               <ComponentRef Id="IconsDir" />
               <ComponentRef Id="ThemesDir" />
             </Feature>
-            
-            <!-- Custom UI - Use simpler UI for compatibility -->
-            <UIRef Id="WixUI_InstallDir" />
-            <UIRef Id="WixUI_ErrorProgressText" />
-            
-            <!-- Custom dialogs -->
-            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
             
             <!-- Icon -->
             <Icon Id="TetrimoneIcon" SourceFile="icon.ico"/>
