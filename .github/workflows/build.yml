@@ -179,7 +179,7 @@ jobs:
                       </Component>
                     </Directory>
                     <Directory Id="Themes" Name="themes">
-                      <Component Id="ThemesDir" Guid="E2F6G482-B5D3-4F83-A3F5-086G4F9E7F38">
+                      <Component Id="ThemesDir" Guid="E2F6A482-B5D3-4F83-A3F5-086B4F9E7F38">
                         <CreateFolder />
                       </Component>
                     </Directory>
@@ -321,7 +321,7 @@ jobs:
           Tetrimone-GTK.zip
 
   create-release:
-    needs: [build-mingw-gtk]
+    needs: [create-professional-msi]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -363,7 +363,7 @@ jobs:
           - Automatic upgrade handling
 
   create-dev-release:
-    needs: [build-mingw-gtk]
+    needs: [create-professional-msi]
     runs-on: ubuntu-latest
     permissions:
       contents: write
