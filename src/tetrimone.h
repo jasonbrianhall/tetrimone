@@ -148,6 +148,8 @@ struct TetrimoneApp {
 // Class for the game board
 class TetrimoneBoard {
 private:
+    TetrimoneApp* app;
+
     std::vector<std::vector<int>> grid;
     std::unique_ptr<TetrimoneBlock> currentPiece;
     std::vector<std::unique_ptr<TetrimoneBlock>> nextPieces; // Vector of next pieces (3)
@@ -337,7 +339,7 @@ public:
     void updateLineClearAnimation();
     void startSmoothMovement(int newX, int newY);
     void updateSmoothMovement();
-
+    void setApp(TetrimoneApp* appPtr) { app = appPtr; }
 };
 
 // Function declarations

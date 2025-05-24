@@ -1242,6 +1242,7 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   TetrimoneApp *tetrimoneApp = new TetrimoneApp();
   tetrimoneApp->app = app;
   tetrimoneApp->board = new TetrimoneBoard();
+  tetrimoneApp->board->setApp(tetrimoneApp);
   tetrimoneApp->timerId = 0;
   tetrimoneApp->dropSpeed = INITIAL_SPEED;
   tetrimoneApp->difficulty = 2; // Default to Medium

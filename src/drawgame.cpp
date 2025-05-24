@@ -907,15 +907,22 @@ void TetrimoneBoard::startSmoothMovement(int newX, int newY) {
         g_source_remove(smoothMovementTimer);
       }
       
-      smoothMovementTimer = g_timeout_add(16, // 60 FPS
+      smoothMovementTimer = g_timeout_add(16, // ~60 FPS
         [](gpointer userData) -> gboolean {
           TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
           board->updateSmoothMovement();
+          
+          // FORCE SCREEN REPAINT
+          if (board->app) {
+            gtk_widget_queue_draw(board->app->gameArea);
+          }
+          
           return TRUE;
         }, this);
     }
   }
 }
+
 
 void TetrimoneBoard::updateSmoothMovement() {
   auto now = std::chrono::high_resolution_clock::now();
@@ -950,10 +957,16 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
     g_source_remove(lineClearAnimationTimer);
   }
   
-  lineClearAnimationTimer = g_timeout_add(16, // 60 FPS
+  lineClearAnimationTimer = g_timeout_add(16, // ~60 FPS
     [](gpointer userData) -> gboolean {
       TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
       board->updateLineClearAnimation();
+      
+      // FORCE SCREEN REPAINT
+      if (board->app) {
+        gtk_widget_queue_draw(board->app->gameArea);
+      }
+      
       return TRUE;
     }, this);
 }
@@ -1167,11 +1180,17 @@ void TetrimoneBoard::startThemeTransition(int targetTheme) {
     // Set start time for this animation
     themeStartTime = std::chrono::high_resolution_clock::now();
     
-    // Start transition timer
-    themeTransitionTimer = g_timeout_add(16, // 60 FPS
+    themeTransitionTimer = g_timeout_add(16, // ~60 FPS
         [](gpointer userData) -> gboolean {
             TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
             board->updateThemeTransition();
+            
+            // FORCE SCREEN REPAINT
+            if (board->app) {
+                gtk_widget_queue_draw(board->app->gameArea);
+                gtk_widget_queue_draw(board->app->nextPieceArea); // For theme color changes
+            }
+            
             return TRUE;
         }, this);
 }
