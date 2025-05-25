@@ -418,13 +418,13 @@ jobs:
     - name: Upload MSI Installer
       uses: actions/upload-artifact@v4
       with:
-        name: Tetrimone-GTK-MSI
+        name: Tetrimone-GTK.msi
         path: artifacts/build/windows/Tetrimone-GTK.msi
 
     - name: Upload Portable ZIP
       uses: actions/upload-artifact@v4
       with:
-        name: Tetrimone-GTK-Portable
+        name: Tetrimone-GTK-Portable.zip
         path: artifacts/Tetrimone-GTK-Portable.zip
 
   create-release:
@@ -438,13 +438,13 @@ jobs:
     - name: Download MSI Artifact
       uses: actions/download-artifact@v4
       with:
-        name: Tetrimone-GTK-MSI
+        name: Tetrimone-GTK.msi
         path: release
 
     - name: Download Portable Artifact
       uses: actions/download-artifact@v4
       with:
-        name: Tetrimone-GTK-Portable
+        name: Tetrimone-GTK-Portable.zip
         path: release
 
     - name: Create GitHub Release
