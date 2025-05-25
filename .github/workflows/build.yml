@@ -415,23 +415,17 @@ jobs:
 
 
 
-    - name: Debug MSI Location
-      run: |
-        Write-Host "=== DEBUG: Looking for MSI file ==="
-        Write-Host "Current directory:"
-        Get-Location
-        Write-Host "All files in current directory:"
-        Get-ChildItem -Recurse -Name "*.msi"
-        Write-Host "All files in artifacts directory:"
-        Get-ChildItem artifacts -Recurse -Name "*.msi" -ErrorAction SilentlyContinue
-
-    - name: Upload Final Artifacts
+    - name: Upload MSI Installer
       uses: actions/upload-artifact@v4
       with:
-        name: tetrimone-release
-        path: |
-          artifacts/build/windows/*.msi
-          artifacts/*.zip
+        name: Tetrimone-GTK-MSI
+        path: artifacts/build/windows/Tetrimone-GTK.msi
+
+    - name: Upload Portable ZIP
+      uses: actions/upload-artifact@v4
+      with:
+        name: Tetrimone-GTK-Portable
+        path: artifacts/Tetrimone-GTK-Portable.zip
 
   create-release:
     needs: [build-linux, build-msi-windows]
@@ -441,10 +435,16 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     
     steps:
-    - name: Download Release Artifacts
+    - name: Download MSI Artifact
       uses: actions/download-artifact@v4
       with:
-        name: tetrimone-release
+        name: Tetrimone-GTK-MSI
+        path: release
+
+    - name: Download Portable Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: Tetrimone-GTK-Portable
         path: release
 
     - name: Create GitHub Release
