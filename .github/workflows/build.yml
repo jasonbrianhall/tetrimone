@@ -385,7 +385,7 @@ jobs:
           exit 1
         }
         
-        & light.exe -ext WixUIExtension installer.wixobj -o "../../../Tetrimone-GTK.msi"
+        & light.exe -ext WixUIExtension installer.wixobj -o "Tetrimone-GTK.msi"
         if ($LASTEXITCODE -ne 0) {
           Write-Error "Light linking failed with exit code $LASTEXITCODE"
           exit 1
@@ -400,7 +400,7 @@ jobs:
       with:
         name: tetrimone-release
         path: |
-          Tetrimone-GTK.msi
+          artifacts/build/windows/Tetrimone-GTK.msi
           Tetrimone-GTK-Portable.zip
 
   create-release:
