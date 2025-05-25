@@ -377,13 +377,22 @@ jobs:
     - name: Build MSI Installer
       working-directory: artifacts/build/windows
       run: |
+        # Debug: Show current directory and files
+        Write-Host "=== DEBUG: Current directory ==="
+        Get-Location
+        Write-Host "=== DEBUG: Files in current directory ==="
+        Get-ChildItem
+        
         # Compile the installer
-        Write-Host "Building MSI installer..."
+        Write-Host "=== Building MSI installer ==="
         & candle.exe installer.wxs
         if ($LASTEXITCODE -ne 0) {
           Write-Error "Candle compilation failed with exit code $LASTEXITCODE"
           exit 1
         }
+        
+        Write-Host "=== DEBUG: Files after candle ==="
+        Get-ChildItem
         
         & light.exe -ext WixUIExtension installer.wixobj -o "Tetrimone-GTK.msi"
         if ($LASTEXITCODE -ne 0) {
@@ -391,17 +400,38 @@ jobs:
           exit 1
         }
         
-        Write-Host "MSI installer created successfully"
+        Write-Host "=== DEBUG: Files after light ==="
+        Get-ChildItem
+        
+        # Verify MSI was created
+        if (Test-Path "Tetrimone-GTK.msi") {
+          Write-Host "✅ MSI installer created successfully: Tetrimone-GTK.msi"
+          $msiSize = (Get-Item "Tetrimone-GTK.msi").Length
+          Write-Host "MSI file size: $msiSize bytes"
+        } else {
+          Write-Error "❌ MSI file was not created!"
+          exit 1
+        }
 
 
+
+    - name: Debug MSI Location
+      run: |
+        Write-Host "=== DEBUG: Looking for MSI file ==="
+        Write-Host "Current directory:"
+        Get-Location
+        Write-Host "All files in current directory:"
+        Get-ChildItem -Recurse -Name "*.msi"
+        Write-Host "All files in artifacts directory:"
+        Get-ChildItem artifacts -Recurse -Name "*.msi" -ErrorAction SilentlyContinue
 
     - name: Upload Final Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: tetrimone-release
         path: |
-          artifacts/build/windows/Tetrimone-GTK.msi
-          Tetrimone-GTK-Portable.zip
+          artifacts/build/windows/*.msi
+          artifacts/*.zip
 
   create-release:
     needs: [build-linux, build-msi-windows]
