@@ -148,7 +148,8 @@ struct TetrimoneApp {
 class TetrimoneBoard {
 private:
     TetrimoneApp* app;
-
+    float heatLevel;        // 0.0 = frozen, 1.0 = max fire
+    guint heatDecayTimer;   // Timer for cooling down
     std::vector<std::vector<int>> grid;
     std::unique_ptr<TetrimoneBlock> currentPiece;
     std::vector<std::unique_ptr<TetrimoneBlock>> nextPieces; // Vector of next pieces (3)
@@ -201,7 +202,10 @@ public:
     // Theme transition methods
     void setLevel(int levelnumber);
     void setMinBlock(int size);
-
+    void coolDown();
+    float getHeatLevel();
+    void setHeatLevel(float heatLevel);
+    void updateHeat();
     void startThemeTransition(int targetTheme);
     void updateThemeTransition();
     void cancelThemeTransition();
@@ -422,5 +426,5 @@ bool loadGameSettings(TetrimoneApp* app);
 void resetGameSettings(TetrimoneApp* app);
 void onResetSettings(GtkMenuItem* menuItem, gpointer userData);
 void onThemeChanged(GtkRadioMenuItem *menuItem, gpointer userData);
-
+std::array<double, 3> getHeatModifiedColor(const std::array<double, 3>& baseColor, float heatLevel);
 #endif // TETRIMONE_H

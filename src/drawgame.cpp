@@ -434,9 +434,19 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
         }
 
         // Get color from tetrimoneblock colors
-        auto color = board->isInThemeTransition() ? 
+/*        auto color = board->isInThemeTransition() ? 
+    board->getInterpolatedColor(value - 1, board->getThemeTransitionProgress()) :
+    TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1]; */
+
+    auto baseColor = board->isInThemeTransition() ? 
     board->getInterpolatedColor(value - 1, board->getThemeTransitionProgress()) :
     TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
+auto color = getHeatModifiedColor(baseColor, board->getHeatLevel());
+
+/*auto baseColor = TETRIMONEBLOCK_COLOR_THEMES[themeIndex][blockType - 1];
+auto heatColor = getHeatModifiedColor(baseColor, app->board->getHeatLevel());
+
+cairo_set_source_rgba(cr, heatColor[0], heatColor[1], heatColor[2], alpha); */
 
         cairo_set_source_rgba(cr, color[0], color[1], color[2], alpha);
 

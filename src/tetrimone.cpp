@@ -194,6 +194,9 @@ lastPieceX(0), lastPieceY(0), smoothMovementTimer(0), movementProgress(0.0),
     propagandaTimerId = 0;
     propagandaMessageDuration = 2000; // 2 seconds display time
 
+
+heatLevel = 0.5f;
+heatDecayTimer = 0;
   // Initialize grid with maximum possible dimensions to avoid reallocation
   grid.resize(MAX_GRID_HEIGHT, std::vector<int>(MAX_GRID_WIDTH, 0));
 
@@ -370,7 +373,6 @@ int TetrimoneBoard::clearLines() {
   if (linesCleared > 0) {
     // Start the line clearing animation instead of immediately removing lines
     startLineClearAnimation(linesToClear);
-    
     // Show propaganda message in retro mode
     if (retroModeActive) {
       // Select a random propaganda message
@@ -441,19 +443,28 @@ int TetrimoneBoard::clearLines() {
     // Play appropriate sound based on number of lines cleared
     if (linesCleared == 4) {
       playSound(GameSoundEvent::Excellent); // Play Tetrimone/Excellent sound for 4 lines
+      heatLevel+=0.4;
     } else if (linesCleared > 0) {
       playSound(GameSoundEvent::Clear); // Play normal clear sound for 1-3 lines
       if (linesCleared == 1) {
         playSound(GameSoundEvent::Single);
+        heatLevel+=0.1;
+
       }
       if (linesCleared == 2) {
         playSound(GameSoundEvent::Double);
+        heatLevel+=0.2;
+
       }
       if (linesCleared == 3) {
         playSound(GameSoundEvent::Triple);
+        heatLevel+=0.3;
+
       }
     }
-
+    if (heatLevel>1.0) {
+         heatLevel=1.0;
+    }
     // Classic Tetrimone scoring
     int baseScore = 0;
     switch (linesCleared) {
@@ -520,6 +531,7 @@ int TetrimoneBoard::clearLines() {
   }
 
 if (level > currentlevel) {
+    updateHeat();
     playSound(retroModeActive ? GameSoundEvent::LevelUpRetro : GameSoundEvent::LevelUp);
     if (junkLinesPerLevel > 0) {
         addJunkLinesFromBottom(junkLinesPerLevel);
@@ -1049,8 +1061,13 @@ gboolean onTimerTick(gpointer data) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
   TetrimoneBoard *board = app->board;
 
+if (!board->isPaused() && !board->isSplashScreenActive()) {
+    board->coolDown();
+}
+
   if (!board->isPaused()) {
     board->updateGame();
+
     // If the game just ended after this update, check for high score
     if (board->isGameOver()) {
       if (!board->highScoreAlreadyProcessed) {
@@ -1077,10 +1094,13 @@ gboolean onTimerTick(gpointer data) {
     updateLabels(app);
   }
 
+  if(board->retroModeActive) { board->setHeatLevel(0.5);}
+
   if (!board->isPaused() && !board->isGameOver() && board->retroModeActive) {
     // 1 in 1000 chance of KGB inspection
     static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
     std::uniform_int_distribution<int> dist(1, 1000);
+
     if (dist(rng) == 1) {
       // Pause the game briefly
       app->board->setPaused(true);
