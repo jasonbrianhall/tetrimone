@@ -480,6 +480,25 @@ cairo_set_source_rgba(cr, heatColor[0], heatColor[1], heatColor[2], alpha); */
           cairo_close_path(cr);
           cairo_fill(cr);
         }
+        
+        if (!board->retroModeActive) { // Only apply effects in modern mode
+          float heatLevel = board->getHeatLevel();
+          
+          // Get current time for animation
+          auto now = std::chrono::high_resolution_clock::now();
+          auto timeMs = std::chrono::duration<double, std::milli>(
+              now.time_since_epoch()).count();
+          
+          // Draw fiery glow effect when hot
+          if (heatLevel > 0.7f) {
+            drawFireyGlow(cr, drawX, drawY, drawSize, heatLevel, timeMs);
+          }
+          
+          // Draw freezy effect when cold
+          if (heatLevel < 0.3f) {
+            drawFreezyEffect(cr, drawX, drawY, drawSize, heatLevel, timeMs);
+          }
+        }   
       }
     }
   }

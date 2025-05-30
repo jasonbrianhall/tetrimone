@@ -1061,7 +1061,7 @@ gboolean onTimerTick(gpointer data) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
   TetrimoneBoard *board = app->board;
 
-if (!board->isPaused() && !board->isSplashScreenActive()) {
+if (!board->isPaused() && !board->isSplashScreenActive() && !board->retroModeActive) {
     board->coolDown();
 }
 

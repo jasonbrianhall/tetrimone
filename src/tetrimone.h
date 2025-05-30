@@ -427,4 +427,7 @@ void resetGameSettings(TetrimoneApp* app);
 void onResetSettings(GtkMenuItem* menuItem, gpointer userData);
 void onThemeChanged(GtkRadioMenuItem *menuItem, gpointer userData);
 std::array<double, 3> getHeatModifiedColor(const std::array<double, 3>& baseColor, float heatLevel);
+void drawFreezyEffect(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
+void drawFireyGlow(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
+
 #endif // TETRIMONE_H
