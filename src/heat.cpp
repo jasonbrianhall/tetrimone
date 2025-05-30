@@ -124,6 +124,7 @@ void drawFireyGlow(cairo_t* cr, double x, double y, double size, float heatLevel
             cairo_arc(cr, particleX, particleY, 1 + glowIntensity * 2, 0, 2 * M_PI);
             cairo_fill(cr);
         }
+
     }
     
     cairo_restore(cr);
