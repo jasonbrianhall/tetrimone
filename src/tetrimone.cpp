@@ -2440,7 +2440,13 @@ void startGame(TetrimoneApp *app) {
 
   // Calculate drop speed based on level and difficulty
   adjustDropSpeed(app);
+    if (app->board->junkLinesPercentage > 0) {
+       app->board->generateJunkLines(app->board->junkLinesPercentage);
+    }
 
+    if (app->board->junkLinesPerLevel > 0) {
+        app->board->addJunkLinesFromBottom(junkLinesPerLevel);
+    }
   // Start a new timer
   app->timerId = g_timeout_add(app->dropSpeed, onTimerTick, app);
 
