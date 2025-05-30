@@ -1,5 +1,9 @@
 #include "tetrimone.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 void TetrimoneBoard::updateHeat() {
         heatDecayTimer = g_timeout_add(1000, [](gpointer data) -> gboolean {
             TetrimoneBoard* board = static_cast<TetrimoneBoard*>(data);
