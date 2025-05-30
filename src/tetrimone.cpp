@@ -9,7 +9,7 @@
 #endif
 #include "highscores.h"
 #include "propaganda_messages.h"
-
+#include "commandline.h"
 
 int BLOCK_SIZE = 30; // Default value, will be updated at runtime
 int currentThemeIndex = 0;
@@ -1256,6 +1256,25 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
 
   setWindowIcon(GTK_WINDOW(tetrimoneApp->window));
 
+    // Get command line arguments
+    CommandLineArgs* args = static_cast<CommandLineArgs*>(
+        g_object_get_data(G_OBJECT(app), "cmdline-args"));
+
+    // Apply grid dimensions before calculating block size
+    if (args && args->gridWidth != -1) {
+        GRID_WIDTH = args->gridWidth;
+    }
+    if (args && args->gridHeight != -1) {
+        GRID_HEIGHT = args->gridHeight;
+    }
+
+    // Calculate block size based on screen resolution (unless overridden)
+    if (!args || args->blockSize == -1) {
+        calculateBlockSize(tetrimoneApp);
+    } else {
+        BLOCK_SIZE = args->blockSize;
+    }
+
   g_signal_connect(G_OBJECT(tetrimoneApp->window), "delete-event",
                    G_CALLBACK(onDeleteEvent), tetrimoneApp);
 
@@ -1417,12 +1436,30 @@ if (tetrimoneApp->board->retroModeActive) {
   tetrimoneApp->joystickEnabled = false;
   tetrimoneApp->joystickTimerId = 0;
 
+   if (args) {
+        applyCommandLineArgs(tetrimoneApp, *args);
+    }
+
+
   // Try to initialize SDL
   initSDL(tetrimoneApp);
 
   // Start the game
   startGame(tetrimoneApp);
 }
+
+void TetrimoneBoard::setLevel(int newLevel) {
+    if (newLevel >= 1) {
+        level = newLevel;
+    }
+}
+
+void TetrimoneBoard::setMinBlock(int size) {
+    if (size >= 1 && size <=4) {
+        minBlockSize=size;
+    }
+}
+
 
 // Function to create the menu bar with a better organization
 void createMenu(TetrimoneApp *app) {
@@ -3052,19 +3089,4 @@ void onBlockSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
       !app->board->isSplashScreenActive()) {
     onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
   }
-}
-
-int main(int argc, char *argv[]) {
-  GtkApplication *app;
-  int status;
-#ifdef DEBUG
-  freopen("debug_output.log", "w", stdout);
-  freopen("debug_output.log", "a", stderr);
-#endif
-  app = gtk_application_new("org.gtk.tetrimone", G_APPLICATION_DEFAULT_FLAGS);
-  g_signal_connect(app, "activate", G_CALLBACK(onAppActivate), NULL);
-  status = g_application_run(G_APPLICATION(app), argc, argv);
-  g_object_unref(app);
-
-  return status;
 }

@@ -142,7 +142,6 @@ struct TetrimoneApp {
     guint joystickTimerId;
     JoystickMapping joystickMapping;
     bool pausedByFocusLoss = false;
-
 };
 
 // Class for the game board
@@ -200,6 +199,9 @@ private:
     
 public:
     // Theme transition methods
+    void setLevel(int levelnumber);
+    void setMinBlock(int size);
+
     void startThemeTransition(int targetTheme);
     void updateThemeTransition();
     void cancelThemeTransition();
