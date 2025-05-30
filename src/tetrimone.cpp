@@ -496,7 +496,12 @@ int TetrimoneBoard::clearLines() {
 
         // Bonus increases with each consecutive clear
         sequenceBonus = baseScore * (consecutiveClears * 0.1); // 10% bonus per consecutive clear
-
+        if (consecutiveClears>=2) {
+            heatLevel += 0.1 * (consecutiveClears-1);
+            if(heatLevel>=1.0) {
+                 heatLevel=1.0;
+            } 
+        }        
         // Extra bonus for maintaining the same number of lines cleared
         if (linesCleared == lastClearCount) {
           sequenceBonus += baseScore * 0.2; // 20% bonus for consistent clears
@@ -740,7 +745,8 @@ void TetrimoneBoard::restart() {
   for (auto &row : grid) {
     std::fill(row.begin(), row.end(), 0);
   }
-
+  heatLevel = 0.5f;
+  heatDecayTimer = 0;
   // Reset game state
   score = 0;
   level = initialLevel; // Use initialLevel instead of hardcoded 1
