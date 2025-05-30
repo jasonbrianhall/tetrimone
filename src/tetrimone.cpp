@@ -498,6 +498,7 @@ int TetrimoneBoard::clearLines() {
         sequenceBonus = baseScore * (consecutiveClears * 0.1); // 10% bonus per consecutive clear
         if (consecutiveClears>=2) {
             heatLevel += 0.1 * (consecutiveClears-1);
+            //printf("Heat level increased by %f due to sequence\n", 0.1 * (consecutiveClears-1));
             if(heatLevel>=1.0) {
                  heatLevel=1.0;
             } 

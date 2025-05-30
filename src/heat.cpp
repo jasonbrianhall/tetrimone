@@ -37,7 +37,7 @@ void TetrimoneBoard::coolDown() {
     
     // Round to nearest hundredth
     heatLevel = round(heatLevel * 10000.0f) / 10000.0f;
-    printf("Heat level %f\n", heatLevel);
+    //printf("Heat level %f\n", heatLevel);
     #ifdef DEBUG
     printf("Heat level %f\n", heatLevel);
     #endif
