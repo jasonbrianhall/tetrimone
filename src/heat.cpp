@@ -16,26 +16,35 @@ void TetrimoneBoard::updateHeat() {
 void TetrimoneBoard::coolDown() {
     // Base cooling rate per 100ms (independent of game timer speed)
     float baseCoolingRate = 0.005f;
+    
     // Optional: Still apply a small level-based modifier if desired
     // This makes higher levels slightly more intense by retaining heat longer
-    float levelHeatRetention = 1.0f + (level - 1) * 0.1f; // 2% more heat retention per level
+    float levelHeatRetention = 1.0f + (level - 1) * 0.1f;
+    
+    // Prevent division by zero or very small numbers
+    if (levelHeatRetention < 0.01f) {
+        levelHeatRetention = 0.01f;
+    }
+    
     float adjustedCoolingRate = baseCoolingRate / levelHeatRetention;
     
-    if (app->difficulty>0) {
+    if (app->difficulty > 0) {
         heatLevel -= adjustedCoolingRate;
-    }
-    else {
+    } else {
         heatLevel -= baseCoolingRate;
     }
     
-    if(heatLevel < 0) {
+    if (heatLevel < 0) {
         heatLevel = 0.0;
     }
+    
+    // Round to nearest hundredth
+    heatLevel = round(heatLevel * 100.0f) / 100.0f;
+    
     #ifdef DEBUG
-    printf("Heat level %f\n", heatLevel);
+    printf("Heat level %.2f\n", heatLevel);
     #endif
 }
-
 /*std::array<double, 3> getHeatModifiedColor(const std::array<double, 3>& baseColor, float heatLevel) {
     std::array<double, 3> result = baseColor;
     
