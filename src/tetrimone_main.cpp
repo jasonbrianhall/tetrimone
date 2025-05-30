@@ -15,8 +15,8 @@ void printHelp(const char* programName) {
     
     std::cout << "Display Options:\n";
     std::cout << "  -b, --block-size SIZE      Set block size in pixels (20-80)\n";
-    std::cout << "  -w, --width WIDTH          Set grid width (8-16)\n";
-    std::cout << "  -h, --height HEIGHT        Set grid height (16-30)\n";
+    std::cout << "  -w, --width WIDTH          Set grid width\n";
+    std::cout << "  -h, --height HEIGHT        Set grid height\n";
     std::cout << "  -t, --theme INDEX          Set color theme (0-30)\n";
     std::cout << "  -f, --fullscreen           Start in fullscreen mode\n";
     std::cout << "  --background IMAGE         Set background image file\n";
