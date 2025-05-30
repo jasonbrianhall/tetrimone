@@ -28,11 +28,8 @@ void TetrimoneBoard::coolDown() {
     
     float adjustedCoolingRate = baseCoolingRate / levelHeatRetention;
     
-    if (app->difficulty > 0) {
-        heatLevel -= adjustedCoolingRate;
-    } else {
-        heatLevel -= baseCoolingRate;
-    }
+    // Use adjusted cooling rate for all difficulties
+    heatLevel -= adjustedCoolingRate;
     
     if (heatLevel < 0) {
         heatLevel = 0.0;
@@ -40,10 +37,13 @@ void TetrimoneBoard::coolDown() {
     
     // Round to nearest hundredth
     heatLevel = round(heatLevel * 10000.0f) / 10000.0f;
+    printf("Heat level %f\n", heatLevel);
     #ifdef DEBUG
     printf("Heat level %f\n", heatLevel);
     #endif
 }
+
+
 /*std::array<double, 3> getHeatModifiedColor(const std::array<double, 3>& baseColor, float heatLevel) {
     std::array<double, 3> result = baseColor;
     
