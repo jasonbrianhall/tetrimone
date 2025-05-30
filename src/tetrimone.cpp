@@ -2445,7 +2445,7 @@ void startGame(TetrimoneApp *app) {
     }
 
     if (app->board->junkLinesPerLevel > 0) {
-        app->board->addJunkLinesFromBottom(junkLinesPerLevel);
+        app->board->addJunkLinesFromBottom(app->board->junkLinesPerLevel);
     }
   // Start a new timer
   app->timerId = g_timeout_add(app->dropSpeed, onTimerTick, app);
