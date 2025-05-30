@@ -11,6 +11,10 @@
 #include "propaganda_messages.h"
 #include "commandline.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 int BLOCK_SIZE = 30; // Default value, will be updated at runtime
 int currentThemeIndex = 0;
 

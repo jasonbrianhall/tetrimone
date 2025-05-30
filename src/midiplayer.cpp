@@ -36,7 +36,7 @@ volatile sig_atomic_t keep_running = 1;
 #endif
 
 #ifndef M_PI
-#define M_PI 3.1415926154
+#define M_PI 3.14159265358979323846
 #endif
 
 // Global variables
