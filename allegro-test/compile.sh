@@ -57,12 +57,12 @@ echo "Building Allegro..."
 make -j4
 make install
 
-# Build the Tetris application
+# Build the Tetrimone application
 cd /src
-echo "Building Tetris for MSDOS..."
+echo "Building Tetrimone for MSDOS..."
 
 # Include paths for Allegro
-echo "Compiling Tetris..."
+echo "Compiling Tetrimone..."
 g++ tetrimone.cpp -o tetrimone.exe -I/tmp/allegro_install/include -L/tmp/allegro_install/lib -lalleg -DMSDOS
 
 echo "Build complete!"
