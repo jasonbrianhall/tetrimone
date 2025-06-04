@@ -108,7 +108,7 @@ When in retro mode (press the `.` key), line clears transform into authentic **S
 
 #### 🎯 Technical Details
 - **Interpolation**: Smoothstep easing functions for natural motion
-- **Multi-line Support**: Handles singles, doubles, triples, and TETRIS simultaneously
+- **Multi-line Support**: Handles singles, doubles, triples, and TETRIMONES simultaneously
 - **Race Condition Prevention**: Bulletproof timing synchronization
 
 ---
@@ -201,7 +201,7 @@ make
 - **1 line**: 40 × level (Appetizer)
 - **2 lines**: 100 × level (Light Meal)
 - **3 lines**: 300 × level (Feast)
-- **4 lines**: 1200 × level (TETRIS GODMODE!)
+- **4 lines**: 1200 × level (TETRIMODE GODMODE!)
 
 ## Difficulty Levels: Choose Your Destiny
 
