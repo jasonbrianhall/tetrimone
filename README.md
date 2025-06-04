@@ -201,7 +201,7 @@ make
 - **1 line**: 40 × level (Appetizer)
 - **2 lines**: 100 × level (Light Meal)
 - **3 lines**: 300 × level (Feast)
-- **4 lines**: 1200 × level (TETRIMODE GODMODE!)
+- **4 lines**: 1200 × level (TETRIMONE GODMODE!)
 
 ## Difficulty Levels: Choose Your Destiny
 
