@@ -36,7 +36,9 @@ else
 endif
 
 # Source files
-SRCS_COMMON = src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp src/junklines.cpp src/propaganda.cpp src/help.cpp src/saveloadsettings.cpp src/drawgame.cpp src/tetrimone_main.cpp src/heat.cpp
+SRCS_COMMON = src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp src/junklines.cpp src/propaganda.cpp src/help.cpp src/saveloadsettings.cpp src/drawgame.cpp src/tetrimone_main.cpp src/heat.cpp src/6502/Emulation/Controller.cpp src/6502/Emulation/PPU.cpp src/6502/Emulation/MemoryAccess.cpp src/6502/Emulation/APU.cpp src/6502/Main.cpp src/6502/SMB/SMB.cpp src/6502/SMB/SMBEngine.cpp src/6502/SMB/SMBData.cpp src/6502/SMBRom.cpp src/6502/Util/Video.cpp src/6502/Util/VideoFilters.cpp src/6502/Configuration.cpp
+
+
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src/sdlaudioplayer.cpp
 SRCS_WIN_SDL = src/sdlaudioplayer.cpp
