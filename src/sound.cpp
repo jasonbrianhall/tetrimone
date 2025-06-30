@@ -180,8 +180,59 @@ void TetrimoneBoard::dismissSplashScreen() {
     playSound(GameSoundEvent::Start);
 }
 
-bool TetrimoneBoard::loadSoundFromZip(GameSoundEvent event,
-                                   const std::string& soundFileName) {
+std::string TetrimoneBoard::getCacheFilePath(const std::string& soundFileName) {
+    // Create cache directory if it doesn't exist
+    std::string cacheDir = "cache";
+    
+#ifdef _WIN32
+    _mkdir(cacheDir.c_str());
+#else
+    mkdir(cacheDir.c_str(), 0755);
+#endif
+    
+    // Generate cache filename based on original filename
+    std::string baseName = soundFileName;
+    size_t dotPos = baseName.find_last_of('.');
+    if (dotPos != std::string::npos) {
+        baseName = baseName.substr(0, dotPos);
+    }
+    
+    return cacheDir + "/" + baseName + "_cached.wav";
+}
+
+bool TetrimoneBoard::loadCachedWav(const std::string& cacheFilePath, std::vector<uint8_t>& wavData) {
+    std::ifstream file(cacheFilePath, std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+    
+    // Get file size
+    file.seekg(0, std::ios::end);
+    size_t fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+    
+    // Read file into vector
+    wavData.resize(fileSize);
+    file.read(reinterpret_cast<char*>(wavData.data()), fileSize);
+    file.close();
+    
+    return file.good();
+}
+
+bool TetrimoneBoard::saveCachedWav(const std::string& cacheFilePath, const std::vector<uint8_t>& wavData) {
+    std::ofstream file(cacheFilePath, std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+    
+    file.write(reinterpret_cast<const char*>(wavData.data()), wavData.size());
+    file.close();
+    
+    return file.good();
+}
+
+// Modified loadSoundFromZip function with caching
+bool TetrimoneBoard::loadSoundFromZip(GameSoundEvent event, const std::string& soundFileName) {
     // Extract the sound file from the ZIP archive
     std::vector<uint8_t> soundData;
     if (!extractFileFromZip(sounds_zip_path_, soundFileName, soundData)) {
@@ -222,25 +273,43 @@ bool TetrimoneBoard::loadSoundFromZip(GameSoundEvent event,
         }
     }
 
-    // Check if it's an MIDI and convert to WAV
-if (format == "mid" || format == "midi") {  // Added support for both .mid and .midi extensions
-    std::vector<uint8_t> wavData;
-    std::cerr << "Converting MIDI to WAV..." << std::endl;
-    if (convertMidiToWavInMemory(soundData, wavData)) {
-        // Replace the original data with the converted WAV data
-        soundData = std::move(wavData);
-        format = "wav";
+    // Check if it's MIDI and convert to WAV with caching
+    if (format == "mid" || format == "midi") {
+        std::string cacheFilePath = getCacheFilePath(soundFileName);
+        std::vector<uint8_t> wavData;
         
-        // Update audio length after conversion
-        audioLength = soundData.size();
-        std::cerr << "MIDI conversion successful, WAV size: " << audioLength << " bytes" << std::endl;
-    } else {
-        std::cerr << "Failed to convert MIDI to WAV: " << soundFileName << std::endl;
-        return false;
+        // Try to load from cache first
+        if (loadCachedWav(cacheFilePath, wavData)) {
+            std::cerr << "Loaded cached WAV for: " << soundFileName << std::endl;
+            soundData = std::move(wavData);
+            format = "wav";
+            audioLength = soundData.size();
+        } else {
+            // Cache miss - convert MIDI to WAV
+            std::cerr << "Converting MIDI to WAV: " << soundFileName << std::endl;
+            if (convertMidiToWavInMemory(soundData, wavData)) {
+                // Save to cache for next time
+                if (saveCachedWav(cacheFilePath, wavData)) {
+                    std::cerr << "Cached WAV saved to: " << cacheFilePath << std::endl;
+                } else {
+                    std::cerr << "Failed to save WAV cache: " << cacheFilePath << std::endl;
+                }
+                
+                // Replace the original data with the converted WAV data
+                soundData = std::move(wavData);
+                format = "wav";
+                
+                // Update audio length after conversion
+                audioLength = soundData.size();
+                std::cerr << "MIDI conversion successful, WAV size: " << audioLength << " bytes" << std::endl;
+            } else {
+                std::cerr << "Failed to convert MIDI to WAV: " << soundFileName << std::endl;
+                return false;
+            }
+        }
     }
-}
 
-
+    // Rest of the function remains the same...
     // Map GameSoundEvent to AudioManager's SoundEvent
     SoundEvent audioEvent;
     switch (event) {

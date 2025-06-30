@@ -203,6 +203,10 @@ private:
     std::chrono::high_resolution_clock::time_point lineClearStartTime;
     std::chrono::high_resolution_clock::time_point movementStartTime;
     std::chrono::high_resolution_clock::time_point themeStartTime;
+
+    std::string getCacheFilePath(const std::string& soundFileName);
+    bool loadCachedWav(const std::string& cacheFilePath, std::vector<uint8_t>& wavData);
+    bool saveCachedWav(const std::string& cacheFilePath, const std::vector<uint8_t>& wavData);
     
     
     struct FireworkParticle {
