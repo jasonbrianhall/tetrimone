@@ -11,12 +11,21 @@
 #endif
 
 void TetrimoneBoard::cleanupBackgroundImages() {
+    // Clean up regular background images
     for (auto surface : backgroundImages) {
         if (surface != nullptr) {
             cairo_surface_destroy(surface);
         }
     }
     backgroundImages.clear();
+    
+    // Clean up patriot background images
+    for (auto surface : patriotBackgroundImages) {
+        if (surface != nullptr) {
+            cairo_surface_destroy(surface);
+        }
+    }
+    patriotBackgroundImages.clear();
 }
 
 void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
@@ -252,13 +261,32 @@ bool TetrimoneBoard::loadBackgroundImage(const std::string& imagePath) {
 }
 
 void TetrimoneBoard::selectRandomBackground() {
-    if (backgroundImages.empty()) {
+    // Determine which image collection to use based on patriotic mode
+    std::vector<cairo_surface_t*>* imageCollection = nullptr;
+    
+    printf("patriot mode %i\n", patrioticModeActive);
+    printf("patriot images count: %zu\n", patriotBackgroundImages.size());
+    printf("regular images count: %zu\n", backgroundImages.size());
+    
+    if (patrioticModeActive && !patriotBackgroundImages.empty()) {
+        // Use patriot images when in patriotic mode and they exist
+        imageCollection = &patriotBackgroundImages;
+        printf("Using patriot image collection\n");
+    } else if (!backgroundImages.empty()) {
+        // Use regular images as fallback or when not in patriotic mode
+        imageCollection = &backgroundImages;
+        printf("Using regular image collection\n");
+    } else {
+        // No images available
+        printf("No images available\n");
         return;
     }
     
-    // Generate a random index
-    std::uniform_int_distribution<int> dist(0, backgroundImages.size() - 1);
-    currentBackgroundIndex = dist(rng);
+    // Generate a random index for the selected collection
+    printf("Collection size: %zu, range: 0 to %zu\n", imageCollection->size(), imageCollection->size() - 1);
+    std::uniform_int_distribution<int> dist(0, imageCollection->size() - 1);
+    int randomIndex = dist(rng);
+    printf("Generated random index: %d\n", randomIndex);
     
     // Update the current background image
     if (backgroundImage != nullptr) {
@@ -266,7 +294,7 @@ void TetrimoneBoard::selectRandomBackground() {
     }
     
     // Clone the selected surface to avoid double-free issues
-    cairo_surface_t* selectedSurface = backgroundImages[currentBackgroundIndex];
+    cairo_surface_t* selectedSurface = (*imageCollection)[randomIndex];
     int width = cairo_image_surface_get_width(selectedSurface);
     int height = cairo_image_surface_get_height(selectedSurface);
     
@@ -283,6 +311,17 @@ void TetrimoneBoard::selectRandomBackground() {
     
     // Set the single-image mode to use our new image
     useBackgroundImage = true;
+    
+    // Store which collection and index we're using for tracking
+    if (imageCollection == &patriotBackgroundImages) {
+        // We're using a patriot image - store the index for transitions
+        currentPatriotBackgroundIndex = randomIndex;
+        std::cout << "Selected random patriot background image (index " << randomIndex << ")" << std::endl;
+    } else {
+        // We're using a regular image
+        currentBackgroundIndex = randomIndex;
+        std::cout << "Selected random background image (index " << randomIndex << ")" << std::endl;
+    }
 }
 
 // Update the background toggle handler to handle ZIP mode
@@ -482,8 +521,16 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
 }
 
 void TetrimoneBoard::startBackgroundTransition() {
-    if (!useBackgroundZip || backgroundImages.empty() || !useBackgroundImage) {
+    if (!useBackgroundZip || !useBackgroundImage) {
         return; // Only perform transitions when using background images from ZIP
+    }
+    
+    // Check if we have appropriate images for the current mode
+    if (patrioticModeActive && patriotBackgroundImages.empty()) {
+        return; // No patriot images available in patriotic mode
+    }
+    if (!patrioticModeActive && backgroundImages.empty()) {
+        return; // No regular images available in normal mode
     }
     
     // If already transitioning, cancel the current transition
@@ -519,17 +566,8 @@ void TetrimoneBoard::startBackgroundTransition() {
     isTransitioning = true;
     transitionDirection = -1; // Start by fading out
     
-    // Select the next background but don't display it yet
-    // We'll wait until fully faded out
-    int oldIndex = currentBackgroundIndex;
-    
-    // Select a new random background that's different from the current one
-    if (backgroundImages.size() > 1) {
-        std::uniform_int_distribution<int> dist(0, backgroundImages.size() - 1);
-        do {
-            currentBackgroundIndex = dist(rng);
-        } while (currentBackgroundIndex == oldIndex);
-    }
+    // Select a new random background - this will be applied during the transition
+    // We'll call selectRandomBackground() when we're fully faded out
     
     // Start the transition timer - update 20 times per second
     transitionTimerId = g_timeout_add(50, 
@@ -555,24 +593,11 @@ void TetrimoneBoard::updateBackgroundTransition() {
         transitionOpacity = 0.0;
         transitionDirection = 1; // Change to fade in
         
-        // Update the actual background image with the new selection
-        if (backgroundImage != nullptr) {
-            cairo_surface_destroy(backgroundImage);
-        }
+        // Now select a new random background using the existing function
+        // This will automatically choose patriot vs regular based on current mode
+        selectRandomBackground();
         
-        // Create a new background from the selected image
-        cairo_surface_t* selectedSurface = backgroundImages[currentBackgroundIndex];
-        int width = cairo_image_surface_get_width(selectedSurface);
-        int height = cairo_image_surface_get_height(selectedSurface);
-        
-        backgroundImage = cairo_image_surface_create(
-            cairo_image_surface_get_format(selectedSurface),
-            width, height);
-        
-        cairo_t* cr = cairo_create(backgroundImage);
-        cairo_set_source_surface(cr, selectedSurface, 0, 0);
-        cairo_paint(cr);
-        cairo_destroy(cr);
+        std::cout << "Background transition: selected new random background" << std::endl;
     }
     
     // Check if transition is complete
@@ -613,6 +638,14 @@ bool TetrimoneBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
     // Clean up existing background images first
     cleanupBackgroundImages();
     
+    // Also clean up patriot background images
+    for (auto surface : patriotBackgroundImages) {
+        if (surface != nullptr) {
+            cairo_surface_destroy(surface);
+        }
+    }
+    patriotBackgroundImages.clear();
+    
     // Store the ZIP path
     backgroundZipPath = zipPath;
     
@@ -637,6 +670,7 @@ bool TetrimoneBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
     
     // Count how many image files we found
     int imageCount = 0;
+    int patriotImageCount = 0;
     
     // Process each file in the archive
     for (zip_int64_t i = 0; i < numEntries; i++) {
@@ -660,6 +694,12 @@ bool TetrimoneBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
         if (extension != "png" && extension != "jpg" && extension != "jpeg") {
             continue;  // Skip non-image files
         }
+        
+        // Check if filename contains "patriot" (case-insensitive)
+        std::string filenameLower = filename;
+        std::transform(filenameLower.begin(), filenameLower.end(), filenameLower.begin(), 
+            [](unsigned char c) { return std::tolower(c); });
+        bool isPatriotImage = filenameLower.find("patriot") != std::string::npos;
         
         // Open the file in the archive
         zip_file_t *file = zip_fopen_index(archive, i, 0);
@@ -721,9 +761,16 @@ bool TetrimoneBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
         
         // Check if the surface was created successfully
         if (surface && cairo_surface_status(surface) == CAIRO_STATUS_SUCCESS) {
-            // Add the surface to our collection
-            backgroundImages.push_back(surface);
-            imageCount++;
+            // Add the surface to the appropriate collection based on filename
+            if (isPatriotImage) {
+                patriotBackgroundImages.push_back(surface);
+                patriotImageCount++;
+                std::cout << "Loaded patriot background image: " << filename << std::endl;
+            } else {
+                backgroundImages.push_back(surface);
+                imageCount++;
+                std::cout << "Loaded regular background image: " << filename << std::endl;
+            }
         } else {
             std::cerr << "Failed to load image from ZIP: " << filename << std::endl;
             if (surface) cairo_surface_destroy(surface);
@@ -734,17 +781,26 @@ bool TetrimoneBoard::loadBackgroundImagesFromZip(const std::string& zipPath) {
     zip_close(archive);
     
     // Check if we loaded any images
-    if (imageCount == 0) {
+    if (imageCount == 0 && patriotImageCount == 0) {
         std::cerr << "No valid image files found in ZIP archive" << std::endl;
         return false;
     }
     
-    // Set the current background to a random one
-    useBackgroundZip = true;
-    useBackgroundImage = true;
-    selectRandomBackground();
+    // Set the current background to a random one from regular images if available
+    // If no regular images but patriot images exist, you might want to handle this case
+    if (imageCount > 0) {
+        useBackgroundZip = true;
+        useBackgroundImage = true;
+        selectRandomBackground();
+    } else if (patriotImageCount > 0) {
+        // Handle case where only patriot images are available
+        // This depends on your game logic - you might want to set patriotic mode
+        // or handle this differently
+        std::cout << "Only patriot background images found. Consider enabling patriotic mode." << std::endl;
+    }
     
-    std::cout << "Successfully loaded " << imageCount << " background images from ZIP" << std::endl;
+    std::cout << "Successfully loaded " << imageCount << " regular background images and " 
+              << patriotImageCount << " patriot background images from ZIP" << std::endl;
     return true;
 }
 

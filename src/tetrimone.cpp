@@ -1335,12 +1335,17 @@ case GDK_KEY_comma:
                         app->board->getDifficultyText(app->difficulty).c_str());
             gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>FREEDOM COMMANDS</b>");
             
-            // Disable background image
-            /*if (board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) {
-                board->setUseBackgroundImage(false);
-                board->setUseBackgroundZip(false);
+            // Re-enable background if it was enabled before
+            if (board->getBackgroundImage() != nullptr) {
+                board->setUseBackgroundImage(true);
+                // Also restore the useBackgroundZip flag if background images were loaded from ZIP
+                if (!board->backgroundZipPath.empty()) {
+                    board->setUseBackgroundZip(true);
+                    // Trigger a background transition for a nice effect when returning from patriotic mode
+                }
                 gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
-            }*/
+            }
+            board->startBackgroundTransition();
             
             // Play a special patriotic sound effect
             board->playSound(GameSoundEvent::Select);
@@ -1360,10 +1365,10 @@ case GDK_KEY_comma:
                 if (!board->backgroundZipPath.empty()) {
                     board->setUseBackgroundZip(true);
                     // Trigger a background transition for a nice effect when returning from patriotic mode
-                    board->startBackgroundTransition();
                 }
                 gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
             }
+            board->startBackgroundTransition();
             
             // Re-enable music if sound is enabled
             if (!app->backgroundMusicPlaying && board->sound_enabled_) {

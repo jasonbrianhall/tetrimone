@@ -295,9 +295,11 @@ public:
     std::string backgroundImagePath;
     double backgroundOpacity; // 0.0 to 1.0
     std::vector<cairo_surface_t*> backgroundImages;
+    std::vector<cairo_surface_t*> patriotBackgroundImages;
     std::string backgroundZipPath;
     bool useBackgroundZip;
     int currentBackgroundIndex;
+    int currentPatriotBackgroundIndex;
     bool isGhostPieceEnabled() const { return ghostPieceEnabled; }
     void setGhostPieceEnabled(bool enabled) { ghostPieceEnabled = enabled; }
 
