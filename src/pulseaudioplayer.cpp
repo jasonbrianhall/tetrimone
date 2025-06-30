@@ -62,11 +62,28 @@ public:
   }
 
   // Instead of stopping all sounds, just mute them temporarily
-  void stopAllSounds() override {
-    // Instead of setting the global flag to signal stopping,
-    // just mute all audio so that it continues playing silently in the background
+void stopAllSounds() override {
+    // Set stop flag immediately
+    g_shouldStopPlayback = true;
+    
+    // Force immediate mute to cut audio output
     g_isMuted = true;
-  }
+    
+    // Wait longer for threads to respond
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Reset stop flag but keep muted (will be unmuted by restoreVolume)
+    g_shouldStopPlayback = false;
+    
+    // Force a brief pause to ensure all threads have stopped
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+void muteAllSounds() override {
+    // Same implementation as stopAllSounds for PulseAudio
+    g_isMuted = true;
+}
+
 
   // Method to mute/unmute our application's audio only
   void muteAudio(bool mute) {
