@@ -558,7 +558,26 @@ const std::vector<std::vector<std::array<double, 3>>> TETRIMONEBLOCK_COLOR_THEME
         {0.8, 0.6, 0.3},  // Diagonal Domino - Gold Leaf
         {0.9, 0.8, 0.6}   // Monomino - Parchment
     },
-    // Theme 31: Soviet Retro Mode (1984)
+    // Theme 31: USA
+
+    {
+    {0.0, 0.2, 0.5},  // I - Navy Blue (Deep Blue from flag)
+    {0.9, 0.1, 0.1},  // O - Old Glory Red
+    {1.0, 1.0, 1.0},  // T - Pure White (Stars and stripes)
+    {0.7, 0.0, 0.0},  // S - Crimson Red
+    {0.1, 0.3, 0.7},  // Z - Royal Blue
+    {0.8, 0.8, 0.8},  // J - Silver White
+    {0.6, 0.0, 0.1},  // L - Burgundy Red
+    // Additional colors for smaller pieces
+    {0.2, 0.4, 0.8},  // Straight Triomino - Liberty Blue
+    {0.8, 0.1, 0.2},  // L Triomino - Cherry Red
+    {0.9, 0.9, 0.9},  // Reverse L Triomino - Frost White
+    {0.1, 0.1, 0.4},  // V Triomino - Midnight Blue
+    {0.7, 0.1, 0.1},  // H/V Domino - Brick Red
+    {0.3, 0.5, 0.9},  // Diagonal Domino - Bright Blue
+    {1.0, 0.9, 0.9}   // Monomino - Snow White
+},
+    // Theme 32: Soviet Retro Mode (1984)
     {
         {0.0, 0.6, 0.0},  // I - Classic Phosphor Green
         {0.0, 0.5, 0.0},  // O - Darker Phosphor Green

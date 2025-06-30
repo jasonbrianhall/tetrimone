@@ -1940,7 +1940,8 @@ g_signal_connect(G_OBJECT(blockTrailsConfigMenuItem), "activate",
     "Botanical",            // 27
     "Jazz Age",             // 28
     "Steampunk",            // 29
-    "Soviet Retro"          // 30 - This should be the last one
+    "USA",                  // 30
+    "Soviet Retro"          // 31 - This should be the last one
   };
 
   // Create radio menu items for each theme
