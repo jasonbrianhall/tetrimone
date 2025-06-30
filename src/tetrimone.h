@@ -264,6 +264,7 @@ public:
 
     
     bool retroModeActive = false;  // Flag for retro mode
+    bool patrioticModeActive = false;
     bool simpleBlocksActive = false;
     bool retroMusicActive = false;
     bool showGridLines = false; // Grid lines off by default
