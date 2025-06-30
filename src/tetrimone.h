@@ -198,6 +198,25 @@ private:
     std::chrono::high_resolution_clock::time_point movementStartTime;
     std::chrono::high_resolution_clock::time_point themeStartTime;
     
+    
+    struct FireworkParticle {
+    double x, y;           // Current position
+    double vx, vy;         // Velocity
+    double life;           // Life remaining (1.0 to 0.0)
+    double maxLife;        // Maximum life span
+    std::array<double, 3> color; // RGB color
+    double size;           // Particle size
+    double gravity;        // Gravity effect
+    double fade;           // Fade rate
+};
+
+bool fireworksActive;
+std::vector<FireworkParticle> fireworkParticles;
+guint fireworksTimer;
+std::chrono::high_resolution_clock::time_point fireworksStartTime;
+static const int FIREWORKS_DURATION = 2000; // 2 seconds
+int fireworksType; // 0 = normal, 1 = tetrimone (4 lines)
+    
 public:
     // Theme transition methods
     void setLevel(int levelnumber);
@@ -346,6 +365,12 @@ public:
     void startSmoothMovement(int newX, int newY);
     void updateSmoothMovement();
     void setApp(TetrimoneApp* appPtr) { app = appPtr; }
+void startFireworksAnimation(int linesCleared);
+void updateFireworksAnimation();
+void createFireworkBurst(double centerX, double centerY, const std::array<double, 3>& baseColor, int particleCount);
+bool isFireworksActive() const { return fireworksActive; }
+const std::vector<FireworkParticle>& getFireworkParticles() const { return fireworkParticles; }
+
 };
 
 // Function declarations

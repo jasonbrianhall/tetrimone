@@ -198,6 +198,10 @@ lastPieceX(0), lastPieceY(0), smoothMovementTimer(0), movementProgress(0.0),
     propagandaTimerId = 0;
     propagandaMessageDuration = 2000; // 2 seconds display time
 
+fireworksActive = false;
+fireworksTimer = 0;
+fireworksType = 0;
+
 
 heatLevel = 0.5f;
 heatDecayTimer = 0;
@@ -264,6 +268,130 @@ if (smoothMovementTimer > 0) {
 
     // Clean up any background images from ZIP
     cleanupBackgroundImages();
+
+if (fireworksTimer > 0) {
+    g_source_remove(fireworksTimer);
+    fireworksTimer = 0;
+}
+
+}
+
+void TetrimoneBoard::startFireworksAnimation(int linesCleared) {
+    if (linesCleared != 4) return; // Only for Tetrimone (4 lines)
+    
+    fireworksActive = true;
+    fireworksType = 1; // Tetrimone fireworks
+    fireworkParticles.clear();
+    fireworksStartTime = std::chrono::high_resolution_clock::now();
+    
+    // Create multiple firework bursts across the cleared lines
+    for (int i = 0; i < 5; i++) {
+        double x = (rng() % GRID_WIDTH) * BLOCK_SIZE + BLOCK_SIZE / 2;
+        double y = (rng() % 4 + GRID_HEIGHT - 8) * BLOCK_SIZE + BLOCK_SIZE / 2;
+        
+        // Use theme colors for fireworks
+        int colorIndex = rng() % 7; // Use tetrimone block colors
+        std::array<double, 3> color = TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][colorIndex];
+        
+        createFireworkBurst(x, y, color, 15 + rng() % 10);
+    }
+    
+    // Start animation timer
+    if (fireworksTimer > 0) {
+        g_source_remove(fireworksTimer);
+    }
+    
+    fireworksTimer = g_timeout_add(16, // ~60 FPS
+        [](gpointer userData) -> gboolean {
+            TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
+            board->updateFireworksAnimation();
+            return board->isFireworksActive();
+        }, 
+        this);
+}
+
+void TetrimoneBoard::createFireworkBurst(double centerX, double centerY, 
+                                        const std::array<double, 3>& baseColor, 
+                                        int particleCount) {
+    for (int i = 0; i < particleCount; i++) {
+        FireworkParticle particle;
+        
+        // Random angle and speed
+        double angle = (2.0 * M_PI * i) / particleCount + (rng() % 100 - 50) * 0.01;
+        double speed = 2.0 + (rng() % 100) * 0.03;
+        
+        particle.x = centerX;
+        particle.y = centerY;
+        particle.vx = cos(angle) * speed;
+        particle.vy = sin(angle) * speed;
+        particle.life = 1.0;
+        particle.maxLife = 1.0 + (rng() % 100) * 0.01; // Slight variation
+        particle.size = 3.0 + (rng() % 3);
+        particle.gravity = 0.1 + (rng() % 5) * 0.01;
+        particle.fade = 0.008 + (rng() % 5) * 0.001;
+        
+        // Color variation
+        particle.color = baseColor;
+        for (int c = 0; c < 3; c++) {
+            particle.color[c] += (rng() % 40 - 20) * 0.01;
+            particle.color[c] = std::max(0.0, std::min(1.0, particle.color[c]));
+        }
+        
+        fireworkParticles.push_back(particle);
+    }
+}
+
+void TetrimoneBoard::updateFireworksAnimation() {
+    auto now = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - fireworksStartTime).count();
+    
+    // Add new bursts over time for more spectacular effect
+    if (elapsed > 200 && elapsed < 1500 && (elapsed % 300) < 50) {
+        double x = (rng() % GRID_WIDTH) * BLOCK_SIZE + BLOCK_SIZE / 2;
+        double y = (rng() % 6 + GRID_HEIGHT - 10) * BLOCK_SIZE + BLOCK_SIZE / 2;
+        
+        int colorIndex = rng() % 7;
+        std::array<double, 3> color = TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][colorIndex];
+        
+        createFireworkBurst(x, y, color, 12 + rng() % 8);
+    }
+    
+    // Update existing particles
+    for (auto it = fireworkParticles.begin(); it != fireworkParticles.end();) {
+        FireworkParticle& p = *it;
+        
+        // Update physics
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += p.gravity; // Apply gravity
+        p.life -= p.fade;
+        
+        // Add some air resistance
+        p.vx *= 0.98;
+        p.vy *= 0.98;
+        
+        // Remove dead particles
+        if (p.life <= 0.0) {
+            it = fireworkParticles.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
+    // FORCE REDRAW - This is crucial!
+    if (app) {
+        gtk_widget_queue_draw(app->gameArea);
+    }
+    
+    // End animation when time is up or no particles left
+    if (elapsed >= FIREWORKS_DURATION || fireworkParticles.empty()) {
+        fireworksActive = false;
+        fireworkParticles.clear();
+        if (fireworksTimer > 0) {
+            g_source_remove(fireworksTimer);
+            fireworksTimer = 0;
+        }
+    }
 }
 
 bool TetrimoneBoard::movePiece(int dx, int dy) {
@@ -448,12 +576,12 @@ int TetrimoneBoard::clearLines() {
     if (linesCleared == 4) {
       playSound(GameSoundEvent::Excellent); // Play Tetrimone/Excellent sound for 4 lines
       heatLevel+=0.4;
+      startFireworksAnimation(linesCleared);
     } else if (linesCleared > 0) {
       playSound(GameSoundEvent::Clear); // Play normal clear sound for 1-3 lines
       if (linesCleared == 1) {
         playSound(GameSoundEvent::Single);
         heatLevel+=0.1;
-
       }
       if (linesCleared == 2) {
         playSound(GameSoundEvent::Double);

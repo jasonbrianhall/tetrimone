@@ -893,6 +893,30 @@ cairo_set_source_rgba(cr, heatColor[0], heatColor[1], heatColor[2], alpha); */
         cairo_show_text(cr, translationText);
     }
   }
+
+if (board->isFireworksActive()) {
+    const auto& particles = app->board->getFireworkParticles();
+    
+    for (const auto& particle : particles) {
+        // Set particle color with alpha based on life
+        double alpha = particle.life;
+        cairo_set_source_rgba(cr, particle.color[0], particle.color[1], particle.color[2], alpha);
+        
+        // Draw particle as a glowing circle
+        cairo_arc(cr, particle.x, particle.y, particle.size * particle.life, 0, 2 * M_PI);
+        cairo_fill(cr);
+        
+        // Add glow effect
+        cairo_set_source_rgba(cr, particle.color[0], particle.color[1], particle.color[2], alpha * 0.3);
+        cairo_arc(cr, particle.x, particle.y, particle.size * particle.life * 2, 0, 2 * M_PI);
+        cairo_fill(cr);
+        
+        // Add bright center
+        cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, alpha * 0.8);
+        cairo_arc(cr, particle.x, particle.y, particle.size * particle.life * 0.3, 0, 2 * M_PI);
+        cairo_fill(cr);
+    }
+}
   
   return FALSE;
 }
