@@ -142,7 +142,7 @@ bool TetrimoneBoard::initializeAudio() {
         loadSoundFromZip(GameSoundEvent::PatrioticMusicRetro, "americathebeautiful.mp3") &&
         loadSoundFromZip(GameSoundEvent::PatrioticMusic2Retro, "grandoldflag.mp3") &&
         loadSoundFromZip(GameSoundEvent::PatrioticMusic3Retro, "johnny.mp3") &&
-        loadSoundFromZip(GameSoundEvent::PatrioticMusic4Retro, "navy.mp3") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic4Retro, "airforce.mp3") &&
         loadSoundFromZip(GameSoundEvent::PatrioticMusic5Retro, "riverkwai.mp3") &&
         loadSoundFromZip(GameSoundEvent::Single, "single.mp3") &&
         loadSoundFromZip(GameSoundEvent::Double, "double.mp3") &&
