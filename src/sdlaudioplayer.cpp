@@ -218,6 +218,7 @@ public:
         
     }
 
+#ifndef _WIN32
     void stopAllSounds() override {
         if (!initialized_) {
             return;
@@ -228,6 +229,23 @@ public:
         // Give SDL a moment to process the halt
         SDL_Delay(1);
     }
+#else
+    void stopAllSounds() override {
+        if (!initialized_) {
+            return;
+        }
+        
+        std::lock_guard<std::mutex> lock(mutex_);
+        
+        // Set muted flag
+        isMuted_ = true;
+        
+        // Set all channel volumes to 0
+        for (auto& pair : sound_chunks_) {
+            Mix_Volume(pair.first, 0);
+        }
+    }
+#endif
     
     void muteAllSounds() override {
         if (!initialized_) {
