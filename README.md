@@ -28,6 +28,9 @@ Prepare for a block-stacking adventure that'll make your neurons dance! GTK Tetr
 - **Blocks Per Level**: Add anywhere from zero to five junk lines per level; the higher the number, the faster you lose.
 - **Control Block Shapes**: Initial settings include mononomes, dominoes, triominoes, and tetrominoes.  Don't like mononomes, domnioes, or triominoes, remove them.
 - **Retro Blocks**: You like retro blocks, configure it.
+- **Heat Sensor**: It gets warmer or colder depending how fast blocks are laid and conquered.
+- **Fireworks**: Four lines cleared will generate a fireworks animation.
+
 
 ### Audio Awesomeness
 - **Pumping Background Music**: Powered by PulseAudio or SDL2 audio
@@ -282,7 +285,9 @@ In English: Press the period key to activate an EPIC retro Soviet mode that tran
 
 Remember: In Tetrimone, as in life, the Party is always right! 🚩✊
 
+## Freedom Mode
 
+Press comma (,) to activate patriotic American mode with rock music, freedom messaging, and red-white-blue aesthetics!
 
 ## 🎮 Other Projects by Jason Brian Hall
 
@@ -307,4 +312,7 @@ Numbers have never been this exciting! Prepare for a Sudoku adventure that'll ma
 🔤 **Hangman Hijinks**: [Hangman](https://github.com/jasonbrianhall/hangman) - Word-guessing mayhem in your terminal! Prepare for linguistic warfare! 💬
 
 🃏 **Card Games Collection**: [Solitaire, FreeCell & Spider](https://github.com/jasonbrianhall/cardgames) - The most meticulously crafted card games with custom decks, animations, and more features than you can shuffle!
+
+📺 **Super Mario Brothers**: [Super Mario Brothers](https://github.com/jasonbrianhall/super_mario_brothers/) - A 6502 to C++ conversion of Super Mario Brothers.  ROM not included.
+
 
