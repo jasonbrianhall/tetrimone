@@ -1549,7 +1549,63 @@ if (!board->isPaused() && !board->isSplashScreenActive() && !board->retroModeAct
         app);
     }
   }
-  
+  else if (!board->isPaused() && !board->isGameOver() && board->patrioticModeActive) {
+    // 1 in 1776 chance of Freedom Inspection (in honor of 1776!)
+    static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
+    std::uniform_int_distribution<int> dist(1, 1776);
+
+    if (dist(rng) == 1) {
+      // Pause the game briefly for patriotic interruption
+      app->board->setPaused(true);
+      
+      // Create random patriotic popup messages
+      const char* freedomInspections[] = {
+        "🇺🇸 FREEDOM INSPECTION IN PROGRESS! 🦅\n(Checking your liberty levels...)",
+        "📺 COMMERCIAL BREAK! 🍔\n(This freedom brought to you by sponsors!)",
+        "🏈 TOUCHDOWN! AMERICA SCORES! 🎯\n(Brief patriotic celebration pause!)",
+        "☕ COFFEE BREAK TIME! ⏰\n(Even freedom fighters need caffeine!)",
+        "📱 SOCIAL MEDIA NOTIFICATION! 💬\n(Someone liked your freedom post!)",
+        "🛒 FLASH SALE ALERT! 💳\n(50% off freedom accessories!)",
+        "🎬 MOVIE TRAILER PREVIEW! 🍿\n(Coming soon: BLOCKS 2: FREEDOM EDITION!)",
+        "🚗 TRAFFIC UPDATE! 🛣️\n(Highway to freedom temporarily slowed!)",
+        "🌮 FOOD TRUCK ALERT! 🚚\n(Taco Tuesday freedom fuel available!)",
+        "📺 BREAKING NEWS! 📰\n(Local gamer achieves blocks and liberty!)"
+      };
+      
+      // Select random message
+      std::uniform_int_distribution<int> msgDist(0, 9);
+      const char* selectedMessage = freedomInspections[msgDist(rng)];
+      
+      // Create popup message with American style
+      GtkWidget *dialog = gtk_message_dialog_new(
+          GTK_WINDOW(app->window),
+          GTK_DIALOG_MODAL,
+          GTK_MESSAGE_INFO, // Info instead of warning - more positive!
+          GTK_BUTTONS_NONE,
+          "%s", selectedMessage);
+      
+      // Auto-close after 2.5 seconds (slightly longer for American attention spans)
+      g_timeout_add(2500, 
+        [](gpointer user_data) -> gboolean {
+          GtkWidget *dialog = static_cast<GtkWidget*>(user_data);
+          gtk_widget_destroy(dialog);
+          return G_SOURCE_REMOVE;
+        }, 
+        dialog);
+      
+      // Show dialog
+      gtk_widget_show_all(dialog);
+      
+      // Resume the game after 2.6 seconds
+      g_timeout_add(2600, 
+        [](gpointer user_data) -> gboolean {
+          TetrimoneApp *app = static_cast<TetrimoneApp *>(user_data);
+          app->board->setPaused(false);
+          return G_SOURCE_REMOVE;
+        }, 
+        app);
+    }
+  }
   return TRUE; // Keep the timer running
 }
 
