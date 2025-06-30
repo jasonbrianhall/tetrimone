@@ -65,6 +65,7 @@ public:
   virtual void setMusicVolume(float volume) = 0;
 
   virtual void stopAllSounds() = 0;
+  virtual void muteAllSounds() = 0;
   virtual void restoreVolume() { }
   virtual bool playBackgroundMusic(const std::vector<uint8_t>& data, 
                                  const std::string& format,

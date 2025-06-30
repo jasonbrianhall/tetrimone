@@ -217,8 +217,19 @@ public:
         Mix_Volume(channel, static_cast<int>(MIX_MAX_VOLUME * effectiveVolume));
         
     }
-    
+
     void stopAllSounds() override {
+        if (!initialized_) {
+            return;
+        }
+    
+        Mix_HaltChannel(-1);
+    
+        // Give SDL a moment to process the halt
+        SDL_Delay(1);
+    }
+    
+    void muteAllSounds() override {
         if (!initialized_) {
             return;
         }
