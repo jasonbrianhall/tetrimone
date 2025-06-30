@@ -139,11 +139,11 @@ bool TetrimoneBoard::initializeAudio() {
         loadSoundFromZip(GameSoundEvent::BackgroundMusic3Retro, "TetrimoneB.mid") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic4Retro, "TetrimoneC.mid") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic5Retro, "futuristic.mid") &&
-        loadSoundFromZip(GameSoundEvent::PatrioticMusicRetro, "Bornintheusa.mp3") &&
-        loadSoundFromZip(GameSoundEvent::PatrioticMusic2Retro, "Borntobewild.mp3") &&
-        loadSoundFromZip(GameSoundEvent::PatrioticMusic3Retro, "HighwaytoHell.mp3") &&
-        loadSoundFromZip(GameSoundEvent::PatrioticMusic4Retro, "footlose.mp3") &&
-        loadSoundFromZip(GameSoundEvent::PatrioticMusic5Retro, "YMCA.mp3") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusicRetro, "americathebeautiful.mp3") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic2Retro, "grandoldflag.mp3") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic3Retro, "johnny.mp3") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic4Retro, "navy.mp3") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic5Retro, "riverkwai.mp3") &&
         loadSoundFromZip(GameSoundEvent::Single, "single.mp3") &&
         loadSoundFromZip(GameSoundEvent::Double, "double.mp3") &&
         loadSoundFromZip(GameSoundEvent::Triple, "triple.mp3") &&
