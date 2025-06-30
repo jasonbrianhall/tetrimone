@@ -1164,7 +1164,9 @@ case GDK_KEY_period:
         
         // Toggle the retro mode flag
         board->retroModeActive = !board->retroModeActive;
-        
+        board->patrioticModeActive = false;       
+
+
 
 if (board->retroModeActive) {
     // Store current theme before switching to retro mode
@@ -1226,6 +1228,99 @@ if (board->retroModeActive) {
             "• M: Переключение музыки\n\n"
             "Поддержка контроллера доступна.\n"
             "Настройка в меню Управление." :
+            "Keyboard Controls:\n"
+            "• Left/Right/A/D: Move block\n"
+            "• Up/W: Rotate clockwise\n"
+            "• Z: Rotate counter-clockwise\n"
+            "• Down/S: Soft drop\n"
+            "• Space: Hard drop\n"
+            "• P: Pause/Resume game\n"
+            "• R: Restart game\n"
+            "• M: Toggle music\n\n"
+            "Controller support is available.\n"
+            "Configure in Controls menu.");
+        
+        // Redraw game area to show theme change
+        gtk_widget_queue_draw(app->gameArea);
+        gtk_widget_queue_draw(app->nextPieceArea);
+    }
+    break;
+
+
+case GDK_KEY_comma:
+    // Toggle patriotic mode with comma key
+    {
+        // Save the current theme index when entering patriotic mode
+        static int savedThemeIndex = 0;
+        
+        // Toggle the patriotic mode flag
+        board->retroModeActive = false;
+        board->patrioticModeActive = !board->patrioticModeActive;       
+        
+        if (board->patrioticModeActive) {
+            // Store current theme before switching to patriotic mode
+            savedThemeIndex = currentThemeIndex;
+            gtk_window_set_title(GTK_WINDOW(app->window), "FREEDOM BLOCKS - GOD BLESS AMERICA");
+            // Set to American Patriotic theme (theme index 31)
+            currentThemeIndex = NUM_COLOR_THEMES - 2;
+            gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
+                        app->board->getDifficultyText(app->difficulty).c_str());
+            gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>FREEDOM COMMANDS</b>");
+            
+            // Disable background image
+            if (board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) {
+                board->setUseBackgroundImage(false);
+                board->setUseBackgroundZip(false);
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), FALSE);
+            }
+            
+            // Play a special patriotic sound effect
+            board->playSound(GameSoundEvent::Select);
+            std::cout << "Patriotic mode ON - FREEDOM ACTIVATED!" << std::endl;
+        } else {
+            gtk_window_set_title(GTK_WINDOW(app->window), "Tetrimone");
+            // Restore previous theme
+            currentThemeIndex = savedThemeIndex;
+            gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
+                        app->board->getDifficultyText(app->difficulty).c_str());
+            gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>Controls</b>");
+            
+            // Re-enable background if it was enabled before
+            if (board->getBackgroundImage() != nullptr) {
+                board->setUseBackgroundImage(true);
+                // Also restore the useBackgroundZip flag if background images were loaded from ZIP
+                if (!board->backgroundZipPath.empty()) {
+                    board->setUseBackgroundZip(true);
+                    // Trigger a background transition for a nice effect when returning from patriotic mode
+                    board->startBackgroundTransition();
+                }
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+            }
+            
+            // Re-enable music if sound is enabled
+            if (!app->backgroundMusicPlaying && board->sound_enabled_) {
+                board->resumeBackgroundMusic();
+                app->backgroundMusicPlaying = true;
+            }
+            
+            std::cout << "Patriotic mode OFF" << std::endl;
+        }
+        
+        // Update controls text
+        gtk_label_set_text(GTK_LABEL(app->controlsLabel), 
+            board->patrioticModeActive ? 
+            "Freedom Controls:\n"
+            "• Left/Right/A/D: Exercise your right to move blocks\n"
+            "• Up/W: Rotate clockwise (like freedom)\n"
+            "• Z: Rotate counter-clockwise (constitutional right)\n"
+            "• Down/S: Soft drop (gentle like democracy)\n"
+            "• Space: Hard drop (decisive like America)\n"
+            "• P: Pause/Resume (work-life balance)\n"
+            "• R: Restart (second chances, American dream)\n"
+            "• M: Toggle music (freedom of choice)\n\n"
+            "Controller support available.\n"
+            "Configure in Controls menu.\n"
+            "🇺🇸 GOD BLESS AMERICA! 🦅" :
             "Keyboard Controls:\n"
             "• Left/Right/A/D: Move block\n"
             "• Up/W: Rotate clockwise\n"
