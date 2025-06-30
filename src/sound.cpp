@@ -139,6 +139,11 @@ bool TetrimoneBoard::initializeAudio() {
         loadSoundFromZip(GameSoundEvent::BackgroundMusic3Retro, "TetrimoneB.mid") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic4Retro, "TetrimoneC.mid") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic5Retro, "futuristic.mid") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusicRetro, "Bornintheusa.mid") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic2Retro, "Borntobewild.mid") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic3Retro, "HighwaytoHell.mid") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic4Retro, "footlose.mid") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic5Retro, "YMCA.mid") &&
         loadSoundFromZip(GameSoundEvent::Single, "single.mp3") &&
         loadSoundFromZip(GameSoundEvent::Double, "double.mp3") &&
         loadSoundFromZip(GameSoundEvent::Triple, "triple.mp3") &&
@@ -313,6 +318,21 @@ if (format == "mid" || format == "midi") {  // Added support for both .mid and .
         break;
     case GameSoundEvent::BackgroundMusic5Retro:
         audioEvent = SoundEvent::BackgroundMusic5Retro;
+        break;
+    case GameSoundEvent::PatrioticMusicRetro:
+        audioEvent = SoundEvent::PatrioticMusicRetro;
+        break;
+    case GameSoundEvent::PatrioticMusic2Retro:
+        audioEvent = SoundEvent::PatrioticMusic2Retro;
+        break;
+    case GameSoundEvent::PatrioticMusic3Retro:
+        audioEvent = SoundEvent::PatrioticMusic3Retro;
+        break;
+    case GameSoundEvent::PatrioticMusic4Retro:
+        audioEvent = SoundEvent::PatrioticMusic4Retro;
+        break;
+    case GameSoundEvent::PatrioticMusic5Retro:
+        audioEvent = SoundEvent::PatrioticMusic5Retro;
         break;
 
     default:
