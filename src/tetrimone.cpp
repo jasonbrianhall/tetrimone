@@ -859,6 +859,11 @@ if (level > currentlevel) {
             startBackgroundTransition();
         }
     }
+    else if (patrioticModeActive) {
+        if (useBackgroundZip && !backgroundImages.empty()) {
+            startBackgroundTransition();
+        }
+    }    
 }
 
   return linesCleared;
