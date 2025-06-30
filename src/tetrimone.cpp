@@ -202,6 +202,13 @@ fireworksActive = false;
 fireworksTimer = 0;
 fireworksType = 0;
 
+trailsEnabled = true;          // Enabled by default
+maxTrailSegments = 3;          // Keep only 3 trail segments (reduced)
+trailOpacity = 0.6;            // Default opacity
+trailDuration = 0.1;           // Default duration (seconds)
+trailUpdateTimer = 0;
+lastTrailTime = std::chrono::high_resolution_clock::now();
+
 
 heatLevel = 0.5f;
 heatDecayTimer = 0;
@@ -274,7 +281,97 @@ if (fireworksTimer > 0) {
     fireworksTimer = 0;
 }
 
+if (trailUpdateTimer > 0) {
+    g_source_remove(trailUpdateTimer);
+    trailUpdateTimer = 0;
 }
+
+}
+
+void TetrimoneBoard::createBlockTrail() {
+    if (!trailsEnabled || retroModeActive || !currentPiece) return;
+    
+    // Don't create trails if game is paused or over
+    if (isPaused() || isGameOver()) return;
+    
+    auto now = std::chrono::high_resolution_clock::now();
+    auto timeSinceLastTrail = std::chrono::duration<double, std::milli>(now - lastTrailTime).count();
+    
+    // Only create trails if enough time has passed
+    if (timeSinceLastTrail < TRAIL_SPAWN_DELAY) return;
+    lastTrailTime = now;
+    
+    // Create a new trail segment
+    BlockTrail trail;
+    trail.x = currentPiece->getX();
+    trail.y = currentPiece->getY();
+    trail.rotation = currentPiece->getRotation();
+    trail.pieceType = currentPiece->getType();
+    trail.shape = currentPiece->getShape();
+    trail.color = currentPiece->getColor();
+    trail.maxLife = trailDuration; // Use configurable duration
+    trail.life = trail.maxLife;
+    trail.alpha = trailOpacity; // Use configurable opacity
+    
+    blockTrails.push_back(trail);
+    
+    // Remove old trails if we have too many
+    while (blockTrails.size() > maxTrailSegments) {
+        blockTrails.erase(blockTrails.begin());
+    }
+    
+    // Start update timer if not running
+    if (trailUpdateTimer == 0) {
+        trailUpdateTimer = g_timeout_add(TRAIL_UPDATE_INTERVAL,
+            [](gpointer userData) -> gboolean {
+                TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
+                board->updateBlockTrails();
+                
+                // Force redraw
+                if (board->app) {
+                    gtk_widget_queue_draw(board->app->gameArea);
+                }
+                
+                return TRUE; // Keep timer running
+            }, this);
+    }
+}
+
+void TetrimoneBoard::updateBlockTrails() {
+    if (!trailsEnabled) {
+        blockTrails.clear();
+        if (trailUpdateTimer > 0) {
+            g_source_remove(trailUpdateTimer);
+            trailUpdateTimer = 0;
+        }
+        return;
+    }
+    
+    double deltaTime = TRAIL_UPDATE_INTERVAL / 1000.0; // Convert to seconds
+    
+    // Update existing trail segments
+    for (auto it = blockTrails.begin(); it != blockTrails.end();) {
+        BlockTrail& trail = *it;
+        
+        // Update life and alpha
+        trail.life -= deltaTime;
+        trail.alpha = (trail.life / trail.maxLife) * trailOpacity; // Use configurable opacity
+        
+        // Remove dead trails
+        if (trail.life <= 0.0 || trail.alpha <= 0.05) {
+            it = blockTrails.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
+    // Stop timer if no trails left
+    if (blockTrails.empty() && trailUpdateTimer > 0) {
+        g_source_remove(trailUpdateTimer);
+        trailUpdateTimer = 0;
+    }
+}
+
 
 void TetrimoneBoard::startFireworksAnimation(int linesCleared) {
     if (linesCleared != 4) return; // Only for Tetrimone (4 lines)
@@ -395,38 +492,47 @@ void TetrimoneBoard::updateFireworksAnimation() {
 }
 
 bool TetrimoneBoard::movePiece(int dx, int dy) {
-  if (gameOver || paused)
-    return false;
+    if (gameOver || paused)
+        return false;
 
-  int oldX = currentPiece->getX();
-  int oldY = currentPiece->getY();
-  
-  currentPiece->move(dx, dy);
+    int oldX = currentPiece->getX();
+    int oldY = currentPiece->getY();
+    
+    currentPiece->move(dx, dy);
 
-  if (checkCollision(*currentPiece)) {
-    currentPiece->move(-dx, -dy); // Move back if collision
-    return false;
-  }
-  
-  // Start smooth movement animation
-  startSmoothMovement(oldX, oldY);
-  
-  return true;
+    if (checkCollision(*currentPiece)) {
+        currentPiece->move(-dx, -dy); // Move back if collision
+        return false;
+    }
+    
+    // Create block trail only for horizontal movement (less intrusive)
+    if (trailsEnabled && !retroModeActive && dx != 0) {
+        createBlockTrail();
+    }
+    
+    // Start smooth movement animation
+    startSmoothMovement(oldX, oldY);
+    
+    return true;
 }
 
 
 bool TetrimoneBoard::rotatePiece(bool clockwise) {
-  if (gameOver || paused)
-    return false;
+    if (gameOver || paused)
+        return false;
 
-  currentPiece->rotate(clockwise);
+    currentPiece->rotate(clockwise);
 
-  if (checkCollision(*currentPiece)) {
-    currentPiece->rotate(!clockwise); // Rotate back in opposite direction
-    return false;
-  }
+    if (checkCollision(*currentPiece)) {
+        currentPiece->rotate(!clockwise); // Rotate back in opposite direction
+        return false;
+    }
 
-  return true;
+    if (trailsEnabled && !retroModeActive) {
+         createBlockTrail();
+    }
+
+    return true;
 }
 
 bool TetrimoneBoard::checkCollision(const TetrimoneBlock &piece) const {
@@ -1766,6 +1872,18 @@ void createMenu(TetrimoneApp *app) {
   g_signal_connect(G_OBJECT(gridLinesMenuItem), "toggled",
                    G_CALLBACK(onGridLinesToggled), app);
 
+GtkWidget* blockTrailsMenuItem = gtk_check_menu_item_new_with_label("Block Trails");
+gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockTrailsMenuItem),
+                               app->board->isTrailsEnabled());
+gtk_menu_shell_append(GTK_MENU_SHELL(graphicsMenu), blockTrailsMenuItem);
+g_signal_connect(G_OBJECT(blockTrailsMenuItem), "toggled",
+                 G_CALLBACK(onBlockTrailsToggled), app);
+
+GtkWidget* blockTrailsConfigMenuItem = gtk_menu_item_new_with_label("Block Trails Settings...");
+gtk_menu_shell_append(GTK_MENU_SHELL(graphicsMenu), blockTrailsConfigMenuItem);
+g_signal_connect(G_OBJECT(blockTrailsConfigMenuItem), "activate",
+                 G_CALLBACK(onBlockTrailsConfig), app);
+
 
   // *** SOUND MENU ***
   GtkWidget *soundMenu = gtk_menu_new();
@@ -2980,6 +3098,109 @@ void updateHeightValueLabel(GtkAdjustment *adj, gpointer data) {
   gtk_label_set_text(GTK_LABEL(label), text);
 }
 
+void onBlockSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+
+  // Pause the game if it's running
+  bool wasPaused = app->board->isPaused();
+  if (!wasPaused && !app->board->isGameOver() &&
+      !app->board->isSplashScreenActive()) {
+    onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+  }
+
+  // Store original block size in case user cancels
+  int originalBlockSize = BLOCK_SIZE;
+  int newBlockSize = BLOCK_SIZE; // Working value
+
+  // Create dialog with Apply and Cancel buttons
+  GtkWidget *dialog = gtk_dialog_new_with_buttons(
+      "Block Size", GTK_WINDOW(app->window), GTK_DIALOG_MODAL, "_Cancel",
+      GTK_RESPONSE_CANCEL, "_Apply", GTK_RESPONSE_APPLY, NULL);
+
+  // Make it a reasonable size
+  gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 150);
+
+  // Create content area
+  GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
+
+  // Create a vertical box for content
+  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+  gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+
+  // Add a label
+  GtkWidget *label = gtk_label_new("Adjust block size:");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+
+  // Create a horizontal scale (slider)
+  GtkWidget *scale = gtk_scale_new_with_range(
+      GTK_ORIENTATION_HORIZONTAL, MIN_BLOCK_SIZE, MAX_BLOCK_SIZE, 1);
+  gtk_range_set_value(GTK_RANGE(scale), BLOCK_SIZE);
+  gtk_scale_set_digits(GTK_SCALE(scale), 0); // No decimal places
+  gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
+  gtk_box_pack_start(GTK_BOX(vbox), scale, FALSE, FALSE, 0);
+
+  // Add min/max labels
+  GtkWidget *rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), rangeBox, FALSE, FALSE, 0);
+
+  GtkWidget *minLabel = gtk_label_new("Small");
+  gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
+
+  GtkWidget *maxLabel = gtk_label_new("Large");
+  gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
+  gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
+
+  // Current value label that updates as the slider moves
+  GtkWidget *currentValueLabel = gtk_label_new(NULL);
+  char valueBuf[32];
+  snprintf(valueBuf, sizeof(valueBuf), "Current size: %d", BLOCK_SIZE);
+  gtk_label_set_text(GTK_LABEL(currentValueLabel), valueBuf);
+  gtk_widget_set_halign(currentValueLabel, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(vbox), currentValueLabel, FALSE, FALSE, 0);
+
+  // Note about application
+  GtkWidget *noteLabel = gtk_label_new(
+      "Click Apply to set the new block size.\nThis will reset the game UI.");
+  gtk_widget_set_halign(noteLabel, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(vbox), noteLabel, FALSE, FALSE, 10);
+
+  // Connect value-changed signal to update the value label
+  g_signal_connect(G_OBJECT(scale), "value-changed",
+                   G_CALLBACK(updateSizeValueLabel), currentValueLabel);
+
+  // Show all dialog widgets
+  gtk_widget_show_all(dialog);
+
+  // Run the dialog
+  int response = gtk_dialog_run(GTK_DIALOG(dialog));
+
+  if (response == GTK_RESPONSE_APPLY) {
+    // Get the final block size value from the slider
+    newBlockSize = (int)gtk_range_get_value(GTK_RANGE(scale));
+
+    // Apply the new block size
+    BLOCK_SIZE = newBlockSize;
+
+    // Rebuild the UI with the new block size
+    rebuildGameUI(app);
+  } else {
+    // Reset to original if canceled
+    BLOCK_SIZE = originalBlockSize;
+  }
+
+  // Destroy dialog
+  gtk_widget_destroy(dialog);
+
+  // Resume the game if it wasn't paused before
+  if (!wasPaused && !app->board->isGameOver() &&
+      !app->board->isSplashScreenActive()) {
+    onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
+  }
+}
+
 void onGameSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
 
@@ -3153,105 +3374,127 @@ gboolean onWindowFocusChanged(GtkWidget *widget, GdkEventFocus *event, gpointer 
   return FALSE; // Continue event propagation
 }
 
-void onBlockSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+void onBlockTrailsToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    app->board->setTrailsEnabled(gtk_check_menu_item_get_active(menuItem));
+    
+    // Redraw to show/hide trails
+    gtk_widget_queue_draw(app->gameArea);
+}
 
-  // Pause the game if it's running
-  bool wasPaused = app->board->isPaused();
-  if (!wasPaused && !app->board->isGameOver() &&
-      !app->board->isSplashScreenActive()) {
-    onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
-  }
+// Helper callback functions for the sliders
+void onTrailOpacityChanged(GtkAdjustment* adj, gpointer data) {
+    GtkWidget* label = GTK_WIDGET(data);
+    double value = gtk_adjustment_get_value(adj);
+    char text[50];
+    sprintf(text, "Opacity: %.2f", value);
+    gtk_label_set_text(GTK_LABEL(label), text);
+}
 
-  // Store original block size in case user cancels
-  int originalBlockSize = BLOCK_SIZE;
-  int newBlockSize = BLOCK_SIZE; // Working value
+void onTrailDurationChanged(GtkAdjustment* adj, gpointer data) {
+    GtkWidget* label = GTK_WIDGET(data);
+    double value = gtk_adjustment_get_value(adj);
+    char text[50];
+    sprintf(text, "Duration: %.2f seconds", value);
+    gtk_label_set_text(GTK_LABEL(label), text);
+}
 
-  // Create dialog with Apply and Cancel buttons
-  GtkWidget *dialog = gtk_dialog_new_with_buttons(
-      "Block Size", GTK_WINDOW(app->window), GTK_DIALOG_MODAL, "_Cancel",
-      GTK_RESPONSE_CANCEL, "_Apply", GTK_RESPONSE_APPLY, NULL);
-
-  // Make it a reasonable size
-  gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 150);
-
-  // Create content area
-  GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-  gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
-
-  // Create a vertical box for content
-  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
-  gtk_container_add(GTK_CONTAINER(contentArea), vbox);
-
-  // Add a label
-  GtkWidget *label = gtk_label_new("Adjust block size:");
-  gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
-
-  // Create a horizontal scale (slider)
-  GtkWidget *scale = gtk_scale_new_with_range(
-      GTK_ORIENTATION_HORIZONTAL, MIN_BLOCK_SIZE, MAX_BLOCK_SIZE, 1);
-  gtk_range_set_value(GTK_RANGE(scale), BLOCK_SIZE);
-  gtk_scale_set_digits(GTK_SCALE(scale), 0); // No decimal places
-  gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
-  gtk_box_pack_start(GTK_BOX(vbox), scale, FALSE, FALSE, 0);
-
-  // Add min/max labels
-  GtkWidget *rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_pack_start(GTK_BOX(vbox), rangeBox, FALSE, FALSE, 0);
-
-  GtkWidget *minLabel = gtk_label_new("Small");
-  gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
-
-  GtkWidget *maxLabel = gtk_label_new("Large");
-  gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
-  gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
-
-  // Current value label that updates as the slider moves
-  GtkWidget *currentValueLabel = gtk_label_new(NULL);
-  char valueBuf[32];
-  snprintf(valueBuf, sizeof(valueBuf), "Current size: %d", BLOCK_SIZE);
-  gtk_label_set_text(GTK_LABEL(currentValueLabel), valueBuf);
-  gtk_widget_set_halign(currentValueLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(vbox), currentValueLabel, FALSE, FALSE, 0);
-
-  // Note about application
-  GtkWidget *noteLabel = gtk_label_new(
-      "Click Apply to set the new block size.\nThis will reset the game UI.");
-  gtk_widget_set_halign(noteLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(vbox), noteLabel, FALSE, FALSE, 10);
-
-  // Connect value-changed signal to update the value label
-  g_signal_connect(G_OBJECT(scale), "value-changed",
-                   G_CALLBACK(updateSizeValueLabel), currentValueLabel);
-
-  // Show all dialog widgets
-  gtk_widget_show_all(dialog);
-
-  // Run the dialog
-  int response = gtk_dialog_run(GTK_DIALOG(dialog));
-
-  if (response == GTK_RESPONSE_APPLY) {
-    // Get the final block size value from the slider
-    newBlockSize = (int)gtk_range_get_value(GTK_RANGE(scale));
-
-    // Apply the new block size
-    BLOCK_SIZE = newBlockSize;
-
-    // Rebuild the UI with the new block size
-    rebuildGameUI(app);
-  } else {
-    // Reset to original if canceled
-    BLOCK_SIZE = originalBlockSize;
-  }
-
-  // Destroy dialog
-  gtk_widget_destroy(dialog);
-
-  // Resume the game if it wasn't paused before
-  if (!wasPaused && !app->board->isGameOver() &&
-      !app->board->isSplashScreenActive()) {
-    onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
-  }
+void onBlockTrailsConfig(GtkMenuItem* menuItem, gpointer userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    
+    // Create dialog
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        "Block Trails Settings", GTK_WINDOW(app->window), GTK_DIALOG_MODAL,
+        "_Apply", GTK_RESPONSE_APPLY,
+        "_Cancel", GTK_RESPONSE_CANCEL, NULL);
+    
+    // Get content area
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
+    
+    // Create main VBox
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    
+    // Opacity settings
+    GtkWidget* opacityFrame = gtk_frame_new("Trail Opacity");
+    gtk_box_pack_start(GTK_BOX(vbox), opacityFrame, TRUE, TRUE, 0);
+    
+    GtkWidget* opacityBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_container_add(GTK_CONTAINER(opacityFrame), opacityBox);
+    
+    // Opacity slider
+    GtkAdjustment* opacityAdj = gtk_adjustment_new(
+        app->board->getTrailOpacity(), // Current value
+        0.1,  // Minimum
+        1.0,  // Maximum
+        0.05, // Step
+        0.1,  // Page increment
+        0     // Page size
+    );
+    
+    GtkWidget* opacityScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, opacityAdj);
+    gtk_scale_set_digits(GTK_SCALE(opacityScale), 2);
+    gtk_box_pack_start(GTK_BOX(opacityBox), opacityScale, TRUE, TRUE, 0);
+    
+    GtkWidget* opacityLabel = gtk_label_new("");
+    gtk_box_pack_start(GTK_BOX(opacityBox), opacityLabel, FALSE, FALSE, 0);
+    
+    // Duration settings
+    GtkWidget* durationFrame = gtk_frame_new("Trail Duration");
+    gtk_box_pack_start(GTK_BOX(vbox), durationFrame, TRUE, TRUE, 0);
+    
+    GtkWidget* durationBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_container_add(GTK_CONTAINER(durationFrame), durationBox);
+    
+    // Duration slider
+    GtkAdjustment* durationAdj = gtk_adjustment_new(
+        app->board->getTrailDuration(), // Current value
+        0.05, // Minimum (50ms)
+        1.0,  // Maximum (1 second)
+        0.05, // Step
+        0.1,  // Page increment
+        0     // Page size
+    );
+    
+    GtkWidget* durationScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, durationAdj);
+    gtk_scale_set_digits(GTK_SCALE(durationScale), 2);
+    gtk_box_pack_start(GTK_BOX(durationBox), durationScale, TRUE, TRUE, 0);
+    
+    GtkWidget* durationLabel = gtk_label_new("");
+    gtk_box_pack_start(GTK_BOX(durationBox), durationLabel, FALSE, FALSE, 0);
+    
+    // Update labels initially
+    char opacityText[50];
+    sprintf(opacityText, "Opacity: %.2f", app->board->getTrailOpacity());
+    gtk_label_set_text(GTK_LABEL(opacityLabel), opacityText);
+    
+    char durationText[50];
+    sprintf(durationText, "Duration: %.2f seconds", app->board->getTrailDuration());
+    gtk_label_set_text(GTK_LABEL(durationLabel), durationText);
+    
+    // Connect value changed signals to update labels
+    g_signal_connect(opacityAdj, "value-changed", G_CALLBACK(onTrailOpacityChanged), opacityLabel);
+    g_signal_connect(durationAdj, "value-changed", G_CALLBACK(onTrailDurationChanged), durationLabel);
+    
+    // Show all widgets
+    gtk_widget_show_all(dialog);
+    
+    // Run dialog
+    gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+    
+    if (response == GTK_RESPONSE_APPLY) {
+        // Apply the new settings
+        double newOpacity = gtk_adjustment_get_value(opacityAdj);
+        double newDuration = gtk_adjustment_get_value(durationAdj);
+        
+        app->board->setTrailOpacity(newOpacity);
+        app->board->setTrailDuration(newDuration);
+        
+        // Redraw to show changes
+        gtk_widget_queue_draw(app->gameArea);
+    }
+    
+    // Destroy dialog
+    gtk_widget_destroy(dialog);
 }

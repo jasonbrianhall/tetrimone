@@ -917,6 +917,58 @@ if (board->isFireworksActive()) {
         cairo_fill(cr);
     }
 }
+ 
+ if (board->isTrailsEnabled() && board->isBlockTrailsActive()) {
+    const auto& trails = app->board->getBlockTrails();
+    
+    for (const auto& trail : trails) {
+        // Set color with alpha for fading effect
+        auto color = trail.color;
+        cairo_set_source_rgba(cr, color[0], color[1], color[2], trail.alpha);
+        
+        // Draw each block of the trail piece
+        for (size_t y = 0; y < trail.shape.size(); ++y) {
+            for (size_t x = 0; x < trail.shape[y].size(); ++x) {
+                if (trail.shape[y][x] == 1) {
+                    double drawX = (trail.x + x) * BLOCK_SIZE;
+                    double drawY = (trail.y + y) * BLOCK_SIZE;
+                    
+                    // Only draw if within the visible grid
+                    if (drawY >= -BLOCK_SIZE) {
+                        if (board->simpleBlocksActive) {
+                            // Simple trail blocks
+                            cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                            cairo_fill(cr);
+                        } else {
+                            // 3D trail blocks with reduced effect
+                            cairo_rectangle(cr, drawX + 1, drawY + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                            cairo_fill(cr);
+                            
+                            // Subtle highlight for 3D effect
+                            cairo_set_source_rgba(cr, 1, 1, 1, 0.1 * trail.alpha);
+                            cairo_move_to(cr, drawX + 1, drawY + 1);
+                            cairo_line_to(cr, drawX + BLOCK_SIZE - 1, drawY + 1);
+                            cairo_line_to(cr, drawX + 1, drawY + BLOCK_SIZE - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                            
+                            // Subtle shadow for 3D effect
+                            cairo_set_source_rgba(cr, 0, 0, 0, 0.1 * trail.alpha);
+                            cairo_move_to(cr, drawX + BLOCK_SIZE - 1, drawY + 1);
+                            cairo_line_to(cr, drawX + BLOCK_SIZE - 1, drawY + BLOCK_SIZE - 1);
+                            cairo_line_to(cr, drawX + 1, drawY + BLOCK_SIZE - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                            
+                            // Reset color for next block
+                            cairo_set_source_rgba(cr, color[0], color[1], color[2], trail.alpha);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
   
   return FALSE;
 }
