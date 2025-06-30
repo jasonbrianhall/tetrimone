@@ -42,6 +42,12 @@ enum class GameSoundEvent {
   BackgroundMusic3Retro,
   BackgroundMusic4Retro,
   BackgroundMusic5Retro,
+  PatrioticMusicRetro,
+  PatrioticMusic2Retro,
+  PatrioticMusic3Retro,
+  PatrioticMusic4Retro,
+  PatrioticMusic5Retro,
+
 };
 
 extern int currentThemeIndex;

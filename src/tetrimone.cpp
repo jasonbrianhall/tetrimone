@@ -1333,11 +1333,11 @@ case GDK_KEY_comma:
             gtk_label_set_markup(GTK_LABEL(app->controlsHeaderLabel), "<b>FREEDOM COMMANDS</b>");
             
             // Disable background image
-            if (board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) {
+            /*if (board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) {
                 board->setUseBackgroundImage(false);
                 board->setUseBackgroundZip(false);
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), FALSE);
-            }
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+            }*/
             
             // Play a special patriotic sound effect
             board->playSound(GameSoundEvent::Select);

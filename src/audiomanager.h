@@ -36,6 +36,11 @@ enum class SoundEvent {
   BackgroundMusic3Retro,
   BackgroundMusic4Retro,
   BackgroundMusic5Retro,
+  PatrioticMusicRetro,
+  PatrioticMusic2Retro,
+  PatrioticMusic3Retro,
+  PatrioticMusic4Retro,
+  PatrioticMusic5Retro,
 };
 
 // Platform-independent class to handle sound playback

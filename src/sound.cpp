@@ -139,11 +139,11 @@ bool TetrimoneBoard::initializeAudio() {
         loadSoundFromZip(GameSoundEvent::BackgroundMusic3Retro, "TetrimoneB.mid") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic4Retro, "TetrimoneC.mid") &&
         loadSoundFromZip(GameSoundEvent::BackgroundMusic5Retro, "futuristic.mid") &&
-        loadSoundFromZip(GameSoundEvent::PatrioticMusicRetro, "Bornintheusa.mid") &&
-        loadSoundFromZip(GameSoundEvent::PatrioticMusic2Retro, "Borntobewild.mid") &&
-        loadSoundFromZip(GameSoundEvent::PatrioticMusic3Retro, "HighwaytoHell.mid") &&
-        loadSoundFromZip(GameSoundEvent::PatrioticMusic4Retro, "footlose.mid") &&
-        loadSoundFromZip(GameSoundEvent::PatrioticMusic5Retro, "YMCA.mid") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusicRetro, "Bornintheusa.mp3") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic2Retro, "Borntobewild.mp3") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic3Retro, "HighwaytoHell.mp3") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic4Retro, "footlose.mp3") &&
+        loadSoundFromZip(GameSoundEvent::PatrioticMusic5Retro, "YMCA.mp3") &&
         loadSoundFromZip(GameSoundEvent::Single, "single.mp3") &&
         loadSoundFromZip(GameSoundEvent::Double, "double.mp3") &&
         loadSoundFromZip(GameSoundEvent::Triple, "triple.mp3") &&
@@ -385,6 +385,15 @@ void TetrimoneBoard::playBackgroundMusic() {
         SoundEvent::BackgroundMusic5Retro
       };
 
+      const std::vector<SoundEvent> backgroundMusicTracksPatriotic = {
+        SoundEvent::PatrioticMusicRetro,
+        SoundEvent::PatrioticMusic2Retro,
+        SoundEvent::PatrioticMusic3Retro,
+        SoundEvent::PatrioticMusic4Retro,
+        SoundEvent::PatrioticMusic5Retro
+      };
+
+
 
       AudioManager& audioManager = AudioManager::getInstance();
       size_t currentTrackIndex = 0;
@@ -473,11 +482,15 @@ void TetrimoneBoard::playBackgroundMusic() {
       while (sound_enabled_ && !musicStopFlag.load()) {
         SoundEvent audioEvent;
 
-        if (this->retroModeActive || this->retroMusicActive) {
+        if (this->patrioticModeActive) {
+            audioEvent = backgroundMusicTracksPatriotic[currentTrackIndex];
+        } 
+        else if (this->retroModeActive || this->retroMusicActive) {
             audioEvent = backgroundMusicTracksRetro[currentTrackIndex];
-        } else {
+        } 
+        else {
             audioEvent = backgroundMusicTracks[currentTrackIndex];
-        }    
+        }
         if (!audioManager.isMuted() && !musicPaused) {
           try {
             // Calculate the duration of this track
@@ -544,10 +557,13 @@ void TetrimoneBoard::playBackgroundMusic() {
       // Original implementation for non-Windows platforms with track skipping
       while (sound_enabled_ && !musicStopFlag.load()) {
         SoundEvent audioEvent;
-        if (this->retroModeActive || this->retroMusicActive) {
+        if (this->patrioticModeActive) {
+            audioEvent = backgroundMusicTracksPatriotic[currentTrackIndex];
+        } 
+        else if (this->retroModeActive || this->retroMusicActive) {
             audioEvent = backgroundMusicTracksRetro[currentTrackIndex];
-        
-        } else {
+        } 
+        else {
             audioEvent = backgroundMusicTracks[currentTrackIndex];
         }
         if (!audioManager.isMuted() && !musicPaused) {
