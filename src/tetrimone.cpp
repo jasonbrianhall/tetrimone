@@ -9,6 +9,7 @@
 #endif
 #include "highscores.h"
 #include "propaganda_messages.h"
+#include "freedom_messages.h"
 #include "commandline.h"
 
 #ifndef M_PI
@@ -676,6 +677,70 @@ int TetrimoneBoard::clearLines() {
               return FALSE;
           }, 
           this);
+    }
+    else if (patrioticModeActive) {
+        // Select a random freedom message
+        std::uniform_int_distribution<int> dist(0, AMERICAN_PROPAGANDA_MESSAGES.size() - 1);
+        int msgIndex = dist(rng);
+        
+        // For 4-line clears (Tetrimone), show a special patriotic message
+        std::string message;
+        if (linesCleared == 4) {
+            message = AMERICAN_EXCELLENCE_MESSAGE;
+        } else {
+            message = AMERICAN_PROPAGANDA_MESSAGES[msgIndex];
+        }
+        
+        // Output to console for debugging
+        std::cout << message << std::endl;
+        // Display message in the GUI
+        currentPropagandaMessage = message;
+        showPropagandaMessage = true;
+        
+        // Cancel existing timer if any
+        if (propagandaTimerId > 0) {
+            g_source_remove(propagandaTimerId);
+        }
+        
+        // Set timer to hide message after duration
+        propagandaTimerId = g_timeout_add(propagandaMessageDuration, 
+            [](gpointer userData) -> gboolean {
+                TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
+                board->showPropagandaMessage = false;
+                board->propagandaTimerId = 0;
+                return FALSE; // Don't repeat the timer
+            }, 
+            this);
+            
+        // Set timer for patriotic pulsing animation effect
+        propagandaMessageScale = 0.8; // Start slightly smaller for freedom effect
+        propagandaScalingUp = true;
+        if (propagandaScaleTimerId > 0) {
+            g_source_remove(propagandaScaleTimerId);
+        }
+        propagandaScaleTimerId = g_timeout_add(60, // Slightly slower for more dignified American pulse
+            [](gpointer userData) -> gboolean {
+                TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
+                if (board->showPropagandaMessage) {
+                    // Update scale for patriotic pulsing effect
+                    if (board->propagandaScalingUp) {
+                        board->propagandaMessageScale += 0.03; // Slightly gentler scaling
+                        if (board->propagandaMessageScale >= 1.15) { // Less extreme scaling
+                            board->propagandaScalingUp = false;
+                        }
+                    } else {
+                        board->propagandaMessageScale -= 0.03;
+                        if (board->propagandaMessageScale <= 0.85) { // More conservative minimum
+                            board->propagandaScalingUp = true;
+                        }
+                    }
+                    return TRUE; // Continue the timer
+                }
+                // Stop the timer if message is no longer showing
+                board->propagandaScaleTimerId = 0;
+                return FALSE;
+            }, 
+            this);
     }
 
     // Play appropriate sound based on number of lines cleared
@@ -1427,6 +1492,15 @@ if (!board->isPaused() && !board->isSplashScreenActive() && !board->retroModeAct
                    return FALSE; // One-time call
                }, app);
            }
+           if (board->patrioticModeActive) {
+               // Delay slightly for dramatic effect
+               g_timeout_add(1500, [](gpointer userData) -> gboolean {
+                   TetrimoneApp *app = static_cast<TetrimoneApp*>(userData);
+                   showPatrioticPerformanceDialog(app);
+                   return FALSE; // One-time call
+               }, app);
+           }
+
          }
     }
     gtk_widget_queue_draw(app->gameArea);

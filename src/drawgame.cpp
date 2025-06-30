@@ -700,6 +700,173 @@ cairo_set_source_rgba(cr, heatColor[0], heatColor[1], heatColor[2], alpha); */
         cairo_show_text(cr, formattedMessage.c_str());
     }
   }
+  else if (board->patrioticModeActive && board->showPropagandaMessage) {
+    // Semi-transparent red, white, and blue background for freedom message
+    cairo_set_source_rgba(cr, 0.0, 0.2, 0.7, 0.85); // Patriotic blue background
+    
+    // Calculate message position - center of screen
+    double msgX = (GRID_WIDTH * BLOCK_SIZE) / 2;
+    double msgY = (GRID_HEIGHT * BLOCK_SIZE) / 2;
+    
+    // Calculate font size based on screen width
+    double screenWidth = GRID_WIDTH * BLOCK_SIZE;
+    double baseFontSize = screenWidth / 25.0;
+    double fontSize = std::max(14.0, std::min(26.0, baseFontSize));
+    
+    // Set font size with American-style bold font
+    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, fontSize);
+    
+    // Get original freedom message
+    std::string originalMessage = board->currentPropagandaMessage;
+    std::string formattedMessage = originalMessage;
+    
+    // Check if message is too long
+    cairo_text_extents_t extents;
+    cairo_text_extents(cr, originalMessage.c_str(), &extents);
+    
+    // If message is too wide for the screen, add a line break
+    if (extents.width > screenWidth - 40) {
+        // Find approximate middle position to break the text
+        int halfLength = originalMessage.length() / 2;
+        
+        // Find the closest space to the middle
+        size_t spacePos = originalMessage.rfind(' ', halfLength);
+        if (spacePos != std::string::npos) {
+            // Replace the space with a newline
+            formattedMessage = originalMessage.substr(0, spacePos) + 
+                              "\n" + 
+                              originalMessage.substr(spacePos + 1);
+        }
+    }
+    
+    // Get extents of the potentially reformatted message
+    cairo_text_extents_t newExtents;
+    cairo_text_extents(cr, formattedMessage.c_str(), &newExtents);
+    
+    // Make sure the message fits the screen even after reformatting
+    if (newExtents.width > screenWidth - 40) {
+        // If still too wide, use a smaller font
+        fontSize = std::max(12.0, fontSize * (screenWidth - 40) / newExtents.width);
+        cairo_set_font_size(cr, fontSize);
+        cairo_text_extents(cr, formattedMessage.c_str(), &newExtents);
+    }
+    
+    // Calculate background box size for freedom message
+    int msgPadding = 25; // Slightly larger padding for American style
+    double boxHeight = newExtents.height + msgPadding*2;
+    // If there's a newline in the message, make the box taller
+    if (formattedMessage.find('\n') != std::string::npos) {
+        boxHeight = newExtents.height * 2.5 + msgPadding*2;
+    }
+    
+    // Draw patriotic message background with rounded corners
+    double cornerRadius = 8.0;
+    double boxX = msgX - newExtents.width/2 - msgPadding;
+    double boxY = msgY - boxHeight/2;
+    double boxWidth = newExtents.width + msgPadding*2;
+    
+    // Create rounded rectangle path for more modern American look
+    cairo_new_sub_path(cr);
+    cairo_arc(cr, boxX + cornerRadius, boxY + cornerRadius, cornerRadius, M_PI, 3 * M_PI / 2);
+    cairo_arc(cr, boxX + boxWidth - cornerRadius, boxY + cornerRadius, cornerRadius, 3 * M_PI / 2, 0);
+    cairo_arc(cr, boxX + boxWidth - cornerRadius, boxY + boxHeight - cornerRadius, cornerRadius, 0, M_PI / 2);
+    cairo_arc(cr, boxX + cornerRadius, boxY + boxHeight - cornerRadius, cornerRadius, M_PI / 2, M_PI);
+    cairo_close_path(cr);
+    cairo_fill(cr);
+    
+    // Draw red and white stripes border for patriotic effect
+    cairo_set_line_width(cr, 3.0);
+    
+    // Red stripe
+    cairo_set_source_rgb(cr, 0.8, 0.0, 0.0);
+    cairo_new_sub_path(cr);
+    cairo_arc(cr, boxX + cornerRadius, boxY + cornerRadius, cornerRadius, M_PI, 3 * M_PI / 2);
+    cairo_arc(cr, boxX + boxWidth - cornerRadius, boxY + cornerRadius, cornerRadius, 3 * M_PI / 2, 0);
+    cairo_arc(cr, boxX + boxWidth - cornerRadius, boxY + boxHeight - cornerRadius, cornerRadius, 0, M_PI / 2);
+    cairo_arc(cr, boxX + cornerRadius, boxY + boxHeight - cornerRadius, cornerRadius, M_PI / 2, M_PI);
+    cairo_close_path(cr);
+    cairo_stroke(cr);
+    
+    // White inner border
+    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+    cairo_set_line_width(cr, 1.5);
+    cairo_new_sub_path(cr);
+    cairo_arc(cr, boxX + cornerRadius, boxY + cornerRadius, cornerRadius, M_PI, 3 * M_PI / 2);
+    cairo_arc(cr, boxX + boxWidth - cornerRadius, boxY + cornerRadius, cornerRadius, 3 * M_PI / 2, 0);
+    cairo_arc(cr, boxX + boxWidth - cornerRadius, boxY + boxHeight - cornerRadius, cornerRadius, 0, M_PI / 2);
+    cairo_arc(cr, boxX + cornerRadius, boxY + boxHeight - cornerRadius, cornerRadius, M_PI / 2, M_PI);
+    cairo_close_path(cr);
+    cairo_stroke(cr);
+    
+    // Draw text in patriotic white with subtle shadow for readability
+    // First draw shadow
+    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.3);
+    
+    if (formattedMessage.find('\n') != std::string::npos) {
+        // If message contains a newline, draw as multiple lines with shadow
+        std::string firstLine = formattedMessage.substr(0, formattedMessage.find('\n'));
+        std::string secondLine = formattedMessage.substr(formattedMessage.find('\n') + 1);
+        
+        cairo_text_extents_t firstLineExtents;
+        cairo_text_extents(cr, firstLine.c_str(), &firstLineExtents);
+        
+        // Draw first line shadow
+        cairo_move_to(cr, 
+                      msgX - firstLineExtents.width/2 + 1,
+                      msgY - fontSize/2 + 1);
+        cairo_show_text(cr, firstLine.c_str());
+        
+        // Draw second line shadow
+        cairo_text_extents_t secondLineExtents;
+        cairo_text_extents(cr, secondLine.c_str(), &secondLineExtents);
+        cairo_move_to(cr, 
+                      msgX - secondLineExtents.width/2 + 1,
+                      msgY + fontSize + 1);
+        cairo_show_text(cr, secondLine.c_str());
+    } else {
+        // Single line shadow
+        cairo_move_to(cr, 
+                      msgX - newExtents.width/2 + 1,
+                      msgY + newExtents.height/2 + 1);
+        cairo_show_text(cr, formattedMessage.c_str());
+    }
+    
+    // Now draw the main text in bright white
+    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+    
+    if (formattedMessage.find('\n') != std::string::npos) {
+        // If message contains a newline, draw as multiple lines
+        std::string firstLine = formattedMessage.substr(0, formattedMessage.find('\n'));
+        std::string secondLine = formattedMessage.substr(formattedMessage.find('\n') + 1);
+        
+        cairo_text_extents_t firstLineExtents;
+        cairo_text_extents(cr, firstLine.c_str(), &firstLineExtents);
+        
+        // Draw first line
+        cairo_move_to(cr, 
+                      msgX - firstLineExtents.width/2,
+                      msgY - fontSize/2);
+        cairo_show_text(cr, firstLine.c_str());
+        
+        // Draw second line
+        cairo_text_extents_t secondLineExtents;
+        cairo_text_extents(cr, secondLine.c_str(), &secondLineExtents);
+        cairo_move_to(cr, 
+                      msgX - secondLineExtents.width/2,
+                      msgY + fontSize);
+        cairo_show_text(cr, secondLine.c_str());
+    } else {
+        // Single line display
+        cairo_move_to(cr, 
+                      msgX - newExtents.width/2,
+                      msgY + newExtents.height/2);
+        cairo_show_text(cr, formattedMessage.c_str());
+    }
+  }
+
+
+
 
   // Draw current piece with smooth movement animation
   if (!board->isGameOver() && !board->isPaused() && !board->isSplashScreenActive()) {
