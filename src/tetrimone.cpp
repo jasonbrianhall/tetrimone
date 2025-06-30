@@ -847,7 +847,7 @@ if (level > currentlevel) {
     }
     
     // Only change theme if retro mode is not enabled
-    if (!retroModeActive) {
+    if (!retroModeActive  && !patrioticModeActive) {
         // Calculate next theme with wrap-around
         int nextTheme = (currentThemeIndex + 1) % NUM_COLOR_THEMES;
         
