@@ -1232,7 +1232,6 @@ case GDK_KEY_period:
         board->patrioticModeActive = false;       
 
 
-
 if (board->retroModeActive) {
     // Store current theme before switching to retro mode
     savedThemeIndex = currentThemeIndex;
@@ -1309,6 +1308,9 @@ if (board->retroModeActive) {
         gtk_widget_queue_draw(app->gameArea);
         gtk_widget_queue_draw(app->nextPieceArea);
     }
+        app->board->pauseBackgroundMusic();
+        app->board->resumeBackgroundMusic();
+
     break;
 
 
@@ -1321,6 +1323,7 @@ case GDK_KEY_comma:
         // Toggle the patriotic mode flag
         board->retroModeActive = false;
         board->patrioticModeActive = !board->patrioticModeActive;       
+
         
         if (board->patrioticModeActive) {
             // Store current theme before switching to patriotic mode
@@ -1402,6 +1405,9 @@ case GDK_KEY_comma:
         gtk_widget_queue_draw(app->gameArea);
         gtk_widget_queue_draw(app->nextPieceArea);
     }
+        app->board->pauseBackgroundMusic();
+        app->board->resumeBackgroundMusic();
+
     break;
 
     default:
