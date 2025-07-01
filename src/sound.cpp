@@ -571,7 +571,7 @@ void TetrimoneBoard::playBackgroundMusic() {
             
             // Wait for the track to finish or pause to occur
             int elapsedSeconds = 0;
-            while (elapsedSeconds < trackDuration && sound_enabled_ && !musicStopFlag.load()) {
+            while (elapsedSeconds < trackDuration && sound_enabled_ && !musicStopFlag.load() && !musicPaused) {
               // Only increment timer if not paused
               if (!musicPaused) {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -583,7 +583,7 @@ void TetrimoneBoard::playBackgroundMusic() {
             }
             
             // Only move to next track if we completed normally
-            if (elapsedSeconds >= trackDuration && sound_enabled_ && !musicStopFlag.load()) {
+            if ((elapsedSeconds >= trackDuration || musicPaused) && sound_enabled_ && !musicStopFlag.load()) {
               // Find the next enabled track
               size_t nextTrackIndex = (currentTrackIndex + 1) % backgroundMusicTracks.size();
               

@@ -230,21 +230,68 @@ public:
         SDL_Delay(1);
     }
 #else
-    void stopAllSounds() override {
-        if (!initialized_) {
-            return;
-        }
-        
+void stopAllSounds() override {
+    if (!initialized_) {
+        return;
+    }
+    
+    std::vector<int> channels_to_process;
+    std::vector<std::shared_ptr<std::promise<void>>> promises_to_complete;
+    
+    // Collect channels and promises under lock
+    {
         std::lock_guard<std::mutex> lock(mutex_);
         
-        // Set muted flag
-        isMuted_ = true;
-        
-        // Set all channel volumes to 0
-        for (auto& pair : sound_chunks_) {
+        // First, set all volumes to 0 for immediate silence
+        for (const auto& pair : sound_chunks_) {
             Mix_Volume(pair.first, 0);
+            channels_to_process.push_back(pair.first);
+        }
+        
+        // Collect all promises that need completion
+        for (const auto& pair : channel_promises_) {
+            if (pair.second) {
+                promises_to_complete.push_back(pair.second);
+            }
         }
     }
+    
+    // Halt channels outside of lock
+    for (int channel : channels_to_process) {
+        Mix_HaltChannel(channel);
+    }
+    
+    // Small delay for halt to process
+    SDL_Delay(10);
+    
+    // Complete all promises - this is crucial for music progression
+    for (auto& promise : promises_to_complete) {
+        try {
+            promise->set_value();
+        } catch (...) {
+            // Ignore promise errors
+        }
+    }
+    
+    // Now clean up under lock
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        
+        // Clear all tracking data
+        channel_promises_.clear();
+        
+        for (auto& pair : sound_chunks_) {
+            if (pair.second) {
+                Mix_FreeChunk(pair.second);
+            }
+        }
+        sound_chunks_.clear();
+        sound_is_music_.clear();
+        
+        // Reset mute state
+        isMuted_ = false;
+    }
+}
 #endif
     
     void muteAllSounds() override {
