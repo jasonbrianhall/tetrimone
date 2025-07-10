@@ -1,17 +1,18 @@
-// Tetrimone using C++ and Allegro 4 with Color Themes and Extended Pieces
-// Compile with: g++ -o tetrimone.exe tetrimone.cpp -lalleg
+// Tetrimone using C++ and Allegro 4 with Color Themes, Extended Pieces, and ZIP Audio
+// Compile with: g++ -o tetrimone.exe tetrimone.cpp zip_audio_loader.cpp -lalleg
 
 #include <iostream>
 #include <vector>
 #include <cstdlib>
 #include <ctime>
-#include <allegro.h>
 #include <array>
 #include <algorithm>
+#include <allegro.h>
 
-// Include block shapes and themes
+// Include block shapes, themes, and ZIP audio
 #include "tetrimoneblock.h"
 #include "themes.h"
+#include "zip_audio_loader.h"
 
 // Constants
 const int SCREEN_WIDTH = 800;
@@ -39,6 +40,7 @@ private:
     bool paused;
     BITMAP* buffer;
     FONT* gameFont;
+    ZipSoundManager* soundManager;
     
     // Color conversion cache
     std::vector<int> themeColors;
@@ -115,6 +117,12 @@ private:
         // Create the first piece
         nextPiece = -1;
         spawnPiece();
+        
+        // Play game start sound and music
+        if (soundManager) {
+            soundManager->playGameStart();
+            soundManager->playThemeMusic(currentTheme);
+        }
     }
 
     // Generate a random piece
@@ -143,6 +151,10 @@ private:
         // Check if the new piece collides immediately (game over condition)
         if (checkCollision()) {
             gameOver = true;
+            if (soundManager) {
+                soundManager->stopMusic();
+                soundManager->playGameOver();
+            }
         }
     }
 
@@ -182,6 +194,11 @@ private:
         // If the rotation causes a collision, revert back
         if (checkCollision()) {
             currentRotation = oldRotation;
+        } else {
+            // Play rotation sound
+            if (soundManager) {
+                soundManager->playPieceRotate();
+            }
         }
     }
 
@@ -200,6 +217,11 @@ private:
                 lockPiece();
             }
             return false;
+        } else {
+            // Play movement sound for lateral moves
+            if (dx != 0 && soundManager) {
+                soundManager->playPieceMove();
+            }
         }
         return true;
     }
@@ -222,6 +244,11 @@ private:
                     }
                 }
             }
+        }
+        
+        // Play piece drop sound
+        if (soundManager) {
+            soundManager->playPieceDrop();
         }
         
         // Check for completed lines
@@ -268,6 +295,11 @@ private:
         
         // Update score and level
         if (linesCleared > 0) {
+            // Play line clear sound
+            if (soundManager) {
+                soundManager->playLineClear(linesCleared);
+            }
+            
             // Scoring: 100 * multiplier * level
             int multiplier;
             switch (linesCleared) {
@@ -286,6 +318,12 @@ private:
             if (newLevel != level) {
                 level = newLevel;
                 
+                // Play level up sound and change music
+                if (soundManager) {
+                    soundManager->playLevelUp();
+                    soundManager->playThemeMusic(currentTheme);
+                }
+                
                 // Change theme every level (cycle through available themes)
                 currentTheme = (level - 1) % NUM_COLOR_THEMES;
                 updateThemeColors();
@@ -303,33 +341,7 @@ private:
         }
     }
 
-    // Draw a transparent block for ghost pieces
-    void drawTransparentBlock(BITMAP* bmp, int x, int y, int color) {
-        int screenX = GRID_OFFSET_X + x * BLOCK_SIZE;
-        int screenY = GRID_OFFSET_Y + y * BLOCK_SIZE;
-        
-        // Create a semi-transparent version of the color (about 30% opacity)
-        int transparentColor = makecol(
-            getr(color) * 30 / 100,
-            getg(color) * 30 / 100,
-            getb(color) * 30 / 100
-        );
-        
-        // Draw filled transparent block
-        rectfill(bmp, screenX, screenY, 
-                 screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1, 
-                 transparentColor);
-        
-        // Draw subtle outline
-        int outlineColor = makecol(
-            getr(color) * 50 / 100,
-            getg(color) * 50 / 100,
-            getb(color) * 50 / 100
-        );
-        rect(bmp, screenX, screenY,
-             screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1,
-             outlineColor);
-    }
+    // Draw a single block with border
     void drawBlock(BITMAP* bmp, int x, int y, int color) {
         int screenX = GRID_OFFSET_X + x * BLOCK_SIZE;
         int screenY = GRID_OFFSET_Y + y * BLOCK_SIZE;
@@ -358,6 +370,34 @@ private:
              screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1, shadowColor);
         line(bmp, screenX + BLOCK_SIZE - 1, screenY, 
              screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1, shadowColor);
+    }
+
+    // Draw a transparent block for ghost pieces
+    void drawTransparentBlock(BITMAP* bmp, int x, int y, int color) {
+        int screenX = GRID_OFFSET_X + x * BLOCK_SIZE;
+        int screenY = GRID_OFFSET_Y + y * BLOCK_SIZE;
+        
+        // Create a semi-transparent version of the color (about 30% opacity)
+        int transparentColor = makecol(
+            getr(color) * 30 / 100,
+            getg(color) * 30 / 100,
+            getb(color) * 30 / 100
+        );
+        
+        // Draw filled transparent block
+        rectfill(bmp, screenX, screenY, 
+                 screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1, 
+                 transparentColor);
+        
+        // Draw subtle outline
+        int outlineColor = makecol(
+            getr(color) * 50 / 100,
+            getg(color) * 50 / 100,
+            getb(color) * 50 / 100
+        );
+        rect(bmp, screenX, screenY,
+             screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1,
+             outlineColor);
     }
 
     // Draw the game grid
@@ -542,7 +582,7 @@ private:
     // Draw score, level, lines, and theme
     void drawStats() {
         int statsX = GRID_OFFSET_X + GRID_WIDTH * BLOCK_SIZE + 30;
-        int statsY = GRID_OFFSET_Y + 250; // Moved down from 150 to 250
+        int statsY = GRID_OFFSET_Y + 250;
         int textColor = makecol(255, 255, 255);
         
         textprintf_ex(buffer, gameFont, statsX, statsY, textColor, -1, "SCORE: %d", score);
@@ -558,6 +598,17 @@ private:
         textprintf_ex(buffer, gameFont, statsX, statsY, textColor, -1, "THEME:");
         statsY += 20;
         textprintf_ex(buffer, gameFont, statsX, statsY, textColor, -1, "%s", getThemeName().c_str());
+        
+        statsY += 40;
+        
+        // Display audio status
+        if (soundManager) {
+            textprintf_ex(buffer, gameFont, statsX, statsY, textColor, -1, "MUSIC: %s (M)", 
+                         soundManager->isMusicEnabled() ? "ON" : "OFF");
+            statsY += 20;
+            textprintf_ex(buffer, gameFont, statsX, statsY, textColor, -1, "SOUND: %s (S)", 
+                         soundManager->isSoundEnabled() ? "ON" : "OFF");
+        }
     }
 
     // Draw game over screen
@@ -588,11 +639,29 @@ public:
         gameFont = font;
         nextPiece = -1;
         currentTheme = 0;
+        
+        // Initialize sound manager
+        soundManager = new ZipSoundManager();
+        if (soundManager->initialize()) {
+            if (soundManager->loadAudioZip("sound.zip")) {
+                std::cout << "Audio loaded from ZIP successfully!" << std::endl;
+            } else {
+                std::cout << "Failed to load audio ZIP - continuing without audio" << std::endl;
+            }
+        } else {
+            delete soundManager;
+            soundManager = nullptr;
+            std::cout << "Sound disabled - continuing without audio" << std::endl;
+        }
+        
         init();
     }
 
     ~Tetrimone() {
         destroy_bitmap(buffer);
+        if (soundManager) {
+            delete soundManager;
+        }
     }
 
     // Main game update function
@@ -639,6 +708,8 @@ public:
         static bool spacePressed = false;
         static bool pPressed = false;
         static bool enterPressed = false;
+        static bool mPressed = false; // For music toggle
+        static bool sPressed = false; // For sound toggle
         
         // Check for key presses
         bool left = key[KEY_LEFT];
@@ -648,6 +719,8 @@ public:
         bool space = key[KEY_SPACE];
         bool p = key[KEY_P];
         bool enter = key[KEY_ENTER];
+        bool m = key[KEY_M];
+        bool s = key[KEY_S];
         
         // Handle game over
         if (gameOver) {
@@ -661,8 +734,32 @@ public:
         // Toggle pause
         if (p && !pPressed) {
             paused = !paused;
+            if (soundManager) {
+                if (paused) {
+                    soundManager->pauseMusic();
+                } else {
+                    soundManager->resumeMusic();
+                }
+                soundManager->playMenuSelect();
+            }
         }
         pPressed = p;
+        
+        // Toggle music
+        if (m && !mPressed && soundManager) {
+            soundManager->setMusicEnabled(!soundManager->isMusicEnabled());
+            soundManager->playMenuSelect();
+        }
+        mPressed = m;
+        
+        // Toggle sound effects
+        if (s && !sPressed && soundManager) {
+            soundManager->setSoundEnabled(!soundManager->isSoundEnabled());
+            if (soundManager->isSoundEnabled()) {
+                soundManager->playMenuSelect();
+            }
+        }
+        sPressed = s;
         
         // If paused, don't process other inputs
         if (paused) {
@@ -743,7 +840,7 @@ int main() {
     }
 
     // Set window title
-    set_window_title("Tetrimone - Extended Pieces & Themes");
+    set_window_title("Tetrimone - Extended Pieces, Themes & ZIP Audio");
 
     // Create game instance
     Tetrimone tetrimone;

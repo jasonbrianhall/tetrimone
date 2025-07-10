@@ -98,6 +98,7 @@ case "${1:-dos}" in
             mkdir -p /src/$BUILD_DIR/obj &&
             echo 'Compiling individual source files...' &&
             g++ -c /src/tetrimone.cpp -I/src/$BUILD_DIR/source-install/include -O3 -march=i586 -fomit-frame-pointer -ffast-math -funroll-loops -fpermissive -w -o /src/$BUILD_DIR/obj/tetrimone.o && \
+            g++ -c /src/zip_audio_loader.cpp -I/src/$BUILD_DIR/source-install/include -O3 -march=i586 -fomit-frame-pointer -ffast-math -funroll-loops -fpermissive -w -o /src/$BUILD_DIR/obj/zip_audio_loader.o && \
             g++ /src/$BUILD_DIR/obj/*.o -L/src/$BUILD_DIR/source-install/lib -lalleg -lm -O3 -march=i586 -s -o /src/$BUILD_DIR/tetrimone.exe &&
             echo 'Linking executable...' &&
             g++ /src/$BUILD_DIR/obj/*.o -lalleg -lm -s -L/src/$BUILD_DIR/source-install/lib -o /src/$BUILD_DIR/tetrimone.exe &&
@@ -152,6 +153,7 @@ case "${1:-dos}" in
         /bin/sh -c "
             mkdir -p /src/$BUILD_DIR/obj && 
             g++ -c /src/tetrimone.cpp -I/src/$BUILD_DIR/source-install/include -O3 -march=i586 -fomit-frame-pointer -ffast-math -funroll-loops -fpermissive -w -o /src/$BUILD_DIR/obj/tetrimone.o && \
+            g++ -c /src/zip_audio_loader.cpp -I/src/$BUILD_DIR/source-install/include -O3 -march=i586 -fomit-frame-pointer -ffast-math -funroll-loops -fpermissive -w -o /src/$BUILD_DIR/obj/zip_audio_loader.o && \
             g++ /src/$BUILD_DIR/obj/*.o -L/src/$BUILD_DIR/source-install/lib -lalleg -lm -O3 -march=i586 -s -o /src/$BUILD_DIR/tetrimone.exe &&
             exe2coff /src/$BUILD_DIR/tetrimone.exe && 
             cat /src/$BUILD_DIR/csdpmi/bin/CWSDSTUB.EXE /src/$BUILD_DIR/tetrimone > /src/$BUILD_DIR/tetrimone.exe &&
