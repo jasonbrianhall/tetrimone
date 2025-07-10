@@ -1,10 +1,11 @@
 // zip_audio_loader.cpp - Implementation of ZIP audio loading system
-#include "zip_audio_loader.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
+#include "zip_audio_loader.h"
+
 
 // ZIP file format constants
 #define ZIP_LOCAL_FILE_HEADER_SIG 0x04034b50
@@ -215,6 +216,67 @@ bool ZipSoundManager::loadAudioZip(const std::string& zipFilename) {
     return loadAllSoundsFromZip();
 }
 
+// DOS 8.3 filename mapper
+std::string ZipSoundManager::getDosCompatibleName(const std::string& originalName) {
+    // Create a mapping table for long filenames to DOS 8.3 format
+    static std::map<std::string, std::string> filenameMap = {
+        // Sound effects
+        {"drop.mp3", "drop.mp3"},
+        {"rotate.mp3", "rotate.mp3"},
+        {"lateralmove.mp3", "move.mp3"},
+        {"single.mp3", "single.mp3"},
+        {"double.mp3", "double.mp3"},
+        {"triple.mp3", "triple.mp3"},
+        {"excellent.mp3", "excel.mp3"},
+        {"levelup.mp3", "levelup.mp3"},
+        {"gameover.mp3", "gameover.mp3"},
+        {"start.mp3", "start.mp3"},
+        {"select.mp3", "select.mp3"},
+        {"clear.mp3", "clear.mp3"},
+        {"tetrimone.mp3", "tetrmone.mp3"},
+        {"levelupretro.mp3", "levelrtr.mp3"},
+        {"gameoverretro.mp3", "gameortr.mp3"},
+        
+        // Music files
+        {"title-screen.mp3", "title.mp3"},
+        {"TetrimoneA.mp3", "tetra.mp3"},
+        {"TetrimoneB.mp3", "tetrb.mp3"},
+        {"TetrimoneC.mp3", "tetrc.mp3"},
+        {"theme.mp3", "theme.mp3"},
+        {"futuristic.mp3", "future.mp3"},
+        {"airforce.mp3", "airforce.mp3"},
+        {"americathebeautiful.mp3", "america.mp3"},
+        {"grandoldflag.mp3", "grandflag.mp3"},
+        {"johnny.mp3", "johnny.mp3"},
+        {"riverkwai.mp3", "riverkwai.mp3"}
+    };
+    
+    auto it = filenameMap.find(originalName);
+    if (it != filenameMap.end()) {
+        return it->second;
+    }
+    
+    // If not found, try to auto-generate DOS name
+    std::string dosName = originalName;
+    if (dosName.length() > 12) { // 8.3 = 12 chars max with dot
+        size_t dotPos = dosName.find_last_of('.');
+        if (dotPos != std::string::npos) {
+            std::string name = dosName.substr(0, dotPos);
+            std::string ext = dosName.substr(dotPos);
+            
+            if (name.length() > 8) {
+                name = name.substr(0, 8);
+            }
+            if (ext.length() > 4) {
+                ext = ext.substr(0, 4);
+            }
+            dosName = name + ext;
+        }
+    }
+    
+    return dosName;
+}
+
 bool ZipSoundManager::loadSampleFromZip(const std::string& name, const std::string& zipFilename) {
     std::string tempPath;
     if (!zipLoader->extractAudioFile(zipFilename, tempPath)) {
@@ -236,7 +298,7 @@ bool ZipSoundManager::loadSampleFromZip(const std::string& name, const std::stri
     samples[name] = sample;
     tempFiles[name] = tempPath;
     
-    std::cout << "Loaded sample from ZIP: " << name << std::endl;
+    std::cout << "Loaded sample from ZIP: " << name << " (" << zipFilename << ")" << std::endl;
     return true;
 }
 
@@ -245,36 +307,36 @@ bool ZipSoundManager::loadAllSoundsFromZip() {
     
     std::cout << "Loading MP3 audio files from ZIP..." << std::endl;
     
-    // Load sound effects
+    // Load sound effects - try original names first, then DOS names
     allLoaded &= loadSampleFromZip("drop", "drop.mp3");
     allLoaded &= loadSampleFromZip("rotate", "rotate.mp3");
-    allLoaded &= loadSampleFromZip("move", "lateralmove.mp3");
+    allLoaded &= loadSampleFromZip("move", "lateralmove.mp3") || loadSampleFromZip("move", "move.mp3");
     allLoaded &= loadSampleFromZip("single", "single.mp3");
     allLoaded &= loadSampleFromZip("double", "double.mp3");
     allLoaded &= loadSampleFromZip("triple", "triple.mp3");
-    allLoaded &= loadSampleFromZip("excellent", "excellent.mp3");
+    allLoaded &= loadSampleFromZip("excellent", "excellent.mp3") || loadSampleFromZip("excellent", "excel.mp3");
     allLoaded &= loadSampleFromZip("levelup", "levelup.mp3");
     allLoaded &= loadSampleFromZip("gameover", "gameover.mp3");
     allLoaded &= loadSampleFromZip("start", "start.mp3");
     allLoaded &= loadSampleFromZip("select", "select.mp3");
     allLoaded &= loadSampleFromZip("clear", "clear.mp3");
-    allLoaded &= loadSampleFromZip("tetrimone", "tetrimone.mp3");
+    allLoaded &= loadSampleFromZip("tetrimone", "tetrimone.mp3") || loadSampleFromZip("tetrimone", "tetrmone.mp3");
     
     // Load retro versions
-    loadSampleFromZip("levelup_retro", "levelupretro.mp3");
-    loadSampleFromZip("gameover_retro", "gameoverretro.mp3");
+    loadSampleFromZip("levelup_retro", "levelupretro.mp3") || loadSampleFromZip("levelup_retro", "levelrtr.mp3");
+    loadSampleFromZip("gameover_retro", "gameoverretro.mp3") || loadSampleFromZip("gameover_retro", "gameortr.mp3");
     
-    // Load music files
+    // Load music files - try original names first, then DOS names
     std::cout << "Loading MP3 music files from ZIP..." << std::endl;
-    loadSampleFromZip("title", "title-screen.mp3");
-    loadSampleFromZip("tetrimone_a", "TetrimoneA.mp3");
-    loadSampleFromZip("tetrimone_b", "TetrimoneB.mp3");
-    loadSampleFromZip("tetrimone_c", "TetrimoneC.mp3");
+    loadSampleFromZip("title", "title-screen.mp3") || loadSampleFromZip("title", "title.mp3");
+    loadSampleFromZip("tetrimone_a", "TetrimoneA.mp3") || loadSampleFromZip("tetrimone_a", "tetra.mp3");
+    loadSampleFromZip("tetrimone_b", "TetrimoneB.mp3") || loadSampleFromZip("tetrimone_b", "tetrb.mp3");
+    loadSampleFromZip("tetrimone_c", "TetrimoneC.mp3") || loadSampleFromZip("tetrimone_c", "tetrc.mp3");
     loadSampleFromZip("theme", "theme.mp3");
-    loadSampleFromZip("futuristic", "futuristic.mp3");
+    loadSampleFromZip("futuristic", "futuristic.mp3") || loadSampleFromZip("futuristic", "future.mp3");
     loadSampleFromZip("airforce", "airforce.mp3");
-    loadSampleFromZip("america", "americathebeautiful.mp3");
-    loadSampleFromZip("grand_old_flag", "grandoldflag.mp3");
+    loadSampleFromZip("america", "americathebeautiful.mp3") || loadSampleFromZip("america", "america.mp3");
+    loadSampleFromZip("grand_old_flag", "grandoldflag.mp3") || loadSampleFromZip("grand_old_flag", "grandflag.mp3");
     loadSampleFromZip("johnny", "johnny.mp3");
     loadSampleFromZip("river_kwai", "riverkwai.mp3");
     

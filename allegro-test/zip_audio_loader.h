@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <allegro.h>
 
+
 // Simple ZIP file reader for audio files
 class ZipAudioLoader {
 private:
@@ -70,9 +71,8 @@ private:
     bool musicPlaying;
     int musicVoice; // Track the voice playing music
     
-    // Temp file management
-    std::string createTempFile(const std::vector<uint8_t>& data, const std::string& extension);
-    void cleanupTempFiles();
+    // DOS 8.3 filename compatibility
+    std::string getDosCompatibleName(const std::string& originalName);
 
 public:
     ZipSoundManager();
