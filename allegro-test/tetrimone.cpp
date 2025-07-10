@@ -1,5 +1,6 @@
 // Tetrimone using C++ and Allegro 4 with Color Themes, Extended Pieces, and ZIP Audio
 // Compile with: g++ -o tetrimone.exe tetrimone.cpp zip_audio_loader.cpp -lalleg
+// For MP3 support: g++ -o tetrimone.exe tetrimone.cpp zip_audio_loader.cpp -lalleg -laldmb -ldumb
 
 #include <iostream>
 #include <vector>
@@ -35,7 +36,8 @@ private:
     int lines;
     int currentTheme;
     float fallSpeed;
-    float fallTimer;
+    int fallTimer;        // Changed to int for tick counting
+    int fallInterval;     // Ticks between falls
     bool gameOver;
     bool paused;
     BITMAP* buffer;
@@ -105,6 +107,7 @@ private:
         currentTheme = 0;
         fallSpeed = 1.0;
         fallTimer = 0;
+        fallInterval = 60; // 60 ticks = 1 second at 60 FPS
         gameOver = false;
         paused = false;
         
@@ -330,7 +333,7 @@ private:
             }
             
             // Increase fall speed with level (but cap it)
-            fallSpeed = std::max(0.1f, 1.0f / level);
+            fallInterval = std::max(10, 60 - (level - 1) * 5); // Faster each level, minimum 10 ticks
         }
     }
 
@@ -665,14 +668,14 @@ public:
     }
 
     // Main game update function
-    void update(float dt) {
+    void update() {
         if (gameOver || paused) {
             return;
         }
         
         // Update fall timer
-        fallTimer += dt;
-        if (fallTimer >= fallSpeed) {
+        fallTimer++;
+        if (fallTimer >= fallInterval) {
             fallTimer = 0;
             movePiece(0, 1);
         }
@@ -845,28 +848,19 @@ int main() {
     // Create game instance
     Tetrimone tetrimone;
 
-    // Game loop variables
-    bool running = true;
-    clock_t lastTime = clock();
-
     // Game loop
-    while (running && !key[KEY_ESC]) {
-        // Calculate delta time
-        clock_t currentTime = clock();
-        float dt = (float)(currentTime - lastTime) / CLOCKS_PER_SEC;
-        lastTime = currentTime;
-
+    while (!key[KEY_ESC]) {
         // Handle input
         tetrimone.handleInput();
 
         // Update game
-        tetrimone.update(dt);
+        tetrimone.update();
 
         // Draw game
         tetrimone.draw();
 
-        // Small delay to prevent 100% CPU usage
-        rest(16); // ~60 FPS
+        // Small delay to maintain consistent timing (~60 FPS)
+        rest(16); // 16ms = ~60 FPS
     }
 
     return 0;

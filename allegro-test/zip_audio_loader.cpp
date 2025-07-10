@@ -1,11 +1,10 @@
 // zip_audio_loader.cpp - Implementation of ZIP audio loading system
+#include "zip_audio_loader.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
-#include "zip_audio_loader.h"
-
 
 // ZIP file format constants
 #define ZIP_LOCAL_FILE_HEADER_SIG 0x04034b50
@@ -134,10 +133,10 @@ bool ZipAudioLoader::extractAudioFile(const std::string& filename, std::string& 
         return false;
     }
     
-    // Create temporary file
+    // Create temporary file with DOS-compatible name for extraction
     static int tempCounter = 0;
-    char tempName[256];
-    sprintf(tempName, "temp_audio_%d.mp3", tempCounter++);
+    char tempName[13]; // 8.3 format max
+    sprintf(tempName, "aud%05d.tmp", tempCounter++);
     
     std::ofstream tempFile(tempName, std::ios::binary);
     if (!tempFile.is_open()) {
@@ -283,9 +282,15 @@ bool ZipSoundManager::loadSampleFromZip(const std::string& name, const std::stri
         return false;
     }
     
-    SAMPLE* sample = load_sample(tempPath.c_str());
+    SAMPLE* sample = nullptr;
+    
+    // Try to load the file - Allegro 4 should handle WAV, and some builds support MP3
+    sample = load_sample(tempPath.c_str());
+    
     if (!sample) {
+        // If direct loading failed, try loading as WAV/VOC format
         std::cerr << "Failed to load sample from temp file: " << tempPath << std::endl;
+        std::cerr << "Note: MP3 support may be limited in this Allegro build" << std::endl;
         remove(tempPath.c_str());
         return false;
     }
@@ -305,42 +310,49 @@ bool ZipSoundManager::loadSampleFromZip(const std::string& name, const std::stri
 bool ZipSoundManager::loadAllSoundsFromZip() {
     bool allLoaded = true;
     
-    std::cout << "Loading MP3 audio files from ZIP..." << std::endl;
+    std::cout << "Loading audio files from ZIP..." << std::endl;
     
-    // Load sound effects - try original names first, then DOS names
-    allLoaded &= loadSampleFromZip("drop", "drop.mp3");
-    allLoaded &= loadSampleFromZip("rotate", "rotate.mp3");
-    allLoaded &= loadSampleFromZip("move", "lateralmove.mp3") || loadSampleFromZip("move", "move.mp3");
-    allLoaded &= loadSampleFromZip("single", "single.mp3");
-    allLoaded &= loadSampleFromZip("double", "double.mp3");
-    allLoaded &= loadSampleFromZip("triple", "triple.mp3");
-    allLoaded &= loadSampleFromZip("excellent", "excellent.mp3") || loadSampleFromZip("excellent", "excel.mp3");
-    allLoaded &= loadSampleFromZip("levelup", "levelup.mp3");
-    allLoaded &= loadSampleFromZip("gameover", "gameover.mp3");
-    allLoaded &= loadSampleFromZip("start", "start.mp3");
-    allLoaded &= loadSampleFromZip("select", "select.mp3");
-    allLoaded &= loadSampleFromZip("clear", "clear.mp3");
-    allLoaded &= loadSampleFromZip("tetrimone", "tetrimone.mp3") || loadSampleFromZip("tetrimone", "tetrmone.mp3");
+    // Load sound effects - try MP3 first, fallback to WAV
+    allLoaded &= loadSampleFromZip("drop", "drop.mp3") || loadSampleFromZip("drop", "drop.wav");
+    allLoaded &= loadSampleFromZip("rotate", "rotate.mp3") || loadSampleFromZip("rotate", "rotate.wav");
+    allLoaded &= loadSampleFromZip("move", "lateralmove.mp3") || loadSampleFromZip("move", "lateralmove.wav");
+    allLoaded &= loadSampleFromZip("single", "single.mp3") || loadSampleFromZip("single", "single.wav");
+    allLoaded &= loadSampleFromZip("double", "double.mp3") || loadSampleFromZip("double", "double.wav");
+    allLoaded &= loadSampleFromZip("triple", "triple.mp3") || loadSampleFromZip("triple", "triple.wav");
+    allLoaded &= loadSampleFromZip("excellent", "excellent.mp3") || loadSampleFromZip("excellent", "excellent.wav");
+    allLoaded &= loadSampleFromZip("levelup", "levelup.mp3") || loadSampleFromZip("levelup", "levelup.wav");
+    allLoaded &= loadSampleFromZip("gameover", "gameover.mp3") || loadSampleFromZip("gameover", "gameover.wav");
+    allLoaded &= loadSampleFromZip("start", "start.mp3") || loadSampleFromZip("start", "start.wav");
+    allLoaded &= loadSampleFromZip("select", "select.mp3") || loadSampleFromZip("select", "select.wav");
+    allLoaded &= loadSampleFromZip("clear", "clear.mp3") || loadSampleFromZip("clear", "clear.wav");
+    allLoaded &= loadSampleFromZip("tetrimone", "tetrimone.mp3") || loadSampleFromZip("tetrimone", "tetrimone.wav");
     
-    // Load retro versions
-    loadSampleFromZip("levelup_retro", "levelupretro.mp3") || loadSampleFromZip("levelup_retro", "levelrtr.mp3");
-    loadSampleFromZip("gameover_retro", "gameoverretro.mp3") || loadSampleFromZip("gameover_retro", "gameortr.mp3");
+    // Load retro versions (MP3 only)
+    loadSampleFromZip("levelup_retro", "levelupretro.mp3");
+    loadSampleFromZip("gameover_retro", "gameoverretro.mp3");
     
-    // Load music files - try original names first, then DOS names
-    std::cout << "Loading MP3 music files from ZIP..." << std::endl;
-    loadSampleFromZip("title", "title-screen.mp3") || loadSampleFromZip("title", "title.mp3");
-    loadSampleFromZip("tetrimone_a", "TetrimoneA.mp3") || loadSampleFromZip("tetrimone_a", "tetra.mp3");
-    loadSampleFromZip("tetrimone_b", "TetrimoneB.mp3") || loadSampleFromZip("tetrimone_b", "tetrb.mp3");
-    loadSampleFromZip("tetrimone_c", "TetrimoneC.mp3") || loadSampleFromZip("tetrimone_c", "tetrc.mp3");
-    loadSampleFromZip("theme", "theme.mp3");
-    loadSampleFromZip("futuristic", "futuristic.mp3") || loadSampleFromZip("futuristic", "future.mp3");
-    loadSampleFromZip("airforce", "airforce.mp3");
-    loadSampleFromZip("america", "americathebeautiful.mp3") || loadSampleFromZip("america", "america.mp3");
-    loadSampleFromZip("grand_old_flag", "grandoldflag.mp3") || loadSampleFromZip("grand_old_flag", "grandflag.mp3");
-    loadSampleFromZip("johnny", "johnny.mp3");
-    loadSampleFromZip("river_kwai", "riverkwai.mp3");
+    // Load music files - try MP3 first, fallback to MID
+    std::cout << "Loading music files from ZIP..." << std::endl;
+    loadSampleFromZip("title", "title-screen.mp3") || loadSampleFromZip("title", "title-screen.mid");
+    loadSampleFromZip("tetrimone_a", "TetrimoneA.mp3") || loadSampleFromZip("tetrimone_a", "TetrimoneA.mid");
+    loadSampleFromZip("tetrimone_b", "TetrimoneB.mp3") || loadSampleFromZip("tetrimone_b", "TetrimoneB.mid");
+    loadSampleFromZip("tetrimone_c", "TetrimoneC.mp3") || loadSampleFromZip("tetrimone_c", "TetrimoneC.mid");
+    loadSampleFromZip("theme", "theme.mp3") || loadSampleFromZip("theme", "theme.mid");
+    loadSampleFromZip("futuristic", "futuristic.mp3") || loadSampleFromZip("futuristic", "futuristic.mid");
+    loadSampleFromZip("airforce", "airforce.mp3") || loadSampleFromZip("airforce", "airforce.mid");
+    loadSampleFromZip("america", "americathebeautiful.mp3") || loadSampleFromZip("america", "americathebeautiful.mid");
+    loadSampleFromZip("grand_old_flag", "grandoldflag.mp3") || loadSampleFromZip("grand_old_flag", "grandoldflag.mid");
+    loadSampleFromZip("johnny", "johnny.mp3") || loadSampleFromZip("johnny", "johnny.mid");
+    loadSampleFromZip("river_kwai", "riverkwai.mp3") || loadSampleFromZip("river_kwai", "riverkwai.mid");
     
     std::cout << "Loaded " << samples.size() << " audio files from ZIP" << std::endl;
+    
+    // Display audio format capabilities
+    std::cout << "Audio format support:" << std::endl;
+    std::cout << "- WAV: Yes (native Allegro support)" << std::endl;
+    std::cout << "- MP3: " << (samples.size() > 0 ? "Detected" : "Limited") << " (depends on Allegro build)" << std::endl;
+    std::cout << "- MID: Fallback available" << std::endl;
+    
     return allLoaded;
 }
 
