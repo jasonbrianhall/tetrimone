@@ -1,16 +1,17 @@
-// Tetrimone using C++ and Allegro 5
-// Compile with: g++ -o tetrimone tetrimone.cpp -lallegro -lallegro_font -lallegro_ttf -lallegro_primitives -lallegro_audio -lallegro_acodec -std=c++11
+// Tetrimone using C++ and Allegro 4 with Color Themes and Extended Pieces
+// Compile with: g++ -o tetrimone.exe tetrimone.cpp -lalleg
 
-#include <allegro5/allegro.h>
-#include <allegro5/allegro_font.h>
-#include <allegro5/allegro_ttf.h>
-#include <allegro5/allegro_primitives.h>
-#include <allegro5/allegro_audio.h>
-#include <allegro5/allegro_acodec.h>
 #include <iostream>
 #include <vector>
-#include <random>
+#include <cstdlib>
 #include <ctime>
+#include <allegro.h>
+#include <array>
+#include <algorithm>
+
+// Include block shapes and themes
+#include "tetrimoneblock.h"
+#include "themes.h"
 
 // Constants
 const int SCREEN_WIDTH = 800;
@@ -20,242 +21,10 @@ const int GRID_WIDTH = 10;
 const int GRID_HEIGHT = 20;
 const int GRID_OFFSET_X = (SCREEN_WIDTH - GRID_WIDTH * BLOCK_SIZE) / 2;
 const int GRID_OFFSET_Y = (SCREEN_HEIGHT - GRID_HEIGHT * BLOCK_SIZE) / 2;
-const float FPS = 60.0;
-
-// Tetromino shapes - Each piece has 4 rotations (even if some are duplicates)
-// Fixed structure: pieces[type][rotation][row][column]
-const std::vector<std::vector<std::vector<std::vector<int>>>> TETROMINOS = {
-    // I piece - 4 rotations
-    {
-        // Rotation 0
-        {
-            {0, 0, 0, 0},
-            {1, 1, 1, 1},
-            {0, 0, 0, 0},
-            {0, 0, 0, 0}
-        },
-        // Rotation 1
-        {
-            {0, 0, 1, 0},
-            {0, 0, 1, 0},
-            {0, 0, 1, 0},
-            {0, 0, 1, 0}
-        },
-        // Rotation 2
-        {
-            {0, 0, 0, 0},
-            {0, 0, 0, 0},
-            {1, 1, 1, 1},
-            {0, 0, 0, 0}
-        },
-        // Rotation 3
-        {
-            {0, 1, 0, 0},
-            {0, 1, 0, 0},
-            {0, 1, 0, 0},
-            {0, 1, 0, 0}
-        }
-    },
-    // J piece - 4 rotations
-    {
-        // Rotation 0
-        {
-            {1, 0, 0},
-            {1, 1, 1},
-            {0, 0, 0}
-        },
-        // Rotation 1
-        {
-            {0, 1, 1},
-            {0, 1, 0},
-            {0, 1, 0}
-        },
-        // Rotation 2
-        {
-            {0, 0, 0},
-            {1, 1, 1},
-            {0, 0, 1}
-        },
-        // Rotation 3
-        {
-            {0, 1, 0},
-            {0, 1, 0},
-            {1, 1, 0}
-        }
-    },
-    // L piece - 4 rotations
-    {
-        // Rotation 0
-        {
-            {0, 0, 1},
-            {1, 1, 1},
-            {0, 0, 0}
-        },
-        // Rotation 1
-        {
-            {0, 1, 0},
-            {0, 1, 0},
-            {0, 1, 1}
-        },
-        // Rotation 2
-        {
-            {0, 0, 0},
-            {1, 1, 1},
-            {1, 0, 0}
-        },
-        // Rotation 3
-        {
-            {1, 1, 0},
-            {0, 1, 0},
-            {0, 1, 0}
-        }
-    },
-    // O piece - 4 identical rotations for consistency
-    {
-        // Rotation 0
-        {
-            {1, 1},
-            {1, 1}
-        },
-        // Rotation 1
-        {
-            {1, 1},
-            {1, 1}
-        },
-        // Rotation 2
-        {
-            {1, 1},
-            {1, 1}
-        },
-        // Rotation 3
-        {
-            {1, 1},
-            {1, 1}
-        }
-    },
-    // S piece - 4 rotations
-    {
-        // Rotation 0
-        {
-            {0, 1, 1},
-            {1, 1, 0},
-            {0, 0, 0}
-        },
-        // Rotation 1
-        {
-            {0, 1, 0},
-            {0, 1, 1},
-            {0, 0, 1}
-        },
-        // Rotation 2
-        {
-            {0, 0, 0},
-            {0, 1, 1},
-            {1, 1, 0}
-        },
-        // Rotation 3
-        {
-            {1, 0, 0},
-            {1, 1, 0},
-            {0, 1, 0}
-        }
-    },
-    // T piece - 4 rotations
-    {
-        // Rotation 0
-        {
-            {0, 1, 0},
-            {1, 1, 1},
-            {0, 0, 0}
-        },
-        // Rotation 1
-        {
-            {0, 1, 0},
-            {0, 1, 1},
-            {0, 1, 0}
-        },
-        // Rotation 2
-        {
-            {0, 0, 0},
-            {1, 1, 1},
-            {0, 1, 0}
-        },
-        // Rotation 3
-        {
-            {0, 1, 0},
-            {1, 1, 0},
-            {0, 1, 0}
-        }
-    },
-    // Z piece - 4 rotations
-    {
-        // Rotation 0
-        {
-            {1, 1, 0},
-            {0, 1, 1},
-            {0, 0, 0}
-        },
-        // Rotation 1
-        {
-            {0, 0, 1},
-            {0, 1, 1},
-            {0, 1, 0}
-        },
-        // Rotation 2
-        {
-            {0, 0, 0},
-            {1, 1, 0},
-            {0, 1, 1}
-        },
-        // Rotation 3
-        {
-            {0, 1, 0},
-            {1, 1, 0},
-            {1, 0, 0}
-        }
-    }
-};
-
-// Colors for each tetromino
-const ALLEGRO_COLOR TETROMINO_COLORS[] = {
-    al_map_rgb(0, 240, 240),   // I - Cyan
-    al_map_rgb(0, 0, 240),     // J - Blue
-    al_map_rgb(240, 160, 0),   // L - Orange
-    al_map_rgb(240, 240, 0),   // O - Yellow
-    al_map_rgb(0, 240, 0),     // S - Green
-    al_map_rgb(160, 0, 240),   // T - Purple
-    al_map_rgb(240, 0, 0)      // Z - Red
-};
-
-// Helper functions to extract RGB components from an ALLEGRO_COLOR
-float get_allegro_r(ALLEGRO_COLOR color) {
-    float r, g, b, a;
-    al_unmap_rgba_f(color, &r, &g, &b, &a);
-    return r;
-}
-
-float get_allegro_g(ALLEGRO_COLOR color) {
-    float r, g, b, a;
-    al_unmap_rgba_f(color, &r, &g, &b, &a);
-    return g;
-}
-
-float get_allegro_b(ALLEGRO_COLOR color) {
-    float r, g, b, a;
-    al_unmap_rgba_f(color, &r, &g, &b, &a);
-    return b;
-}
-
-// Game states
-enum GameState {
-    PLAYING,
-    GAME_OVER,
-    PAUSED
-};
 
 class Tetrimone {
 private:
-    int grid[GRID_HEIGHT][GRID_WIDTH] = {0};
+    int grid[GRID_HEIGHT][GRID_WIDTH];
     int currentPiece;
     int nextPiece;
     int currentRotation;
@@ -263,11 +32,60 @@ private:
     int score;
     int level;
     int lines;
+    int currentTheme;
     float fallSpeed;
     float fallTimer;
     bool gameOver;
     bool paused;
-    std::mt19937 rng;
+    BITMAP* buffer;
+    FONT* gameFont;
+    
+    // Color conversion cache
+    std::vector<int> themeColors;
+
+    // Convert RGB to Allegro color
+    int rgbToAllegroColor(double r, double g, double b) {
+        // Convert 0-1 range to 0-255 range and clamp
+        int red = std::max(0, std::min(255, (int)(r * 255)));
+        int green = std::max(0, std::min(255, (int)(g * 255)));
+        int blue = std::max(0, std::min(255, (int)(b * 255)));
+        
+        // Allegro 4 makecol function
+        return makecol(red, green, blue);
+    }
+
+    // Update theme colors based on current theme
+    void updateThemeColors() {
+        themeColors.clear();
+        if (currentTheme < NUM_COLOR_THEMES) {
+            for (const auto& color : TETRIMONEBLOCK_COLOR_THEMES[currentTheme]) {
+                themeColors.push_back(rgbToAllegroColor(color[0], color[1], color[2]));
+            }
+        } else {
+            // Fallback colors if theme index is out of bounds
+            for (int i = 0; i < 14; i++) {
+                themeColors.push_back(makecol(128 + i * 8, 128 + i * 8, 255));
+            }
+        }
+    }
+
+    // Get theme name for display
+    std::string getThemeName() const {
+        const std::vector<std::string> themeNames = {
+            "Watercolor", "Neon", "Pastel", "Earth Tones", "Monochrome Blue",
+            "Monochrome Green", "Sunset", "Ocean", "Grayscale", "Candy",
+            "Neon Dark", "Jewel Tones", "Retro Gaming", "Autumn", "Winter",
+            "Spring", "Summer", "Monochrome Purple", "Desert", "Rainbow",
+            "Art Deco", "Northern Lights", "Moroccan Tiles", "Bioluminescence", "Fossil",
+            "Silk Road", "Digital Glitch", "Botanical", "Jazz Age", "Steampunk",
+            "USA", "Soviet Retro"
+        };
+        
+        if (currentTheme < themeNames.size()) {
+            return themeNames[currentTheme];
+        }
+        return "Theme " + std::to_string(currentTheme + 1);
+    }
 
     // Initialize game values
     void init() {
@@ -282,13 +100,17 @@ private:
         score = 0;
         level = 1;
         lines = 0;
+        currentTheme = 0;
         fallSpeed = 1.0;
         fallTimer = 0;
         gameOver = false;
         paused = false;
         
-        // Set up random number generator for piece selection
-        rng.seed(static_cast<unsigned int>(std::time(nullptr)));
+        // Initialize theme colors
+        updateThemeColors();
+        
+        // Seed random number generator
+        srand(time(NULL));
         
         // Create the first piece
         nextPiece = -1;
@@ -297,8 +119,7 @@ private:
 
     // Generate a random piece
     int randomPiece() {
-        std::uniform_int_distribution<int> dist(0, TETROMINOS.size() - 1);
-        return dist(rng);
+        return rand() % TETRIMONEBLOCK_SHAPES.size();
     }
 
     // Create a new piece at the top of the grid
@@ -314,8 +135,10 @@ private:
         currentRotation = 0;
         
         // Position the piece at the top-center of the grid
-        currentX = GRID_WIDTH / 2 - TETROMINOS[currentPiece][0][0].size() / 2;
-        currentY = 0;
+        if (currentPiece < TETRIMONEBLOCK_SHAPES.size()) {
+            currentX = GRID_WIDTH / 2 - 2; // Center it roughly
+            currentY = 0;
+        }
         
         // Check if the new piece collides immediately (game over condition)
         if (checkCollision()) {
@@ -325,7 +148,9 @@ private:
 
     // Check if current piece collides with borders or placed blocks
     bool checkCollision() {
-        const auto& piece = TETROMINOS[currentPiece][currentRotation];
+        if (currentPiece >= TETRIMONEBLOCK_SHAPES.size()) return true;
+        
+        const auto& piece = TETRIMONEBLOCK_SHAPES[currentPiece][currentRotation];
         for (size_t y = 0; y < piece.size(); y++) {
             for (size_t x = 0; x < piece[y].size(); x++) {
                 if (piece[y][x]) {
@@ -337,7 +162,7 @@ private:
                         return true;
                     }
                     
-                    // Check collision with placed blocks (but ignore if we're still at the top)
+                    // Check collision with placed blocks
                     if (gridY >= 0 && grid[gridY][gridX]) {
                         return true;
                     }
@@ -349,8 +174,10 @@ private:
 
     // Rotate the current piece
     void rotatePiece() {
+        if (currentPiece >= TETRIMONEBLOCK_SHAPES.size()) return;
+        
         int oldRotation = currentRotation;
-        currentRotation = (currentRotation + 1) % TETROMINOS[currentPiece].size();
+        currentRotation = (currentRotation + 1) % TETRIMONEBLOCK_SHAPES[currentPiece].size();
         
         // If the rotation causes a collision, revert back
         if (checkCollision()) {
@@ -379,7 +206,9 @@ private:
 
     // Lock the current piece into the grid
     void lockPiece() {
-        const auto& piece = TETROMINOS[currentPiece][currentRotation];
+        if (currentPiece >= TETRIMONEBLOCK_SHAPES.size()) return;
+        
+        const auto& piece = TETRIMONEBLOCK_SHAPES[currentPiece][currentRotation];
         for (size_t y = 0; y < piece.size(); y++) {
             for (size_t x = 0; x < piece[y].size(); x++) {
                 if (piece[y][x]) {
@@ -387,7 +216,7 @@ private:
                     int gridX = currentX + x;
                     
                     // Make sure we're not above the grid
-                    if (gridY >= 0) {
+                    if (gridY >= 0 && gridY < GRID_HEIGHT && gridX >= 0 && gridX < GRID_WIDTH) {
                         // Store the piece index + 1 in the grid (0 means empty)
                         grid[gridY][gridX] = currentPiece + 1;
                     }
@@ -432,31 +261,38 @@ private:
                     grid[0][x] = 0;
                 }
                 
-                // Check this line again as it now contains the line from above
+                // Check this line again
                 y++;
             }
         }
         
         // Update score and level
         if (linesCleared > 0) {
-            // Scoring: 100 * (1 for single, 3 for double, 5 for triple, 8 for tetrimone) * level
+            // Scoring: 100 * multiplier * level
             int multiplier;
             switch (linesCleared) {
                 case 1: multiplier = 1; break;
                 case 2: multiplier = 3; break;
                 case 3: multiplier = 5; break;
                 case 4: multiplier = 8; break;
-                default: multiplier = 0;
+                default: multiplier = linesCleared;
             }
             
             score += 100 * multiplier * level;
             lines += linesCleared;
             
             // Level up every 10 lines
-            level = (lines / 10) + 1;
+            int newLevel = (lines / 10) + 1;
+            if (newLevel != level) {
+                level = newLevel;
+                
+                // Change theme every level (cycle through available themes)
+                currentTheme = (level - 1) % NUM_COLOR_THEMES;
+                updateThemeColors();
+            }
             
-            // Increase fall speed with level
-            fallSpeed = 1.0 / level;
+            // Increase fall speed with level (but cap it)
+            fallSpeed = std::max(0.1f, 1.0f / level);
         }
     }
 
@@ -468,58 +304,66 @@ private:
     }
 
     // Draw a single block with border
-    void drawBlock(int x, int y, ALLEGRO_COLOR color) {
+    void drawBlock(BITMAP* bmp, int x, int y, int color) {
         int screenX = GRID_OFFSET_X + x * BLOCK_SIZE;
         int screenY = GRID_OFFSET_Y + y * BLOCK_SIZE;
         
         // Draw filled block
-        al_draw_filled_rectangle(screenX, screenY, 
-                                 screenX + BLOCK_SIZE, screenY + BLOCK_SIZE, 
-                                 color);
+        rectfill(bmp, screenX, screenY, 
+                 screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1, 
+                 color);
         
-        // Draw highlight (top and left edges)
-        al_draw_line(screenX, screenY, 
-                     screenX + BLOCK_SIZE, screenY, 
-                     al_map_rgba(255, 255, 255, 128), 2);
-        al_draw_line(screenX, screenY, 
-                     screenX, screenY + BLOCK_SIZE, 
-                     al_map_rgba(255, 255, 255, 128), 2);
+        // Draw highlight (top and left edges) - lighter version of the color
+        int highlightColor = makecol(
+            std::min(255, getr(color) + 60),
+            std::min(255, getg(color) + 60),
+            std::min(255, getb(color) + 60)
+        );
+        line(bmp, screenX, screenY, screenX + BLOCK_SIZE - 1, screenY, highlightColor);
+        line(bmp, screenX, screenY, screenX, screenY + BLOCK_SIZE - 1, highlightColor);
         
-        // Draw shadow (bottom and right edges)
-        al_draw_line(screenX, screenY + BLOCK_SIZE, 
-                     screenX + BLOCK_SIZE, screenY + BLOCK_SIZE, 
-                     al_map_rgba(0, 0, 0, 128), 2);
-        al_draw_line(screenX + BLOCK_SIZE, screenY, 
-                     screenX + BLOCK_SIZE, screenY + BLOCK_SIZE, 
-                     al_map_rgba(0, 0, 0, 128), 2);
+        // Draw shadow (bottom and right edges) - darker version of the color
+        int shadowColor = makecol(
+            std::max(0, getr(color) - 60),
+            std::max(0, getg(color) - 60),
+            std::max(0, getb(color) - 60)
+        );
+        line(bmp, screenX, screenY + BLOCK_SIZE - 1, 
+             screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1, shadowColor);
+        line(bmp, screenX + BLOCK_SIZE - 1, screenY, 
+             screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1, shadowColor);
     }
 
     // Draw the game grid
     void drawGrid() {
         // Draw border
-        al_draw_rectangle(GRID_OFFSET_X - 1, GRID_OFFSET_Y - 1,
-                         GRID_OFFSET_X + GRID_WIDTH * BLOCK_SIZE + 1,
-                         GRID_OFFSET_Y + GRID_HEIGHT * BLOCK_SIZE + 1,
-                         al_map_rgb(255, 255, 255), 2);
+        rect(buffer, GRID_OFFSET_X - 1, GRID_OFFSET_Y - 1,
+             GRID_OFFSET_X + GRID_WIDTH * BLOCK_SIZE,
+             GRID_OFFSET_Y + GRID_HEIGHT * BLOCK_SIZE, makecol(255, 255, 255));
         
         // Draw grid lines
+        int gridColor = makecol(64, 64, 64);
         for (int x = 0; x <= GRID_WIDTH; x++) {
-            al_draw_line(GRID_OFFSET_X + x * BLOCK_SIZE, GRID_OFFSET_Y,
-                        GRID_OFFSET_X + x * BLOCK_SIZE, GRID_OFFSET_Y + GRID_HEIGHT * BLOCK_SIZE,
-                        al_map_rgba(80, 80, 80, 80), 1);
+            line(buffer, GRID_OFFSET_X + x * BLOCK_SIZE, GRID_OFFSET_Y,
+                 GRID_OFFSET_X + x * BLOCK_SIZE, GRID_OFFSET_Y + GRID_HEIGHT * BLOCK_SIZE, gridColor);
         }
         
         for (int y = 0; y <= GRID_HEIGHT; y++) {
-            al_draw_line(GRID_OFFSET_X, GRID_OFFSET_Y + y * BLOCK_SIZE,
-                        GRID_OFFSET_X + GRID_WIDTH * BLOCK_SIZE, GRID_OFFSET_Y + y * BLOCK_SIZE,
-                        al_map_rgba(80, 80, 80, 80), 1);
+            line(buffer, GRID_OFFSET_X, GRID_OFFSET_Y + y * BLOCK_SIZE,
+                 GRID_OFFSET_X + GRID_WIDTH * BLOCK_SIZE, GRID_OFFSET_Y + y * BLOCK_SIZE, gridColor);
         }
         
         // Draw placed blocks
         for (int y = 0; y < GRID_HEIGHT; y++) {
             for (int x = 0; x < GRID_WIDTH; x++) {
                 if (grid[y][x]) {
-                    drawBlock(x, y, TETROMINO_COLORS[grid[y][x] - 1]);
+                    int pieceIndex = grid[y][x] - 1;
+                    if (pieceIndex < themeColors.size()) {
+                        drawBlock(buffer, x, y, themeColors[pieceIndex]);
+                    } else {
+                        // Fallback color
+                        drawBlock(buffer, x, y, makecol(128, 128, 255));
+                    }
                 }
             }
         }
@@ -527,7 +371,9 @@ private:
 
     // Draw the current falling piece
     void drawCurrentPiece() {
-        const auto& piece = TETROMINOS[currentPiece][currentRotation];
+        if (currentPiece >= TETRIMONEBLOCK_SHAPES.size()) return;
+        
+        const auto& piece = TETRIMONEBLOCK_SHAPES[currentPiece][currentRotation];
         
         for (size_t y = 0; y < piece.size(); y++) {
             for (size_t x = 0; x < piece[y].size(); x++) {
@@ -536,8 +382,14 @@ private:
                     int gridY = currentY + y;
                     
                     // Only draw if the block is within the visible grid
-                    if (gridY >= 0) {
-                        drawBlock(gridX, gridY, TETROMINO_COLORS[currentPiece]);
+                    if (gridY >= 0 && gridX >= 0 && gridX < GRID_WIDTH) {
+                        int color;
+                        if (currentPiece < themeColors.size()) {
+                            color = themeColors[currentPiece];
+                        } else {
+                            color = makecol(255, 255, 255); // fallback
+                        }
+                        drawBlock(buffer, gridX, gridY, color);
                     }
                 }
             }
@@ -546,6 +398,8 @@ private:
 
     // Draw the ghost piece (preview of where the piece will land)
     void drawGhostPiece() {
+        if (currentPiece >= TETRIMONEBLOCK_SHAPES.size()) return;
+        
         int ghostY = currentY;
         
         // Find where the piece would land
@@ -553,7 +407,7 @@ private:
             ghostY++;
             
             // Check for collision
-            const auto& piece = TETROMINOS[currentPiece][currentRotation];
+            const auto& piece = TETRIMONEBLOCK_SHAPES[currentPiece][currentRotation];
             bool collision = false;
             
             for (size_t y = 0; y < piece.size() && !collision; y++) {
@@ -562,13 +416,11 @@ private:
                         int gridX = currentX + x;
                         int gridY = ghostY + y;
                         
-                        // Check boundaries
                         if (gridX < 0 || gridX >= GRID_WIDTH || gridY >= GRID_HEIGHT) {
                             collision = true;
                             break;
                         }
                         
-                        // Check collision with placed blocks
                         if (gridY >= 0 && grid[gridY][gridX]) {
                             collision = true;
                             break;
@@ -585,13 +437,7 @@ private:
         
         // Draw the ghost piece
         if (ghostY > currentY) {
-            const auto& piece = TETROMINOS[currentPiece][currentRotation];
-            ALLEGRO_COLOR ghostColor = al_map_rgba(
-                get_allegro_r(TETROMINO_COLORS[currentPiece]) * 255,
-                get_allegro_g(TETROMINO_COLORS[currentPiece]) * 255,
-                get_allegro_b(TETROMINO_COLORS[currentPiece]) * 255,
-                50  // Low alpha for transparency
-            );
+            const auto& piece = TETRIMONEBLOCK_SHAPES[currentPiece][currentRotation];
             
             for (size_t y = 0; y < piece.size(); y++) {
                 for (size_t x = 0; x < piece[y].size(); x++) {
@@ -599,14 +445,21 @@ private:
                         int gridX = currentX + x;
                         int gridY = ghostY + y;
                         
-                        // Only draw if the block is within the visible grid
-                        if (gridY >= 0) {
+                        if (gridY >= 0 && gridX >= 0 && gridX < GRID_WIDTH) {
                             int screenX = GRID_OFFSET_X + gridX * BLOCK_SIZE;
                             int screenY = GRID_OFFSET_Y + gridY * BLOCK_SIZE;
                             
-                            al_draw_rectangle(screenX, screenY,
-                                            screenX + BLOCK_SIZE, screenY + BLOCK_SIZE,
-                                            ghostColor, 2);
+                            int color;
+                            if (currentPiece < themeColors.size()) {
+                                color = themeColors[currentPiece];
+                            } else {
+                                color = makecol(128, 128, 128);
+                            }
+                            
+                            // Draw ghost outline
+                            rect(buffer, screenX, screenY,
+                                 screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1,
+                                 color);
                         }
                     }
                 }
@@ -615,23 +468,24 @@ private:
     }
 
     // Draw the next piece preview
-    void drawNextPiece(ALLEGRO_FONT* font) {
+    void drawNextPiece() {
+        if (nextPiece >= TETRIMONEBLOCK_SHAPES.size()) return;
+        
         int previewX = GRID_OFFSET_X + GRID_WIDTH * BLOCK_SIZE + 30;
         int previewY = GRID_OFFSET_Y + 30;
         
         // Draw title
-        al_draw_text(font, al_map_rgb(255, 255, 255), previewX, previewY, 0, "NEXT");
+        textout_ex(buffer, gameFont, "NEXT", previewX, previewY, makecol(255, 255, 255), -1);
         previewY += 30;
         
-        // Calculate preview size based on the piece
-        const auto& piece = TETROMINOS[nextPiece][0]; // Use first rotation for preview
+        // Calculate preview size
+        const auto& piece = TETRIMONEBLOCK_SHAPES[nextPiece][0];
         int pieceHeight = piece.size() * BLOCK_SIZE;
         int pieceWidth = piece[0].size() * BLOCK_SIZE;
         
         // Draw background
-        al_draw_filled_rectangle(previewX, previewY,
-                               previewX + pieceWidth + 20, previewY + pieceHeight + 20,
-                               al_map_rgb(30, 30, 30));
+        rectfill(buffer, previewX, previewY,
+                 previewX + pieceWidth + 20, previewY + pieceHeight + 20, makecol(32, 32, 32));
         
         // Draw next piece
         for (size_t y = 0; y < piece.size(); y++) {
@@ -640,70 +494,96 @@ private:
                     int blockX = previewX + 10 + x * BLOCK_SIZE;
                     int blockY = previewY + 10 + y * BLOCK_SIZE;
                     
+                    int color;
+                    if (nextPiece < themeColors.size()) {
+                        color = themeColors[nextPiece];
+                    } else {
+                        color = makecol(255, 255, 255);
+                    }
+                    
                     // Draw filled block
-                    al_draw_filled_rectangle(blockX, blockY,
-                                           blockX + BLOCK_SIZE, blockY + BLOCK_SIZE,
-                                           TETROMINO_COLORS[nextPiece]);
+                    rectfill(buffer, blockX, blockY,
+                             blockX + BLOCK_SIZE - 1, blockY + BLOCK_SIZE - 1,
+                             color);
                     
-                    // Draw highlight (top and left edges)
-                    al_draw_line(blockX, blockY,
-                                blockX + BLOCK_SIZE, blockY,
-                                al_map_rgba(255, 255, 255, 128), 2);
-                    al_draw_line(blockX, blockY,
-                                blockX, blockY + BLOCK_SIZE,
-                                al_map_rgba(255, 255, 255, 128), 2);
+                    // Draw highlight
+                    int highlightColor = makecol(
+                        std::min(255, getr(color) + 60),
+                        std::min(255, getg(color) + 60),
+                        std::min(255, getb(color) + 60)
+                    );
+                    line(buffer, blockX, blockY, blockX + BLOCK_SIZE - 1, blockY, highlightColor);
+                    line(buffer, blockX, blockY, blockX, blockY + BLOCK_SIZE - 1, highlightColor);
                     
-                    // Draw shadow (bottom and right edges)
-                    al_draw_line(blockX, blockY + BLOCK_SIZE,
-                                blockX + BLOCK_SIZE, blockY + BLOCK_SIZE,
-                                al_map_rgba(0, 0, 0, 128), 2);
-                    al_draw_line(blockX + BLOCK_SIZE, blockY,
-                                blockX + BLOCK_SIZE, blockY + BLOCK_SIZE,
-                                al_map_rgba(0, 0, 0, 128), 2);
+                    // Draw shadow
+                    int shadowColor = makecol(
+                        std::max(0, getr(color) - 60),
+                        std::max(0, getg(color) - 60),
+                        std::max(0, getb(color) - 60)
+                    );
+                    line(buffer, blockX, blockY + BLOCK_SIZE - 1,
+                         blockX + BLOCK_SIZE - 1, blockY + BLOCK_SIZE - 1, shadowColor);
+                    line(buffer, blockX + BLOCK_SIZE - 1, blockY,
+                         blockX + BLOCK_SIZE - 1, blockY + BLOCK_SIZE - 1, shadowColor);
                 }
             }
         }
     }
 
-    // Draw score, level, and lines
-    void drawStats(ALLEGRO_FONT* font) {
+    // Draw score, level, lines, and theme
+    void drawStats() {
         int statsX = GRID_OFFSET_X + GRID_WIDTH * BLOCK_SIZE + 30;
-        int statsY = GRID_OFFSET_Y + 150;
+        int statsY = GRID_OFFSET_Y + 250; // Moved down from 150 to 250
+        int textColor = makecol(255, 255, 255);
         
-        al_draw_textf(font, al_map_rgb(255, 255, 255), statsX, statsY, 0, "SCORE: %d", score);
-        statsY += 30;
+        textprintf_ex(buffer, gameFont, statsX, statsY, textColor, -1, "SCORE: %d", score);
+        statsY += 25;
         
-        al_draw_textf(font, al_map_rgb(255, 255, 255), statsX, statsY, 0, "LEVEL: %d", level);
-        statsY += 30;
+        textprintf_ex(buffer, gameFont, statsX, statsY, textColor, -1, "LEVEL: %d", level);
+        statsY += 25;
         
-        al_draw_textf(font, al_map_rgb(255, 255, 255), statsX, statsY, 0, "LINES: %d", lines);
+        textprintf_ex(buffer, gameFont, statsX, statsY, textColor, -1, "LINES: %d", lines);
+        statsY += 25;
+        
+        // Display current theme
+        textprintf_ex(buffer, gameFont, statsX, statsY, textColor, -1, "THEME:");
+        statsY += 20;
+        textprintf_ex(buffer, gameFont, statsX, statsY, textColor, -1, "%s", getThemeName().c_str());
     }
 
     // Draw game over screen
-    void drawGameOver(ALLEGRO_FONT* font) {
-        al_draw_filled_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, al_map_rgba(0, 0, 0, 150));
+    void drawGameOver() {
+        rectfill(buffer, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, makecol(0, 0, 0));
         
-        al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 30,
-                    ALLEGRO_ALIGN_CENTER, "GAME OVER");
+        int textColor = makecol(255, 255, 255);
+        textout_centre_ex(buffer, gameFont, "GAME OVER", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 30, textColor, -1);
         
-        al_draw_textf(font, al_map_rgb(255, 255, 255), SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2,
-                     ALLEGRO_ALIGN_CENTER, "FINAL SCORE: %d", score);
+        textprintf_centre_ex(buffer, gameFont, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2,
+                            textColor, -1, "FINAL SCORE: %d", score);
         
-        al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 30,
-                    ALLEGRO_ALIGN_CENTER, "PRESS ENTER TO RESTART");
+        textprintf_centre_ex(buffer, gameFont, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 30,
+                            textColor, -1, "REACHED LEVEL: %d", level);
+        
+        textout_centre_ex(buffer, gameFont, "PRESS ENTER TO RESTART", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 60, textColor, -1);
     }
 
     // Draw pause screen
-    void drawPaused(ALLEGRO_FONT* font) {
-        al_draw_filled_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, al_map_rgba(0, 0, 0, 150));
-        al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2,
-                    ALLEGRO_ALIGN_CENTER, "PAUSED");
+    void drawPaused() {
+        rectfill(buffer, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, makecol(0, 0, 0));
+        textout_centre_ex(buffer, gameFont, "PAUSED", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, makecol(255, 255, 255), -1);
     }
 
 public:
     Tetrimone() {
+        buffer = create_bitmap(SCREEN_WIDTH, SCREEN_HEIGHT);
+        gameFont = font;
         nextPiece = -1;
+        currentTheme = 0;
         init();
+    }
+
+    ~Tetrimone() {
+        destroy_bitmap(buffer);
     }
 
     // Main game update function
@@ -721,22 +601,28 @@ public:
     }
 
     // Main game draw function
-    void draw(ALLEGRO_FONT* font) {
+    void draw() {
+        // Clear buffer
+        clear_to_color(buffer, makecol(0, 0, 0));
+        
         drawGrid();
         drawGhostPiece();
         drawCurrentPiece();
-        drawNextPiece(font);
-        drawStats(font);
+        drawNextPiece();
+        drawStats();
         
         if (gameOver) {
-            drawGameOver(font);
+            drawGameOver();
         } else if (paused) {
-            drawPaused(font);
+            drawPaused();
         }
+        
+        // Draw buffer to screen
+        blit(buffer, screen, 0, 0, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     }
 
     // Handle keyboard input
-    void handleInput(ALLEGRO_KEYBOARD_STATE& keyState) {
+    void handleInput() {
         static bool leftPressed = false;
         static bool rightPressed = false;
         static bool downPressed = false;
@@ -746,13 +632,13 @@ public:
         static bool enterPressed = false;
         
         // Check for key presses
-        bool left = al_key_down(&keyState, ALLEGRO_KEY_LEFT);
-        bool right = al_key_down(&keyState, ALLEGRO_KEY_RIGHT);
-        bool down = al_key_down(&keyState, ALLEGRO_KEY_DOWN);
-        bool up = al_key_down(&keyState, ALLEGRO_KEY_UP);
-        bool space = al_key_down(&keyState, ALLEGRO_KEY_SPACE);
-        bool p = al_key_down(&keyState, ALLEGRO_KEY_P);
-        bool enter = al_key_down(&keyState, ALLEGRO_KEY_ENTER);
+        bool left = key[KEY_LEFT];
+        bool right = key[KEY_RIGHT];
+        bool down = key[KEY_DOWN];
+        bool up = key[KEY_UP];
+        bool space = key[KEY_SPACE];
+        bool p = key[KEY_P];
+        bool enter = key[KEY_ENTER];
         
         // Handle game over
         if (gameOver) {
@@ -816,134 +702,67 @@ public:
     }
 };
 
-// Main function - game entry point
+// Main function
 int main() {
     // Initialize Allegro
-    if (!al_init()) {
+    if (allegro_init() != 0) {
         std::cerr << "Failed to initialize Allegro!" << std::endl;
         return -1;
     }
 
-    // Initialize keyboard
-    if (!al_install_keyboard()) {
-        std::cerr << "Failed to initialize keyboard!" << std::endl;
+    // Install keyboard
+    if (install_keyboard() != 0) {
+        std::cerr << "Failed to install keyboard!" << std::endl;
         return -1;
     }
 
-    // Initialize font add-on
-    if (!al_init_font_addon() || !al_init_ttf_addon()) {
-        std::cerr << "Failed to initialize font add-on!" << std::endl;
+    // Install timer
+    if (install_timer() != 0) {
+        std::cerr << "Failed to install timer!" << std::endl;
         return -1;
     }
 
-    // Initialize primitives add-on
-    if (!al_init_primitives_addon()) {
-        std::cerr << "Failed to initialize primitives add-on!" << std::endl;
-        return -1;
-    }
+    // Set color depth
+    set_color_depth(32); // 32-bit for better color support
 
-    // Create display
-    ALLEGRO_DISPLAY* display = al_create_display(SCREEN_WIDTH, SCREEN_HEIGHT);
-    if (!display) {
-        std::cerr << "Failed to create display!" << std::endl;
-        return -1;
-    }
-    al_set_window_title(display, "Tetrimone");
-
-    // Create event queue
-    ALLEGRO_EVENT_QUEUE* eventQueue = al_create_event_queue();
-    if (!eventQueue) {
-        std::cerr << "Failed to create event queue!" << std::endl;
-        al_destroy_display(display);
-        return -1;
-    }
-
-    // Create timer
-    ALLEGRO_TIMER* timer = al_create_timer(1.0 / FPS);
-    if (!timer) {
-        std::cerr << "Failed to create timer!" << std::endl;
-        al_destroy_event_queue(eventQueue);
-        al_destroy_display(display);
-        return -1;
-    }
-
-    // Load font
-    ALLEGRO_FONT* font = al_load_font("arial.ttf", 24, 0);
-    if (!font) {
-        // Try to load a fallback font
-        font = al_create_builtin_font();
-        if (!font) {
-            std::cerr << "Failed to load font!" << std::endl;
-            al_destroy_timer(timer);
-            al_destroy_event_queue(eventQueue);
-            al_destroy_display(display);
+    // Set graphics mode
+    if (set_gfx_mode(GFX_AUTODETECT_WINDOWED, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0) != 0) {
+        if (set_gfx_mode(GFX_AUTODETECT, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0) != 0) {
+            std::cerr << "Failed to set graphics mode!" << std::endl;
             return -1;
         }
     }
 
-    // Register event sources
-    al_register_event_source(eventQueue, al_get_display_event_source(display));
-    al_register_event_source(eventQueue, al_get_timer_event_source(timer));
-    al_register_event_source(eventQueue, al_get_keyboard_event_source());
-
-    // Start the timer
-    al_start_timer(timer);
+    // Set window title
+    set_window_title("Tetrimone - Extended Pieces & Themes");
 
     // Create game instance
     Tetrimone tetrimone;
 
     // Game loop variables
     bool running = true;
-    bool redraw = true;
-    ALLEGRO_EVENT event;
-    ALLEGRO_KEYBOARD_STATE keyState;
+    clock_t lastTime = clock();
 
     // Game loop
-    while (running) {
-        al_wait_for_event(eventQueue, &event);
+    while (running && !key[KEY_ESC]) {
+        // Calculate delta time
+        clock_t currentTime = clock();
+        float dt = (float)(currentTime - lastTime) / CLOCKS_PER_SEC;
+        lastTime = currentTime;
 
-        switch (event.type) {
-            case ALLEGRO_EVENT_TIMER:
-                // Update game
-                tetrimone.update(1.0 / FPS);
-                
-                // Get keyboard state
-                al_get_keyboard_state(&keyState);
-                tetrimone.handleInput(keyState);
-                
-                redraw = true;
-                break;
+        // Handle input
+        tetrimone.handleInput();
 
-            case ALLEGRO_EVENT_DISPLAY_CLOSE:
-                running = false;
-                break;
+        // Update game
+        tetrimone.update(dt);
 
-            case ALLEGRO_EVENT_KEY_DOWN:
-                if (event.keyboard.keycode == ALLEGRO_KEY_ESCAPE) {
-                    running = false;
-                }
-                break;
-        }
+        // Draw game
+        tetrimone.draw();
 
-        if (redraw && al_is_event_queue_empty(eventQueue)) {
-            redraw = false;
-            
-            // Clear screen
-            al_clear_to_color(al_map_rgb(0, 0, 0));
-            
-            // Draw game
-            tetrimone.draw(font);
-            
-            // Flip display
-            al_flip_display();
-        }
+        // Small delay to prevent 100% CPU usage
+        rest(16); // ~60 FPS
     }
-
-    // Clean up
-    al_destroy_font(font);
-    al_destroy_timer(timer);
-    al_destroy_event_queue(eventQueue);
-    al_destroy_display(display);
 
     return 0;
 }
+END_OF_MAIN()
