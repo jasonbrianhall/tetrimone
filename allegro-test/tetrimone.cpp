@@ -303,7 +303,33 @@ private:
         }
     }
 
-    // Draw a single block with border
+    // Draw a transparent block for ghost pieces
+    void drawTransparentBlock(BITMAP* bmp, int x, int y, int color) {
+        int screenX = GRID_OFFSET_X + x * BLOCK_SIZE;
+        int screenY = GRID_OFFSET_Y + y * BLOCK_SIZE;
+        
+        // Create a semi-transparent version of the color (about 30% opacity)
+        int transparentColor = makecol(
+            getr(color) * 30 / 100,
+            getg(color) * 30 / 100,
+            getb(color) * 30 / 100
+        );
+        
+        // Draw filled transparent block
+        rectfill(bmp, screenX, screenY, 
+                 screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1, 
+                 transparentColor);
+        
+        // Draw subtle outline
+        int outlineColor = makecol(
+            getr(color) * 50 / 100,
+            getg(color) * 50 / 100,
+            getb(color) * 50 / 100
+        );
+        rect(bmp, screenX, screenY,
+             screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1,
+             outlineColor);
+    }
     void drawBlock(BITMAP* bmp, int x, int y, int color) {
         int screenX = GRID_OFFSET_X + x * BLOCK_SIZE;
         int screenY = GRID_OFFSET_Y + y * BLOCK_SIZE;
@@ -336,22 +362,10 @@ private:
 
     // Draw the game grid
     void drawGrid() {
-        // Draw border
+        // Draw border only
         rect(buffer, GRID_OFFSET_X - 1, GRID_OFFSET_Y - 1,
              GRID_OFFSET_X + GRID_WIDTH * BLOCK_SIZE,
              GRID_OFFSET_Y + GRID_HEIGHT * BLOCK_SIZE, makecol(255, 255, 255));
-        
-        // Draw grid lines
-        int gridColor = makecol(64, 64, 64);
-        for (int x = 0; x <= GRID_WIDTH; x++) {
-            line(buffer, GRID_OFFSET_X + x * BLOCK_SIZE, GRID_OFFSET_Y,
-                 GRID_OFFSET_X + x * BLOCK_SIZE, GRID_OFFSET_Y + GRID_HEIGHT * BLOCK_SIZE, gridColor);
-        }
-        
-        for (int y = 0; y <= GRID_HEIGHT; y++) {
-            line(buffer, GRID_OFFSET_X, GRID_OFFSET_Y + y * BLOCK_SIZE,
-                 GRID_OFFSET_X + GRID_WIDTH * BLOCK_SIZE, GRID_OFFSET_Y + y * BLOCK_SIZE, gridColor);
-        }
         
         // Draw placed blocks
         for (int y = 0; y < GRID_HEIGHT; y++) {
@@ -435,7 +449,7 @@ private:
             }
         }
         
-        // Draw the ghost piece
+        // Draw the ghost piece with transparency
         if (ghostY > currentY) {
             const auto& piece = TETRIMONEBLOCK_SHAPES[currentPiece][currentRotation];
             
@@ -446,9 +460,6 @@ private:
                         int gridY = ghostY + y;
                         
                         if (gridY >= 0 && gridX >= 0 && gridX < GRID_WIDTH) {
-                            int screenX = GRID_OFFSET_X + gridX * BLOCK_SIZE;
-                            int screenY = GRID_OFFSET_Y + gridY * BLOCK_SIZE;
-                            
                             int color;
                             if (currentPiece < themeColors.size()) {
                                 color = themeColors[currentPiece];
@@ -456,10 +467,8 @@ private:
                                 color = makecol(128, 128, 128);
                             }
                             
-                            // Draw ghost outline
-                            rect(buffer, screenX, screenY,
-                                 screenX + BLOCK_SIZE - 1, screenY + BLOCK_SIZE - 1,
-                                 color);
+                            // Draw transparent ghost block
+                            drawTransparentBlock(buffer, gridX, gridY, color);
                         }
                     }
                 }
