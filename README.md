@@ -315,4 +315,5 @@ Numbers have never been this exciting! Prepare for a Sudoku adventure that'll ma
 
 📺 **Super Mario Brothers**: [Super Mario Brothers](https://github.com/jasonbrianhall/super_mario_brothers/) - A 6502 to C++ conversion of Super Mario Brothers.  ROM not included.
 
+🚀 **WarpNES**: [WarpNES](https://github.com/jasonbrianhall/warpnes/) - A 6502 emulator that plays some NES games with increasing compatibility over time.
 
