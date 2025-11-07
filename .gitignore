@@ -1,0 +1,25 @@
+# Broken symlinks in build directories (created during make, point to sound.zip)
+build/*/sound.zip
+build/*/*/sound.zip
+
+# Generated files during build
+*.o
+*.a
+*.so
+*.exe
+*.msi
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
