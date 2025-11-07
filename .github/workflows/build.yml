@@ -98,6 +98,24 @@ jobs:
         Expand-Archive -Path "wix.zip" -DestinationPath "wix"
         echo "$env:GITHUB_WORKSPACE\wix" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+    - name: Create Missing Asset Files
+      working-directory: artifacts/build/windows
+      run: |
+        # Create empty sound.zip if it doesn't exist (will be populated during game runtime)
+        if (-Not (Test-Path "sound.zip")) {
+          Write-Host "Creating empty sound.zip..."
+          $null = New-Item -Path "sound.zip" -ItemType File
+        }
+        
+        # Create empty background.zip if it doesn't exist
+        if (-Not (Test-Path "background.zip")) {
+          Write-Host "Creating empty background.zip..."
+          $null = New-Item -Path "background.zip" -ItemType File
+        }
+        
+        Write-Host "Files in artifacts/build/windows:"
+        Get-ChildItem
+
     - name: Create MIT License File
       run: |
         @"
@@ -164,10 +182,10 @@ jobs:
             
             <!-- Custom properties -->
             <Property Id="ARPPRODUCTICON" Value="TetrimoneIcon" />
-            <Property Id="ARPURLINFOABOUT" Value="https://github.com/yourusername/tetrimone" />
+            <Property Id="ARPURLINFOABOUT" Value="https://github.com/jasonbrianhall/tetrimone" />
             <Property Id="ARPNOREPAIR" Value="yes" />
             <Property Id="ARPNOMODIFY" Value="yes" />
-            <Property Id="ARPHELPLINK" Value="https://github.com/yourusername/tetrimone/issues" />
+            <Property Id="ARPHELPLINK" Value="https://github.com/jasonbrianhall/tetrimone/issues" />
             
             <!-- Installation scope choice -->
             <Property Id="ApplicationFolderName" Value="Tetrimone GTK" />
@@ -199,106 +217,103 @@ jobs:
                     <File Id="LICENSE_MD" Name="LICENSE.md" Source="LICENSE.md"/>
                     <File Id="LICENSE_TXT" Name="LICENSE.txt" Source="LICENSE.txt"/>
                     
-                    <!-- DLL files -->
-        $($dllEntries -join "`r`n")
-                    
-                    <!-- Registry entries for uninstall info -->
-                    <RegistryKey Root="HKLM" Key="SOFTWARE\Tetrimone GTK">
-                      <RegistryValue Type="string" Name="InstallPath" Value="[INSTALLFOLDER]" />
-                      <RegistryValue Type="string" Name="Version" Value="${{ needs.build-linux.outputs.version }}" />
-                      <RegistryValue Type="string" Name="Publisher" Value="Jason Hall" />
-                    </RegistryKey>
                   </Component>
                   
-                  <!-- GTK Runtime directories -->
-                  <Directory Id="LibDir" Name="lib">
-                    <Directory Id="GdkPixbuf" Name="gdk-pixbuf-2.0">
-                      <Component Id="GdkPixbufDir" Guid="F8A3B715-D93A-4E67-A8C2-642D3F9E4D29">
-                        <CreateFolder />
-                        <RemoveFolder Id="RemoveGdkPixbuf" On="uninstall" />
-                        <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
-                                     Type="integer" Name="GdkPixbuf" Value="1" KeyPath="yes"/>
-                      </Component>
-                    </Directory>
-                    <Directory Id="Gtk3" Name="gtk-3.0">
-                      <Component Id="Gtk3Dir" Guid="B1D4C159-8E2B-4F58-B6A3-753D2F9E5A42">
-                        <CreateFolder />
-                        <RemoveFolder Id="RemoveGtk3" On="uninstall" />
-                        <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
-                                     Type="integer" Name="Gtk3" Value="1" KeyPath="yes"/>
-                      </Component>
-                    </Directory>
-                  </Directory>
+                  <!-- GTK schemas component -->
+                  <Component Id="GtkSchemas" 
+                           Guid="B58E63D9-4F06-49G7-C26G-2F7D5E5B9E45"
+                           Win64="no">
+                    <CreateFolder />
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
+                                 Name="GtkSchemas" Type="integer" Value="1" KeyPath="yes"/>
+                  </Component>
                   
-                  <Directory Id="ShareDir" Name="share">
-                    <Directory Id="GLib2" Name="glib-2.0">
-                      <Directory Id="Schemas" Name="schemas">
-                        <Component Id="GtkSchemas" Guid="C7E3D845-B6E1-4F72-8D1E-864F2F9E5F16">
-                          <File Id="GSchemas" Name="gschemas.compiled" 
-                                Source="share/glib-2.0/schemas/gschemas.compiled"/>
-                          <RemoveFolder Id="RemoveSchemas" On="uninstall" />
-                          <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
-                                       Type="integer" Name="Schemas" Value="1" KeyPath="yes"/>
-                        </Component>
-                      </Directory>
-                    </Directory>
-                    <Directory Id="Icons" Name="icons">
-                      <Component Id="IconsDir" Guid="D5E7F371-A4C2-4E83-92F4-975E3F9E6F27">
-                        <CreateFolder />
-                        <RemoveFolder Id="RemoveIcons" On="uninstall" />
-                        <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
-                                     Type="integer" Name="Icons" Value="1" KeyPath="yes"/>
-                      </Component>
-                    </Directory>
-                    <Directory Id="Themes" Name="themes">
-                      <Component Id="ThemesDir" Guid="E2F6A482-B5D3-4F83-A3F5-086F4F9E7F38">
-                        <CreateFolder />
-                        <RemoveFolder Id="RemoveThemes" On="uninstall" />
-                        <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
-                                     Type="integer" Name="Themes" Value="1" KeyPath="yes"/>
-                      </Component>
-                    </Directory>
-                  </Directory>
+                  <!-- GdkPixbuf component -->
+                  <Component Id="GdkPixbufDir" 
+                           Guid="C69F74EA-5G17-50H8-D37H-3G8E6F6C0F56"
+                           Win64="no">
+                    <CreateFolder />
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
+                                 Name="GdkPixbuf" Type="integer" Value="1" KeyPath="yes"/>
+                  </Component>
+                  
+                  <!-- GTK3 runtime component -->
+                  <Component Id="Gtk3Dir" 
+                           Guid="D70G85FB-6H28-61I9-E48I-4H9F7G7D1G67"
+                           Win64="no">
+                    <CreateFolder />
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
+                                 Name="Gtk3" Type="integer" Value="1" KeyPath="yes"/>
+                  </Component>
+                  
+                  <!-- Icons component -->
+                  <Component Id="IconsDir" 
+                           Guid="E81H96GC-7I39-72J0-F59J-5I0G8H8E2H78"
+                           Win64="no">
+                    <CreateFolder />
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
+                                 Name="Icons" Type="integer" Value="1" KeyPath="yes"/>
+                  </Component>
+                  
+                  <!-- Themes component -->
+                  <Component Id="ThemesDir" 
+                           Guid="F92I07HD-8J40-83K1-G60K-6J1H9I9F3I89"
+                           Win64="no">
+                    <CreateFolder />
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
+                                 Name="Themes" Type="integer" Value="1" KeyPath="yes"/>
+                  </Component>
+                  
                 </Directory>
               </Directory>
               
-              <!-- Start Menu shortcuts -->
+              <!-- Start Menu Folder -->
               <Directory Id="ProgramMenuFolder">
-                <Directory Id="ApplicationProgramsFolder" Name="Tetrimone GTK">
-                  <Component Id="ApplicationShortcuts" Guid="F8E2D459-F6A1-4B53-9C72-E31D8FE52D69">
-                    <Shortcut Id="ApplicationStartMenu" 
-                             Name="Tetrimone GTK" 
-                             Target="[INSTALLFOLDER]tetrimone.exe" 
-                             WorkingDirectory="INSTALLFOLDER"
-                             Description="Launch Tetrimone GTK Game"
-                             Icon="TetrimoneIcon"/>
-                    <Shortcut Id="UninstallShortcut"
-                             Name="Uninstall Tetrimone GTK"
-                             Target="[SystemFolder]msiexec.exe"
-                             Arguments="/x [ProductCode]"
-                             Description="Uninstall Tetrimone GTK" />
-                    <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
-                    <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Shortcuts" 
-                                 Name="StartMenu" Type="integer" Value="1" KeyPath="yes"/>
-                  </Component>
-                </Directory>
+                <Directory Id="ApplicationProgramsFolder" Name="Tetrimone GTK"/>
               </Directory>
               
-              <!-- Desktop shortcut (optional) -->
-              <Directory Id="DesktopFolder" Name="Desktop">
-                <Component Id="DesktopShortcut" Guid="A5F8D321-E9B7-4C68-8F1A-D42E6F8E9A73">
-                  <Condition>DESKTOP_SHORTCUT</Condition>
-                  <Shortcut Id="DesktopShortcut" 
-                           Name="Tetrimone GTK" 
-                           Target="[INSTALLFOLDER]tetrimone.exe"
-                           WorkingDirectory="INSTALLFOLDER"
-                           Description="Launch Tetrimone GTK Game"
-                           Icon="TetrimoneIcon"/>
-                  <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Shortcuts" 
-                               Name="Desktop" Type="integer" Value="1" KeyPath="yes"/>
-                </Component>
-              </Directory>
+              <!-- Desktop Folder for shortcuts -->
+              <Directory Id="DesktopFolder" />
             </Directory>
+            
+            <!-- Start Menu shortcuts -->
+            <DirectoryRef Id="ApplicationProgramsFolder">
+              <Component Id="ApplicationShortcuts" 
+                       Guid="E03K18IE-9L51-94L2-H71L-7K2I0J0G4J90"
+                       Win64="no">
+                <Shortcut Id="LaunchShortcut" 
+                         Name="Tetrimone GTK" 
+                         Target="[INSTALLFOLDER]tetrimone.exe"
+                         WorkingDirectory="INSTALLFOLDER"
+                         Description="Launch Tetrimone GTK Game"
+                         Icon="TetrimoneIcon"/>
+                <Shortcut Id="UninstallShortcut" 
+                         Name="Uninstall Tetrimone GTK" 
+                         Target="[SystemFolder]msiexec.exe"
+                         Arguments="/x [ProductCode]"
+                         Description="Uninstall Tetrimone GTK"/>
+                <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall"/>
+                <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Shortcuts" 
+                             Name="StartMenu" Type="integer" Value="1" KeyPath="yes"/>
+              </Component>
+            </DirectoryRef>
+            
+            <!-- Desktop shortcuts (optional) -->
+            <DirectoryRef Id="DesktopFolder">
+              <Component Id="DesktopShortcut" 
+                       Guid="F14L29JF-0M62-05M3-I82M-8L3J1K1H5K01"
+                       Win64="no">
+                <Condition>DESKTOP_SHORTCUT</Condition>
+                <Shortcut Id="DesktopShortcut" 
+                         Name="Tetrimone GTK" 
+                         Target="[INSTALLFOLDER]tetrimone.exe"
+                         WorkingDirectory="INSTALLFOLDER"
+                         Description="Launch Tetrimone GTK Game"
+                         Icon="TetrimoneIcon"/>
+                <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Shortcuts" 
+                             Name="Desktop" Type="integer" Value="1" KeyPath="yes"/>
+              </Component>
+            </DirectoryRef>
             
             <!-- Feature definitions -->
             <Feature Id="ProductFeature" 
@@ -412,8 +427,6 @@ jobs:
           Write-Error "❌ MSI file was not created!"
           exit 1
         }
-
-
 
     - name: Upload MSI Installer
       uses: actions/upload-artifact@v4
