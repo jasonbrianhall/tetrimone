@@ -254,6 +254,7 @@ MIT License - Spread the Tetrimone love freely!
 ## Credits
 - **Developer**: Jason Brian Hall - Tetrimone Mastermind
 - **Libraries**: GTK+, SDL2, PulseAudio/SDL2 Audio, libzip
+- **Support**: Like Tetrimone or any of my projects? [Buy me a Coffee! ☕](https://buymeacoffee.com/jasonbrianhall)
 
 **May your blocks always fall true, and your lines always clear!** 🕹️✨
 
@@ -293,6 +294,8 @@ Press comma (,) to activate patriotic American mode with rock music, freedom mes
 
 Bored? Let me rescue you from the depths of monotony with these digital delights! 🚀
 
+🎶 **Zenamp**: [Zenamp - The Ultimate Audio Player](https://github.com/jasonbrianhall/zenamp) - A feature-rich, cross-platform audio player combining modern format support with nostalgic MIDI synthesis, comprehensive karaoke capabilities, and 30+ mesmerizing visualizations. Experience authentic OPL3 FM synthesis from the golden age of PC gaming!
+
 💣 **Minesweeper Madness**: [Minesweeper](https://github.com/jasonbrianhall/minesweeper) - Not just a game, it's a digital minefield of excitement! (It's actually a really good version, pinky promise! 🤞)
 
 🧩 **Sudoku Solver Spectacular**: [Sudoku Solver](https://github.com/jasonbrianhall/sudoku_solver) - A Sudoku Swiss Army Knife! 🚀 This project is way more than just solving puzzles. Dive into a world where:
@@ -309,11 +312,10 @@ Numbers have never been this exciting! Prepare for a Sudoku adventure that'll ma
 
 🧙‍♂️ **The Wizard's Castle: Choose Your Own Adventure**: [The Wizard's Castle](https://github.com/jasonbrianhall/wizardscastle) - A Text-Based RPG that works on QT5, CLI, and even Android! Magic knows no boundaries! ✨
 
-🔤 **Hangman Hijinks**: [Hangman](https://github.com/jasonbrianhall/hangman) - Word-guessing mayhem in your terminal! Prepare for linguistic warfare! 💬
+🔤 **Hangman**: [Hangman](https://github.com/jasonbrianhall/hangman) - Word-guessing game in your terminal! Prepare for linguistic warfare! 💬
 
 🃏 **Card Games Collection**: [Solitaire, FreeCell & Spider](https://github.com/jasonbrianhall/cardgames) - The most meticulously crafted card games with custom decks, animations, and more features than you can shuffle!
 
 📺 **Super Mario Brothers**: [Super Mario Brothers](https://github.com/jasonbrianhall/super_mario_brothers/) - A 6502 to C++ conversion of Super Mario Brothers.  ROM not included.
 
 🚀 **WarpNES**: [WarpNES](https://github.com/jasonbrianhall/warpnes/) - A 6502 emulator that plays some NES games with increasing compatibility over time.
-
