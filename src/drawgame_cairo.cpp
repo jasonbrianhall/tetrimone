@@ -761,36 +761,16 @@ void drawBlockTrails(cairo_t *cr, TetrimoneBoard *board) {
   }
 }
 
-gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
-  TetrimoneBoard *board = app->board;
-
-  // Get widget dimensions
-  GtkAllocation allocation;
-  gtk_widget_get_allocation(widget, &allocation);
-
-  // Draw background
-  drawBackground(cr, board, allocation);
-
-  // Draw gridlines
-  drawGridLines(cr, board);
-
+void drawFailureLine(cairo_t *cr) {
   int failureLineY = 2;
   cairo_set_source_rgb(cr, 1.0, 0.2, 0.2);
   cairo_set_line_width(cr, 1.0);
   cairo_move_to(cr, 0, failureLineY * BLOCK_SIZE);
   cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, failureLineY * BLOCK_SIZE);
   cairo_stroke(cr);
+}
 
-  // Draw placed blocks with line clearing animation
-  drawPlacedBlocks(cr, board, app);
-
-  // Draw splash screen if active
-  if (board->isSplashScreenActive()) {
-    drawSplashScreen(cr, board, app);
-    return FALSE;
-  }
-
+void drawPropagandaMessage(cairo_t *cr, TetrimoneBoard *board) {
   if (board->retroModeActive && board->showPropagandaMessage) {
     // Semi-transparent background for message
     cairo_set_source_rgba(cr, 0.8, 0.0, 0.0, 0.8);
@@ -818,13 +798,9 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     
     // If message is too wide for the screen, add a line break
     if (extents.width > screenWidth - 40) {
-        // Find approximate middle position to break the text
         int halfLength = originalMessage.length() / 2;
-        
-        // Find the closest space to the middle
         size_t spacePos = originalMessage.rfind(' ', halfLength);
         if (spacePos != std::string::npos) {
-            // Replace the space with a newline
             formattedMessage = originalMessage.substr(0, spacePos) + 
                               "\n" + 
                               originalMessage.substr(spacePos + 1);
@@ -837,7 +813,6 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     
     // Make sure the message fits the screen even after reformatting
     if (newExtents.width > screenWidth - 40) {
-        // If still too wide, use a smaller font
         fontSize = std::max(12.0, fontSize * (screenWidth - 40) / newExtents.width);
         cairo_set_font_size(cr, fontSize);
         cairo_text_extents(cr, formattedMessage.c_str(), &newExtents);
@@ -846,14 +821,12 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     // Calculate background box size
     int msgPadding = 20;
     double boxHeight = newExtents.height + msgPadding*2;
-    // If there's a newline in the message, make the box taller
     if (formattedMessage.find('\n') != std::string::npos) {
         boxHeight = newExtents.height * 2.5 + msgPadding*2;
     }
     
     // Draw message background
-    cairo_rectangle(cr, 
-                    msgX - newExtents.width/2 - msgPadding,
+    cairo_rectangle(cr, msgX - newExtents.width/2 - msgPadding,
                     msgY - boxHeight/2,
                     newExtents.width + msgPadding*2,
                     boxHeight);
@@ -862,8 +835,7 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     // Draw white border
     cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
     cairo_set_line_width(cr, 2.0);
-    cairo_rectangle(cr, 
-                    msgX - newExtents.width/2 - msgPadding,
+    cairo_rectangle(cr, msgX - newExtents.width/2 - msgPadding,
                     msgY - boxHeight/2,
                     newExtents.width + msgPadding*2,
                     boxHeight);
@@ -873,101 +845,74 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
     
     if (formattedMessage.find('\n') != std::string::npos) {
-        // If message contains a newline, draw as multiple lines
         std::string firstLine = formattedMessage.substr(0, formattedMessage.find('\n'));
         std::string secondLine = formattedMessage.substr(formattedMessage.find('\n') + 1);
         
         cairo_text_extents_t firstLineExtents;
         cairo_text_extents(cr, firstLine.c_str(), &firstLineExtents);
         
-        // Draw first line
-        cairo_move_to(cr, 
-                      msgX - firstLineExtents.width/2,
-                      msgY - fontSize/2);
+        cairo_move_to(cr, msgX - firstLineExtents.width/2, msgY - fontSize/2);
         cairo_show_text(cr, firstLine.c_str());
         
-        // Draw second line
         cairo_text_extents_t secondLineExtents;
         cairo_text_extents(cr, secondLine.c_str(), &secondLineExtents);
-        cairo_move_to(cr, 
-                      msgX - secondLineExtents.width/2,
-                      msgY + fontSize);
+        cairo_move_to(cr, msgX - secondLineExtents.width/2, msgY + fontSize);
         cairo_show_text(cr, secondLine.c_str());
     } else {
-        // Single line display
-        cairo_move_to(cr, 
-                      msgX - newExtents.width/2,
-                      msgY + newExtents.height/2);
+        cairo_move_to(cr, msgX - newExtents.width/2, msgY + newExtents.height/2);
         cairo_show_text(cr, formattedMessage.c_str());
     }
   }
   else if (board->patrioticModeActive && board->showPropagandaMessage) {
-    // Semi-transparent red, white, and blue background for freedom message
-    cairo_set_source_rgba(cr, 0.0, 0.2, 0.7, 0.85); // Patriotic blue background
+    // Patriotic blue background
+    cairo_set_source_rgba(cr, 0.0, 0.2, 0.7, 0.85);
     
-    // Calculate message position - center of screen
     double msgX = (GRID_WIDTH * BLOCK_SIZE) / 2;
     double msgY = (GRID_HEIGHT * BLOCK_SIZE) / 2;
-    
-    // Calculate font size based on screen width
     double screenWidth = GRID_WIDTH * BLOCK_SIZE;
     double baseFontSize = screenWidth / 25.0;
     double fontSize = std::max(14.0, std::min(26.0, baseFontSize));
     
-    // Set font size with American-style bold font
     cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
     cairo_set_font_size(cr, fontSize);
     
-    // Get original freedom message
     std::string originalMessage = board->currentPropagandaMessage;
     std::string formattedMessage = originalMessage;
     
-    // Check if message is too long
     cairo_text_extents_t extents;
     cairo_text_extents(cr, originalMessage.c_str(), &extents);
     
-    // If message is too wide for the screen, add a line break
     if (extents.width > screenWidth - 40) {
-        // Find approximate middle position to break the text
         int halfLength = originalMessage.length() / 2;
-        
-        // Find the closest space to the middle
         size_t spacePos = originalMessage.rfind(' ', halfLength);
         if (spacePos != std::string::npos) {
-            // Replace the space with a newline
             formattedMessage = originalMessage.substr(0, spacePos) + 
                               "\n" + 
                               originalMessage.substr(spacePos + 1);
         }
     }
     
-    // Get extents of the potentially reformatted message
     cairo_text_extents_t newExtents;
     cairo_text_extents(cr, formattedMessage.c_str(), &newExtents);
     
-    // Make sure the message fits the screen even after reformatting
     if (newExtents.width > screenWidth - 40) {
-        // If still too wide, use a smaller font
         fontSize = std::max(12.0, fontSize * (screenWidth - 40) / newExtents.width);
         cairo_set_font_size(cr, fontSize);
         cairo_text_extents(cr, formattedMessage.c_str(), &newExtents);
     }
     
-    // Calculate background box size for freedom message
-    int msgPadding = 25; // Slightly larger padding for American style
+    int msgPadding = 25;
     double boxHeight = newExtents.height + msgPadding*2;
-    // If there's a newline in the message, make the box taller
     if (formattedMessage.find('\n') != std::string::npos) {
         boxHeight = newExtents.height * 2.5 + msgPadding*2;
     }
     
-    // Draw patriotic message background with rounded corners
     double cornerRadius = 8.0;
     double boxX = msgX - newExtents.width/2 - msgPadding;
     double boxY = msgY - boxHeight/2;
     double boxWidth = newExtents.width + msgPadding*2;
     
-    // Create rounded rectangle path for more modern American look
+    // Draw rounded rectangle
     cairo_new_sub_path(cr);
     cairo_arc(cr, boxX + cornerRadius, boxY + cornerRadius, cornerRadius, M_PI, 3 * M_PI / 2);
     cairo_arc(cr, boxX + boxWidth - cornerRadius, boxY + cornerRadius, cornerRadius, 3 * M_PI / 2, 0);
@@ -976,10 +921,8 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     cairo_close_path(cr);
     cairo_fill(cr);
     
-    // Draw red and white stripes border for patriotic effect
+    // Draw patriotic border
     cairo_set_line_width(cr, 3.0);
-    
-    // Red stripe
     cairo_set_source_rgb(cr, 0.8, 0.0, 0.0);
     cairo_new_sub_path(cr);
     cairo_arc(cr, boxX + cornerRadius, boxY + cornerRadius, cornerRadius, M_PI, 3 * M_PI / 2);
@@ -989,7 +932,6 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     cairo_close_path(cr);
     cairo_stroke(cr);
     
-    // White inner border
     cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
     cairo_set_line_width(cr, 1.5);
     cairo_new_sub_path(cr);
@@ -1000,76 +942,53 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     cairo_close_path(cr);
     cairo_stroke(cr);
     
-    // Draw text in patriotic white with subtle shadow for readability
-    // First draw shadow
+    // Draw text with shadow
     cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.3);
     
     if (formattedMessage.find('\n') != std::string::npos) {
-        // If message contains a newline, draw as multiple lines with shadow
         std::string firstLine = formattedMessage.substr(0, formattedMessage.find('\n'));
         std::string secondLine = formattedMessage.substr(formattedMessage.find('\n') + 1);
         
         cairo_text_extents_t firstLineExtents;
         cairo_text_extents(cr, firstLine.c_str(), &firstLineExtents);
         
-        // Draw first line shadow
-        cairo_move_to(cr, 
-                      msgX - firstLineExtents.width/2 + 1,
-                      msgY - fontSize/2 + 1);
+        cairo_move_to(cr, msgX - firstLineExtents.width/2 + 1, msgY - fontSize/2 + 1);
         cairo_show_text(cr, firstLine.c_str());
         
-        // Draw second line shadow
         cairo_text_extents_t secondLineExtents;
         cairo_text_extents(cr, secondLine.c_str(), &secondLineExtents);
-        cairo_move_to(cr, 
-                      msgX - secondLineExtents.width/2 + 1,
-                      msgY + fontSize + 1);
+        cairo_move_to(cr, msgX - secondLineExtents.width/2 + 1, msgY + fontSize + 1);
         cairo_show_text(cr, secondLine.c_str());
     } else {
-        // Single line shadow
-        cairo_move_to(cr, 
-                      msgX - newExtents.width/2 + 1,
-                      msgY + newExtents.height/2 + 1);
+        cairo_move_to(cr, msgX - newExtents.width/2 + 1, msgY + newExtents.height/2 + 1);
         cairo_show_text(cr, formattedMessage.c_str());
     }
     
-    // Now draw the main text in bright white
+    // Draw main text
     cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
     
     if (formattedMessage.find('\n') != std::string::npos) {
-        // If message contains a newline, draw as multiple lines
         std::string firstLine = formattedMessage.substr(0, formattedMessage.find('\n'));
         std::string secondLine = formattedMessage.substr(formattedMessage.find('\n') + 1);
         
         cairo_text_extents_t firstLineExtents;
         cairo_text_extents(cr, firstLine.c_str(), &firstLineExtents);
         
-        // Draw first line
-        cairo_move_to(cr, 
-                      msgX - firstLineExtents.width/2,
-                      msgY - fontSize/2);
+        cairo_move_to(cr, msgX - firstLineExtents.width/2, msgY - fontSize/2);
         cairo_show_text(cr, firstLine.c_str());
         
-        // Draw second line
         cairo_text_extents_t secondLineExtents;
         cairo_text_extents(cr, secondLine.c_str(), &secondLineExtents);
-        cairo_move_to(cr, 
-                      msgX - secondLineExtents.width/2,
-                      msgY + fontSize);
+        cairo_move_to(cr, msgX - secondLineExtents.width/2, msgY + fontSize);
         cairo_show_text(cr, secondLine.c_str());
     } else {
-        // Single line display
-        cairo_move_to(cr, 
-                      msgX - newExtents.width/2,
-                      msgY + newExtents.height/2);
+        cairo_move_to(cr, msgX - newExtents.width/2, msgY + newExtents.height/2);
         cairo_show_text(cr, formattedMessage.c_str());
     }
   }
+}
 
-
-
-
-  // Draw current piece with smooth movement animation
+void drawCurrentPiece(cairo_t *cr, TetrimoneBoard *board) {
   if (!board->isGameOver() && !board->isPaused() && !board->isSplashScreenActive()) {
     const TetrimoneBlock &piece = board->getCurrentPiece();
     auto shape = piece.getShape();
@@ -1077,7 +996,6 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     board->getInterpolatedColor(piece.getType(), board->getThemeTransitionProgress()) :
     piece.getColor();
     
-    // Get interpolated position for smooth movement
     double pieceX, pieceY;
     board->getCurrentPieceInterpolatedPosition(pieceX, pieceY);
 
@@ -1086,17 +1004,14 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     for (size_t y = 0; y < shape.size(); ++y) {
       for (size_t x = 0; x < shape[y].size(); ++x) {
         if (shape[y][x] == 1) {
-          // Use interpolated position for smooth movement
           double drawX = (pieceX + x) * BLOCK_SIZE;
           double drawY = (pieceY + y) * BLOCK_SIZE;
 
-          // Only draw if within the visible grid
           if (drawY >= -BLOCK_SIZE) {
             if (board->retroModeActive || board->simpleBlocksActive) {
               cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
               cairo_fill(cr);
             } else {
-              // Regular mode with 3D effects
               cairo_rectangle(cr, drawX + 1, drawY + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
               cairo_fill(cr);
 
@@ -1124,8 +1039,9 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
       }
     }
   }
+}
 
-  // Draw ghost piece with interpolated position
+void drawGhostPiece(cairo_t *cr, TetrimoneBoard *board) {
   if (!board->isGameOver() && !board->isPaused() && 
       !board->isSplashScreenActive() && board->isGhostPieceEnabled()) {
     
@@ -1137,9 +1053,7 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     board->getCurrentPieceInterpolatedPosition(currentPieceX, currentPieceY);
     int ghostY = board->getGhostPieceY();
 
-    // Only draw ghost if it's in a different position than current piece
     if (ghostY > (int)currentPieceY) {
-      // Set semi-transparent color for ghost piece
       cairo_set_source_rgba(cr, color[0], color[1], color[2], 0.3);
 
       for (size_t y = 0; y < shape.size(); ++y) {
@@ -1148,7 +1062,6 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
             double drawX = (currentPieceX + x) * BLOCK_SIZE;
             double drawY = (ghostY + y) * BLOCK_SIZE;
 
-            // Only draw if within the visible grid
             if (drawY >= 0) {
               if (board->retroModeActive) {
                 cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
@@ -1164,8 +1077,9 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
       }
     }
   }
+}
 
-  // Draw enhanced pause menu if paused
+void drawPauseMenu(cairo_t *cr, TetrimoneBoard *board) {
   if (board->isPaused() && !board->isGameOver()) {
     cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
     cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
@@ -1177,7 +1091,6 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     cairo_set_font_size(cr, 30);
     cairo_set_source_rgb(cr, 1, 1, 1);
 
-    // Center the text
     cairo_text_extents_t extents;
     const char *text = board->retroModeActive ? "ПРИОСТАНОВЛЕНО ПО ПРИКАЗУ ПАРТИИ" : "PAUSED";
     cairo_text_extents(cr, text, &extents);
@@ -1188,7 +1101,6 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     cairo_move_to(cr, x, y);
     cairo_show_text(cr, text);
 
-    // Draw pause menu options with Soviet bureaucracy names if in retro mode
     const int numOptions = 3;
     const char *menuOptions[numOptions];
     
@@ -1203,11 +1115,8 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     }
 
     cairo_set_font_size(cr, 20);
-
-    // Calculate center position
     y = (GRID_HEIGHT * BLOCK_SIZE) / 2;
 
-    // Draw menu options
     for (int i = 0; i < numOptions; i++) {
         cairo_text_extents(cr, menuOptions[i], &extents);
         x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
@@ -1218,6 +1127,45 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
         y += 40;
     }
   }
+}
+
+gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
+  TetrimoneBoard *board = app->board;
+
+  // Get widget dimensions
+  GtkAllocation allocation;
+  gtk_widget_get_allocation(widget, &allocation);
+
+  // Draw background
+  drawBackground(cr, board, allocation);
+
+  // Draw gridlines
+  drawGridLines(cr, board);
+
+  // Draw failure line
+  drawFailureLine(cr);
+
+  // Draw placed blocks with line clearing animation
+  drawPlacedBlocks(cr, board, app);
+
+  // Draw splash screen if active
+  if (board->isSplashScreenActive()) {
+    drawSplashScreen(cr, board, app);
+    return FALSE;
+  }
+
+  // Draw propaganda messages
+  drawPropagandaMessage(cr, board);
+
+  // Draw current piece with smooth movement animation
+  drawCurrentPiece(cr, board);
+
+  // Draw ghost piece with interpolated position
+  drawGhostPiece(cr, board);
+
+  // Draw enhanced pause menu if paused
+  drawPauseMenu(cr, board);
 
   // Draw game over text if needed
   drawGameOver(cr, board);
