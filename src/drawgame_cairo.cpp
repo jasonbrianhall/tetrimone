@@ -15,6 +15,88 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+void drawSplashScreen(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app) {
+  // Semi-transparent overlay
+  cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
+  cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
+                  GRID_HEIGHT * BLOCK_SIZE);
+  cairo_fill(cr);
+
+  // Draw title
+  cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL,
+                         CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, 40 * BLOCK_SIZE / 47);
+  cairo_set_source_rgb(cr, 1, 1, 1);
+
+  // Center the title
+  cairo_text_extents_t extents;
+  const char *title = board->retroModeActive ? 
+      "БЛОЧНАЯ РЕВОЛЮЦИЯ" : "TETRIMONE";
+  cairo_text_extents(cr, title, &extents);
+
+  double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
+  double y = (GRID_HEIGHT * BLOCK_SIZE) / 3;
+
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, title);
+
+  // Draw colored blocks for decoration
+  int blockSize = 30;
+  int startX = (GRID_WIDTH * BLOCK_SIZE - 4 * BLOCK_SIZE) / 2;
+  int startY = y + 20;
+
+  // Draw I piece (cyan)
+  cairo_set_source_rgb(cr, 0.0, 0.7, 0.9);
+  for (int i = 0; i < 4; i++) {
+    cairo_rectangle(cr, startX + i * BLOCK_SIZE, startY, BLOCK_SIZE - 2,
+                    BLOCK_SIZE - 2);
+    cairo_fill(cr);
+  }
+
+  // Draw T piece (purple)
+  cairo_set_source_rgb(cr, 0.8, 0.0, 0.8);
+  startY += BLOCK_SIZE * 1.5;
+  cairo_rectangle(cr, startX + BLOCK_SIZE, startY, BLOCK_SIZE - 2,
+                  BLOCK_SIZE - 2);
+  cairo_fill(cr);
+  cairo_rectangle(cr, startX, startY + BLOCK_SIZE, BLOCK_SIZE - 2,
+                  BLOCK_SIZE - 2);
+  cairo_fill(cr);
+  cairo_rectangle(cr, startX + BLOCK_SIZE, startY + BLOCK_SIZE,
+                  BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+  cairo_fill(cr);
+  cairo_rectangle(cr, startX + BLOCK_SIZE * 2, startY + BLOCK_SIZE,
+                  BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+  cairo_fill(cr);
+
+  // Draw press space message
+  cairo_set_font_size(cr, 20 * BLOCK_SIZE / 47);
+  const char *startText = board->retroModeActive ? 
+      "Нажмите ПРОБЕЛ для начала" : "Press SPACE to Start";
+  cairo_text_extents(cr, startText, &extents);
+
+  x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
+  y = (GRID_HEIGHT * BLOCK_SIZE) * 0.75;
+
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, startText);
+
+  // Draw joystick message if enabled
+  if (app->joystickEnabled) {
+    cairo_set_font_size(cr, 16 * BLOCK_SIZE / 47);
+    const char *joystickText = board->retroModeActive ? 
+        "или Нажмите СТАРТ на контроллере" : 
+        "or Press START on Controller";
+    cairo_text_extents(cr, joystickText, &extents);
+
+    x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
+    y += 30;
+
+    cairo_move_to(cr, x, y);
+    cairo_show_text(cr, joystickText);
+  }
+}
+
 gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
   TetrimoneBoard *board = app->board;
@@ -506,86 +588,7 @@ cairo_set_source_rgba(cr, heatColor[0], heatColor[1], heatColor[2], alpha); */
 
   // Draw splash screen if active
   if (board->isSplashScreenActive()) {
-    // Semi-transparent overlay
-    cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
-    cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
-                    GRID_HEIGHT * BLOCK_SIZE);
-    cairo_fill(cr);
-
-    // Draw title
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL,
-                           CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 40 * BLOCK_SIZE / 47);
-    cairo_set_source_rgb(cr, 1, 1, 1);
-
-    // Center the title
-    cairo_text_extents_t extents;
-    const char *title = board->retroModeActive ? 
-        "БЛОЧНАЯ РЕВОЛЮЦИЯ" : "TETRIMONE";
-    cairo_text_extents(cr, title, &extents);
-
-    double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-    double y = (GRID_HEIGHT * BLOCK_SIZE) / 3;
-
-    cairo_move_to(cr, x, y);
-    cairo_show_text(cr, title);
-
-    // Draw colored blocks for decoration
-    int blockSize = 30;
-    int startX = (GRID_WIDTH * BLOCK_SIZE - 4 * BLOCK_SIZE) / 2;
-    int startY = y + 20;
-
-    // Draw I piece (cyan)
-    cairo_set_source_rgb(cr, 0.0, 0.7, 0.9);
-    for (int i = 0; i < 4; i++) {
-      cairo_rectangle(cr, startX + i * BLOCK_SIZE, startY, BLOCK_SIZE - 2,
-                      BLOCK_SIZE - 2);
-      cairo_fill(cr);
-    }
-
-    // Draw T piece (purple)
-    cairo_set_source_rgb(cr, 0.8, 0.0, 0.8);
-    startY += BLOCK_SIZE * 1.5;
-    cairo_rectangle(cr, startX + BLOCK_SIZE, startY, BLOCK_SIZE - 2,
-                    BLOCK_SIZE - 2);
-    cairo_fill(cr);
-    cairo_rectangle(cr, startX, startY + BLOCK_SIZE, BLOCK_SIZE - 2,
-                    BLOCK_SIZE - 2);
-    cairo_fill(cr);
-    cairo_rectangle(cr, startX + BLOCK_SIZE, startY + BLOCK_SIZE,
-                    BLOCK_SIZE - 2, BLOCK_SIZE - 2);
-    cairo_fill(cr);
-    cairo_rectangle(cr, startX + BLOCK_SIZE * 2, startY + BLOCK_SIZE,
-                    BLOCK_SIZE - 2, BLOCK_SIZE - 2);
-    cairo_fill(cr);
-
-    // Draw press space message
-    cairo_set_font_size(cr, 20 * BLOCK_SIZE / 47);
-    const char *startText = board->retroModeActive ? 
-        "Нажмите ПРОБЕЛ для начала" : "Press SPACE to Start";
-    cairo_text_extents(cr, startText, &extents);
-
-    x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-    y = (GRID_HEIGHT * BLOCK_SIZE) * 0.75;
-
-    cairo_move_to(cr, x, y);
-    cairo_show_text(cr, startText);
-
-    // Draw joystick message if enabled
-    if (app->joystickEnabled) {
-      cairo_set_font_size(cr, 16 * BLOCK_SIZE / 47);
-      const char *joystickText = board->retroModeActive ? 
-          "или Нажмите СТАРТ на контроллере" : 
-          "or Press START on Controller";
-      cairo_text_extents(cr, joystickText, &extents);
-
-      x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-      y += 30;
-
-      cairo_move_to(cr, x, y);
-      cairo_show_text(cr, joystickText);
-    }
-
+    drawSplashScreen(cr, board, app);
     return FALSE;
   }
 
