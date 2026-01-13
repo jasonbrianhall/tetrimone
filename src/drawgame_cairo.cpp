@@ -196,17 +196,7 @@ void drawBackground(cairo_t *cr, TetrimoneBoard *board, const GtkAllocation &all
   }
 }
 
-gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
-  TetrimoneBoard *board = app->board;
-
-  // Get widget dimensions
-  GtkAllocation allocation;
-  gtk_widget_get_allocation(widget, &allocation);
-
-  // Draw background
-  drawBackground(cr, board, allocation);
-
+void drawGridLines(cairo_t *cr, TetrimoneBoard *board) {
   if (board->isShowingGridLines()) {
     cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
     cairo_set_line_width(cr, 1);
@@ -225,6 +215,313 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
 
     cairo_stroke(cr);
   }
+}
+
+// Animation value struct
+struct LineClearAnimValues {
+  double alpha;
+  double scale;
+  double offsetX;
+  double offsetY;
+};
+
+// Animation 0: Classic Shrink & Scatter
+LineClearAnimValues anim0_ClassicShrinkScatter(double progress, int x, int y) {
+  LineClearAnimValues result = {1.0, 1.0, 0.0, 0.0};
+  
+  if (progress < 0.2) {
+    result.alpha = 0.4 + 0.6 * sin(progress * 25.0);
+    result.scale = 1.0;
+  } else if (progress < 0.6) {
+    double scaleProgress = (progress - 0.2) / 0.4;
+    result.scale = 1.0 - scaleProgress * 0.8;
+    result.alpha = 1.0 - scaleProgress * 0.4;
+  } else {
+    double fadeProgress = (progress - 0.6) / 0.4;
+    result.alpha = (1.0 - fadeProgress * 0.6) * 0.6;
+    result.scale = 0.2 - fadeProgress * 0.2;
+    result.offsetX = (rand() % 8 - 4) * fadeProgress * 3;
+    result.offsetY = (rand() % 8 - 4) * fadeProgress * 3;
+  }
+  
+  return result;
+}
+
+// Animation 1: Dissolve (blocks fade randomly)
+LineClearAnimValues anim1_Dissolve(double progress, int x, int y) {
+  LineClearAnimValues result = {1.0, 1.0, 0.0, 0.0};
+  
+  int blockSeed = (x * 31 + y * 17) % 100;
+  double blockDelay = (blockSeed / 100.0) * 0.3;
+  
+  if (progress < blockDelay) {
+    result.alpha = 1.0;
+    result.scale = 1.0;
+  } else if (progress < blockDelay + 0.4) {
+    double dissolveProgress = (progress - blockDelay) / 0.4;
+    result.alpha = 1.0 - dissolveProgress;
+    result.scale = 1.0 - dissolveProgress * 0.3;
+  } else {
+    result.alpha = 0.0;
+    result.scale = 0.7;
+  }
+  
+  return result;
+}
+
+// Animation 2: Ripple Wave (from center outward)
+LineClearAnimValues anim2_RippleWave(double progress, int x, int y) {
+  LineClearAnimValues result = {1.0, 1.0, 0.0, 0.0};
+  
+  double centerX = GRID_WIDTH / 2.0;
+  double distance = abs(x - centerX) / centerX;
+  double waveDelay = distance * 0.3;
+  
+  if (progress < waveDelay) {
+    result.alpha = 1.0;
+    result.scale = 1.0;
+  } else if (progress < waveDelay + 0.5) {
+    double waveProgress = (progress - waveDelay) / 0.5;
+    result.alpha = 1.0 - waveProgress;
+    result.scale = 1.0 + sin(waveProgress * M_PI) * 0.3;
+    result.offsetY = sin(waveProgress * M_PI * 2) * 5;
+  } else {
+    result.alpha = 0.0;
+    result.scale = 0.0;
+  }
+  
+  return result;
+}
+
+// Animation 3: Explosion (blocks shoot outward)
+LineClearAnimValues anim3_Explosion(double progress, int x, int y) {
+  LineClearAnimValues result = {1.0, 1.0, 0.0, 0.0};
+  
+  if (progress < 0.15) {
+    result.alpha = 1.0;
+    result.scale = 1.0 + progress * 2;
+  } else if (progress < 0.6) {
+    double explodeProgress = (progress - 0.15) / 0.45;
+    result.alpha = 1.0 - explodeProgress * 0.7;
+    result.scale = 1.3 - explodeProgress * 0.5;
+    
+    double centerX = GRID_WIDTH / 2.0;
+    double forceX = (x - centerX) * explodeProgress * 15;
+    double forceY = -explodeProgress * 20;
+    result.offsetX = forceX;
+    result.offsetY = forceY;
+  } else {
+    double finalProgress = (progress - 0.6) / 0.4;
+    result.alpha = 0.3 - finalProgress * 0.3;
+    result.scale = 0.8 - finalProgress * 0.8;
+    
+    double centerX = GRID_WIDTH / 2.0;
+    double forceX = (x - centerX) * (1.0 + finalProgress) * 15;
+    double forceY = -20 + finalProgress * 40;
+    result.offsetX = forceX;
+    result.offsetY = forceY;
+  }
+  
+  return result;
+}
+
+// Animation 4: Spin & Vanish
+LineClearAnimValues anim4_SpinVanish(double progress, int x, int y) {
+  LineClearAnimValues result = {1.0, 1.0, 0.0, 0.0};
+  
+  if (progress < 0.3) {
+    result.alpha = 1.0;
+    result.scale = 1.0;
+    double rotationSpeed = progress * 20;
+    result.offsetX = sin(rotationSpeed) * 3;
+    result.offsetY = cos(rotationSpeed) * 3;
+  } else if (progress < 0.8) {
+    double spinProgress = (progress - 0.3) / 0.5;
+    result.alpha = 1.0 - spinProgress * 0.8;
+    result.scale = 1.0 - spinProgress * 0.7;
+    
+    double rotationSpeed = (progress * 40) + (spinProgress * 60);
+    result.offsetX = sin(rotationSpeed) * (3 - spinProgress * 3);
+    result.offsetY = cos(rotationSpeed) * (3 - spinProgress * 3);
+  } else {
+    double finalProgress = (progress - 0.8) / 0.2;
+    result.alpha = 0.2 - finalProgress * 0.2;
+    result.scale = 0.3 - finalProgress * 0.3;
+    result.offsetX = 0;
+    result.offsetY = 0;
+  }
+  
+  return result;
+}
+
+// Animation 5: Left-to-Right Sweep
+LineClearAnimValues anim5_LeftToRightSweep(double progress, int x, int y) {
+  LineClearAnimValues result = {1.0, 1.0, 0.0, 0.0};
+  
+  double sweepProgress = progress;
+  double blockDelay = (x / (double)GRID_WIDTH) * 0.4; // Spread over 40% of animation
+  
+  if (sweepProgress < blockDelay) {
+    result.alpha = 1.0;
+    result.scale = 1.0;
+  } else if (sweepProgress < blockDelay + 0.3) {
+    double localProgress = (sweepProgress - blockDelay) / 0.3;
+    result.alpha = 1.0 - localProgress;
+    result.scale = 1.0 - localProgress * 0.6;
+    result.offsetX = localProgress * 20; // Slide right as they fade
+  } else {
+    result.alpha = 0.0;
+    result.scale = 0.4;
+    result.offsetX = 20;
+  }
+  
+  return result;
+}
+
+// Animation 6: Bounce & Pop
+LineClearAnimValues anim6_BouncePop(double progress, int x, int y) {
+  LineClearAnimValues result = {1.0, 1.0, 0.0, 0.0};
+  
+  if (progress < 0.2) {
+    result.alpha = 1.0;
+    result.scale = 1.0 + sin(progress * 15) * 0.2; // Quick bounce
+  } else if (progress < 0.5) {
+    double bounceProgress = (progress - 0.2) / 0.3;
+    result.alpha = 1.0;
+    result.scale = 1.0 + bounceProgress * 0.8; // Inflate
+    result.offsetY = -bounceProgress * 10; // Lift up
+  } else if (progress < 0.7) {
+    double popProgress = (progress - 0.5) / 0.2;
+    result.alpha = 1.0 - popProgress * 0.9;
+    result.scale = 1.8 + popProgress * 0.5; // Pop bigger
+    result.offsetY = -10 - popProgress * 5;
+  } else {
+    double fadeProgress = (progress - 0.7) / 0.3;
+    result.alpha = 0.1 - fadeProgress * 0.1;
+    result.scale = 2.3 - fadeProgress * 2.3;
+    result.offsetY = -15;
+  }
+  
+  return result;
+}
+
+// Animation 7: Melt Down
+LineClearAnimValues anim7_MeltDown(double progress, int x, int y) {
+  LineClearAnimValues result = {1.0, 1.0, 0.0, 0.0};
+  
+  if (progress < 0.3) {
+    result.alpha = 1.0;
+    result.scale = 1.0;
+    result.offsetY = progress * 5; // Start sinking slightly
+  } else if (progress < 0.7) {
+    double meltProgress = (progress - 0.3) / 0.4;
+    result.alpha = 1.0 - meltProgress * 0.6;
+    result.scale = 1.0; // Keep width
+    result.offsetY = 5 + meltProgress * 15; // Sink down
+  } else {
+    double finalProgress = (progress - 0.7) / 0.3;
+    result.alpha = 0.4 - finalProgress * 0.4;
+    result.scale = 1.0;
+    result.offsetY = 20 + finalProgress * 10;
+  }
+  
+  return result;
+}
+
+// Animation 8: Zigzag Wipe
+LineClearAnimValues anim8_ZigzagWipe(double progress, int x, int y) {
+  LineClearAnimValues result = {1.0, 1.0, 0.0, 0.0};
+  
+  // Create zigzag pattern based on x position
+  int zigzagOffset = (x % 4 < 2) ? 0 : 2; // Alternating pattern every 2 blocks
+  double zigzagDelay = ((x + zigzagOffset) / (double)GRID_WIDTH) * 0.5;
+  
+  if (progress < zigzagDelay) {
+    result.alpha = 1.0;
+    result.scale = 1.0;
+  } else if (progress < zigzagDelay + 0.4) {
+    double wipeProgress = (progress - zigzagDelay) / 0.4;
+    result.alpha = 1.0 - wipeProgress;
+    result.scale = 1.0 - wipeProgress * 0.8;
+    
+    // Zigzag motion
+    result.offsetX = sin(wipeProgress * M_PI * 4) * 8;
+    result.offsetY = wipeProgress * 12;
+  } else {
+    result.alpha = 0.0;
+    result.scale = 0.2;
+  }
+  
+  return result;
+}
+
+// Animation 9: Fireworks Burst
+LineClearAnimValues anim9_FireworksBurst(double progress, int x, int y) {
+  LineClearAnimValues result = {1.0, 1.0, 0.0, 0.0};
+  
+  if (progress < 0.1) {
+    result.alpha = 1.0;
+    result.scale = 1.0;
+  } else if (progress < 0.25) {
+    double chargeProgress = (progress - 0.1) / 0.15;
+    result.alpha = 1.0;
+    result.scale = 1.0 - chargeProgress * 0.3; // Compress before burst
+    result.offsetY = -chargeProgress * 8;
+  } else if (progress < 0.4) {
+    double burstProgress = (progress - 0.25) / 0.15;
+    result.alpha = 1.0;
+    result.scale = 0.7 + burstProgress * 1.0; // Sudden expansion
+    result.offsetY = -8 + burstProgress * 3;
+  } else if (progress < 0.8) {
+    double sparkleProgress = (progress - 0.4) / 0.4;
+    result.alpha = 1.0 - sparkleProgress * 0.7;
+    result.scale = 1.7 - sparkleProgress * 0.9;
+    
+    // Sparkle effect - random small movements
+    int sparkSeed = (x * 23 + y * 41 + (int)(progress * 100)) % 100;
+    result.offsetX = (sparkSeed % 20 - 10) * sparkleProgress * 0.8;
+    result.offsetY = -5 + ((sparkSeed / 20) % 20 - 10) * sparkleProgress * 0.8;
+  } else {
+    double fadeProgress = (progress - 0.8) / 0.2;
+    result.alpha = 0.3 - fadeProgress * 0.3;
+    result.scale = 0.8 - fadeProgress * 0.8;
+    result.offsetX = 0;
+    result.offsetY = 0;
+  }
+  
+  return result;
+}
+
+// Get animation values based on animation type
+LineClearAnimValues getLineClearAnimationValues(int animationType, double progress, int x, int y) {
+  switch (animationType) {
+    case 0: return anim0_ClassicShrinkScatter(progress, x, y);
+    case 1: return anim1_Dissolve(progress, x, y);
+    case 2: return anim2_RippleWave(progress, x, y);
+    case 3: return anim3_Explosion(progress, x, y);
+    case 4: return anim4_SpinVanish(progress, x, y);
+    case 5: return anim5_LeftToRightSweep(progress, x, y);
+    case 6: return anim6_BouncePop(progress, x, y);
+    case 7: return anim7_MeltDown(progress, x, y);
+    case 8: return anim8_ZigzagWipe(progress, x, y);
+    case 9: return anim9_FireworksBurst(progress, x, y);
+    default: return {1.0, 1.0, 0.0, 0.0};
+  }
+}
+
+gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
+  TetrimoneBoard *board = app->board;
+
+  // Get widget dimensions
+  GtkAllocation allocation;
+  gtk_widget_get_allocation(widget, &allocation);
+
+  // Draw background
+  drawBackground(cr, board, allocation);
+
+  // Draw gridlines
+  drawGridLines(cr, board);
 
   int failureLineY = 2;
   cairo_set_source_rgb(cr, 1.0, 0.2, 0.2);
@@ -289,233 +586,11 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
           } else {
             // Modern animations - 10 different types selected randomly
             int animationType = board->getCurrentAnimationType();
-            
-            switch (animationType) {
-              case 0: // Classic Shrink & Scatter
-                if (progress < 0.2) {
-                  alpha = 0.4 + 0.6 * sin(progress * 25.0);
-                  scale = 1.0;
-                } else if (progress < 0.6) {
-                  double scaleProgress = (progress - 0.2) / 0.4;
-                  scale = 1.0 - scaleProgress * 0.8;
-                  alpha = 1.0 - scaleProgress * 0.4;
-                } else {
-                  double fadeProgress = (progress - 0.6) / 0.4;
-                  alpha = (1.0 - fadeProgress * 0.6) * 0.6;
-                  scale = 0.2 - fadeProgress * 0.2;
-                  offsetX = (rand() % 8 - 4) * fadeProgress * 3;
-                  offsetY = (rand() % 8 - 4) * fadeProgress * 3;
-                }
-                break;
-                
-              case 1: // Dissolve (blocks fade randomly)
-                {
-                  int blockSeed = (x * 31 + y * 17) % 100;
-                  double blockDelay = (blockSeed / 100.0) * 0.3;
-                  
-                  if (progress < blockDelay) {
-                    alpha = 1.0;
-                    scale = 1.0;
-                  } else if (progress < blockDelay + 0.4) {
-                    double dissolveProgress = (progress - blockDelay) / 0.4;
-                    alpha = 1.0 - dissolveProgress;
-                    scale = 1.0 - dissolveProgress * 0.3;
-                  } else {
-                    alpha = 0.0;
-                    scale = 0.7;
-                  }
-                }
-                break;
-                
-              case 2: // Ripple Wave (from center outward)
-                {
-                  double centerX = GRID_WIDTH / 2.0;
-                  double distance = abs(x - centerX) / centerX;
-                  double waveDelay = distance * 0.3;
-                  
-                  if (progress < waveDelay) {
-                    alpha = 1.0;
-                    scale = 1.0;
-                  } else if (progress < waveDelay + 0.5) {
-                    double waveProgress = (progress - waveDelay) / 0.5;
-                    alpha = 1.0 - waveProgress;
-                    scale = 1.0 + sin(waveProgress * M_PI) * 0.3;
-                    offsetY = sin(waveProgress * M_PI * 2) * 5;
-                  } else {
-                    alpha = 0.0;
-                    scale = 0.0;
-                  }
-                }
-                break;
-                
-              case 3: // Explosion (blocks shoot outward)
-                if (progress < 0.15) {
-                  alpha = 1.0;
-                  scale = 1.0 + progress * 2;
-                } else if (progress < 0.6) {
-                  double explodeProgress = (progress - 0.15) / 0.45;
-                  alpha = 1.0 - explodeProgress * 0.7;
-                  scale = 1.3 - explodeProgress * 0.5;
-                  
-                  double centerX = GRID_WIDTH / 2.0;
-                  double forceX = (x - centerX) * explodeProgress * 15;
-                  double forceY = -explodeProgress * 20;
-                  offsetX = forceX;
-                  offsetY = forceY;
-                } else {
-                  double finalProgress = (progress - 0.6) / 0.4;
-                  alpha = 0.3 - finalProgress * 0.3;
-                  scale = 0.8 - finalProgress * 0.8;
-                  
-                  double centerX = GRID_WIDTH / 2.0;
-                  double forceX = (x - centerX) * (1.0 + finalProgress) * 15;
-                  double forceY = -20 + finalProgress * 40;
-                  offsetX = forceX;
-                  offsetY = forceY;
-                }
-                break;
-                
-              case 4: // Spin & Vanish
-                if (progress < 0.3) {
-                  alpha = 1.0;
-                  scale = 1.0;
-                  double rotationSpeed = progress * 20;
-                  offsetX = sin(rotationSpeed) * 3;
-                  offsetY = cos(rotationSpeed) * 3;
-                } else if (progress < 0.8) {
-                  double spinProgress = (progress - 0.3) / 0.5;
-                  alpha = 1.0 - spinProgress * 0.8;
-                  scale = 1.0 - spinProgress * 0.7;
-                  
-                  double rotationSpeed = (progress * 40) + (spinProgress * 60);
-                  offsetX = sin(rotationSpeed) * (3 - spinProgress * 3);
-                  offsetY = cos(rotationSpeed) * (3 - spinProgress * 3);
-                } else {
-                  double finalProgress = (progress - 0.8) / 0.2;
-                  alpha = 0.2 - finalProgress * 0.2;
-                  scale = 0.3 - finalProgress * 0.3;
-                  offsetX = 0;
-                  offsetY = 0;
-                }
-                break;
-                
-              case 5: // Left-to-Right Sweep
-                {
-                  double sweepProgress = progress;
-                  double blockDelay = (x / (double)GRID_WIDTH) * 0.4; // Spread over 40% of animation
-                  
-                  if (sweepProgress < blockDelay) {
-                    alpha = 1.0;
-                    scale = 1.0;
-                  } else if (sweepProgress < blockDelay + 0.3) {
-                    double localProgress = (sweepProgress - blockDelay) / 0.3;
-                    alpha = 1.0 - localProgress;
-                    scale = 1.0 - localProgress * 0.6;
-                    offsetX = localProgress * 20; // Slide right as they fade
-                  } else {
-                    alpha = 0.0;
-                    scale = 0.4;
-                    offsetX = 20;
-                  }
-                }
-                break;
-                
-              case 6: // Bounce & Pop
-                if (progress < 0.2) {
-                  alpha = 1.0;
-                  scale = 1.0 + sin(progress * 15) * 0.2; // Quick bounce
-                } else if (progress < 0.5) {
-                  double bounceProgress = (progress - 0.2) / 0.3;
-                  alpha = 1.0;
-                  scale = 1.0 + bounceProgress * 0.8; // Inflate
-                  offsetY = -bounceProgress * 10; // Lift up
-                } else if (progress < 0.7) {
-                  double popProgress = (progress - 0.5) / 0.2;
-                  alpha = 1.0 - popProgress * 0.9;
-                  scale = 1.8 + popProgress * 0.5; // Pop bigger
-                  offsetY = -10 - popProgress * 5;
-                } else {
-                  double fadeProgress = (progress - 0.7) / 0.3;
-                  alpha = 0.1 - fadeProgress * 0.1;
-                  scale = 2.3 - fadeProgress * 2.3;
-                  offsetY = -15;
-                }
-                break;
-                
-              case 7: // Melt Down
-                if (progress < 0.3) {
-                  alpha = 1.0;
-                  scale = 1.0;
-                  offsetY = progress * 5; // Start sinking slightly
-                } else if (progress < 0.7) {
-                  double meltProgress = (progress - 0.3) / 0.4;
-                  alpha = 1.0 - meltProgress * 0.6;
-                  scale = 1.0; // Keep width
-                  offsetY = 5 + meltProgress * 15; // Sink down
-                } else {
-                  double finalProgress = (progress - 0.7) / 0.3;
-                  alpha = 0.4 - finalProgress * 0.4;
-                  scale = 1.0;
-                  offsetY = 20 + finalProgress * 10;
-                }
-                break;
-                
-              case 8: // Zigzag Wipe
-                {
-                  // Create zigzag pattern based on x position
-                  int zigzagOffset = (x % 4 < 2) ? 0 : 2; // Alternating pattern every 2 blocks
-                  double zigzagDelay = ((x + zigzagOffset) / (double)GRID_WIDTH) * 0.5;
-                  
-                  if (progress < zigzagDelay) {
-                    alpha = 1.0;
-                    scale = 1.0;
-                  } else if (progress < zigzagDelay + 0.4) {
-                    double wipeProgress = (progress - zigzagDelay) / 0.4;
-                    alpha = 1.0 - wipeProgress;
-                    scale = 1.0 - wipeProgress * 0.8;
-                    
-                    // Zigzag motion
-                    offsetX = sin(wipeProgress * M_PI * 4) * 8;
-                    offsetY = wipeProgress * 12;
-                  } else {
-                    alpha = 0.0;
-                    scale = 0.2;
-                  }
-                }
-                break;
-                
-              case 9: // Fireworks Burst
-                if (progress < 0.1) {
-                  alpha = 1.0;
-                  scale = 1.0;
-                } else if (progress < 0.25) {
-                  double chargeProgress = (progress - 0.1) / 0.15;
-                  alpha = 1.0;
-                  scale = 1.0 - chargeProgress * 0.3; // Compress before burst
-                  offsetY = -chargeProgress * 8;
-                } else if (progress < 0.4) {
-                  double burstProgress = (progress - 0.25) / 0.15;
-                  alpha = 1.0;
-                  scale = 0.7 + burstProgress * 1.0; // Sudden expansion
-                  offsetY = -8 + burstProgress * 3;
-                } else if (progress < 0.8) {
-                  double sparkleProgress = (progress - 0.4) / 0.4;
-                  alpha = 1.0 - sparkleProgress * 0.7;
-                  scale = 1.7 - sparkleProgress * 0.9;
-                  
-                  // Sparkle effect - random small movements
-                  int sparkSeed = (x * 23 + y * 41 + (int)(progress * 100)) % 100;
-                  offsetX = (sparkSeed % 20 - 10) * sparkleProgress * 0.8;
-                  offsetY = -5 + ((sparkSeed / 20) % 20 - 10) * sparkleProgress * 0.8;
-                } else {
-                  double fadeProgress = (progress - 0.8) / 0.2;
-                  alpha = 0.3 - fadeProgress * 0.3;
-                  scale = 0.8 - fadeProgress * 0.8;
-                  offsetX = 0;
-                  offsetY = 0;
-                }
-                break;
-            }
+            LineClearAnimValues animValues = getLineClearAnimationValues(animationType, progress, x, y);
+            alpha = animValues.alpha;
+            scale = animValues.scale;
+            offsetX = animValues.offsetX;
+            offsetY = animValues.offsetY;
           }
         }
 
