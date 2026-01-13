@@ -681,6 +681,86 @@ void drawPlacedBlocks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app) {
   }
 }
 
+void drawFireworks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app) {
+  if (board->isFireworksActive()) {
+    const auto& particles = app->board->getFireworkParticles();
+    
+    for (const auto& particle : particles) {
+        // Set particle color with alpha based on life
+        double alpha = particle.life;
+        cairo_set_source_rgba(cr, particle.color[0], particle.color[1], particle.color[2], alpha);
+        
+        // Draw particle as a glowing circle
+        cairo_arc(cr, particle.x, particle.y, particle.size * particle.life, 0, 2 * M_PI);
+        cairo_fill(cr);
+        
+        // Add glow effect
+        cairo_set_source_rgba(cr, particle.color[0], particle.color[1], particle.color[2], alpha * 0.3);
+        cairo_arc(cr, particle.x, particle.y, particle.size * particle.life * 2, 0, 2 * M_PI);
+        cairo_fill(cr);
+        
+        // Add bright center
+        cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, alpha * 0.8);
+        cairo_arc(cr, particle.x, particle.y, particle.size * particle.life * 0.3, 0, 2 * M_PI);
+        cairo_fill(cr);
+    }
+  }
+}
+
+void drawBlockTrails(cairo_t *cr, TetrimoneBoard *board) {
+  if (board->isTrailsEnabled() && board->isBlockTrailsActive()) {
+    const auto& trails = board->getBlockTrails();
+    
+    for (const auto& trail : trails) {
+        // Set color with alpha for fading effect
+        auto color = trail.color;
+        cairo_set_source_rgba(cr, color[0], color[1], color[2], trail.alpha);
+        
+        // Draw each block of the trail piece
+        for (size_t y = 0; y < trail.shape.size(); ++y) {
+            for (size_t x = 0; x < trail.shape[y].size(); ++x) {
+                if (trail.shape[y][x] == 1) {
+                    double drawX = (trail.x + x) * BLOCK_SIZE;
+                    double drawY = (trail.y + y) * BLOCK_SIZE;
+                    
+                    // Only draw if within the visible grid
+                    if (drawY >= -BLOCK_SIZE) {
+                        if (board->simpleBlocksActive) {
+                            // Simple trail blocks
+                            cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                            cairo_fill(cr);
+                        } else {
+                            // 3D trail blocks with reduced effect
+                            cairo_rectangle(cr, drawX + 1, drawY + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                            cairo_fill(cr);
+                            
+                            // Subtle highlight for 3D effect
+                            cairo_set_source_rgba(cr, 1, 1, 1, 0.1 * trail.alpha);
+                            cairo_move_to(cr, drawX + 1, drawY + 1);
+                            cairo_line_to(cr, drawX + BLOCK_SIZE - 1, drawY + 1);
+                            cairo_line_to(cr, drawX + 1, drawY + BLOCK_SIZE - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                            
+                            // Subtle shadow for 3D effect
+                            cairo_set_source_rgba(cr, 0, 0, 0, 0.1 * trail.alpha);
+                            cairo_move_to(cr, drawX + BLOCK_SIZE - 1, drawY + 1);
+                            cairo_line_to(cr, drawX + BLOCK_SIZE - 1, drawY + BLOCK_SIZE - 1);
+                            cairo_line_to(cr, drawX + 1, drawY + BLOCK_SIZE - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                            
+                            // Reset color for next block
+                            cairo_set_source_rgba(cr, color[0], color[1], color[2], trail.alpha);
+                        }
+                    }
+                }
+            }
+        }
+    }
+  }
+}
+
 gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
   TetrimoneBoard *board = app->board;
@@ -1142,80 +1222,13 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
   // Draw game over text if needed
   drawGameOver(cr, board);
 
+
 if (board->isFireworksActive()) {
-    const auto& particles = app->board->getFireworkParticles();
-    
-    for (const auto& particle : particles) {
-        // Set particle color with alpha based on life
-        double alpha = particle.life;
-        cairo_set_source_rgba(cr, particle.color[0], particle.color[1], particle.color[2], alpha);
-        
-        // Draw particle as a glowing circle
-        cairo_arc(cr, particle.x, particle.y, particle.size * particle.life, 0, 2 * M_PI);
-        cairo_fill(cr);
-        
-        // Add glow effect
-        cairo_set_source_rgba(cr, particle.color[0], particle.color[1], particle.color[2], alpha * 0.3);
-        cairo_arc(cr, particle.x, particle.y, particle.size * particle.life * 2, 0, 2 * M_PI);
-        cairo_fill(cr);
-        
-        // Add bright center
-        cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, alpha * 0.8);
-        cairo_arc(cr, particle.x, particle.y, particle.size * particle.life * 0.3, 0, 2 * M_PI);
-        cairo_fill(cr);
-    }
+    drawFireworks(cr, board, app);
 }
  
- if (board->isTrailsEnabled() && board->isBlockTrailsActive()) {
-    const auto& trails = app->board->getBlockTrails();
-    
-    for (const auto& trail : trails) {
-        // Set color with alpha for fading effect
-        auto color = trail.color;
-        cairo_set_source_rgba(cr, color[0], color[1], color[2], trail.alpha);
-        
-        // Draw each block of the trail piece
-        for (size_t y = 0; y < trail.shape.size(); ++y) {
-            for (size_t x = 0; x < trail.shape[y].size(); ++x) {
-                if (trail.shape[y][x] == 1) {
-                    double drawX = (trail.x + x) * BLOCK_SIZE;
-                    double drawY = (trail.y + y) * BLOCK_SIZE;
-                    
-                    // Only draw if within the visible grid
-                    if (drawY >= -BLOCK_SIZE) {
-                        if (board->simpleBlocksActive) {
-                            // Simple trail blocks
-                            cairo_rectangle(cr, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
-                            cairo_fill(cr);
-                        } else {
-                            // 3D trail blocks with reduced effect
-                            cairo_rectangle(cr, drawX + 1, drawY + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
-                            cairo_fill(cr);
-                            
-                            // Subtle highlight for 3D effect
-                            cairo_set_source_rgba(cr, 1, 1, 1, 0.1 * trail.alpha);
-                            cairo_move_to(cr, drawX + 1, drawY + 1);
-                            cairo_line_to(cr, drawX + BLOCK_SIZE - 1, drawY + 1);
-                            cairo_line_to(cr, drawX + 1, drawY + BLOCK_SIZE - 1);
-                            cairo_close_path(cr);
-                            cairo_fill(cr);
-                            
-                            // Subtle shadow for 3D effect
-                            cairo_set_source_rgba(cr, 0, 0, 0, 0.1 * trail.alpha);
-                            cairo_move_to(cr, drawX + BLOCK_SIZE - 1, drawY + 1);
-                            cairo_line_to(cr, drawX + BLOCK_SIZE - 1, drawY + BLOCK_SIZE - 1);
-                            cairo_line_to(cr, drawX + 1, drawY + BLOCK_SIZE - 1);
-                            cairo_close_path(cr);
-                            cairo_fill(cr);
-                            
-                            // Reset color for next block
-                            cairo_set_source_rgba(cr, color[0], color[1], color[2], trail.alpha);
-                        }
-                    }
-                }
-            }
-        }
-    }
+if (board->isTrailsEnabled() && board->isBlockTrailsActive()) {
+    drawBlockTrails(cr, board);
 }
   
   return FALSE;
