@@ -97,15 +97,8 @@ void drawSplashScreen(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app) {
   }
 }
 
-gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
-  TetrimoneBoard *board = app->board;
-
-  // Get widget dimensions
-  GtkAllocation allocation;
-  gtk_widget_get_allocation(widget, &allocation);
-
-  // Draw background
+void drawBackground(cairo_t *cr, TetrimoneBoard *board, const GtkAllocation &allocation) {
+  // Draw solid background color
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
   cairo_rectangle(cr, 0, 0, allocation.width, allocation.height);
   cairo_fill(cr);
@@ -201,6 +194,18 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
     // Restore the original state
     cairo_restore(cr);
   }
+}
+
+gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
+  TetrimoneBoard *board = app->board;
+
+  // Get widget dimensions
+  GtkAllocation allocation;
+  gtk_widget_get_allocation(widget, &allocation);
+
+  // Draw background
+  drawBackground(cr, board, allocation);
 
   if (board->isShowingGridLines()) {
     cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
