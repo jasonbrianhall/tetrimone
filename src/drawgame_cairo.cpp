@@ -509,28 +509,51 @@ LineClearAnimValues getLineClearAnimationValues(int animationType, double progre
   }
 }
 
-gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
-  TetrimoneBoard *board = app->board;
+void drawGameOver(cairo_t *cr, TetrimoneBoard *board) {
+  if (board->isGameOver()) {
+    cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
+    cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
+                    GRID_HEIGHT * BLOCK_SIZE);
+    cairo_fill(cr);
+    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL,
+                           CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, 30);
+    cairo_set_source_rgb(cr, 1, 0, 0);
+    
+    // Center the text
+    cairo_text_extents_t extents;
+    const char *text = board->retroModeActive ? "ИНФОРМАЦИЯ ЗАПРЕЩЕНА" : "GAME OVER";
+    cairo_text_extents(cr, text, &extents);
+    double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
+    double y = (GRID_HEIGHT * BLOCK_SIZE) / 2;
+    cairo_move_to(cr, x, y);
+    cairo_show_text(cr, text);
+    
+    // Show different restart message in retro mode
+    cairo_set_font_size(cr, 16);
+    const char *restartText = board->retroModeActive ? 
+                              "ОЖИДАЙТЕ ДОПРОСА. НЕ ДВИГАЙТЕСЬ..." : 
+                              "Press R to restart";
+    cairo_text_extents(cr, restartText, &extents);
+    x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
+    y += 40;
+    cairo_move_to(cr, x, y);
+    cairo_show_text(cr, restartText);
+    
+    // Add a second line with translation for non-Russian speakers
+    if (board->retroModeActive) {
+        cairo_set_font_size(cr, 12);
+        const char *translationText = "(AWAIT INTERROGATION. DO NOT MOVE...)";
+        cairo_text_extents(cr, translationText, &extents);
+        x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
+        y += 25;
+        cairo_move_to(cr, x, y);
+        cairo_show_text(cr, translationText);
+    }
+  }
+}
 
-  // Get widget dimensions
-  GtkAllocation allocation;
-  gtk_widget_get_allocation(widget, &allocation);
-
-  // Draw background
-  drawBackground(cr, board, allocation);
-
-  // Draw gridlines
-  drawGridLines(cr, board);
-
-  int failureLineY = 2;
-  cairo_set_source_rgb(cr, 1.0, 0.2, 0.2);
-  cairo_set_line_width(cr, 1.0);
-  cairo_move_to(cr, 0, failureLineY * BLOCK_SIZE);
-  cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, failureLineY * BLOCK_SIZE);
-  cairo_stroke(cr);
-
-  // Draw placed blocks with line clearing animation
+void drawPlacedBlocks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app) {
   for (int y = 0; y < GRID_HEIGHT; ++y) {
     for (int x = 0; x < GRID_WIDTH; ++x) {
       int value = board->getGridValue(x, y);
@@ -595,19 +618,10 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
         }
 
         // Get color from tetrimoneblock colors
-/*        auto color = board->isInThemeTransition() ? 
-    board->getInterpolatedColor(value - 1, board->getThemeTransitionProgress()) :
-    TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1]; */
-
-    auto baseColor = board->isInThemeTransition() ? 
-    board->getInterpolatedColor(value - 1, board->getThemeTransitionProgress()) :
-    TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
-auto color = getHeatModifiedColor(baseColor, board->getHeatLevel());
-
-/*auto baseColor = TETRIMONEBLOCK_COLOR_THEMES[themeIndex][blockType - 1];
-auto heatColor = getHeatModifiedColor(baseColor, app->board->getHeatLevel());
-
-cairo_set_source_rgba(cr, heatColor[0], heatColor[1], heatColor[2], alpha); */
+        auto baseColor = board->isInThemeTransition() ? 
+        board->getInterpolatedColor(value - 1, board->getThemeTransitionProgress()) :
+        TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
+        auto color = getHeatModifiedColor(baseColor, board->getHeatLevel());
 
         cairo_set_source_rgba(cr, color[0], color[1], color[2], alpha);
 
@@ -665,6 +679,31 @@ cairo_set_source_rgba(cr, heatColor[0], heatColor[1], heatColor[2], alpha); */
       }
     }
   }
+}
+
+gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
+  TetrimoneBoard *board = app->board;
+
+  // Get widget dimensions
+  GtkAllocation allocation;
+  gtk_widget_get_allocation(widget, &allocation);
+
+  // Draw background
+  drawBackground(cr, board, allocation);
+
+  // Draw gridlines
+  drawGridLines(cr, board);
+
+  int failureLineY = 2;
+  cairo_set_source_rgb(cr, 1.0, 0.2, 0.2);
+  cairo_set_line_width(cr, 1.0);
+  cairo_move_to(cr, 0, failureLineY * BLOCK_SIZE);
+  cairo_line_to(cr, GRID_WIDTH * BLOCK_SIZE, failureLineY * BLOCK_SIZE);
+  cairo_stroke(cr);
+
+  // Draw placed blocks with line clearing animation
+  drawPlacedBlocks(cr, board, app);
 
   // Draw splash screen if active
   if (board->isSplashScreenActive()) {
@@ -1101,47 +1140,7 @@ cairo_set_source_rgba(cr, heatColor[0], heatColor[1], heatColor[2], alpha); */
   }
 
   // Draw game over text if needed
-  if (board->isGameOver()) {
-    cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
-    cairo_rectangle(cr, 0, 0, GRID_WIDTH * BLOCK_SIZE,
-                    GRID_HEIGHT * BLOCK_SIZE);
-    cairo_fill(cr);
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL,
-                           CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 30);
-    cairo_set_source_rgb(cr, 1, 0, 0);
-    
-    // Center the text
-    cairo_text_extents_t extents;
-    const char *text = board->retroModeActive ? "ИНФОРМАЦИЯ ЗАПРЕЩЕНА" : "GAME OVER";
-    cairo_text_extents(cr, text, &extents);
-    double x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-    double y = (GRID_HEIGHT * BLOCK_SIZE) / 2;
-    cairo_move_to(cr, x, y);
-    cairo_show_text(cr, text);
-    
-    // Show different restart message in retro mode
-    cairo_set_font_size(cr, 16);
-    const char *restartText = board->retroModeActive ? 
-                              "ОЖИДАЙТЕ ДОПРОСА. НЕ ДВИГАЙТЕСЬ..." : 
-                              "Press R to restart";
-    cairo_text_extents(cr, restartText, &extents);
-    x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-    y += 40;
-    cairo_move_to(cr, x, y);
-    cairo_show_text(cr, restartText);
-    
-    // Add a second line with translation for non-Russian speakers
-    if (board->retroModeActive) {
-        cairo_set_font_size(cr, 12);
-        const char *translationText = "(AWAIT INTERROGATION. DO NOT MOVE...)";
-        cairo_text_extents(cr, translationText, &extents);
-        x = (GRID_WIDTH * BLOCK_SIZE - extents.width) / 2;
-        y += 25;
-        cairo_move_to(cr, x, y);
-        cairo_show_text(cr, translationText);
-    }
-  }
+  drawGameOver(cr, board);
 
 if (board->isFireworksActive()) {
     const auto& particles = app->board->getFireworkParticles();
