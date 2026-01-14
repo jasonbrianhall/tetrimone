@@ -36,7 +36,7 @@ else
 endif
 
 # Source files
-SRCS_COMMON = src/tetrimone_gl.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp src/junklines.cpp src/propaganda.cpp src/help.cpp src/saveloadsettings.cpp src/drawgame.cpp src/tetrimone_main.cpp src/heat.cpp src/freedom.cpp src/drawgame_cairo.cpp
+SRCS_COMMON = src/tetrimone_gl.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp src/junklines.cpp src/propaganda.cpp src/help.cpp src/saveloadsettings.cpp src/drawgame.cpp src/tetrimone_main.cpp src/heat.cpp src/freedom.cpp src/drawgame_gl.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src/sdlaudioplayer.cpp
 SRCS_WIN_SDL = src/sdlaudioplayer.cpp
@@ -51,6 +51,16 @@ GTK_LIBS_LINUX := $(shell pkg-config --libs gtk+-3.0)
 GTK_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags gtk+-3.0)
 GTK_LIBS_WIN := $(shell mingw64-pkg-config --libs gtk+-3.0)
 
+# OpenGL and GLEW flags
+GL_CFLAGS_LINUX := $(shell pkg-config --cflags gl)
+GL_LIBS_LINUX := $(shell pkg-config --libs gl)
+GLEW_CFLAGS_LINUX := $(shell pkg-config --cflags glew)
+GLEW_LIBS_LINUX := $(shell pkg-config --libs glew)
+GL_CFLAGS_WIN := -DGL_GLEXT_PROTOTYPES
+GL_LIBS_WIN := -lGL
+GLEW_CFLAGS_WIN := -DGL_GLEXT_PROTOTYPES
+GLEW_LIBS_WIN := -lGLEW
+
 # ZIP library flags
 ZIP_CFLAGS_LINUX := $(shell pkg-config --cflags libzip)
 ZIP_LIBS_LINUX := $(shell pkg-config --libs libzip)
@@ -58,16 +68,16 @@ ZIP_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags libzip)
 ZIP_LIBS_WIN := $(shell mingw64-pkg-config --libs libzip)
 
 # Platform-specific settings
-CXXFLAGS_LINUX = $(CXXFLAGS_COMMON) $(GTK_CFLAGS_LINUX) $(SDL_CFLAGS_LINUX) $(AUDIO_FLAGS_LINUX) $(ZIP_CFLAGS_LINUX) -DLINUX
-CXXFLAGS_WIN = $(CXXFLAGS_COMMON) $(GTK_CFLAGS_WIN) $(SDL_CFLAGS_WIN) $(ZIP_CFLAGS_WIN) -DWIN32 -DUSE_SDL
+CXXFLAGS_LINUX = $(CXXFLAGS_COMMON) $(GTK_CFLAGS_LINUX) $(SDL_CFLAGS_LINUX) $(AUDIO_FLAGS_LINUX) $(ZIP_CFLAGS_LINUX) $(GL_CFLAGS_LINUX) $(GLEW_CFLAGS_LINUX) -DLINUX
+CXXFLAGS_WIN = $(CXXFLAGS_COMMON) $(GTK_CFLAGS_WIN) $(SDL_CFLAGS_WIN) $(ZIP_CFLAGS_WIN) $(GL_CFLAGS_WIN) $(GLEW_CFLAGS_WIN) -DWIN32 -DUSE_SDL
 
 # Debug-specific flags
 CXXFLAGS_LINUX_DEBUG = $(CXXFLAGS_LINUX) $(DEBUG_FLAGS)
 CXXFLAGS_WIN_DEBUG = $(CXXFLAGS_WIN) $(DEBUG_FLAGS)
 
 # Linker flags
-LDFLAGS_LINUX = $(GTK_LIBS_LINUX) $(SDL_LIBS_LINUX) $(AUDIO_LIBS_LINUX) $(ZIP_LIBS_LINUX) -pthread
-LDFLAGS_WIN = $(GTK_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) -lwinmm -lstdc++ -lSDL2_mixer
+LDFLAGS_LINUX = $(GTK_LIBS_LINUX) $(SDL_LIBS_LINUX) $(AUDIO_LIBS_LINUX) $(ZIP_LIBS_LINUX) $(GL_LIBS_LINUX) $(GLEW_LIBS_LINUX) -pthread
+LDFLAGS_WIN = $(GTK_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) $(GL_LIBS_WIN) $(GLEW_LIBS_WIN) -lwinmm -lstdc++ -lSDL2_mixer
 
 # Object files
 OBJS_LINUX = $(SRCS_COMMON:.cpp=.o) $(SRCS_LINUX:.cpp=.o)
@@ -77,8 +87,8 @@ OBJS_LINUX_DEBUG = $(SRCS_COMMON:.cpp=.debug.o) $(SRCS_LINUX:.cpp=.debug.o)
 OBJS_WIN_DEBUG = $(SRCS_COMMON:.cpp=.win.debug.o) $(SRCS_WIN:.cpp=.win.debug.o)
 
 # Target executables
-TARGET_LINUX = tetrimone
-TARGET_WIN = tetrimone.exe
+TARGET_LINUX = tetrimone_gl
+TARGET_WIN = tetrimone_gl.exe
 TARGET_WIN_SDL = tetrimone.exe
 TARGET_LINUX_DEBUG = tetrimone_debug
 TARGET_WIN_DEBUG = tetrimone_debug.exe
