@@ -239,7 +239,7 @@ jobs:
                   
                   <!-- GTK3 runtime component -->
                   <Component Id="Gtk3Dir" 
-                           Guid="D70F85FB-6F28-61F9-E48I-4F9F7F7D1F67"
+                           Guid="D70F85FB-6F28-61F9-E481-4F9F7F7D1F67"
                            Win64="no">
                     <CreateFolder />
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
@@ -257,7 +257,7 @@ jobs:
                   
                   <!-- Themes component -->
                   <Component Id="ThemesDir" 
-                           Guid="F92107FD-8F40-83F1-G60F-6F1F919F3189"
+                           Guid="F92107FD-8F40-83F1-F60F-6F1F919F3189"
                            Win64="no">
                     <CreateFolder />
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
