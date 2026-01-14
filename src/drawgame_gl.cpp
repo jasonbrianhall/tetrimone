@@ -20,7 +20,6 @@
 #include "highscores.h"
 #include "propaganda_messages.h"
 #include "zip.h"
-#include "drawgame_gl.h"
 
 // Define M_PI for Windows compatibility
 #ifndef M_PI

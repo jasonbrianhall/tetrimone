@@ -11,6 +11,7 @@
 #include "propaganda_messages.h"
 #include "freedom_messages.h"
 #include "commandline.h"
+#include "drawgame_gl.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -1736,6 +1737,11 @@ void onScreenSizeChanged(GtkWidget *widget, GdkRectangle *allocation,
                          gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
 
+  // Ignore if window is too small or not fully realized yet
+  if (allocation->width < 200 || allocation->height < 200) {
+    return;
+  }
+
   // Get the new window size
   int newWidth = allocation->width;
   int newHeight = allocation->height;
@@ -1744,6 +1750,11 @@ void onScreenSizeChanged(GtkWidget *widget, GdkRectangle *allocation,
   // Account for side panel (roughly 200px) and margins
   int availableGameWidth = newWidth - 200;
   int availableGameHeight = newHeight - 100;  // Account for menu and margins
+
+  // Ensure we have positive dimensions
+  if (availableGameWidth <= 0 || availableGameHeight <= 0) {
+    return;
+  }
 
   // Calculate what the new block size should be to fill the space
   int newBlockSizeWidth = availableGameWidth / GRID_WIDTH;
@@ -1754,7 +1765,8 @@ void onScreenSizeChanged(GtkWidget *widget, GdkRectangle *allocation,
   newBlockSize = std::max(newBlockSize, MIN_BLOCK_SIZE);
   newBlockSize = std::min(newBlockSize, MAX_BLOCK_SIZE);
 
-  // Only rebuild if the block size actually changed
+  // Only rebuild if the block size actually changed significantly
+  // (avoid rebuilding for every pixel of resize)
   if (newBlockSize != BLOCK_SIZE) {
     BLOCK_SIZE = newBlockSize;
     
@@ -1873,10 +1885,24 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
                  G_CALLBACK(onWindowFocusChanged), tetrimoneApp);
 
   // Use the calculated block size for window dimensions
+  int defaultWidth = GRID_WIDTH * BLOCK_SIZE + 200;
+  int defaultHeight = GRID_HEIGHT * BLOCK_SIZE + 40;
+  
   gtk_window_set_default_size(GTK_WINDOW(tetrimoneApp->window),
-                              GRID_WIDTH * BLOCK_SIZE + 200,
-                              GRID_HEIGHT * BLOCK_SIZE + 40);
-  gtk_window_set_resizable(GTK_WINDOW(tetrimoneApp->window), TRUE);  // Allow resizing and maximizing
+                              defaultWidth, defaultHeight);
+  
+  gtk_window_set_resizable(GTK_WINDOW(tetrimoneApp->window), TRUE);
+  
+  // Set minimum window size to prevent resize handles from interfering with game board
+  // Minimum should be at least the default size to keep the game playable
+  GdkGeometry geometry;
+  geometry.min_width = defaultWidth;
+  geometry.min_height = defaultHeight;
+  
+  gtk_window_set_geometry_hints(GTK_WINDOW(tetrimoneApp->window),
+                                NULL,
+                                &geometry,
+                                GDK_HINT_MIN_SIZE);
 
   // Create main vertical box
   GtkWidget *mainVBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
