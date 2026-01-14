@@ -221,7 +221,7 @@ jobs:
                   
                   <!-- GTK schemas component -->
                   <Component Id="GtkSchemas" 
-                           Guid="B58E63D9-4F06-49G7-C26G-2F7D5E5B9E45"
+                           Guid="B58E63D9-4F06-49F7-C26F-2F7D5E5B9E45"
                            Win64="no">
                     <CreateFolder />
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
@@ -230,7 +230,7 @@ jobs:
                   
                   <!-- GdkPixbuf component -->
                   <Component Id="GdkPixbufDir" 
-                           Guid="C69F74EA-5G17-50H8-D37H-3G8E6F6C0F56"
+                           Guid="C69F74EA-5F17-50F8-D37F-3F8E6F6C0F56"
                            Win64="no">
                     <CreateFolder />
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
@@ -239,7 +239,7 @@ jobs:
                   
                   <!-- GTK3 runtime component -->
                   <Component Id="Gtk3Dir" 
-                           Guid="D70G85FB-6H28-61I9-E48I-4H9F7G7D1G67"
+                           Guid="D70F85FB-6F28-61I9-E48I-4F9F7F7D1F67"
                            Win64="no">
                     <CreateFolder />
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
@@ -248,7 +248,7 @@ jobs:
                   
                   <!-- Icons component -->
                   <Component Id="IconsDir" 
-                           Guid="E81H96GC-7I39-72J0-F59J-5I0G8H8E2H78"
+                           Guid="E81F96FC-7I39-72F0-F59F-5I0F8F8E2F78"
                            Win64="no">
                     <CreateFolder />
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
@@ -257,7 +257,7 @@ jobs:
                   
                   <!-- Themes component -->
                   <Component Id="ThemesDir" 
-                           Guid="F92I07HD-8J40-83K1-G60K-6J1H9I9F3I89"
+                           Guid="F92I07FD-8F40-83F1-G60F-6F1F9I9F3I89"
                            Win64="no">
                     <CreateFolder />
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
@@ -279,7 +279,7 @@ jobs:
             <!-- Start Menu shortcuts -->
             <DirectoryRef Id="ApplicationProgramsFolder">
               <Component Id="ApplicationShortcuts" 
-                       Guid="E03K18IE-9L51-94L2-H71L-7K2I0J0G4J90"
+                       Guid="E03E18IE-9E51-94E2-E71E-7E2I0F0F4F90"
                        Win64="no">
                 <Shortcut Id="LaunchShortcut" 
                          Name="Tetrimone GTK" 
@@ -301,7 +301,7 @@ jobs:
             <!-- Desktop shortcuts (optional) -->
             <DirectoryRef Id="DesktopFolder">
               <Component Id="DesktopShortcut" 
-                       Guid="F14L29JF-0M62-05M3-I82M-8L3J1K1H5K01"
+                       Guid="F14A29AF-0A62-05A3-I82A-8A3a1A1A5A01"
                        Win64="no">
                 <Condition>DESKTOP_SHORTCUT</Condition>
                 <Shortcut Id="DesktopShortcut" 
