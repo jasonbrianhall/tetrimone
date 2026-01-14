@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <cmath>
 #ifdef _WIN32
 #include <windows.h>
 #include <commdlg.h>
@@ -1736,10 +1737,26 @@ void onScreenSizeChanged(GtkWidget *widget, GdkRectangle *allocation,
                          gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
 
-  // We intentionally avoid recalculating the block size here
-  // so that manual resize doesn't affect the game area
+  // Recalculate BLOCK_SIZE based on actual space available
+  if (app->gameArea) {
+    int gameWidth = gtk_widget_get_allocated_width(app->gameArea);
+    int gameHeight = gtk_widget_get_allocated_height(app->gameArea);
+    
+    if (gameWidth > 0 && gameHeight > 0) {
+      // Calculate block size to fit allocated space
+      int blockSizeW = gameWidth / GRID_WIDTH;
+      int blockSizeH = gameHeight / GRID_HEIGHT;
+      int newBlockSize = std::min(blockSizeW, blockSizeH);
+      
+      // Only update if significantly different
+      if (newBlockSize > 10 && abs(newBlockSize - BLOCK_SIZE) > 2) {
+        BLOCK_SIZE = newBlockSize;
+        printf("DEBUG: BLOCK_SIZE resized to %d\n", BLOCK_SIZE);
+      }
+    }
+  }
 
-  // Just redraw everything with the current block size
+  // Redraw at new size
   gtk_widget_queue_draw(app->gameArea);
   gtk_widget_queue_draw(app->nextPieceArea);
 }
@@ -1790,13 +1807,16 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
                  G_CALLBACK(onWindowFocusChanged), tetrimoneApp);
 
   // Use the calculated block size for window dimensions
+  // Set FIXED window size at the red line (visible gray border)
   gtk_window_set_default_size(GTK_WINDOW(tetrimoneApp->window),
-                              GRID_WIDTH * BLOCK_SIZE + 200,
-                              GRID_HEIGHT * BLOCK_SIZE + 40);
-  gtk_window_set_resizable(GTK_WINDOW(tetrimoneApp->window), FALSE);
+                              GRID_WIDTH * BLOCK_SIZE + 220,
+                              GRID_HEIGHT * BLOCK_SIZE + 60);
+  // Allow resizing for maximize button (Wayland support)
+  gtk_window_set_resizable(GTK_WINDOW(tetrimoneApp->window), TRUE);
 
   // Create main vertical box
   GtkWidget *mainVBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_container_set_border_width(GTK_CONTAINER(mainVBox), 0);  // NO border
   gtk_container_add(GTK_CONTAINER(tetrimoneApp->window), mainVBox);
 
   // Create menu
@@ -1804,8 +1824,8 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   gtk_box_pack_start(GTK_BOX(mainVBox), tetrimoneApp->menuBar, FALSE, FALSE, 0);
 
   // Create main horizontal box for game contents
-  tetrimoneApp->mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-  gtk_container_set_border_width(GTK_CONTAINER(tetrimoneApp->mainBox), 10);
+  tetrimoneApp->mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);  // NO spacing between widgets
+  gtk_container_set_border_width(GTK_CONTAINER(tetrimoneApp->mainBox), 0);  // NO border
   gtk_box_pack_start(GTK_BOX(mainVBox), tetrimoneApp->mainBox, TRUE, TRUE, 0);
 
   g_signal_connect(G_OBJECT(tetrimoneApp->window), "size-allocate",
@@ -1813,25 +1833,36 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
 
   // Create the game area (drawing area)
   tetrimoneApp->gameArea = gtk_drawing_area_new();
-  gtk_widget_set_size_request(tetrimoneApp->gameArea, GRID_WIDTH * BLOCK_SIZE,
-                              GRID_HEIGHT * BLOCK_SIZE);
+  // Set EXACT size - the board is GRID_WIDTH * BLOCK_SIZE, nothing more
+  int boardWidth = GRID_WIDTH * BLOCK_SIZE;
+  int boardHeight = GRID_HEIGHT * BLOCK_SIZE;
+  gtk_widget_set_size_request(tetrimoneApp->gameArea, boardWidth, boardHeight);
+  // EXPAND when window resizes - blocks get bigger on maximize
+  gtk_widget_set_hexpand(tetrimoneApp->gameArea, TRUE);
+  gtk_widget_set_vexpand(tetrimoneApp->gameArea, TRUE);
   g_signal_connect(G_OBJECT(tetrimoneApp->gameArea), "draw",
                    G_CALLBACK(onDrawGameArea), tetrimoneApp);
+  // Pack with expansion
   gtk_box_pack_start(GTK_BOX(tetrimoneApp->mainBox), tetrimoneApp->gameArea,
-                     FALSE, FALSE, 0);
+                     TRUE, TRUE, 0);
 
   // Create the side panel (vertical box)
-  GtkWidget *sideBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+  GtkWidget *sideBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);  // NO spacing
+  gtk_container_set_border_width(GTK_CONTAINER(sideBox), 0);  // NO border
+  // Side panel stays fixed size
+  gtk_widget_set_hexpand(sideBox, FALSE);
+  gtk_widget_set_vexpand(sideBox, FALSE);
   gtk_box_pack_start(GTK_BOX(tetrimoneApp->mainBox), sideBox, FALSE, FALSE, 0);
 
   // Create the next piece preview frame
   GtkWidget *nextPieceFrame = gtk_frame_new("Next Piece");
+  gtk_container_set_border_width(GTK_CONTAINER(nextPieceFrame), 0);  // NO border
   gtk_box_pack_start(GTK_BOX(sideBox), nextPieceFrame, FALSE, FALSE, 0);
 
-  // Create the next piece drawing area
+  // Create the next piece drawing area - MUCH SMALLER
   tetrimoneApp->nextPieceArea = gtk_drawing_area_new();
-  gtk_widget_set_size_request(tetrimoneApp->nextPieceArea, 3 * 2 * BLOCK_SIZE,
-                              2.5 * BLOCK_SIZE);
+  gtk_widget_set_size_request(tetrimoneApp->nextPieceArea, BLOCK_SIZE * 5,
+                              BLOCK_SIZE * 4);
   g_signal_connect(G_OBJECT(tetrimoneApp->nextPieceArea), "draw",
                    G_CALLBACK(onDrawNextPiece), tetrimoneApp);
   gtk_container_add(GTK_CONTAINER(nextPieceFrame), tetrimoneApp->nextPieceArea);
@@ -3125,13 +3156,20 @@ void rebuildGameUI(TetrimoneApp *app) {
   }
 
   // Resize the window to match the new block size
-  gtk_window_resize(GTK_WINDOW(app->window), GRID_WIDTH * BLOCK_SIZE + 200,
-                    GRID_HEIGHT * BLOCK_SIZE + 40);
+  // Use fixed padding for consistent gray border
+  gtk_window_set_default_size(GTK_WINDOW(app->window), 
+                              GRID_WIDTH * BLOCK_SIZE + 220,
+                              GRID_HEIGHT * BLOCK_SIZE + 60);
 
-  // Create new game area with correct size
+  // Create new game area with exact board size
   app->gameArea = gtk_drawing_area_new();
-  gtk_widget_set_size_request(app->gameArea, GRID_WIDTH * BLOCK_SIZE,
-                              GRID_HEIGHT * BLOCK_SIZE);
+  // Set EXACT size - the board is GRID_WIDTH * BLOCK_SIZE, nothing more
+  int boardWidth = GRID_WIDTH * BLOCK_SIZE;
+  int boardHeight = GRID_HEIGHT * BLOCK_SIZE;
+  gtk_widget_set_size_request(app->gameArea, boardWidth, boardHeight);
+  // EXPAND when window resizes - blocks get bigger on maximize
+  gtk_widget_set_hexpand(app->gameArea, TRUE);
+  gtk_widget_set_vexpand(app->gameArea, TRUE);
   g_signal_connect(G_OBJECT(app->gameArea), "draw", G_CALLBACK(onDrawGameArea),
                    app);
 
@@ -3143,27 +3181,25 @@ void rebuildGameUI(TetrimoneApp *app) {
   }
   g_list_free(children);
 
-  // Recreate the main box contents
-  gtk_box_pack_start(GTK_BOX(app->mainBox), app->gameArea, FALSE, FALSE, 0);
+  // Recreate the main box contents with expansion
+  gtk_box_pack_start(GTK_BOX(app->mainBox), app->gameArea, TRUE, TRUE, 0);
 
   // Create the side panel (vertical box)
-  GtkWidget *sideBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+  GtkWidget *sideBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);  // NO spacing
+  gtk_container_set_border_width(GTK_CONTAINER(sideBox), 0);  // NO border
+  // Side panel stays fixed size
+  gtk_widget_set_hexpand(sideBox, FALSE);
+  gtk_widget_set_vexpand(sideBox, FALSE);
   gtk_box_pack_start(GTK_BOX(app->mainBox), sideBox, FALSE, FALSE, 0);
 
   // Create the next piece preview frame
   GtkWidget *nextPieceFrame = gtk_frame_new("Next Pieces");
+  gtk_container_set_border_width(GTK_CONTAINER(nextPieceFrame), 0);  // NO border
   gtk_box_pack_start(GTK_BOX(sideBox), nextPieceFrame, FALSE, FALSE, 0);
 
-  // Create the next piece drawing area - sized for 3 horizontal pieces with
-  // half-size blocks
-  int previewBlockSize = BLOCK_SIZE / 2;
-  int previewWidth =
-      3 * 4 * previewBlockSize; // 3 sections, each 4 blocks wide at half size
-  int previewHeight =
-      4 * previewBlockSize + 30; // Height for pieces plus header
-
+  // Create the next piece drawing area - MUCH SMALLER
   app->nextPieceArea = gtk_drawing_area_new();
-  gtk_widget_set_size_request(app->nextPieceArea, previewWidth, previewHeight);
+  gtk_widget_set_size_request(app->nextPieceArea, BLOCK_SIZE * 5, BLOCK_SIZE * 4);
   g_signal_connect(G_OBJECT(app->nextPieceArea), "draw",
                    G_CALLBACK(onDrawNextPiece), app);
   gtk_container_add(GTK_CONTAINER(nextPieceFrame), app->nextPieceArea);
