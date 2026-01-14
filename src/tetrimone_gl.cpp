@@ -1758,14 +1758,14 @@ void onScreenSizeChanged(GtkWidget *widget, GdkRectangle *allocation,
         int newBoardHeight = GRID_HEIGHT * BLOCK_SIZE;
         
         // Update game area size to new board dimensions
+        gtk_widget_set_hexpand(app->gameArea, FALSE);
+        gtk_widget_set_vexpand(app->gameArea, FALSE);
         gtk_widget_set_size_request(app->gameArea, newBoardWidth, newBoardHeight);
         printf("DEBUG: Board resized to %d x %d\n", newBoardWidth, newBoardHeight);
         
         // Also update preview pieces to scale with board
         gtk_widget_set_size_request(app->nextPieceArea, BLOCK_SIZE * 5, BLOCK_SIZE * 4);
         
-        gtk_widget_set_hexpand(app->gameArea, FALSE);
-        gtk_widget_set_vexpand(app->gameArea, FALSE);
       }
     }
   }
