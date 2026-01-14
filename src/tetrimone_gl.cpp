@@ -11,7 +11,6 @@
 #include "propaganda_messages.h"
 #include "freedom_messages.h"
 #include "commandline.h"
-#include "drawgame_gl.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -1737,106 +1736,13 @@ void onScreenSizeChanged(GtkWidget *widget, GdkRectangle *allocation,
                          gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
 
-  // Ignore if window is too small or not fully realized yet
-  if (allocation->width < 200 || allocation->height < 200) {
-    return;
-  }
+  // We intentionally avoid recalculating the block size here
+  // so that manual resize doesn't affect the game area
 
-  // Get the new window size
-  int newWidth = allocation->width;
-  int newHeight = allocation->height;
-
-  // Calculate how much space is available for the game board
-  // Account for side panel (roughly 200px) and margins
-  int availableGameWidth = newWidth - 200;
-  int availableGameHeight = newHeight - 100;  // Account for menu and margins
-
-  // Ensure we have positive dimensions
-  if (availableGameWidth <= 0 || availableGameHeight <= 0) {
-    return;
-  }
-
-  // Calculate what the new block size should be to fill the space
-  int newBlockSizeWidth = availableGameWidth / GRID_WIDTH;
-  int newBlockSizeHeight = availableGameHeight / GRID_HEIGHT;
-  int newBlockSize = std::min(newBlockSizeWidth, newBlockSizeHeight);
-
-  // Apply constraints
-  newBlockSize = std::max(newBlockSize, MIN_BLOCK_SIZE);
-  newBlockSize = std::min(newBlockSize, MAX_BLOCK_SIZE);
-
-  // Only rebuild if the block size actually changed significantly
-  // (avoid rebuilding for every pixel of resize)
-  if (newBlockSize != BLOCK_SIZE) {
-    BLOCK_SIZE = newBlockSize;
-    
-    // Rebuild the UI with the new block size
-    // This will recreate game area widgets with proper sizes
-    rebuildGameUI(app);
-  } else {
-    // Even if block size didn't change, redraw to handle other resize scenarios
-    if (app->gameArea) {
-      gtk_widget_queue_draw(app->gameArea);
-    }
-    if (app->nextPieceArea) {
-      gtk_widget_queue_draw(app->nextPieceArea);
-    }
-  }
-}
-
-// ============================================================================
-// Rendering mode switching functions
-// ============================================================================
-
-void rebuildRenderingArea(TetrimoneApp *app) {
-  // Remove old game area if it exists
-  if (app->gameArea != NULL) {
-    gtk_widget_destroy(app->gameArea);
-    app->gameArea = NULL;
-  }
-  
-  // Create appropriate rendering widget based on mode
-  if (app->renderingMode == TetrimoneApp::RENDER_CAIRO) {
-    // Create Cairo drawing area
-    app->gameArea = gtk_drawing_area_new();
-    g_signal_connect(G_OBJECT(app->gameArea), "draw",
-                     G_CALLBACK(onDrawGameArea), app);
-  } else {
-    // Create OpenGL area
-    app->gameArea = gtk_gl_area_new();
-    tetrimone_gl_init(GTK_GL_AREA(app->gameArea));
-  }
-  
-  gtk_widget_set_size_request(app->gameArea, GRID_WIDTH * BLOCK_SIZE,
-                              GRID_HEIGHT * BLOCK_SIZE);
-  gtk_box_pack_start(GTK_BOX(app->mainBox), app->gameArea,
-                     TRUE, TRUE, 0);
-  
-  gtk_widget_show(app->gameArea);
+  // Just redraw everything with the current block size
   gtk_widget_queue_draw(app->gameArea);
+  gtk_widget_queue_draw(app->nextPieceArea);
 }
-
-void onRenderModeChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
-  TetrimoneApp *app = static_cast<TetrimoneApp*>(userData);
-  
-  if (!gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menuItem))) {
-    return;  // Ignore deselect events
-  }
-  
-  // Determine which mode was selected
-  if (menuItem == GTK_RADIO_MENU_ITEM(app->renderModeMenuItems[0])) {
-    app->renderingMode = TetrimoneApp::RENDER_CAIRO;
-  } else {
-    app->renderingMode = TetrimoneApp::RENDER_OPENGL;
-  }
-  
-  // Rebuild the rendering area
-  rebuildRenderingArea(app);
-}
-
-// ============================================================================
-// Main application activation
-// ============================================================================
 
 void onAppActivate(GtkApplication *app, gpointer userData) {
   TetrimoneApp *tetrimoneApp = new TetrimoneApp();
@@ -1846,7 +1752,6 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   tetrimoneApp->timerId = 0;
   tetrimoneApp->dropSpeed = INITIAL_SPEED;
   tetrimoneApp->difficulty = 2; // Default to Medium
-  tetrimoneApp->renderingMode = TetrimoneApp::RENDER_CAIRO;  // Default to Cairo rendering
 
   // Calculate block size based on screen resolution
   calculateBlockSize(tetrimoneApp);
@@ -1885,24 +1790,10 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
                  G_CALLBACK(onWindowFocusChanged), tetrimoneApp);
 
   // Use the calculated block size for window dimensions
-  int defaultWidth = GRID_WIDTH * BLOCK_SIZE + 200;
-  int defaultHeight = GRID_HEIGHT * BLOCK_SIZE + 40;
-  
   gtk_window_set_default_size(GTK_WINDOW(tetrimoneApp->window),
-                              defaultWidth, defaultHeight);
-  
-  gtk_window_set_resizable(GTK_WINDOW(tetrimoneApp->window), TRUE);
-  
-  // Set minimum window size to prevent resize handles from interfering with game board
-  // Minimum should be at least the default size to keep the game playable
-  GdkGeometry geometry;
-  geometry.min_width = defaultWidth;
-  geometry.min_height = defaultHeight;
-  
-  gtk_window_set_geometry_hints(GTK_WINDOW(tetrimoneApp->window),
-                                NULL,
-                                &geometry,
-                                GDK_HINT_MIN_SIZE);
+                              GRID_WIDTH * BLOCK_SIZE + 200,
+                              GRID_HEIGHT * BLOCK_SIZE + 40);
+  gtk_window_set_resizable(GTK_WINDOW(tetrimoneApp->window), FALSE);
 
   // Create main vertical box
   GtkWidget *mainVBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -1920,8 +1811,14 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   g_signal_connect(G_OBJECT(tetrimoneApp->window), "size-allocate",
                    G_CALLBACK(onScreenSizeChanged), tetrimoneApp);
 
-  // Create the game area with the appropriate rendering mode (Cairo by default)
-  rebuildRenderingArea(tetrimoneApp);
+  // Create the game area (drawing area)
+  tetrimoneApp->gameArea = gtk_drawing_area_new();
+  gtk_widget_set_size_request(tetrimoneApp->gameArea, GRID_WIDTH * BLOCK_SIZE,
+                              GRID_HEIGHT * BLOCK_SIZE);
+  g_signal_connect(G_OBJECT(tetrimoneApp->gameArea), "draw",
+                   G_CALLBACK(onDrawGameArea), tetrimoneApp);
+  gtk_box_pack_start(GTK_BOX(tetrimoneApp->mainBox), tetrimoneApp->gameArea,
+                     FALSE, FALSE, 0);
 
   // Create the side panel (vertical box)
   GtkWidget *sideBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
@@ -2501,30 +2398,6 @@ g_signal_connect(G_OBJECT(retroMusicMenuItem), "toggled",
   gtk_menu_shell_append(GTK_MENU_SHELL(helpMenu), instructionsMenuItem);
   gtk_menu_shell_append(GTK_MENU_SHELL(helpMenu), aboutMenuItem);
 
-  // *** OPTIONS MENU ***
-  GtkWidget *optionsMenu = gtk_menu_new();
-  GtkWidget *optionsMenuItem = gtk_menu_item_new_with_label("Options");
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(optionsMenuItem), optionsMenu);
-
-  // Create Rendering submenu
-  GtkWidget *renderingMenu = gtk_menu_new();
-  GtkWidget *renderingMenuItem = gtk_menu_item_new_with_label("Rendering");
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(renderingMenuItem), renderingMenu);
-  gtk_menu_shell_append(GTK_MENU_SHELL(optionsMenu), renderingMenuItem);
-
-  // Create radio items for rendering modes
-  app->renderModeMenuItems[0] = gtk_radio_menu_item_new_with_label(NULL, "Cairo (2D)");
-  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->renderModeMenuItems[0]), TRUE);
-  g_signal_connect(G_OBJECT(app->renderModeMenuItems[0]), "toggled",
-                   G_CALLBACK(onRenderModeChanged), app);
-  gtk_menu_shell_append(GTK_MENU_SHELL(renderingMenu), app->renderModeMenuItems[0]);
-
-  app->renderModeMenuItems[1] = gtk_radio_menu_item_new_with_label_from_widget(
-    GTK_RADIO_MENU_ITEM(app->renderModeMenuItems[0]), "OpenGL");
-  g_signal_connect(G_OBJECT(app->renderModeMenuItems[1]), "toggled",
-                   G_CALLBACK(onRenderModeChanged), app);
-  gtk_menu_shell_append(GTK_MENU_SHELL(renderingMenu), app->renderModeMenuItems[1]);
-
   // Add menus to menu bar
   gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), gameMenuItem);
   gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), difficultyMenuItem);
@@ -2532,7 +2405,6 @@ g_signal_connect(G_OBJECT(retroMusicMenuItem), "toggled",
   gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), soundMenuItem);
   gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), controlsMenuItem);
   gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), rulesMenuItem);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), optionsMenuItem);  // Add Options menu
   gtk_menu_shell_append(GTK_MENU_SHELL(menuBar), helpMenuItem);
 
   // Add menu signal handlers
