@@ -239,7 +239,7 @@ jobs:
                   
                   <!-- GTK3 runtime component -->
                   <Component Id="Gtk3Dir" 
-                           Guid="D70F85FB-6F28-61I9-E48I-4F9F7F7D1F67"
+                           Guid="D70F85FB-6F28-61F9-E48I-4F9F7F7D1F67"
                            Win64="no">
                     <CreateFolder />
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
@@ -248,7 +248,7 @@ jobs:
                   
                   <!-- Icons component -->
                   <Component Id="IconsDir" 
-                           Guid="E81F96FC-7I39-72F0-F59F-5I0F8F8E2F78"
+                           Guid="E81F96FC-7139-72F0-F59F-510F8F8E2F78"
                            Win64="no">
                     <CreateFolder />
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
@@ -257,7 +257,7 @@ jobs:
                   
                   <!-- Themes component -->
                   <Component Id="ThemesDir" 
-                           Guid="F92I07FD-8F40-83F1-G60F-6F1F9I9F3I89"
+                           Guid="F92107FD-8F40-83F1-G60F-6F1F919F3189"
                            Win64="no">
                     <CreateFolder />
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneGTK\Components" 
@@ -279,7 +279,7 @@ jobs:
             <!-- Start Menu shortcuts -->
             <DirectoryRef Id="ApplicationProgramsFolder">
               <Component Id="ApplicationShortcuts" 
-                       Guid="E03E18IE-9E51-94E2-E71E-7E2I0F0F4F90"
+                       Guid="E03E181E-9E51-94E2-E71E-7E210F0F4F90"
                        Win64="no">
                 <Shortcut Id="LaunchShortcut" 
                          Name="Tetrimone GTK" 
@@ -301,7 +301,7 @@ jobs:
             <!-- Desktop shortcuts (optional) -->
             <DirectoryRef Id="DesktopFolder">
               <Component Id="DesktopShortcut" 
-                       Guid="F14A29AF-0A62-05A3-I82A-8A3a1A1A5A01"
+                       Guid="F14A29AF-0A62-05A3-182A-8A3A1A1A5A01"
                        Win64="no">
                 <Condition>DESKTOP_SHORTCUT</Condition>
                 <Shortcut Id="DesktopShortcut" 
