@@ -148,6 +148,14 @@ struct TetrimoneApp {
     guint joystickTimerId;
     JoystickMapping joystickMapping;
     bool pausedByFocusLoss = false;
+    
+    // Rendering mode selection
+    enum RenderingMode {
+        RENDER_CAIRO = 0,
+        RENDER_OPENGL = 1
+    };
+    RenderingMode renderingMode;
+    GtkWidget* renderModeMenuItems[2];  // Radio menu items for Cairo and OpenGL
 };
 
 // Class for the game board
@@ -421,9 +429,47 @@ const std::vector<BlockTrail>& getBlockTrails() const { return blockTrails; }
 
 };
 
+// ============================================================================
 // Function declarations
+// ============================================================================
+
+// Cairo drawing (legacy support)
 gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data);
 gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data);
+
+// OpenGL 3.3+ drawing (modern rendering)
+void tetrimone_gl_init(GtkGLArea *gl_area);
+void tetrimone_gl_next_piece_init(GtkGLArea *gl_area);
+
+// OpenGL primitive drawing functions
+void gl_setup_2d_projection(int width, int height);
+void gl_set_color(float r, float g, float b);
+void gl_set_color_alpha(float r, float g, float b, float a);
+void gl_draw_rect_filled(float x, float y, float width, float height);
+void gl_draw_rect_outline(float x, float y, float width, float height, float line_width);
+void gl_draw_line(float x1, float y1, float x2, float y2, float width);
+void gl_draw_circle(float cx, float cy, float radius, int segments);
+void gl_draw_circle_outline(float cx, float cy, float radius, float line_width, int segments);
+void gl_draw_triangle(float x1, float y1, float x2, float y2, float x3, float y3);
+
+// OpenGL game rendering functions
+void drawBackground_gl(TetrimoneBoard *board, int width, int height);
+void drawGridLines_gl(TetrimoneBoard *board);
+void drawFailureLine_gl();
+void drawSplashScreen_gl(TetrimoneBoard *board, TetrimoneApp *app);
+void drawPlacedBlocks_gl(TetrimoneBoard *board, TetrimoneApp *app);
+void drawCurrentPiece_gl(TetrimoneBoard *board);
+void drawGhostPiece_gl(TetrimoneBoard *board);
+void drawGameOver_gl(TetrimoneBoard *board);
+void drawPauseMenu_gl(TetrimoneBoard *board);
+void drawPropagandaMessage_gl(TetrimoneBoard *board);
+void drawFireworks_gl(TetrimoneBoard *board);
+void drawBlockTrails_gl(TetrimoneBoard *board);
+void drawFireyGlow_gl(double x, double y, double size, float heatLevel, double time);
+void drawFreezyEffect_gl(double x, double y, double size, float heatLevel, double time);
+void drawNextPiecePreview_gl(TetrimoneBoard *board, int previewIndex, int screenX, int screenY, int previewSize);
+
+// Input and event handling
 gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data);
 gboolean onKeyDownTick(gpointer userData);
 gboolean onKeyLeftTick(gpointer userData);
@@ -440,6 +486,8 @@ void onMenuDeactivated(GtkWidget* widget, gpointer userData);
 
 // Menu related functions
 void createMenu(TetrimoneApp* app);
+void rebuildRenderingArea(TetrimoneApp *app);
+void onRenderModeChanged(GtkRadioMenuItem *menuItem, gpointer userData);
 void onStartGame(GtkMenuItem* menuItem, gpointer userData);
 void onPauseGame(GtkMenuItem* menuItem, gpointer userData);
 void onRestartGame(GtkMenuItem* menuItem, gpointer userData);
@@ -501,8 +549,12 @@ void resetGameSettings(TetrimoneApp* app);
 void onResetSettings(GtkMenuItem* menuItem, gpointer userData);
 void onThemeChanged(GtkRadioMenuItem *menuItem, gpointer userData);
 std::array<double, 3> getHeatModifiedColor(const std::array<double, 3>& baseColor, float heatLevel);
+
+// Heat effect functions - Cairo versions (legacy)
 void drawFreezyEffect(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
 void drawFireyGlow(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
+
+// Heat effect functions - OpenGL versions (already declared above in GL section)
 void onBlockTrailsToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onBlockTrailsConfig(GtkMenuItem* menuItem, gpointer userData);
 void onTrailOpacityChanged(GtkAdjustment* adj, gpointer data);

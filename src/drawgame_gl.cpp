@@ -12,6 +12,7 @@
 #include <string>
 #include <algorithm>
 #include <chrono>
+#include <vector>
 #ifdef _WIN32
 #include <windows.h>
 #include <commdlg.h>
@@ -19,6 +20,7 @@
 #include "highscores.h"
 #include "propaganda_messages.h"
 #include "zip.h"
+#include "drawgame_gl.h"
 
 // Define M_PI for Windows compatibility
 #ifndef M_PI
@@ -26,7 +28,7 @@
 #endif
 
 // ============================================================================
-// OpenGL 3.3+ RENDERING CONTEXT
+// OpenGL 3.3+ RENDERING CONTEXT AND STATE
 // ============================================================================
 
 typedef struct {
@@ -153,7 +155,7 @@ static void gl_init(void) {
     gl_state.color[2] = 1.0f;
     gl_state.color[3] = 1.0f;
     
-    fprintf(stderr, "[GL] GL 3.3+ renderer initialized for Tetrimone\n");
+    fprintf(stderr, "[GL] GL 3.3+ renderer initialized successfully\n");
 }
 
 static void draw_vertices(Vertex *verts, int count, GLenum mode) {
@@ -170,7 +172,7 @@ static void draw_vertices(Vertex *verts, int count, GLenum mode) {
 }
 
 // ============================================================================
-// HIGH-LEVEL DRAWING API (Replacing Cairo functions)
+// HIGH-LEVEL DRAWING API
 // ============================================================================
 
 void gl_setup_2d_projection(int width, int height) {
@@ -215,6 +217,7 @@ void gl_draw_rect_outline(float x, float y, float width, float height, float lin
         {x, y, gl_state.color[0], gl_state.color[1], gl_state.color[2], gl_state.color[3]}
     };
     draw_vertices(verts, 5, GL_LINE_STRIP);
+    glLineWidth(1.0f);
 }
 
 void gl_draw_line(float x1, float y1, float x2, float y2, float width) {
@@ -224,6 +227,7 @@ void gl_draw_line(float x1, float y1, float x2, float y2, float width) {
         {x2, y2, gl_state.color[0], gl_state.color[1], gl_state.color[2], gl_state.color[3]}
     };
     draw_vertices(verts, 2, GL_LINES);
+    glLineWidth(1.0f);
 }
 
 void gl_draw_circle(float cx, float cy, float radius, int segments) {
@@ -254,19 +258,31 @@ void gl_draw_circle_outline(float cx, float cy, float radius, float line_width, 
     
     draw_vertices(verts, segments + 1, GL_LINE_STRIP);
     free(verts);
+    glLineWidth(1.0f);
+}
+
+// Draw triangle
+void gl_draw_triangle(float x1, float y1, float x2, float y2, float x3, float y3) {
+    Vertex verts[3] = {
+        {x1, y1, gl_state.color[0], gl_state.color[1], gl_state.color[2], gl_state.color[3]},
+        {x2, y2, gl_state.color[0], gl_state.color[1], gl_state.color[2], gl_state.color[3]},
+        {x3, y3, gl_state.color[0], gl_state.color[1], gl_state.color[2], gl_state.color[3]}
+    };
+    draw_vertices(verts, 3, GL_TRIANGLES);
 }
 
 // ============================================================================
-// DRAWING FUNCTIONS - CONVERTED FROM CAIRO
+// TETRIMONE GAME DRAWING FUNCTIONS
 // ============================================================================
 
 void drawBackground_gl(TetrimoneBoard *board, int width, int height) {
-    // Draw solid background color
+    // Draw main game area background
     gl_set_color(0.1f, 0.1f, 0.1f);
     gl_draw_rect_filled(0, 0, width, height);
     
-    // TODO: Add background image texture support if needed
-    // For now, only solid background is rendered
+    // Draw a subtle border around the game area
+    gl_set_color(0.3f, 0.3f, 0.3f);
+    gl_draw_rect_outline(0, 0, width, height, 2.0f);
 }
 
 void drawGridLines_gl(TetrimoneBoard *board) {
@@ -286,9 +302,13 @@ void drawGridLines_gl(TetrimoneBoard *board) {
 }
 
 void drawFailureLine_gl() {
-    // Draw a red line at the top to indicate failure threshold
+    // Draw a red line at y=0 to indicate failure threshold
     gl_set_color(1.0f, 0.0f, 0.0f);
-    gl_draw_line(0, 0, GRID_WIDTH * BLOCK_SIZE, 0, 2.0f);
+    gl_draw_line(0, 0, GRID_WIDTH * BLOCK_SIZE, 0, 2.5f);
+    
+    // Add a glow effect by drawing a slightly larger semi-transparent line
+    gl_set_color_alpha(1.0f, 0.0f, 0.0f, 0.4f);
+    gl_draw_line(0, -2, GRID_WIDTH * BLOCK_SIZE, -2, 5.0f);
 }
 
 void drawSplashScreen_gl(TetrimoneBoard *board, TetrimoneApp *app) {
@@ -296,14 +316,20 @@ void drawSplashScreen_gl(TetrimoneBoard *board, TetrimoneApp *app) {
     gl_set_color_alpha(0.0f, 0.0f, 0.0f, 0.7f);
     gl_draw_rect_filled(0, 0, GRID_WIDTH * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
     
-    // Draw title text area (centered white rectangle for now)
-    gl_set_color_alpha(1.0f, 1.0f, 1.0f, 0.3f);
-    int title_y = (GRID_HEIGHT * BLOCK_SIZE) / 3;
-    gl_draw_rect_filled(100, title_y - 40, GRID_WIDTH * BLOCK_SIZE - 200, 100);
+    // Draw title background box
+    int title_width = GRID_WIDTH * BLOCK_SIZE - 200;
+    int title_height = 120;
+    int title_x = 100;
+    int title_y = (GRID_HEIGHT * BLOCK_SIZE) / 3 - 60;
+    
+    gl_set_color(0.2f, 0.2f, 0.2f);
+    gl_draw_rect_filled(title_x, title_y, title_width, title_height);
+    gl_set_color(1.0f, 1.0f, 1.0f);
+    gl_draw_rect_outline(title_x, title_y, title_width, title_height, 2.0f);
     
     // Draw colored blocks for decoration
     int startX = (GRID_WIDTH * BLOCK_SIZE - 4 * BLOCK_SIZE) / 2;
-    int startY = title_y + 20;
+    int startY = title_y + title_height + 20;
     
     // Draw I piece (cyan)
     gl_set_color(0.0f, 0.7f, 0.9f);
@@ -318,6 +344,11 @@ void drawSplashScreen_gl(TetrimoneBoard *board, TetrimoneApp *app) {
     gl_draw_rect_filled(startX, startY + BLOCK_SIZE, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
     gl_draw_rect_filled(startX + BLOCK_SIZE, startY + BLOCK_SIZE, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
     gl_draw_rect_filled(startX + BLOCK_SIZE * 2, startY + BLOCK_SIZE, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+    
+    // Draw start prompt text area
+    int promptY = (GRID_HEIGHT * BLOCK_SIZE) * 3 / 4;
+    gl_set_color(1.0f, 1.0f, 0.0f);
+    gl_draw_rect_outline(100, promptY - 30, GRID_WIDTH * BLOCK_SIZE - 200, 60, 2.0f);
 }
 
 // Animation value struct
@@ -328,18 +359,17 @@ struct LineClearAnimValues {
     double offsetY;
 };
 
-// Get line clear animation values based on type
+// Get line clear animation values based on type and progress
 static LineClearAnimValues getLineClearAnimationValues(int type, double progress, int x, int y) {
-    // Placeholder: implement based on drawgame_cairo.cpp animations
     LineClearAnimValues result = {1.0, 1.0, 0.0, 0.0};
     
-    // Simple fade-out animation for now
-    if (progress < 0.6) {
-        result.alpha = 1.0 - progress;
-        result.scale = 1.0 - progress * 0.3;
+    // Simple fade-out animation
+    if (progress < 0.5) {
+        result.alpha = 1.0 - progress * 2.0;
+        result.scale = 1.0 + progress * 0.3;
     } else {
         result.alpha = 0.0;
-        result.scale = 0.7;
+        result.scale = 1.15;
     }
     
     return result;
@@ -358,29 +388,11 @@ void drawPlacedBlocks_gl(TetrimoneBoard *board, TetrimoneApp *app) {
                 // Handle line clear animations
                 if (board->isLineClearActive() && board->isLineBeingCleared(y)) {
                     double progress = board->getLineClearProgress();
-                    
-                    if (board->retroModeActive) {
-                        // Soviet-era effect
-                        if (progress < 0.3) {
-                            double scanProgress = progress / 0.3;
-                            int scanX = (int)(scanProgress * GRID_WIDTH);
-                            if (x <= scanX) {
-                                alpha = 0.3 + 0.4 * sin(progress * 20.0);
-                            }
-                        } else if (progress < 0.7) {
-                            double flashProgress = (progress - 0.3) / 0.4;
-                            alpha = 1.0 - flashProgress * 0.7;
-                            offsetY = flashProgress * BLOCK_SIZE * 0.3;
-                        }
-                    } else {
-                        // Modern animations
-                        int animationType = board->getCurrentAnimationType();
-                        LineClearAnimValues animValues = getLineClearAnimationValues(animationType, progress, x, y);
-                        alpha = animValues.alpha;
-                        scale = animValues.scale;
-                        offsetX = animValues.offsetX;
-                        offsetY = animValues.offsetY;
-                    }
+                    LineClearAnimValues animValues = getLineClearAnimationValues(0, progress, x, y);
+                    alpha = animValues.alpha;
+                    scale = animValues.scale;
+                    offsetX = animValues.offsetX;
+                    offsetY = animValues.offsetY;
                 }
                 
                 // Get color from theme
@@ -388,10 +400,7 @@ void drawPlacedBlocks_gl(TetrimoneBoard *board, TetrimoneApp *app) {
                     board->getInterpolatedColor(value - 1, board->getThemeTransitionProgress()) :
                     TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
                 
-                // Apply heat modifications if available
-                auto color = baseColor; // TODO: getHeatModifiedColor(baseColor, board->getHeatLevel());
-                
-                gl_set_color_alpha(color[0], color[1], color[2], alpha);
+                gl_set_color_alpha(baseColor[0], baseColor[1], baseColor[2], alpha);
                 
                 // Calculate position with animation
                 double drawX = x * BLOCK_SIZE + offsetX + (BLOCK_SIZE * (1.0 - scale)) / 2;
@@ -404,22 +413,18 @@ void drawPlacedBlocks_gl(TetrimoneBoard *board, TetrimoneApp *app) {
                 // Draw 3D highlight if not in retro mode
                 if (!board->retroModeActive && !board->simpleBlocksActive) {
                     gl_set_color_alpha(1.0f, 1.0f, 1.0f, 0.3f * alpha);
-                    // Draw highlight triangle
-                    Vertex highlight[3] = {
-                        {(float)(drawX + 1), (float)(drawY + 1), 1.0f, 1.0f, 1.0f, 0.3f * (float)alpha},
-                        {(float)(drawX + drawSize - 1), (float)(drawY + 1), 1.0f, 1.0f, 1.0f, 0.3f * (float)alpha},
-                        {(float)(drawX + 1), (float)(drawY + drawSize - 1), 1.0f, 1.0f, 1.0f, 0.3f * (float)alpha}
-                    };
-                    draw_vertices(highlight, 3, GL_TRIANGLES);
+                    gl_draw_triangle(
+                        drawX + 1, drawY + 1,
+                        drawX + drawSize - 1, drawY + 1,
+                        drawX + 1, drawY + drawSize - 1
+                    );
                     
-                    // Draw shadow triangle
                     gl_set_color_alpha(0.0f, 0.0f, 0.0f, 0.3f * alpha);
-                    Vertex shadow[3] = {
-                        {(float)(drawX + drawSize - 1), (float)(drawY + 1), 0.0f, 0.0f, 0.0f, 0.3f * (float)alpha},
-                        {(float)(drawX + drawSize - 1), (float)(drawY + drawSize - 1), 0.0f, 0.0f, 0.0f, 0.3f * (float)alpha},
-                        {(float)(drawX + 1), (float)(drawY + drawSize - 1), 0.0f, 0.0f, 0.0f, 0.3f * (float)alpha}
-                    };
-                    draw_vertices(shadow, 3, GL_TRIANGLES);
+                    gl_draw_triangle(
+                        drawX + drawSize - 1, drawY + 1,
+                        drawX + drawSize - 1, drawY + drawSize - 1,
+                        drawX + 1, drawY + drawSize - 1
+                    );
                 }
             }
         }
@@ -446,14 +451,21 @@ void drawCurrentPiece_gl(TetrimoneBoard *board) {
                     gl_draw_rect_filled(gridX * BLOCK_SIZE + 1, gridY * BLOCK_SIZE + 1, 
                                        BLOCK_SIZE - 2, BLOCK_SIZE - 2);
                     
-                    // Draw 3D effect
-                    gl_set_color_alpha(1.0f, 1.0f, 1.0f, 0.3f);
-                    Vertex highlight[3] = {
-                        {(float)(gridX * BLOCK_SIZE + 1), (float)(gridY * BLOCK_SIZE + 1), 1.0f, 1.0f, 1.0f, 0.3f},
-                        {(float)(gridX * BLOCK_SIZE + BLOCK_SIZE - 1), (float)(gridY * BLOCK_SIZE + 1), 1.0f, 1.0f, 1.0f, 0.3f},
-                        {(float)(gridX * BLOCK_SIZE + 1), (float)(gridY * BLOCK_SIZE + BLOCK_SIZE - 1), 1.0f, 1.0f, 1.0f, 0.3f}
-                    };
-                    draw_vertices(highlight, 3, GL_TRIANGLES);
+                    // Draw 3D effect with highlight
+                    gl_set_color_alpha(1.0f, 1.0f, 1.0f, 0.4f);
+                    gl_draw_triangle(
+                        gridX * BLOCK_SIZE + 1, gridY * BLOCK_SIZE + 1,
+                        gridX * BLOCK_SIZE + BLOCK_SIZE - 1, gridY * BLOCK_SIZE + 1,
+                        gridX * BLOCK_SIZE + 1, gridY * BLOCK_SIZE + BLOCK_SIZE - 1
+                    );
+                    
+                    // Draw shadow
+                    gl_set_color_alpha(0.0f, 0.0f, 0.0f, 0.3f);
+                    gl_draw_triangle(
+                        gridX * BLOCK_SIZE + BLOCK_SIZE - 1, gridY * BLOCK_SIZE + 1,
+                        gridX * BLOCK_SIZE + BLOCK_SIZE - 1, gridY * BLOCK_SIZE + BLOCK_SIZE - 1,
+                        gridX * BLOCK_SIZE + 1, gridY * BLOCK_SIZE + BLOCK_SIZE - 1
+                    );
                 }
             }
         }
@@ -493,10 +505,22 @@ void drawGameOver_gl(TetrimoneBoard *board) {
         gl_set_color_alpha(0.0f, 0.0f, 0.0f, 0.6f);
         gl_draw_rect_filled(0, 0, GRID_WIDTH * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
         
-        // White rectangle for GAME OVER text
-        gl_set_color_alpha(1.0f, 0.0f, 0.0f, 0.8f);
+        // GAME OVER box
+        gl_set_color(1.0f, 0.0f, 0.0f);
         int textY = (GRID_HEIGHT * BLOCK_SIZE) / 2;
-        gl_draw_rect_filled(100, textY - 50, GRID_WIDTH * BLOCK_SIZE - 200, 100);
+        int boxWidth = GRID_WIDTH * BLOCK_SIZE - 200;
+        gl_draw_rect_filled(100, textY - 50, boxWidth, 100);
+        
+        // Draw border for emphasis
+        gl_set_color(1.0f, 1.0f, 1.0f);
+        gl_draw_rect_outline(100, textY - 50, boxWidth, 100, 3.0f);
+        
+        // Draw decorative corner circles
+        gl_set_color(1.0f, 1.0f, 0.0f);
+        for (int i = 0; i < 4; i++) {
+            gl_draw_circle(100 + (i * boxWidth / 3), textY - 50, 10, 16);
+            gl_draw_circle(100 + (i * boxWidth / 3), textY + 50, 10, 16);
+        }
     }
 }
 
@@ -506,43 +530,146 @@ void drawPauseMenu_gl(TetrimoneBoard *board) {
         gl_set_color_alpha(0.0f, 0.0f, 0.0f, 0.5f);
         gl_draw_rect_filled(0, 0, GRID_WIDTH * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
         
-        // Yellow rectangle for PAUSED text
-        gl_set_color_alpha(1.0f, 1.0f, 0.0f, 0.8f);
+        // PAUSED box
+        gl_set_color(1.0f, 1.0f, 0.0f);
         int textY = (GRID_HEIGHT * BLOCK_SIZE) / 2;
-        gl_draw_rect_filled(100, textY - 40, GRID_WIDTH * BLOCK_SIZE - 200, 80);
+        int boxWidth = GRID_WIDTH * BLOCK_SIZE - 200;
+        gl_draw_rect_filled(100, textY - 40, boxWidth, 80);
+        
+        // Draw border
+        gl_set_color(0.0f, 0.0f, 0.0f);
+        gl_draw_rect_outline(100, textY - 40, boxWidth, 80, 2.0f);
     }
 }
 
 void drawPropagandaMessage_gl(TetrimoneBoard *board) {
-    if (board->retroModeActive) {
+    if (board->isShowingPropagandaMessage()) {
         // Draw retro-style message box
         gl_set_color(0.8f, 0.2f, 0.2f);
-        gl_draw_rect_filled(0, 0, GRID_WIDTH * BLOCK_SIZE, 40);
+        int messageHeight = 50;
+        gl_draw_rect_filled(0, 0, GRID_WIDTH * BLOCK_SIZE, messageHeight);
+        
+        // Add border
+        gl_set_color(1.0f, 1.0f, 1.0f);
+        gl_draw_rect_outline(0, 0, GRID_WIDTH * BLOCK_SIZE, messageHeight, 2.0f);
     }
 }
 
-void drawFireworks_gl(TetrimoneBoard *board, TetrimoneApp *app) {
-    // TODO: Implement particle effects for line clears
-    // Draw simple circles for now
-    gl_set_color(1.0f, 1.0f, 0.0f);
-    gl_draw_circle(GRID_WIDTH * BLOCK_SIZE / 2, GRID_HEIGHT * BLOCK_SIZE / 2, 50, 32);
+void drawFireworks_gl(TetrimoneBoard *board) {
+    const auto& particles = board->getFireworkParticles();
+    
+    for (const auto& particle : particles) {
+        // Draw main particle
+        gl_set_color_alpha(particle.color[0], particle.color[1], particle.color[2], particle.life);
+        gl_draw_circle(particle.x, particle.y, particle.size, 8);
+        
+        // Draw glow around particle
+        gl_set_color_alpha(particle.color[0], particle.color[1], particle.color[2], particle.life * 0.5f);
+        gl_draw_circle(particle.x, particle.y, particle.size * 1.5f, 12);
+    }
 }
 
 void drawBlockTrails_gl(TetrimoneBoard *board) {
-    // TODO: Implement block trail effects
+    const auto& trails = board->getBlockTrails();
+    
+    for (const auto& trail : trails) {
+        // Draw trail as a semi-transparent piece at its position
+        double alpha = trail.alpha * trail.life;  // Fade over time
+        
+        gl_set_color_alpha(trail.color[0], trail.color[1], trail.color[2], (float)alpha);
+        
+        // Draw the piece blocks at the trail position
+        for (size_t row = 0; row < trail.shape.size(); ++row) {
+            for (size_t col = 0; col < trail.shape[row].size(); ++col) {
+                if (trail.shape[row][col]) {
+                    // Draw a small block at trail position
+                    double blockSize = BLOCK_SIZE * 0.7;  // Slightly smaller
+                    double drawX = trail.x + col * blockSize;
+                    double drawY = trail.y + row * blockSize;
+                    gl_draw_rect_filled(drawX + 1, drawY + 1, blockSize - 2, blockSize - 2);
+                }
+            }
+        }
+    }
 }
 
 void drawFireyGlow_gl(double x, double y, double size, float heatLevel, double time) {
     // Draw orange glow effect for hot blocks
-    gl_set_color_alpha(1.0f, 0.6f, 0.0f, 0.3f * heatLevel);
+    float glowIntensity = 0.3f * heatLevel;
+    gl_set_color_alpha(1.0f, 0.6f, 0.0f, glowIntensity);
     gl_draw_circle(x + size/2, y + size/2, size/2 + 5, 16);
+    
+    // Add pulsing effect
+    float pulse = sinf((float)time * 4.0f) * 0.5f + 0.5f;
+    gl_set_color_alpha(1.0f, 0.3f, 0.0f, glowIntensity * pulse);
+    gl_draw_circle(x + size/2, y + size/2, size/2 + 8, 16);
 }
 
 void drawFreezyEffect_gl(double x, double y, double size, float heatLevel, double time) {
     // Draw light blue glow for cold blocks
     float freezeIntensity = (0.3f - heatLevel) / 0.3f;
+    if (freezeIntensity < 0.0f) freezeIntensity = 0.0f;
+    if (freezeIntensity > 1.0f) freezeIntensity = 1.0f;
+    
     gl_set_color_alpha(0.7f, 0.9f, 1.0f, 0.2f * freezeIntensity);
     gl_draw_circle(x + size/2, y + size/2, size/2 + 3, 16);
+    
+    // Add icy sparkle effect
+    float sparkle = sinf((float)time * 8.0f) * 0.5f + 0.5f;
+    gl_set_color_alpha(0.9f, 1.0f, 1.0f, 0.4f * freezeIntensity * sparkle);
+    gl_draw_circle(x + size/2, y + size/2, size/2 + 1, 12);
+}
+
+// ============================================================================
+// NEXT PIECE PREVIEW DRAWING
+// ============================================================================
+
+void drawNextPiecePreview_gl(TetrimoneBoard *board, int previewIndex, int screenX, int screenY, int previewSize) {
+    if (previewIndex >= (int)board->getNextPieces().size()) {
+        return;
+    }
+    
+    const auto& piece = board->getNextPiece(previewIndex);
+    const auto& shape = piece.getShape();
+    const auto& color = piece.getColor();
+    
+    // Draw background
+    gl_set_color(0.15f, 0.15f, 0.15f);
+    gl_draw_rect_filled(screenX, screenY, previewSize, previewSize);
+    gl_set_color(0.4f, 0.4f, 0.4f);
+    gl_draw_rect_outline(screenX, screenY, previewSize, previewSize, 1.5f);
+    
+    // Calculate center offset for the piece
+    int shapeHeight = shape.size();
+    int shapeWidth = shape[0].size();
+    int blockSize = previewSize / 5;
+    int centerX = screenX + (previewSize - shapeWidth * blockSize) / 2;
+    int centerY = screenY + (previewSize - shapeHeight * blockSize) / 2;
+    
+    // Draw piece blocks
+    gl_set_color((float)color[0], (float)color[1], (float)color[2]);
+    for (size_t row = 0; row < shape.size(); ++row) {
+        for (size_t col = 0; col < shape[row].size(); ++col) {
+            if (shape[row][col]) {
+                gl_draw_rect_filled(
+                    centerX + col * blockSize + 1,
+                    centerY + row * blockSize + 1,
+                    blockSize - 2,
+                    blockSize - 2
+                );
+                
+                // Draw 3D effect on preview
+                gl_set_color_alpha(1.0f, 1.0f, 1.0f, 0.3f);
+                gl_draw_triangle(
+                    centerX + col * blockSize + 1, centerY + row * blockSize + 1,
+                    centerX + col * blockSize + blockSize - 1, centerY + row * blockSize + 1,
+                    centerX + col * blockSize + 1, centerY + row * blockSize + blockSize - 1
+                );
+                
+                gl_set_color((float)color[0], (float)color[1], (float)color[2]);
+            }
+        }
+    }
 }
 
 // ============================================================================
@@ -570,14 +697,14 @@ gboolean on_realize_gl(GtkGLArea *area, gpointer data) {
     
     gl_init();
     
-    fprintf(stderr, "[GL] GL Context initialized\n");
+    fprintf(stderr, "[GL] GL Context initialized successfully\n");
     return TRUE;
 }
 
 gboolean on_render_gl(GtkGLArea *area, GdkGLContext *context, gpointer data) {
     (void)context;
     TetrimoneApp *app = (TetrimoneApp *)data;
-    if (!app) return FALSE;
+    if (!app || !app->board) return FALSE;
     
     TetrimoneBoard *board = app->board;
     
@@ -602,7 +729,7 @@ gboolean on_render_gl(GtkGLArea *area, GdkGLContext *context, gpointer data) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
-    // Draw all game elements
+    // Draw all game elements in correct order
     drawBackground_gl(board, board_width, board_height);
     drawGridLines_gl(board);
     drawFailureLine_gl();
@@ -615,14 +742,20 @@ gboolean on_render_gl(GtkGLArea *area, GdkGLContext *context, gpointer data) {
         return TRUE;
     }
     
+    // Draw game elements
     drawPropagandaMessage_gl(board);
     drawCurrentPiece_gl(board);
-    drawGhostPiece_gl(board);
+    
+    if (board->getMinBlockSize() > 1) {
+        drawGhostPiece_gl(board);
+    }
+    
     drawPauseMenu_gl(board);
     drawGameOver_gl(board);
     
+    // Draw effects
     if (board->isFireworksActive()) {
-        drawFireworks_gl(board, app);
+        drawFireworks_gl(board);
     }
     
     if (board->isTrailsEnabled() && board->isBlockTrailsActive()) {
@@ -636,10 +769,62 @@ gboolean on_render_gl(GtkGLArea *area, GdkGLContext *context, gpointer data) {
 }
 
 // ============================================================================
-// INITIALIZATION
+// NEXT PIECE PREVIEW RENDERING
+// ============================================================================
+
+gboolean on_render_gl_next_piece(GtkGLArea *area, GdkGLContext *context, gpointer data) {
+    (void)context;
+    TetrimoneApp *app = (TetrimoneApp *)data;
+    if (!app || !app->board) return FALSE;
+    
+    TetrimoneBoard *board = app->board;
+    
+    gtk_gl_area_make_current(area);
+    
+    int window_width = gtk_widget_get_allocated_width(GTK_WIDGET(area));
+    int window_height = gtk_widget_get_allocated_height(GTK_WIDGET(area));
+    
+    if (window_width < 10 || window_height < 10) {
+        gtk_widget_queue_draw(GTK_WIDGET(area));
+        return TRUE;
+    }
+    
+    glViewport(0, 0, window_width, window_height);
+    gl_setup_2d_projection(window_width, window_height);
+    
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    // Draw background
+    gl_set_color(0.1f, 0.1f, 0.1f);
+    gl_draw_rect_filled(0, 0, window_width, window_height);
+    
+    // Draw next piece previews
+    int previewSize = window_width - 20;
+    int yOffset = 10;
+    
+    for (int i = 0; i < 3 && i < (int)board->getNextPieces().size(); ++i) {
+        drawNextPiecePreview_gl(board, i, 10, yOffset, previewSize);
+        yOffset += previewSize + 10;
+    }
+    
+    glFlush();
+    gtk_widget_queue_draw(GTK_WIDGET(area));
+    
+    return TRUE;
+}
+
+// ============================================================================
+// INITIALIZATION AND PUBLIC API
 // ============================================================================
 
 void tetrimone_gl_init(GtkGLArea *gl_area) {
     g_signal_connect(gl_area, "realize", G_CALLBACK(on_realize_gl), NULL);
     g_signal_connect(gl_area, "render", G_CALLBACK(on_render_gl), NULL);
+}
+
+void tetrimone_gl_next_piece_init(GtkGLArea *gl_area) {
+    g_signal_connect(gl_area, "realize", G_CALLBACK(on_realize_gl), NULL);
+    g_signal_connect(gl_area, "render", G_CALLBACK(on_render_gl_next_piece), NULL);
 }
