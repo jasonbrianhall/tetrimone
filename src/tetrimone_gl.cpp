@@ -1752,6 +1752,20 @@ void onScreenSizeChanged(GtkWidget *widget, GdkRectangle *allocation,
       if (newBlockSize > 10 && abs(newBlockSize - BLOCK_SIZE) > 2) {
         BLOCK_SIZE = newBlockSize;
         printf("DEBUG: BLOCK_SIZE resized to %d\n", BLOCK_SIZE);
+        
+        // Recalculate board dimensions with new BLOCK_SIZE
+        int newBoardWidth = GRID_WIDTH * BLOCK_SIZE;
+        int newBoardHeight = GRID_HEIGHT * BLOCK_SIZE;
+        
+        // Update game area size to new board dimensions
+        gtk_widget_set_size_request(app->gameArea, newBoardWidth, newBoardHeight);
+        printf("DEBUG: Board resized to %d x %d\n", newBoardWidth, newBoardHeight);
+        
+        // Also update preview pieces to scale with board
+        gtk_widget_set_size_request(app->nextPieceArea, BLOCK_SIZE * 5, BLOCK_SIZE * 4);
+        
+        gtk_widget_set_hexpand(app->gameArea, FALSE);
+        gtk_widget_set_vexpand(app->gameArea, FALSE);
       }
     }
   }
@@ -1836,13 +1850,16 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   // Set EXACT size - the board is GRID_WIDTH * BLOCK_SIZE, nothing more
   int boardWidth = GRID_WIDTH * BLOCK_SIZE;
   int boardHeight = GRID_HEIGHT * BLOCK_SIZE;
+  printf("BW %i HW %i\n", boardWidth, boardHeight);
   gtk_widget_set_size_request(tetrimoneApp->gameArea, boardWidth, boardHeight);
-  // EXPAND when window resizes - blocks get bigger on maximize
+  printf("3 Game area is %i %i\n", boardWidth, boardHeight);
+
+  // EXPAND on resize - allows onScreenSizeChanged to recalculate block size
   gtk_widget_set_hexpand(tetrimoneApp->gameArea, TRUE);
   gtk_widget_set_vexpand(tetrimoneApp->gameArea, TRUE);
   g_signal_connect(G_OBJECT(tetrimoneApp->gameArea), "draw",
                    G_CALLBACK(onDrawGameArea), tetrimoneApp);
-  // Pack with expansion
+  // Pack with expansion so resize events fire
   gtk_box_pack_start(GTK_BOX(tetrimoneApp->mainBox), tetrimoneApp->gameArea,
                      TRUE, TRUE, 0);
 
@@ -3167,7 +3184,8 @@ void rebuildGameUI(TetrimoneApp *app) {
   int boardWidth = GRID_WIDTH * BLOCK_SIZE;
   int boardHeight = GRID_HEIGHT * BLOCK_SIZE;
   gtk_widget_set_size_request(app->gameArea, boardWidth, boardHeight);
-  // EXPAND when window resizes - blocks get bigger on maximize
+  printf("1 Game area is %i %i\n", boardWidth, boardHeight);
+  // EXPAND on resize - allows onScreenSizeChanged to recalculate block size
   gtk_widget_set_hexpand(app->gameArea, TRUE);
   gtk_widget_set_vexpand(app->gameArea, TRUE);
   g_signal_connect(G_OBJECT(app->gameArea), "draw", G_CALLBACK(onDrawGameArea),
@@ -3181,7 +3199,7 @@ void rebuildGameUI(TetrimoneApp *app) {
   }
   g_list_free(children);
 
-  // Recreate the main box contents with expansion
+  // Recreate the main box contents with expansion so resize events fire
   gtk_box_pack_start(GTK_BOX(app->mainBox), app->gameArea, TRUE, TRUE, 0);
 
   // Create the side panel (vertical box)
@@ -3200,6 +3218,8 @@ void rebuildGameUI(TetrimoneApp *app) {
   // Create the next piece drawing area - MUCH SMALLER
   app->nextPieceArea = gtk_drawing_area_new();
   gtk_widget_set_size_request(app->nextPieceArea, BLOCK_SIZE * 5, BLOCK_SIZE * 4);
+  printf("2 Game area is %i %i\n", BLOCK_SIZE*5, BLOCK_SIZE*4);
+
   g_signal_connect(G_OBJECT(app->nextPieceArea), "draw",
                    G_CALLBACK(onDrawNextPiece), app);
   gtk_container_add(GTK_CONTAINER(nextPieceFrame), app->nextPieceArea);
