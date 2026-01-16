@@ -26,20 +26,20 @@ SDL_CFLAGS_LINUX := $(shell sdl2-config --cflags)
 SDL_LIBS_LINUX := $(shell sdl2-config --libs)
 
 ifeq ($(AUDIO_BACKEND),pulse)
-  AUDIO_SRCS_LINUX = src/pulseaudioplayer.cpp
+  AUDIO_SRCS_LINUX = src_gl/pulseaudioplayer.cpp
   AUDIO_FLAGS_LINUX = -DUSE_PULSEAUDIO $(shell pkg-config --cflags libpulse libpulse-simple) -DUSE_SDL
   AUDIO_LIBS_LINUX = $(shell pkg-config --libs libpulse libpulse-simple) -lSDL2_mixer
 else
-  AUDIO_SRCS_LINUX = src/sdlaudioplayer.cpp
+  AUDIO_SRCS_LINUX = src_gl/sdlaudioplayer.cpp
   AUDIO_FLAGS_LINUX = -DUSE_SDL
   AUDIO_LIBS_LINUX = -lSDL2_mixer
 endif
 
 # Source files
-SRCS_COMMON = src/tetrimone_gl.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp src/junklines.cpp src/propaganda.cpp src/help.cpp src/saveloadsettings.cpp src/drawgame.cpp src/tetrimone_main.cpp src/heat.cpp src/freedom.cpp src/drawgame_gl.cpp src/drawgame_cairo.cpp
+SRCS_COMMON = src_gl/tetrimone_gl.cpp src_gl/audiomanager.cpp src_gl/sound.cpp src_gl/audioconverter.cpp src_gl/volume.cpp src_gl/ghostpiece.cpp src_gl/highscores.cpp src_gl/icon.cpp src_gl/dbopl.cpp src_gl/dbopl_wrapper.cpp src_gl/instruments.cpp src_gl/midiplayer.cpp src_gl/virtual_mixer.cpp src_gl/wav_converter.cpp src_gl/convertmidi.cpp src_gl/help.cpp src_gl/drawgame.cpp src_gl/heat.cpp src_gl/drawgame_gl.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
-SRCS_WIN = src/sdlaudioplayer.cpp
-SRCS_WIN_SDL = src/sdlaudioplayer.cpp
+SRCS_WIN = src_gl/sdlaudioplayer.cpp
+SRCS_WIN_SDL = src_gl/sdlaudioplayer.cpp
 
 # Windows SDL flags
 SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2)
