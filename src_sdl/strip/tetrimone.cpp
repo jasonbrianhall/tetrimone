@@ -22,18 +22,18 @@ int currentThemeIndex = 0;
 int GRID_WIDTH = 10;
 int GRID_HEIGHT = 22;
 
-static bool keyDownPressed = false;
-static bool keyLeftPressed = false;
-static bool keyRightPressed = false;
-static guint keyDownTimer = 0;
-static guint keyLeftTimer = 0;
-static guint keyRightTimer = 0;
-static int keyDownDelay = 150;
-static int keyLeftDelay = 150;
-static int keyRightDelay = 150;
-static int keyDownCount = 0;
-static int keyLeftCount = 0;
-static int keyRightCount = 0;
+bool keyDownPressed = false;
+bool keyLeftPressed = false;
+bool keyRightPressed = false;
+guint keyDownTimer = 0;
+guint keyLeftTimer = 0;
+guint keyRightTimer = 0;
+int keyDownDelay = 150;
+int keyLeftDelay = 150;
+int keyRightDelay = 150;
+int keyDownCount = 0;
+int keyLeftCount = 0;
+int keyRightCount = 0;
 
 gboolean onKeyDownTick(gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
@@ -1230,7 +1230,7 @@ case GDK_KEY_period:
     // Toggle retro mode with just the period key
     {
         // Save the current theme index when entering retro mode
-        static int savedThemeIndex = 0;
+        int savedThemeIndex = 0;
         
         // Toggle the retro mode flag
         board->retroModeActive = !board->retroModeActive;
@@ -1323,7 +1323,7 @@ case GDK_KEY_comma:
     // Toggle patriotic mode with comma key
     {
         // Save the current theme index when entering patriotic mode
-        static int savedThemeIndex = 0;
+        int savedThemeIndex = 0;
         
         // Toggle the patriotic mode flag
         board->retroModeActive = false;
@@ -3025,7 +3025,7 @@ void onMenuDeactivated(GtkWidget *widget, gpointer userData) {
 bool TetrimoneBoard::isGameOver() const {
   // If this is the first time checking game over status since it became true,
   // play the game over sound
-  static bool soundPlayed = false;
+  bool soundPlayed = false;
   if (gameOver && !soundPlayed) {
     // Cast away const to allow calling non-const member function
     TetrimoneBoard *nonConstThis = const_cast<TetrimoneBoard *>(this);
