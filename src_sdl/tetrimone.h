@@ -592,5 +592,6 @@ void ui_set_window_title(TetrimoneApp *app, const char *title);
 void ui_window_fullscreen(TetrimoneApp *app);
 void ui_set_difficulty_label(TetrimoneApp *app, const char *markup);
 void ui_set_pause_menu_label(TetrimoneApp *app, const char *text);
-
+#include "commandline.h"
+int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args);
 #endif // TETRIMONE_H
