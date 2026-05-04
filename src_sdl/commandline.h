@@ -1,3 +1,8 @@
+#ifndef COMMANDLINE_H
+#define COMMANDLINE_H
+
+#include <string>
+
 struct CommandLineArgs {
     int difficulty = -1;           // -1 means use default
     int blockSize = -1;            // -1 means use default
@@ -57,8 +62,11 @@ enum class ArgType {
     RETRO_MUSIC,
     UNKNOWN
 };
+
 ArgType getArgType(const std::string& arg);
 void printHelp(const char* programName);
 void printVersion();
 void applyCommandLineArgs(TetrimoneApp* app, const CommandLineArgs& args);
 CommandLineArgs parseCommandLine(int argc, char* argv[]);
+
+#endif // COMMANDLINE_H
