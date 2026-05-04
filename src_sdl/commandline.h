@@ -60,5 +60,5 @@ enum class ArgType {
 ArgType getArgType(const std::string& arg);
 void printHelp(const char* programName);
 void printVersion();
-void applyCommandLineArgs(TetrimoneApp* app, const CommandLineArgs& args) ;
+void applyCommandLineArgs(TetrimoneApp* app, const CommandLineArgs& args);
 CommandLineArgs parseCommandLine(int argc, char* argv[]);

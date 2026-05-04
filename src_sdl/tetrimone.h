@@ -16,6 +16,14 @@
 #include "highscores.h"
 #include "propaganda_messages.h"
 
+// Animation value struct
+struct LineClearAnimValues {
+  double alpha;
+  double scale;
+  double offsetX;
+  double offsetY;
+};
+
 enum class GameSoundEvent {
   BackgroundMusic,
   BackgroundMusic2,
@@ -161,7 +169,6 @@ struct TetrimoneApp {
 // Class for the game board
 class TetrimoneBoard {
 private:
-    TetrimoneApp* app;
     float heatLevel;        // 0.0 = frozen, 1.0 = max fire
     guint heatDecayTimer;   // Timer for cooling down
     std::vector<std::vector<int>> grid;
@@ -257,6 +264,7 @@ static const int TRAIL_UPDATE_INTERVAL = 16; // ~60 FPS
 static const double TRAIL_SPAWN_DELAY = 120.0; // milliseconds between trail segments (slower)
     
 public:
+    TetrimoneApp* app;
     // Theme transition methods
     void setLevel(int levelnumber);
     void setMinBlock(int size);
@@ -559,4 +567,30 @@ void onBlockTrailsToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onBlockTrailsConfig(GtkMenuItem* menuItem, gpointer userData);
 void onTrailOpacityChanged(GtkAdjustment* adj, gpointer data);
 void onTrailDurationChanged(GtkAdjustment* adj, gpointer data);
+
+void drawGameOver(cairo_t *cr, TetrimoneBoard *board);
+void drawBlockTrails(cairo_t *cr, TetrimoneBoard *board);
+void drawFireworks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app);
+LineClearAnimValues getLineClearAnimationValues(int animationType, double progress, int x, int y);
+void drawPauseMenu(cairo_t *cr, TetrimoneBoard *board);
+void drawGridLines(cairo_t *cr, TetrimoneBoard *board);
+void drawFailureLine(cairo_t *cr);
+void drawSplashScreen(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app);
+void drawGhostPiece(cairo_t *cr, TetrimoneBoard *board);
+void drawCurrentPiece(cairo_t *cr, TetrimoneBoard *board);
+void drawGhostPiece(cairo_t *cr, TetrimoneBoard *board);
+void drawPropagandaMessage(cairo_t *cr, TetrimoneBoard *board);
+void updateDisplay(TetrimoneApp *app);
+void drawBoard(TetrimoneBoard *board);
+
+void set_difficulty_menu(TetrimoneApp *app, int difficulty);
+void set_theme_menu(TetrimoneApp *app, int index);
+void ui_set_sound_enabled(TetrimoneApp *app, bool enabled);
+void ui_set_active_theme(TetrimoneApp *app, int index);
+void ui_set_background_enabled(TetrimoneApp *app, bool enabled);
+void ui_set_window_title(TetrimoneApp *app, const char *title);
+void ui_window_fullscreen(TetrimoneApp *app);
+void ui_set_difficulty_label(TetrimoneApp *app, const char *markup);
+void ui_set_pause_menu_label(TetrimoneApp *app, const char *text);
+
 #endif // TETRIMONE_H
