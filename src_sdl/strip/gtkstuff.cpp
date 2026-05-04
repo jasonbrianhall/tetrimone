@@ -1011,3 +1011,7 @@ void updateDisplay(TetrimoneApp *app) {
     gtk_widget_queue_draw(app->gameArea);
     gtk_widget_queue_draw(app->nextPieceArea);
 }
+
+void drawBoard(TetrimoneBoard *board)
+     gtk_widget_queue_draw(board->app->gameArea);
+}

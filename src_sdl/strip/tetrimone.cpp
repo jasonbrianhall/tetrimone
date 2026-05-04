@@ -59,8 +59,7 @@ gboolean onKeyDownTick(gpointer userData) {
     keyDownTimer = g_timeout_add(keyDownDelay, onKeyDownTick, app);
     
     // Update the display
-    gtk_widget_queue_draw(app->gameArea);
-    gtk_widget_queue_draw(app->nextPieceArea);
+    updateDisplay(app);
     updateLabels(app);
     
     // Stop this timer instance (we created a new one above)
@@ -95,8 +94,7 @@ gboolean onKeyLeftTick(gpointer userData) {
     keyLeftTimer = g_timeout_add(keyLeftDelay, onKeyLeftTick, app);
     
     // Update the display
-    gtk_widget_queue_draw(app->gameArea);
-    gtk_widget_queue_draw(app->nextPieceArea);
+    updateDisplay(app);
     updateLabels(app);
     
     // Stop this timer instance
@@ -130,8 +128,7 @@ gboolean onKeyRightTick(gpointer userData) {
     keyRightTimer = g_timeout_add(keyRightDelay, onKeyRightTick, app);
     
     // Update the display
-    gtk_widget_queue_draw(app->gameArea);
-    gtk_widget_queue_draw(app->nextPieceArea);
+    updateDisplay(app);
     updateLabels(app);
     
     // Stop this timer instance
@@ -330,7 +327,7 @@ void TetrimoneBoard::createBlockTrail() {
                 
                 // Force redraw
                 if (board->app) {
-                    gtk_widget_queue_draw(board->app->gameArea);
+                    drawBoard(board);
                 }
                 
                 return TRUE; // Keep timer running
