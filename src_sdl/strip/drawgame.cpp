@@ -62,7 +62,7 @@ void TetrimoneBoard::startSmoothMovement(int newX, int newY) {
           
           // FORCE SCREEN REPAINT
           if (board->app) {
-            gtk_widget_queue_draw(board->app->gameArea);
+            drawBoard(board);
           }
           
           return TRUE;
@@ -112,7 +112,7 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
       
       // FORCE SCREEN REPAINT
       if (board->app) {
-        gtk_widget_queue_draw(board->app->gameArea);
+        drawBoard(board);
       }
       
       return TRUE;
@@ -208,8 +208,8 @@ void TetrimoneBoard::startThemeTransition(int targetTheme) {
             
             // FORCE SCREEN REPAINT
             if (board->app) {
-                gtk_widget_queue_draw(board->app->gameArea);
-                gtk_widget_queue_draw(board->app->nextPieceArea); // For theme color changes
+                drawBoard(board);
+                drawNextPieceArea(board);
             }
             
             return TRUE;
