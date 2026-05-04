@@ -36,7 +36,7 @@ else
 endif
 
 # Source files
-SRCS_COMMON = src_sdl/strip/tetrimone.cpp src_sdl/audiomanager.cpp src_sdl/sound.cpp src_sdl/strip/joystick.cpp src_sdl/audioconverter.cpp src_sdl/strip/volume.cpp src_sdl/strip/ghostpiece.cpp src_sdl/strip/highscores.cpp src_sdl/strip/icon.cpp src_sdl/dbopl.cpp src_sdl/dbopl_wrapper.cpp src_sdl/instruments.cpp src_sdl/midiplayer.cpp src_sdl/virtual_mixer.cpp src_sdl/wav_converter.cpp src_sdl/convertmidi.cpp src_sdl/strip/junklines.cpp src_sdl/strip/propaganda.cpp src_sdl/strip/help.cpp src_sdl/strip/saveloadsettings.cpp src_sdl/strip/drawgame.cpp src_sdl/strip/tetrimone_main.cpp src_sdl/heat.cpp src_sdl/strip/freedom.cpp src_sdl/drawgame_cairo.cpp src_sdl/strip/gtkstuff.cpp src_sd/background.cpp
+SRCS_COMMON = src_sdl/strip/tetrimone.cpp src_sdl/audiomanager.cpp src_sdl/sound.cpp src_sdl/strip/joystick.cpp src_sdl/audioconverter.cpp src_sdl/strip/volume.cpp src_sdl/strip/ghostpiece.cpp src_sdl/strip/highscores.cpp src_sdl/strip/icon.cpp src_sdl/dbopl.cpp src_sdl/dbopl_wrapper.cpp src_sdl/instruments.cpp src_sdl/midiplayer.cpp src_sdl/virtual_mixer.cpp src_sdl/wav_converter.cpp src_sdl/convertmidi.cpp src_sdl/strip/junklines.cpp src_sdl/strip/propaganda.cpp src_sdl/strip/help.cpp src_sdl/strip/saveloadsettings.cpp src_sdl/strip/drawgame.cpp src_sdl/strip/tetrimone_main.cpp src_sdl/heat.cpp src_sdl/strip/freedom.cpp src_sdl/drawgame_cairo.cpp src_sdl/strip/gtkstuff.cpp src_sdl/background.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src_sdl/sdlaudioplayer.cpp
 SRCS_WIN_SDL = src_sdl/sdlaudioplayer.cpp
