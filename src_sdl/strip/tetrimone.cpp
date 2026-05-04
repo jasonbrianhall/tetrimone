@@ -475,7 +475,7 @@ void TetrimoneBoard::updateFireworksAnimation() {
     
     // FORCE REDRAW - This is crucial!
     if (app) {
-        gtk_widget_queue_draw(app->gameArea);
+        updateDisplay(app);
     }
     
     // End animation when time is up or no particles left
