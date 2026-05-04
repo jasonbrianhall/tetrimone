@@ -164,48 +164,6 @@ void onBackgroundOpacityDialog(GtkMenuItem *menuItem, gpointer userData) {
   gtk_widget_destroy(dialog);
 }
 
-
-int main(int argc, char *argv[]) {
-    // Parse our arguments first and create filtered argc/argv for GTK
-    CommandLineArgs args = parseCommandLine(argc, argv);
-    
-    // Handle help and version before GTK initialization
-    if (args.help) {
-        printHelp(argv[0]);
-        return 0;
-    }
-    
-    if (args.version) {
-        printVersion();
-        return 0;
-    }
-    
-    // Create filtered argv with only GTK-compatible arguments
-    std::vector<char*> gtkArgv;
-    gtkArgv.push_back(argv[0]); // Always keep program name
-    
-    // Add any GTK-specific arguments you want to preserve
-    // For now, just keep the program name
-    int gtkArgc = gtkArgv.size();
-    
-#ifdef DEBUG
-    freopen("debug_output.log", "w", stdout);
-    freopen("debug_output.log", "a", stderr);
-#endif
-
-    GtkApplication *app = gtk_application_new("org.gtk.tetrimone", G_APPLICATION_DEFAULT_FLAGS);
-    
-    // Store command line args in the application data
-    g_object_set_data(G_OBJECT(app), "cmdline-args", &args);
-    
-    g_signal_connect(app, "activate", G_CALLBACK(onAppActivate), NULL);
-    
-    // Pass filtered arguments to GTK
-    int status = g_application_run(G_APPLICATION(app), gtkArgc, gtkArgv.data());
-    g_object_unref(app);
-    return status;
-}
-
 void drawBackground(cairo_t *cr, TetrimoneBoard *board, const GtkAllocation &allocation) {
   // Draw solid background color
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);

@@ -447,3 +447,17 @@ void applyCommandLineArgs(TetrimoneApp* app, const CommandLineArgs& args) {
                          
     printf("DEBUG: Command line args application complete\n");
 }
+
+int main(int argc, char *argv[])
+{
+    CommandLineArgs args = parseCommandLine(argc, argv);
+
+    if (args.help) { printHelp(argv[0]); return 0; }
+    if (args.version) { printVersion(); return 0; }
+
+    TetrimoneApp app;
+    app.cmdlineArgs = args;
+
+    return ui_run_application(argc, argv, &app);
+}
+
