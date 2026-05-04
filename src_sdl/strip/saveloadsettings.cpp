@@ -437,27 +437,8 @@ if (useBackgroundZip && !bgZipPath.empty()) {
                                       app->board->isUsingBackgroundImage());
         
         // Set the correct difficulty radio button
-        switch(app->difficulty) {
-            case 0:
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->zenMenuItem), TRUE);
-                break;
-            case 1:
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->easyMenuItem), TRUE);
-                break;
-            case 2:
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), TRUE);
-                break;
-            case 3:
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->hardMenuItem), TRUE);
-                break;
-            case 4:
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->extremeMenuItem), TRUE);
-                break;
-            case 5:
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->insaneMenuItem), TRUE);
-                break;
-        }
-        
+        set_difficulty_menu(app, app->difficulty);
+                
         // Set track menu items
         for (int i = 0; i < 5; i++) {
             gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]), 
