@@ -394,13 +394,13 @@ void drawPlacedBlocks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app) {
           // Draw fiery glow effect when hot
           if (heatLevel > 0.7f) {
             drawFireyGlow(cr, drawX, drawY, drawSize, heatLevel, timeMs);
-            gtk_widget_queue_draw(app->gameArea);
+            updateDisplay(app);
           }
           
           // Draw freezy effect when cold
           if (heatLevel < 0.3f) {
             drawFreezyEffect(cr, drawX, drawY, drawSize, heatLevel, timeMs);
-            gtk_widget_queue_draw(app->gameArea);
+            updateDisplay(app);
           }
         }   
       }
@@ -758,7 +758,7 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
     }
     
     // Redraw the game area
-    gtk_widget_queue_draw(app->gameArea);
+    updateDisplay(app);
     
     // Resume the game if it wasn't paused before
     if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
