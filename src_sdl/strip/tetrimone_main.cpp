@@ -338,7 +338,8 @@ void applyCommandLineArgs(TetrimoneApp* app, const CommandLineArgs& args) {
     if (args.themeIndex != -1) {
         printf("DEBUG: Setting theme index to %d\n", args.themeIndex);
         currentThemeIndex = args.themeIndex;
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->themeMenuItems[args.themeIndex]), TRUE);
+        ui_set_active_theme(app, args.themeIndex);
+
     }
     
     // Apply board settings
@@ -347,11 +348,11 @@ void applyCommandLineArgs(TetrimoneApp* app, const CommandLineArgs& args) {
         app->board->setMinBlockSize(args.minBlockSize);
     }
     
-if (args.initialLevel != -1) {
-    printf("DEBUG: Setting initial level to %d\n", args.initialLevel);
-    app->board->initialLevel = args.initialLevel;
-    app->board->setLevel(args.initialLevel); 
-}
+    if (args.initialLevel != -1) {
+        printf("DEBUG: Setting initial level to %d\n", args.initialLevel);
+        app->board->initialLevel = args.initialLevel;
+        app->board->setLevel(args.initialLevel); 
+    }
 
     
     if (args.junkLinesPercentage != -1) {
@@ -382,21 +383,23 @@ if (args.initialLevel != -1) {
     app->board->retroMusicActive = args.retroMusic;
     
     // Update menu items to reflect settings
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), args.soundEnabled);
+    ui_set_sound_enabled(app, args.soundEnabled);
     
     // Apply retro mode
     if (args.retroMode) {
         printf("DEBUG: Applying retro mode\n");
         app->board->retroModeActive = true;
-        gtk_window_set_title(GTK_WINDOW(app->window), "БЛОЧНАЯ РЕВОЛЮЦИЯ");
+        ui_set_window_title(app, "БЛОЧНАЯ РЕВОЛЮЦИЯ");
+ 
         currentThemeIndex = NUM_COLOR_THEMES - 1; // Soviet Retro theme
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->themeMenuItems[currentThemeIndex]), TRUE);
-        
+        ui_set_active_theme(app, currentThemeIndex);
+
         // In retro mode, disable backgrounds
         printf("DEBUG: Disabling backgrounds for retro mode\n");
         app->board->setUseBackgroundImage(false);
         app->board->setUseBackgroundZip(false);
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), FALSE);
+        //gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), FALSE);
+        ui_set_background_enabled(app, false);
     }
     
     // Apply background settings
@@ -405,7 +408,7 @@ if (args.initialLevel != -1) {
         if (app->board->loadBackgroundImage(args.backgroundImage)) {
             printf("DEBUG: Successfully loaded background image\n");
             app->board->setUseBackgroundImage(true);
-            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+            ui_set_background_enabled(app, true);
         } else {
             printf("DEBUG: Failed to load background image\n");
         }
@@ -416,7 +419,7 @@ if (args.initialLevel != -1) {
         if (app->board->loadBackgroundImagesFromZip(args.backgroundZip)) {
             printf("DEBUG: Successfully loaded background ZIP\n");
             app->board->setUseBackgroundZip(true);
-            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+            ui_set_background_enabled(app, true);
         } else {
             printf("DEBUG: Failed to load background ZIP\n");
         }
@@ -435,13 +438,12 @@ if (args.initialLevel != -1) {
     // Apply fullscreen
     if (args.fullscreen) {
         printf("DEBUG: Setting fullscreen mode\n");
-        gtk_window_fullscreen(GTK_WINDOW(app->window));
+        ui_window_fullscreen(app);
     }
     
     // Update labels to reflect new settings
     printf("DEBUG: Updating difficulty label\n");
-    gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
-                         app->board->getDifficultyText(app->difficulty).c_str());
+    ui_set_difficulty_label(app, app->board->getDifficultyText(app->difficulty).c_str());
                          
     printf("DEBUG: Command line args application complete\n");
 }

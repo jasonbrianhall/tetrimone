@@ -905,3 +905,20 @@ void ui_set_background_enabled(TetrimoneApp *app, bool enabled)
         enabled
     );
 }
+
+void ui_set_window_title(TetrimoneApp *app, const char *title)
+{
+    gtk_window_set_title(GTK_WINDOW(app->window), title);
+}
+
+void ui_window_fullscreen(TetrimoneApp *app)
+{
+    gtk_window_fullscreen(GTK_WINDOW(app->window));
+}
+
+void ui_set_difficulty_label(TetrimoneApp *app, const char *markup)
+{
+    gtk_label_set_markup(GTK_LABEL(app->difficultyLabel), markup);
+}
+
+
