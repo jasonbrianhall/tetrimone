@@ -452,12 +452,20 @@ int main(int argc, char *argv[])
 {
     CommandLineArgs args = parseCommandLine(argc, argv);
 
-    if (args.help) { printHelp(argv[0]); return 0; }
-    if (args.version) { printVersion(); return 0; }
+    if (args.help) {
+        printHelp(argv[0]);
+        return 0;
+    }
 
-    TetrimoneApp app;
-    app.cmdlineArgs = args;
+    if (args.version) {
+        printVersion();
+        return 0;
+    }
 
-    return ui_run_application(argc, argv, &app);
+    TetrimoneApp app;  // whatever your existing init path is
+
+    // Just pass args directly to your backend entry point
+    return ui_run_application(argc, argv, &app, &args);
 }
+
 

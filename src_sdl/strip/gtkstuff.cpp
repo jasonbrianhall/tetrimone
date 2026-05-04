@@ -164,6 +164,23 @@ void onBackgroundOpacityDialog(GtkMenuItem *menuItem, gpointer userData) {
   gtk_widget_destroy(dialog);
 }
 
+int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args)
+{
+    GtkApplication *gtkApp =
+        gtk_application_new("org.gtk.tetrimone", G_APPLICATION_DEFAULT_FLAGS);
+
+    g_object_set_data(G_OBJECT(gtkApp), "tetrimone-app", app);
+    g_object_set_data(G_OBJECT(gtkApp), "cmdline-args", (gpointer)args);
+
+    g_signal_connect(gtkApp, "activate", G_CALLBACK(onAppActivate), NULL);
+
+    int status = g_application_run(G_APPLICATION(gtkApp), argc, argv);
+    g_object_unref(gtkApp);
+    return status;
+}
+
+
+
 void drawBackground(cairo_t *cr, TetrimoneBoard *board, const GtkAllocation &allocation) {
   // Draw solid background color
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
