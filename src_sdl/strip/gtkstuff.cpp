@@ -98,29 +98,12 @@ void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
     }
     
     // Redraw the game area
-    gtk_widget_queue_draw(app->gameArea);
+    updateDisplay(app);
     
     // Resume the game if it wasn't paused before
     if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
         onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
     }
-}
-
-// Update the background toggle handler to handle ZIP mode
-void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
-    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
-    bool useBackground = gtk_check_menu_item_get_active(menuItem);
-    
-    // The toggle should control visibility, regardless of background mode
-    app->board->setUseBackgroundImage(useBackground);
-    
-    // Also update ZIP mode flag to match if using backgrounds from ZIP
-    if (app->board->isUsingBackgroundZip()) {
-        app->board->setUseBackgroundZip(useBackground);
-    }
-    
-    // Redraw the game area
-    gtk_widget_queue_draw(app->gameArea);
 }
 
 void onBackgroundOpacityDialog(GtkMenuItem *menuItem, gpointer userData) {
@@ -832,7 +815,7 @@ void onOpacityValueChanged(GtkRange *range, gpointer userData) {
   app->board->setBackgroundOpacity(opacity);
 
   // Queue a redraw rather than forcing immediate redraw
-  gtk_widget_queue_draw(app->gameArea);
+  updateDisplay(app);
 }
 
 void onPauseGame(GtkMenuItem *menuItem, gpointer userData) {
