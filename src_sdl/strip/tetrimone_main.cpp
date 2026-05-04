@@ -331,32 +331,7 @@ void applyCommandLineArgs(TetrimoneApp* app, const CommandLineArgs& args) {
         printf("DEBUG: Setting difficulty to %d\n", args.difficulty);
         app->difficulty = args.difficulty;
         // Update menu selection
-        switch (args.difficulty) {
-            case 0: 
-                printf("DEBUG: Setting Zen difficulty\n");
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->zenMenuItem), TRUE); 
-                break;
-            case 1: 
-                printf("DEBUG: Setting Easy difficulty\n");
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->easyMenuItem), TRUE); 
-                break;
-            case 2: 
-                printf("DEBUG: Setting Medium difficulty\n");
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), TRUE); 
-                break;
-            case 3: 
-                printf("DEBUG: Setting Hard difficulty\n");
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->hardMenuItem), TRUE); 
-                break;
-            case 4: 
-                printf("DEBUG: Setting Extreme difficulty\n");
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->extremeMenuItem), TRUE); 
-                break;
-            case 5: 
-                printf("DEBUG: Setting Insane difficulty\n");
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->insaneMenuItem), TRUE); 
-                break;
-        }
+        set_difficulty_menu(app, args.difficulty);
     }
     
     // Apply theme

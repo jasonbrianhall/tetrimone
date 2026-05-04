@@ -868,7 +868,7 @@ void set_difficulty_menu(TetrimoneApp *app, int difficulty)
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(items[difficulty]), TRUE);
 }
 
-static void set_theme_menu(TetrimoneApp *app, int index)
+void set_theme_menu(TetrimoneApp *app, int index)
 {
     if (index < 0) {
         printf("DEBUG: Invalid theme index %d\n", index);
