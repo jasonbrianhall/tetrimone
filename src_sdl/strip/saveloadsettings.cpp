@@ -440,11 +440,7 @@ if (useBackgroundZip && !bgZipPath.empty()) {
         set_difficulty_menu(app, app->difficulty);
                 
         // Set track menu items
-        for (int i = 0; i < 5; i++) {
-            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]), 
-                                          app->board->enabledTracks[i]);
-        }
-        
+        ui_update_track_menu(app);
         return true;
     } catch (const std::exception& e) {
         std::cerr << "Error loading settings: " << e.what() << std::endl;

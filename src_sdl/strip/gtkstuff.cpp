@@ -909,3 +909,13 @@ void ui_set_pause_menu_label(TetrimoneApp *app, const char *text)
     gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), text);
 }
 
+void ui_update_track_menu(TetrimoneApp *app)
+{
+    for (int i = 0; i < 5; i++) {
+        gtk_check_menu_item_set_active(
+            GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]),
+            app->board->enabledTracks[i]
+        );
+    }
+}
+
