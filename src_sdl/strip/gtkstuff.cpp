@@ -1006,3 +1006,8 @@ void onOpacityValueChanged(GtkRange *range, gpointer userData) {
   // Queue a redraw rather than forcing immediate redraw
   gtk_widget_queue_draw(app->gameArea);
 }
+
+void updateDisplay(TetrimoneApp *app) {
+    gtk_widget_queue_draw(app->gameArea);
+    gtk_widget_queue_draw(app->nextPieceArea);
+}
