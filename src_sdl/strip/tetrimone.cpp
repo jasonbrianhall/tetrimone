@@ -2972,26 +2972,6 @@ void startGame(TetrimoneApp *app) {
   gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
 }
 
-void onPauseGame(GtkMenuItem *menuItem, gpointer userData) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
-  if (!app->board->isGameOver()) {
-    bool isPaused = app->board->isPaused();
-    app->board->togglePause();
-
-    if (app->board->isPaused()) {
-      pauseGame(app);
-      gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Resume");
-      gtk_widget_set_sensitive(app->startMenuItem, TRUE);
-    } else {
-      startGame(app);
-      gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
-      gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-    }
-
-    gtk_widget_queue_draw(app->gameArea);
-  }
-}
-
 void onMenuActivated(GtkWidget *widget, gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
 

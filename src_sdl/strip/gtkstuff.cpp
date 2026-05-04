@@ -835,6 +835,27 @@ void onOpacityValueChanged(GtkRange *range, gpointer userData) {
   gtk_widget_queue_draw(app->gameArea);
 }
 
+void onPauseGame(GtkMenuItem *menuItem, gpointer userData) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+  if (!app->board->isGameOver()) {
+    bool isPaused = app->board->isPaused();
+    app->board->togglePause();
+
+    if (app->board->isPaused()) {
+      pauseGame(app);
+      ui_set_pause_menu_label(app, "Resume");
+      gtk_widget_set_sensitive(app->startMenuItem, TRUE);
+    } else {
+      startGame(app);
+      ui_set_pause_menu_label(app, "Pause");
+
+      gtk_widget_set_sensitive(app->startMenuItem, FALSE);
+    }
+
+    updateDisplay(app);
+  }
+}
+
 void updateDisplay(TetrimoneApp *app) {
     gtk_widget_queue_draw(app->gameArea);
     gtk_widget_queue_draw(app->nextPieceArea);
@@ -921,4 +942,8 @@ void ui_set_difficulty_label(TetrimoneApp *app, const char *markup)
     gtk_label_set_markup(GTK_LABEL(app->difficultyLabel), markup);
 }
 
+void ui_set_pause_menu_label(TetrimoneApp *app, const char *text)
+{
+    gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), text);
+}
 
