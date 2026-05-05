@@ -137,6 +137,18 @@ gint runDialog(GtkWidget* dialog) {
     return result;
 }
 
+// High-level function: create and run dialog in one call
+gint createAndRunDialog(
+    GtkWindow* parent,
+    const DialogConfig& dialogConfig,
+    const std::vector<TextConfig>& textElements,
+    const RadioGroupConfig* radioConfig = nullptr,
+    const std::vector<TextConfig>& footerElements = std::vector<TextConfig>()
+) {
+    GtkWidget* dialog = createDialog(parent, dialogConfig, textElements, radioConfig, footerElements);
+    return runDialog(dialog);
+}
+
 }  // namespace GTK3Helpers
 
 #endif  // GTK3_DIALOG_HELPERS_H

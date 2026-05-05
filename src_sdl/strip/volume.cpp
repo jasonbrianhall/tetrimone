@@ -164,47 +164,7 @@ void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Connect value-changed signal to update the music volume in real-time
     g_signal_connect(G_OBJECT(musicScale), "value-changed", 
-                   G_CALLBACK(onMusicVolumeValueChanged), app);
-    
-    // Add test sound button for retro mode
-    /*if (isRetroMode) {
-        // Add a separator
-        GtkWidget* separator2 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-        gtk_box_pack_start(GTK_BOX(vbox), separator2, FALSE, FALSE, 5);
-        
-        // Add test button
-        GtkWidget* testButton = gtk_button_new_with_label("ПРОВЕРКА СИСТЕМЫ"); // "System Test"
-        gtk_box_pack_start(GTK_BOX(vbox), testButton, FALSE, FALSE, 5);
-        g_signal_connect(G_OBJECT(testButton), "clicked",
-                       G_CALLBACK(onTestSound), app);
-        
-        // Add warning note
-        GtkWidget* warningLabel = gtk_label_new(NULL);
-        gtk_label_set_markup(GTK_LABEL(warningLabel), 
-            "<span foreground='red'>ВНИМАНИЕ! Неправильная настройка громкости\n"
-            "является государственным преступлением!</span>");
-            // "WARNING! Improper volume adjustment is a state crime!"
-        gtk_box_pack_start(GTK_BOX(vbox), warningLabel, FALSE, FALSE, 10);
-    }
-    else {
-        // Add a separator
-        GtkWidget* separator2 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-        gtk_box_pack_start(GTK_BOX(vbox), separator2, FALSE, FALSE, 5);
-        
-        // Add test button
-        GtkWidget* testButton = gtk_button_new_with_label("Test Volume"); // "System Test"
-        gtk_box_pack_start(GTK_BOX(vbox), testButton, FALSE, FALSE, 5);
-        g_signal_connect(G_OBJECT(testButton), "clicked",
-                       G_CALLBACK(onTestSound), app);
-        
-        // Add warning note
-        GtkWidget* warningLabel = gtk_label_new(NULL);
-        gtk_label_set_markup(GTK_LABEL(warningLabel), 
-            "<span foreground='red'>100% volume can be very loud\n</span>");
-        gtk_box_pack_start(GTK_BOX(vbox), warningLabel, FALSE, FALSE, 10);
-    }*/
-
-    
+                   G_CALLBACK(onMusicVolumeValueChanged), app);    
     
     // Show all dialog widgets
     gtk_widget_show_all(dialog);

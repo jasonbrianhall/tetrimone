@@ -89,16 +89,14 @@ void showPatrioticPerformanceDialog(TetrimoneApp* app) {
         .defaultSelectedIndex = 0
     };
     
-    // Create and run dialog - all GTK3 calls are encapsulated in helpers
-    GtkWidget* dialog = createDialog(
+    // Create and run dialog - all GTK3 calls delegated to helper
+    createAndRunDialog(
         GTK_WINDOW(app->window),
         dialogConfig,
         textElements,
         &radioConfig,
         footerElements
     );
-    
-    runDialog(dialog);
     
     // Restart game with renewed American spirit!
     onRestartGame(NULL, app);

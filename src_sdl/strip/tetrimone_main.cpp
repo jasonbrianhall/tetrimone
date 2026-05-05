@@ -398,7 +398,6 @@ void applyCommandLineArgs(TetrimoneApp* app, const CommandLineArgs& args) {
         printf("DEBUG: Disabling backgrounds for retro mode\n");
         app->board->setUseBackgroundImage(false);
         app->board->setUseBackgroundZip(false);
-        //gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), FALSE);
         ui_set_background_enabled(app, false);
     }
     
