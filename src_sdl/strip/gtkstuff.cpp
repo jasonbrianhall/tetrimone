@@ -827,10 +827,6 @@ void drawNextPieceArea(TetrimoneBoard *board) {
      gtk_widget_queue_draw(board->app->nextPieceArea); // For theme color changes
 }
 
-void ui_set_ghost_piece_enabled(TetrimoneApp *app) {
-     app->board->setGhostPieceEnabled(gtk_check_menu_item_get_active(menuItem));
-}
-
 void set_difficulty_menu(TetrimoneApp *app, int difficulty)
 {
     GtkWidget *items[] = {
