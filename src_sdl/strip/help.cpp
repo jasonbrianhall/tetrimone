@@ -53,16 +53,12 @@ void onAboutDialog(GtkMenuItem *menuItem, gpointer userData) {
         .height = 600
     };
     
-    GtkWidget* dialog = gtk_dialog_new_with_buttons(
-        dialogConfig.title.c_str(),
+    GtkWidget* dialog = createDialog(
         GTK_WINDOW(app->window),
-        GTK_DIALOG_MODAL,
-        dialogConfig.acceptButtonLabel.c_str(),
-        GTK_RESPONSE_OK,
-        NULL
+        dialogConfig,
+        std::vector<TextConfig>()
     );
-    
-    gtk_window_set_default_size(GTK_WINDOW(dialog), dialogConfig.width, dialogConfig.height);
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 600, 600);
     
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
     gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
@@ -109,16 +105,12 @@ void onAboutDialog(GtkMenuItem *menuItem, gpointer userData) {
         .height = 650
     };
     
-    GtkWidget* dialog = gtk_dialog_new_with_buttons(
-        dialogConfig.title.c_str(),
+    GtkWidget* dialog = createDialog(
         GTK_WINDOW(app->window),
-        GTK_DIALOG_MODAL,
-        dialogConfig.acceptButtonLabel.c_str(),
-        GTK_RESPONSE_OK,
-        NULL
+        dialogConfig,
+        std::vector<TextConfig>()
     );
-    
-    gtk_window_set_default_size(GTK_WINDOW(dialog), dialogConfig.width, dialogConfig.height);
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 650, 650);
     
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
     gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
@@ -159,16 +151,12 @@ void onAboutDialog(GtkMenuItem *menuItem, gpointer userData) {
         .height = 500
     };
     
-    GtkWidget* dialog = gtk_dialog_new_with_buttons(
-        dialogConfig.title.c_str(),
+    GtkWidget* dialog = createDialog(
         GTK_WINDOW(app->window),
-        GTK_DIALOG_MODAL,
-        dialogConfig.acceptButtonLabel.c_str(),
-        GTK_RESPONSE_OK,
-        NULL
+        dialogConfig,
+        std::vector<TextConfig>()
     );
-    
-    gtk_window_set_default_size(GTK_WINDOW(dialog), dialogConfig.width, dialogConfig.height);
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 600, 500);
     
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
     gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
@@ -234,16 +222,12 @@ void onInstructionsDialog(GtkMenuItem *menuItem, gpointer userData) {
         .height = 600
     };
     
-    GtkWidget* dialog = gtk_dialog_new_with_buttons(
-        dialogConfig.title.c_str(),
+    GtkWidget* dialog = createDialog(
         GTK_WINDOW(app->window),
-        GTK_DIALOG_MODAL,
-        dialogConfig.acceptButtonLabel.c_str(),
-        GTK_RESPONSE_OK,
-        NULL
+        dialogConfig,
+        std::vector<TextConfig>()
     );
-    
-    gtk_window_set_default_size(GTK_WINDOW(dialog), dialogConfig.width, dialogConfig.height);
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 600);
     
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
     gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
@@ -323,16 +307,12 @@ void onInstructionsDialog(GtkMenuItem *menuItem, gpointer userData) {
         .height = 650
     };
     
-    GtkWidget* dialog = gtk_dialog_new_with_buttons(
-        dialogConfig.title.c_str(),
+    GtkWidget* dialog = createDialog(
         GTK_WINDOW(app->window),
-        GTK_DIALOG_MODAL,
-        dialogConfig.acceptButtonLabel.c_str(),
-        GTK_RESPONSE_OK,
-        NULL
+        dialogConfig,
+        std::vector<TextConfig>()
     );
-    
-    gtk_window_set_default_size(GTK_WINDOW(dialog), dialogConfig.width, dialogConfig.height);
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 850, 650);
     
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
     gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
@@ -395,16 +375,12 @@ void onInstructionsDialog(GtkMenuItem *menuItem, gpointer userData) {
         .height = 600
     };
     
-    GtkWidget* dialog = gtk_dialog_new_with_buttons(
-        dialogConfig.title.c_str(),
+    GtkWidget* dialog = createDialog(
         GTK_WINDOW(app->window),
-        GTK_DIALOG_MODAL,
-        dialogConfig.acceptButtonLabel.c_str(),
-        GTK_RESPONSE_OK,
-        NULL
+        dialogConfig,
+        std::vector<TextConfig>()
     );
-    
-    gtk_window_set_default_size(GTK_WINDOW(dialog), dialogConfig.width, dialogConfig.height);
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 600);
     
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
     gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);

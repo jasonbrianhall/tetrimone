@@ -39,6 +39,14 @@ struct ScrolledTextConfig {
     int height;
 };
 
+struct ScoreEntryConfig {
+    std::string title;
+    int score;
+    std::string difficulty;
+    std::string gridSize;
+    std::string junkInfo;
+};
+
 // ============================================================================
 // Public Interface
 // ============================================================================
@@ -51,6 +59,12 @@ GSList* createRadioGroup(GtkWidget* container, const RadioGroupConfig& config);
 
 // Build a scrolled text view
 GtkWidget* createScrolledTextView(const ScrolledTextConfig& config);
+
+// Create a score entry dialog and return the player name (empty string if cancelled)
+std::string createScoreEntryDialog(
+    GtkWindow* parent,
+    const ScoreEntryConfig& config
+);
 
 // Build a complete dialog with title, content area, and buttons
 GtkWidget* createDialog(

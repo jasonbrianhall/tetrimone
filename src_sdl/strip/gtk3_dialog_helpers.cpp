@@ -149,4 +149,78 @@ gint createAndRunDialog(
     return runDialog(dialog);
 }
 
+// Create a score entry dialog and return the player name
+std::string createScoreEntryDialog(
+    GtkWindow* parent,
+    const ScoreEntryConfig& config
+) {
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        config.title.c_str(),
+        parent,
+        GTK_DIALOG_MODAL,
+        "_Submit", GTK_RESPONSE_OK,
+        "_Cancel", GTK_RESPONSE_CANCEL,
+        NULL
+    );
+    
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 400, 250);
+    
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
+    
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    
+    // Score display
+    gchar* scoreBuf = g_strdup_printf("Score: <b>%d</b>", config.score);
+    GtkWidget* scoreLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(scoreLabel), scoreBuf);
+    g_free(scoreBuf);
+    gtk_box_pack_start(GTK_BOX(vbox), scoreLabel, FALSE, FALSE, 5);
+    
+    // Difficulty display
+    gchar* diffBuf = g_strdup_printf("Difficulty: %s", config.difficulty.c_str());
+    GtkWidget* diffLabel = gtk_label_new(diffBuf);
+    g_free(diffBuf);
+    gtk_box_pack_start(GTK_BOX(vbox), diffLabel, FALSE, FALSE, 5);
+    
+    // Grid size display
+    GtkWidget* sizeLabel = gtk_label_new(config.gridSize.c_str());
+    gtk_box_pack_start(GTK_BOX(vbox), sizeLabel, FALSE, FALSE, 5);
+    
+    // Junk info display
+    GtkWidget* junkLabel = gtk_label_new(config.junkInfo.c_str());
+    gtk_box_pack_start(GTK_BOX(vbox), junkLabel, FALSE, FALSE, 5);
+    
+    // Separator
+    GtkWidget* separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_box_pack_start(GTK_BOX(vbox), separator, FALSE, FALSE, 5);
+    
+    // Name entry
+    GtkWidget* nameLabel = gtk_label_new("Enter your name:");
+    gtk_box_pack_start(GTK_BOX(vbox), nameLabel, FALSE, FALSE, 0);
+    
+    GtkWidget* entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(entry), "Anonymous");
+    gtk_box_pack_start(GTK_BOX(vbox), entry, FALSE, FALSE, 5);
+    
+    gtk_widget_show_all(dialog);
+    
+    // Run dialog and capture response
+    std::string playerName = "";
+    gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+    
+    if (response == GTK_RESPONSE_OK) {
+        const char* name = gtk_entry_get_text(GTK_ENTRY(entry));
+        if (name && strlen(name) > 0) {
+            playerName = name;
+        } else {
+            playerName = "Anonymous";
+        }
+    }
+    
+    gtk_widget_destroy(dialog);
+    return playerName;
+}
+
 }  // namespace GTK3Helpers

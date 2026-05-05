@@ -1,10 +1,13 @@
 #include "highscores.h"
+#include "gtk3_dialog_helpers.h"
 #include <fstream>
 #include <algorithm>
 #include <cstdlib>
 #include <sstream>
 #include "tetrimone.h"
 #include <iostream>
+
+using namespace GTK3Helpers;
 
 #ifdef _WIN32
     #include <direct.h>
@@ -213,73 +216,29 @@ bool TetrimoneBoard::checkAndRecordHighScore(TetrimoneApp* app) {
         case 3: difficultyName = "Hard"; break;
         case 4: difficultyName = "Extreme"; break;
         case 5: difficultyName = "Insane"; break;
-        default: difficultyName = "Unknown";
+        default: difficultyName = "Unknown"; break;
     }
-
-    // Check if this is a high score for the current configuration
+    
+    // Check if this is a high score
     if (highScores.isHighScore(score, GRID_WIDTH, GRID_HEIGHT, difficultyName, 
-                              junkLinesPercentage, junkLinesPerLevel)) {
-        // Show dialog for name entry
-        GtkWidget* dialog = gtk_dialog_new_with_buttons(
-            "High Score!",
-            GTK_WINDOW(app->window),
-            GTK_DIALOG_MODAL,
-            "_OK", GTK_RESPONSE_OK,
-            NULL
-        );
-    
-        GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-        gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
-    
-        // Add congratulations message
-        GtkWidget* label = gtk_label_new("Congratulations! You got a high score.");
-        gtk_box_pack_start(GTK_BOX(contentArea), label, FALSE, FALSE, 10);
+                               junkLinesPercentage, junkLinesPerLevel)) {
         
-        // Add score display
-        char scoreBuf[100];
-        snprintf(scoreBuf, sizeof(scoreBuf), "Score: %d", score);
-        GtkWidget* scoreLabel = gtk_label_new(scoreBuf);
-        gtk_box_pack_start(GTK_BOX(contentArea), scoreLabel, FALSE, FALSE, 5);
+        // Configure score entry dialog
+        ScoreEntryConfig entryConfig{
+            .title = "New High Score!",
+            .score = score,
+            .difficulty = difficultyName,
+            .gridSize = std::string("Grid: ") + std::to_string(GRID_WIDTH) + " x " + std::to_string(GRID_HEIGHT),
+            .junkInfo = std::string("Junk: Initial ") + std::to_string(junkLinesPercentage) + 
+                       "%, Per Level " + std::to_string(junkLinesPerLevel)
+        };
         
-        // Add grid size info
-        char sizeBuf[100];
-        snprintf(sizeBuf, sizeof(sizeBuf), "Grid: %d x %d", GRID_WIDTH, GRID_HEIGHT);
-        GtkWidget* sizeLabel = gtk_label_new(sizeBuf);
-        gtk_box_pack_start(GTK_BOX(contentArea), sizeLabel, FALSE, FALSE, 5);
+        // Get player name using helper
+        std::string playerName = createScoreEntryDialog(GTK_WINDOW(app->window), entryConfig);
         
-        // Add difficulty display
-        char diffBuf[100];
-        snprintf(diffBuf, sizeof(diffBuf), "Difficulty: %s", difficultyName.c_str());
-        GtkWidget* diffLabel = gtk_label_new(diffBuf);
-        gtk_box_pack_start(GTK_BOX(contentArea), diffLabel, FALSE, FALSE, 5);
-        
-        // Add junk lines info
-        char junkBuf[100];
-        snprintf(junkBuf, sizeof(junkBuf), "Junk: Initial %d%%, Per Level %d", 
-                junkLinesPercentage, junkLinesPerLevel);
-        GtkWidget* junkLabel = gtk_label_new(junkBuf);
-        gtk_box_pack_start(GTK_BOX(contentArea), junkLabel, FALSE, FALSE, 5);
-    
-        // Add name entry field
-        GtkWidget* entry = gtk_entry_new();
-        gtk_entry_set_placeholder_text(GTK_ENTRY(entry), "Enter your name");
-        gtk_box_pack_start(GTK_BOX(contentArea), entry, FALSE, FALSE, 10);
-    
-        gtk_widget_show_all(dialog);
-    
-        // Run the dialog
-        int response = gtk_dialog_run(GTK_DIALOG(dialog));
-    
-        std::string playerName = "Anonymous";
-        if (response == GTK_RESPONSE_OK) {
-            const char* name = gtk_entry_get_text(GTK_ENTRY(entry));
-            if (name && strlen(name) > 0) {
-                playerName = name;
-            }
+        if (playerName.empty()) {
+            playerName = "Anonymous";
         }
-    
-        // Destroy the dialog
-        gtk_widget_destroy(dialog);
         
         // Add the high score
         Score newScore;
@@ -296,6 +255,7 @@ bool TetrimoneBoard::checkAndRecordHighScore(TetrimoneApp* app) {
     }
     return false;
 }
+
 void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
