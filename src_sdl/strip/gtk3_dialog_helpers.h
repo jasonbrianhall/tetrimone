@@ -4,6 +4,7 @@
 #include <gtk/gtk.h>
 #include <vector>
 #include <string>
+#include "highscores.h"
 
 namespace GTK3Helpers {
 
@@ -47,6 +48,18 @@ struct ScoreEntryConfig {
     std::string junkInfo;
 };
 
+struct ScoreTabData {
+    std::string tabName;
+    std::vector<Score> scores;
+};
+
+struct ScoreTabulatorConfig {
+    std::string title;
+    std::vector<ScoreTabData> tabs;
+    int width;
+    int height;
+};
+
 // ============================================================================
 // Public Interface
 // ============================================================================
@@ -64,6 +77,12 @@ GtkWidget* createScrolledTextView(const ScrolledTextConfig& config);
 std::string createScoreEntryDialog(
     GtkWindow* parent,
     const ScoreEntryConfig& config
+);
+
+// Create a tabbed score viewer dialog
+void createScoreTabulatorDialog(
+    GtkWindow* parent,
+    const ScoreTabulatorConfig& config
 );
 
 // Build a complete dialog with title, content area, and buttons
