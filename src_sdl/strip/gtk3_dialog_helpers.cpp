@@ -52,6 +52,36 @@ GSList* createRadioGroup(GtkWidget* container, const RadioGroupConfig& config) {
     return group;
 }
 
+// Build a scrolled text view with content and font settings
+GtkWidget* createScrolledTextView(const ScrolledTextConfig& config) {
+    // Create scrolled window
+    GtkWidget* scrolledWindow = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledWindow), 
+                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+    gtk_widget_set_size_request(scrolledWindow, config.width, config.height);
+    
+    // Create text view
+    GtkWidget* textView = gtk_text_view_new();
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(textView), FALSE);
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(textView), GTK_WRAP_WORD);
+    
+    // Set font if specified
+    if (!config.fontDescription.empty()) {
+        PangoFontDescription* fontDesc = pango_font_description_from_string(config.fontDescription.c_str());
+        gtk_widget_override_font(textView, fontDesc);
+        pango_font_description_free(fontDesc);
+    }
+    
+    // Set text content
+    GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textView));
+    gtk_text_buffer_set_text(buffer, config.content.c_str(), -1);
+    
+    // Add text view to scrolled window
+    gtk_container_add(GTK_CONTAINER(scrolledWindow), textView);
+    
+    return scrolledWindow;
+}
+
 // Build a complete dialog with title, content area, and buttons
 // Returns the dialog widget (caller is responsible for showing and destroying)
 GtkWidget* createDialog(

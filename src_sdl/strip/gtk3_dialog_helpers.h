@@ -32,6 +32,13 @@ struct RadioGroupConfig {
     int defaultSelectedIndex;
 };
 
+struct ScrolledTextConfig {
+    std::string content;
+    std::string fontDescription;  // e.g., "Monospace 10" or "Sans 11"
+    int width;
+    int height;
+};
+
 // ============================================================================
 // Public Interface
 // ============================================================================
@@ -41,6 +48,9 @@ GtkWidget* createTextLabel(const TextConfig& config);
 
 // Build a radio button group and return the group list
 GSList* createRadioGroup(GtkWidget* container, const RadioGroupConfig& config);
+
+// Build a scrolled text view
+GtkWidget* createScrolledTextView(const ScrolledTextConfig& config);
 
 // Build a complete dialog with title, content area, and buttons
 GtkWidget* createDialog(
