@@ -89,6 +89,15 @@ struct JoystickMappingConfig {
     int height;
 };
 
+struct GameSetupConfig {
+    std::string title;
+    int junkPercentage;
+    int junkPerLevel;
+    int initialLevel;
+    int width;
+    int height;
+};
+
 // ============================================================================
 // File Dialog Interface (framework-agnostic)
 // ============================================================================
@@ -209,11 +218,22 @@ void createAndRunScrolledTextDialog(
 typedef void (*JoystickApplyCallback)(int rotate_cw, int rotate_ccw, int hard_drop, int pause_btn,
                                        int x_axis, int y_axis, bool invert_x, bool invert_y, gpointer data);
 
+// Callback for game setup dialog result
+typedef void (*GameSetupApplyCallback)(int junkPercentage, int junkPerLevel, int initialLevel, gpointer data);
+
 // Create and run joystick mapping configuration dialog
 void createJoystickMappingDialog(
     GtkWindow* parent,
     const JoystickMappingConfig& config,
     JoystickApplyCallback onApply,
+    gpointer userData
+);
+
+// Create and run game setup configuration dialog
+void createGameSetupDialog(
+    GtkWindow* parent,
+    const GameSetupConfig& config,
+    GameSetupApplyCallback onApply,
     gpointer userData
 );
 

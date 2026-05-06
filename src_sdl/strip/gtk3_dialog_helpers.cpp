@@ -757,4 +757,134 @@ void createJoystickMappingDialog(
     delete dialogData;
 }
 
+// Game setup dialog data structure
+struct GameSetupDialogData {
+    GameSetupApplyCallback onApply;
+    gpointer userData;
+    GtkAdjustment* junkAdj;
+    GtkAdjustment* junkPerLevelAdj;
+    GtkAdjustment* levelAdj;
+};
+
+static void gameSetupApplyClicked(GtkButton* button, gpointer userData) {
+    GameSetupDialogData* data = static_cast<GameSetupDialogData*>(userData);
+    if (data && data->onApply) {
+        int junkPercentage = (int)gtk_adjustment_get_value(data->junkAdj);
+        int junkPerLevel = (int)gtk_adjustment_get_value(data->junkPerLevelAdj);
+        int initialLevel = (int)gtk_adjustment_get_value(data->levelAdj);
+        
+        data->onApply(junkPercentage, junkPerLevel, initialLevel, data->userData);
+    }
+}
+
+// Create and run game setup configuration dialog
+void createGameSetupDialog(
+    GtkWindow* parent,
+    const GameSetupConfig& config,
+    GameSetupApplyCallback onApply,
+    gpointer userData
+) {
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        config.title.c_str(),
+        parent,
+        GTK_DIALOG_MODAL,
+        "Apply", GTK_RESPONSE_APPLY,
+        "Cancel", GTK_RESPONSE_CANCEL,
+        NULL
+    );
+    
+    gtk_window_set_default_size(GTK_WINDOW(dialog), config.width, config.height);
+    
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
+    
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    
+    // Junk Lines Percentage Frame
+    GtkWidget* junkFrame = gtk_frame_new("Initial Junk Lines");
+    gtk_box_pack_start(GTK_BOX(vbox), junkFrame, TRUE, TRUE, 0);
+    
+    GtkWidget* junkBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_add(GTK_CONTAINER(junkFrame), junkBox);
+    
+    GtkAdjustment* junkAdj = gtk_adjustment_new(config.junkPercentage, 0, 50, 1, 5, 0);
+    GtkWidget* junkScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, junkAdj);
+    gtk_scale_set_digits(GTK_SCALE(junkScale), 0);
+    gtk_scale_set_value_pos(GTK_SCALE(junkScale), GTK_POS_RIGHT);
+    gtk_box_pack_start(GTK_BOX(junkBox), junkScale, TRUE, TRUE, 0);
+    
+    GtkWidget* junkLabel = gtk_label_new("Percentage of board to fill with junk lines (0-50%)");
+    gtk_box_pack_start(GTK_BOX(junkBox), junkLabel, FALSE, FALSE, 0);
+    
+    GtkWidget* junkDescription = gtk_label_new(
+        "Junk lines contain random blocks with at least 4 empty spaces per row.\n"
+        "Similar colors have a higher chance of being placed adjacent to each other.");
+    gtk_label_set_line_wrap(GTK_LABEL(junkDescription), TRUE);
+    gtk_box_pack_start(GTK_BOX(junkBox), junkDescription, FALSE, FALSE, 5);
+    
+    // Junk Lines Per Level Frame
+    GtkWidget* junkPerLevelFrame = gtk_frame_new("Junk Lines Per Level");
+    gtk_box_pack_start(GTK_BOX(vbox), junkPerLevelFrame, TRUE, TRUE, 0);
+    
+    GtkWidget* junkPerLevelBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_add(GTK_CONTAINER(junkPerLevelFrame), junkPerLevelBox);
+    
+    GtkAdjustment* junkPerLevelAdj = gtk_adjustment_new(config.junkPerLevel, 0, 5, 1, 1, 0);
+    GtkWidget* junkPerLevelScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, junkPerLevelAdj);
+    gtk_scale_set_digits(GTK_SCALE(junkPerLevelScale), 0);
+    gtk_scale_set_value_pos(GTK_SCALE(junkPerLevelScale), GTK_POS_RIGHT);
+    gtk_box_pack_start(GTK_BOX(junkPerLevelBox), junkPerLevelScale, TRUE, TRUE, 0);
+    
+    GtkWidget* junkPerLevelLabel = gtk_label_new("Number of junk lines to add when advancing to a new level (0-5)");
+    gtk_box_pack_start(GTK_BOX(junkPerLevelBox), junkPerLevelLabel, FALSE, FALSE, 0);
+    
+    GtkWidget* junkPerLevelDescription = gtk_label_new(
+        "These junk lines will push up from the bottom of the board\n"
+        "when you advance to a new level, increasing the challenge.");
+    gtk_label_set_line_wrap(GTK_LABEL(junkPerLevelDescription), TRUE);
+    gtk_box_pack_start(GTK_BOX(junkPerLevelBox), junkPerLevelDescription, FALSE, FALSE, 5);
+    
+    // Initial Level Frame
+    GtkWidget* levelFrame = gtk_frame_new("Starting Level");
+    gtk_box_pack_start(GTK_BOX(vbox), levelFrame, TRUE, TRUE, 0);
+    
+    GtkWidget* levelBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_add(GTK_CONTAINER(levelFrame), levelBox);
+    
+    GtkAdjustment* levelAdj = gtk_adjustment_new(config.initialLevel, 1, 100, 1, 5, 0);
+    GtkWidget* levelScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, levelAdj);
+    gtk_scale_set_digits(GTK_SCALE(levelScale), 0);
+    gtk_scale_set_value_pos(GTK_SCALE(levelScale), GTK_POS_RIGHT);
+    gtk_box_pack_start(GTK_BOX(levelBox), levelScale, TRUE, TRUE, 0);
+    
+    GtkWidget* levelLabel = gtk_label_new("Start at higher levels for increased difficulty and points");
+    gtk_box_pack_start(GTK_BOX(levelBox), levelLabel, FALSE, FALSE, 0);
+    
+    // Warning message
+    GtkWidget* warningLabel = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(warningLabel), 
+                        "<span foreground='red'>Note:</span> Applying these settings will restart the current game.");
+    gtk_box_pack_start(GTK_BOX(vbox), warningLabel, FALSE, FALSE, 10);
+    
+    // Create callback data
+    GameSetupDialogData* dialogData = new GameSetupDialogData{
+        onApply,
+        userData,
+        junkAdj,
+        junkPerLevelAdj,
+        levelAdj
+    };
+    
+    gtk_widget_show_all(dialog);
+    gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+    
+    if (response == GTK_RESPONSE_APPLY) {
+        gameSetupApplyClicked(nullptr, dialogData);
+    }
+    
+    gtk_widget_destroy(dialog);
+    delete dialogData;
+}
+
 }  // namespace GTK3Helpers
