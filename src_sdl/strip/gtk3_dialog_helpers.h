@@ -70,6 +70,22 @@ struct OpacitySliderConfig {
     int height;
 };
 
+struct JoystickMappingConfig {
+    std::string title;
+    int numButtons;
+    int numAxes;
+    int rotate_cw;
+    int rotate_ccw;
+    int hard_drop;
+    int pause_button;
+    int x_axis;
+    int y_axis;
+    bool invert_x;
+    bool invert_y;
+    int width;
+    int height;
+};
+
 // ============================================================================
 // File Dialog Interface (framework-agnostic)
 // ============================================================================
@@ -184,6 +200,18 @@ void createAndRunScrolledTextDialog(
     GtkWindow* parent,
     const DialogConfig& dialogConfig,
     const ScrolledTextConfig& textConfig
+);
+
+// Callback types for joystick dialog
+typedef void (*JoystickApplyCallback)(int rotate_cw, int rotate_ccw, int hard_drop, int pause_btn,
+                                       int x_axis, int y_axis, bool invert_x, bool invert_y, gpointer data);
+
+// Create and run joystick mapping configuration dialog
+void createJoystickMappingDialog(
+    GtkWindow* parent,
+    const JoystickMappingConfig& config,
+    JoystickApplyCallback onApply,
+    gpointer userData
 );
 
 }  // namespace GTK3Helpers

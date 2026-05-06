@@ -570,4 +570,191 @@ void createAndRunScrolledTextDialog(
     runDialog(dialog);
 }
 
+// Joystick mapping dialog data structure
+struct JoystickDialogData {
+    JoystickApplyCallback onApply;
+    gpointer userData;
+    GtkComboBox* rotateCombo;
+    GtkComboBox* rotateCCWCombo;
+    GtkComboBox* hardDropCombo;
+    GtkComboBox* pauseCombo;
+    GtkComboBox* xAxisCombo;
+    GtkComboBox* yAxisCombo;
+    GtkToggleButton* invertXCheck;
+    GtkToggleButton* invertYCheck;
+};
+
+static void joystickApplyClicked(GtkButton* button, gpointer userData) {
+    JoystickDialogData* data = static_cast<JoystickDialogData*>(userData);
+    if (data && data->onApply) {
+        int rotate_cw = gtk_combo_box_get_active(data->rotateCombo);
+        int rotate_ccw = gtk_combo_box_get_active(data->rotateCCWCombo);
+        int hard_drop = gtk_combo_box_get_active(data->hardDropCombo);
+        int pause_btn = gtk_combo_box_get_active(data->pauseCombo);
+        int x_axis = gtk_combo_box_get_active(data->xAxisCombo);
+        int y_axis = gtk_combo_box_get_active(data->yAxisCombo);
+        bool invert_x = gtk_toggle_button_get_active(data->invertXCheck);
+        bool invert_y = gtk_toggle_button_get_active(data->invertYCheck);
+        
+        data->onApply(rotate_cw, rotate_ccw, hard_drop, pause_btn, 
+                     x_axis, y_axis, invert_x, invert_y, data->userData);
+    }
+}
+
+// Create and run joystick mapping configuration dialog
+void createJoystickMappingDialog(
+    GtkWindow* parent,
+    const JoystickMappingConfig& config,
+    JoystickApplyCallback onApply,
+    gpointer userData
+) {
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        config.title.c_str(),
+        parent,
+        GTK_DIALOG_MODAL,
+        "_OK", GTK_RESPONSE_OK,
+        NULL
+    );
+    
+    gtk_window_set_default_size(GTK_WINDOW(dialog), config.width, config.height);
+    
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
+    
+    GtkWidget* scrolledWindow = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledWindow),
+                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+    gtk_container_add(GTK_CONTAINER(contentArea), scrolledWindow);
+    
+    GtkWidget* mappingBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_set_border_width(GTK_CONTAINER(mappingBox), 10);
+    gtk_container_add(GTK_CONTAINER(scrolledWindow), mappingBox);
+    
+    // Button mappings
+    GtkWidget* buttonsLabel = gtk_label_new("Button Mappings:");
+    gtk_box_pack_start(GTK_BOX(mappingBox), buttonsLabel, FALSE, FALSE, 0);
+    
+    // Rotate CW
+    GtkWidget* rotateBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    GtkWidget* rotateLabel = gtk_label_new("Rotate Clockwise:");
+    gtk_box_pack_start(GTK_BOX(rotateBox), rotateLabel, FALSE, FALSE, 0);
+    GtkWidget* rotateCombo = gtk_combo_box_text_new();
+    for (int i = 0; i < config.numButtons; i++) {
+        char buttonText[20];
+        snprintf(buttonText, sizeof(buttonText), "Button %d", i);
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(rotateCombo), buttonText);
+    }
+    gtk_combo_box_set_active(GTK_COMBO_BOX(rotateCombo), config.rotate_cw);
+    gtk_box_pack_start(GTK_BOX(rotateBox), rotateCombo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(mappingBox), rotateBox, FALSE, FALSE, 0);
+    
+    // Rotate CCW
+    GtkWidget* rotateCCWBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    GtkWidget* rotateCCWLabel = gtk_label_new("Rotate Counter-CW:");
+    gtk_box_pack_start(GTK_BOX(rotateCCWBox), rotateCCWLabel, FALSE, FALSE, 0);
+    GtkWidget* rotateCCWCombo = gtk_combo_box_text_new();
+    for (int i = 0; i < config.numButtons; i++) {
+        char buttonText[20];
+        snprintf(buttonText, sizeof(buttonText), "Button %d", i);
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(rotateCCWCombo), buttonText);
+    }
+    gtk_combo_box_set_active(GTK_COMBO_BOX(rotateCCWCombo), config.rotate_ccw);
+    gtk_box_pack_start(GTK_BOX(rotateCCWBox), rotateCCWCombo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(mappingBox), rotateCCWBox, FALSE, FALSE, 0);
+    
+    // Hard Drop
+    GtkWidget* hardDropBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    GtkWidget* hardDropLabel = gtk_label_new("Hard Drop:");
+    gtk_box_pack_start(GTK_BOX(hardDropBox), hardDropLabel, FALSE, FALSE, 0);
+    GtkWidget* hardDropCombo = gtk_combo_box_text_new();
+    for (int i = 0; i < config.numButtons; i++) {
+        char buttonText[20];
+        snprintf(buttonText, sizeof(buttonText), "Button %d", i);
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(hardDropCombo), buttonText);
+    }
+    gtk_combo_box_set_active(GTK_COMBO_BOX(hardDropCombo), config.hard_drop);
+    gtk_box_pack_start(GTK_BOX(hardDropBox), hardDropCombo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(mappingBox), hardDropBox, FALSE, FALSE, 0);
+    
+    // Pause
+    GtkWidget* pauseBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    GtkWidget* pauseLabel = gtk_label_new("Pause (Start):");
+    gtk_box_pack_start(GTK_BOX(pauseBox), pauseLabel, FALSE, FALSE, 0);
+    GtkWidget* pauseCombo = gtk_combo_box_text_new();
+    for (int i = 0; i < config.numButtons; i++) {
+        char buttonText[20];
+        snprintf(buttonText, sizeof(buttonText), "Button %d", i);
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(pauseCombo), buttonText);
+    }
+    gtk_combo_box_set_active(GTK_COMBO_BOX(pauseCombo), config.pause_button);
+    gtk_box_pack_start(GTK_BOX(pauseBox), pauseCombo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(mappingBox), pauseBox, FALSE, FALSE, 0);
+    
+    // Axis mappings
+    GtkWidget* axesLabel = gtk_label_new("\nAxis Mappings:");
+    gtk_box_pack_start(GTK_BOX(mappingBox), axesLabel, FALSE, FALSE, 0);
+    
+    // X Axis
+    GtkWidget* xAxisBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    GtkWidget* xAxisLabel = gtk_label_new("X Axis:");
+    gtk_box_pack_start(GTK_BOX(xAxisBox), xAxisLabel, FALSE, FALSE, 0);
+    GtkWidget* xAxisCombo = gtk_combo_box_text_new();
+    for (int i = 0; i < config.numAxes; i++) {
+        char axisText[20];
+        snprintf(axisText, sizeof(axisText), "Axis %d", i);
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(xAxisCombo), axisText);
+    }
+    gtk_combo_box_set_active(GTK_COMBO_BOX(xAxisCombo), config.x_axis);
+    gtk_box_pack_start(GTK_BOX(xAxisBox), xAxisCombo, TRUE, TRUE, 0);
+    GtkWidget* invertXCheck = gtk_check_button_new_with_label("Invert");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(invertXCheck), config.invert_x);
+    gtk_box_pack_start(GTK_BOX(xAxisBox), invertXCheck, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(mappingBox), xAxisBox, FALSE, FALSE, 0);
+    
+    // Y Axis
+    GtkWidget* yAxisBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    GtkWidget* yAxisLabel = gtk_label_new("Y Axis:");
+    gtk_box_pack_start(GTK_BOX(yAxisBox), yAxisLabel, FALSE, FALSE, 0);
+    GtkWidget* yAxisCombo = gtk_combo_box_text_new();
+    for (int i = 0; i < config.numAxes; i++) {
+        char axisText[20];
+        snprintf(axisText, sizeof(axisText), "Axis %d", i);
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(yAxisCombo), axisText);
+    }
+    gtk_combo_box_set_active(GTK_COMBO_BOX(yAxisCombo), config.y_axis);
+    gtk_box_pack_start(GTK_BOX(yAxisBox), yAxisCombo, TRUE, TRUE, 0);
+    GtkWidget* invertYCheck = gtk_check_button_new_with_label("Invert");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(invertYCheck), config.invert_y);
+    gtk_box_pack_start(GTK_BOX(yAxisBox), invertYCheck, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(mappingBox), yAxisBox, FALSE, FALSE, 0);
+    
+    // Create callback data
+    JoystickDialogData* dialogData = new JoystickDialogData{
+        onApply,
+        userData,
+        GTK_COMBO_BOX(rotateCombo),
+        GTK_COMBO_BOX(rotateCCWCombo),
+        GTK_COMBO_BOX(hardDropCombo),
+        GTK_COMBO_BOX(pauseCombo),
+        GTK_COMBO_BOX(xAxisCombo),
+        GTK_COMBO_BOX(yAxisCombo),
+        GTK_TOGGLE_BUTTON(invertXCheck),
+        GTK_TOGGLE_BUTTON(invertYCheck)
+    };
+    
+    // Add apply button
+    GtkWidget* buttonBox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_button_box_set_layout(GTK_BUTTON_BOX(buttonBox), GTK_BUTTONBOX_END);
+    gtk_box_pack_start(GTK_BOX(mappingBox), buttonBox, FALSE, FALSE, 10);
+    
+    GtkWidget* applyButton = gtk_button_new_with_label("Apply Mapping");
+    g_signal_connect(applyButton, "clicked", G_CALLBACK(joystickApplyClicked), dialogData);
+    gtk_box_pack_start(GTK_BOX(buttonBox), applyButton, FALSE, FALSE, 0);
+    
+    gtk_widget_show_all(dialog);
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+    delete dialogData;
+}
+
 }  // namespace GTK3Helpers
