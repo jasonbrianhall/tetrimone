@@ -4,6 +4,107 @@
 
 namespace GTK3Helpers {
 
+// ============================================================================
+// GTK3FileDialog Implementation
+// ============================================================================
+
+std::string GTK3FileDialog::openFile(
+    const std::string& title,
+    const std::string& filter,
+    const std::string& filterDescription
+) {
+    GtkWidget* dialog = gtk_file_chooser_dialog_new(
+        title.c_str(),
+        parentWindow,
+        GTK_FILE_CHOOSER_ACTION_OPEN,
+        "_Cancel", GTK_RESPONSE_CANCEL,
+        "_Open", GTK_RESPONSE_ACCEPT,
+        NULL
+    );
+    
+    // Add file filter
+    GtkFileFilter* fileFilter = gtk_file_filter_new();
+    gtk_file_filter_set_name(fileFilter, filterDescription.c_str());
+    gtk_file_filter_add_pattern(fileFilter, filter.c_str());
+    
+    // Add MIME type if it's a ZIP file
+    if (filter == "*.zip") {
+        gtk_file_filter_add_mime_type(fileFilter, "application/zip");
+    }
+    
+    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), fileFilter);
+    
+    std::string filePath;
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+        filePath = filename;
+        g_free(filename);
+    }
+    
+    gtk_widget_destroy(dialog);
+    return filePath;
+}
+
+std::vector<std::string> GTK3FileDialog::openFiles(
+    const std::string& title,
+    const std::string& filter,
+    const std::string& filterDescription
+) {
+    std::vector<std::string> filePaths;
+    
+    GtkWidget* dialog = gtk_file_chooser_dialog_new(
+        title.c_str(),
+        parentWindow,
+        GTK_FILE_CHOOSER_ACTION_OPEN,
+        "_Cancel", GTK_RESPONSE_CANCEL,
+        "_Open", GTK_RESPONSE_ACCEPT,
+        NULL
+    );
+    
+    gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
+    
+    // Add file filter
+    GtkFileFilter* fileFilter = gtk_file_filter_new();
+    gtk_file_filter_set_name(fileFilter, filterDescription.c_str());
+    gtk_file_filter_add_pattern(fileFilter, filter.c_str());
+    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), fileFilter);
+    
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        GSList* filenames = gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(dialog));
+        
+        for (GSList* list = filenames; list != NULL; list = list->next) {
+            char* filename = static_cast<char*>(list->data);
+            filePaths.push_back(filename);
+            g_free(filename);
+        }
+        
+        g_slist_free(filenames);
+    }
+    
+    gtk_widget_destroy(dialog);
+    return filePaths;
+}
+
+void GTK3FileDialog::showError(
+    const std::string& title,
+    const std::string& message
+) {
+    GtkWidget* errorDialog = gtk_message_dialog_new(
+        parentWindow,
+        GTK_DIALOG_MODAL,
+        GTK_MESSAGE_ERROR,
+        GTK_BUTTONS_OK,
+        "%s", message.c_str()
+    );
+    gtk_window_set_title(GTK_WINDOW(errorDialog), title.c_str());
+    gtk_dialog_run(GTK_DIALOG(errorDialog));
+    gtk_widget_destroy(errorDialog);
+}
+
+// ============================================================================
+// Existing Dialog Helpers (unchanged)
+// ============================================================================
+
 // Build a labeled text widget
 GtkWidget* createTextLabel(const TextConfig& config) {
     GtkWidget* label = gtk_label_new(NULL);

@@ -61,6 +61,61 @@ struct ScoreTabulatorConfig {
 };
 
 // ============================================================================
+// File Dialog Interface (framework-agnostic)
+// ============================================================================
+
+class FileDialogInterface {
+public:
+    virtual ~FileDialogInterface() = default;
+    
+    virtual std::string openFile(
+        const std::string& title,
+        const std::string& filter,
+        const std::string& filterDescription
+    ) = 0;
+    
+    virtual std::vector<std::string> openFiles(
+        const std::string& title,
+        const std::string& filter,
+        const std::string& filterDescription
+    ) = 0;
+    
+    virtual void showError(
+        const std::string& title,
+        const std::string& message
+    ) = 0;
+};
+
+// ============================================================================
+// GTK3 Implementation of FileDialogInterface
+// ============================================================================
+
+class GTK3FileDialog : public FileDialogInterface {
+private:
+    GtkWindow* parentWindow;
+
+public:
+    explicit GTK3FileDialog(GtkWindow* parent) : parentWindow(parent) {}
+    
+    std::string openFile(
+        const std::string& title,
+        const std::string& filter,
+        const std::string& filterDescription
+    ) override;
+    
+    std::vector<std::string> openFiles(
+        const std::string& title,
+        const std::string& filter,
+        const std::string& filterDescription
+    ) override;
+    
+    void showError(
+        const std::string& title,
+        const std::string& message
+    ) override;
+};
+
+// ============================================================================
 // Public Interface
 // ============================================================================
 

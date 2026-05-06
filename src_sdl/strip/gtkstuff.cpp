@@ -8,6 +8,7 @@
 #include "zip.h"
 #include <fstream>
 #include <algorithm>
+#include "gtk3_dialog_helpers.h"
 #ifdef _WIN32
 #include <windows.h>
 #include <commdlg.h>
@@ -23,55 +24,15 @@ void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
         onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
     }
     
-    std::string filePath;
+    // Create dialog interface
+    GTK3Helpers::GTK3FileDialog fileDialog(GTK_WINDOW(app->window));
     
-#ifdef _WIN32
-    // Use Windows native dialog
-    OPENFILENAME ofn;
-    char szFile[260] = {0};
-    
-    ZeroMemory(&ofn, sizeof(ofn));
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = NULL;  // Ideally get the HWND from GTK window
-    ofn.lpstrFile = szFile;
-    ofn.nMaxFile = sizeof(szFile);
-    ofn.lpstrFilter = "ZIP Files\0*.zip\0All Files\0*.*\0";
-    ofn.nFilterIndex = 1;
-    ofn.lpstrFileTitle = NULL;
-    ofn.nMaxFileTitle = 0;
-    ofn.lpstrInitialDir = NULL;
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
-    
-    if (GetOpenFileName(&ofn)) {
-        filePath = ofn.lpstrFile;
-    }
-#else
-    // Use GTK dialog on other platforms
-    GtkWidget* dialog = gtk_file_chooser_dialog_new(
+    // Open file dialog
+    std::string filePath = fileDialog.openFile(
         "Select Background Images ZIP File",
-        GTK_WINDOW(app->window),
-        GTK_FILE_CHOOSER_ACTION_OPEN,
-        "_Cancel", GTK_RESPONSE_CANCEL,
-        "_Open", GTK_RESPONSE_ACCEPT,
-        NULL
+        "*.zip",
+        "ZIP Files"
     );
-    
-    // Add filter for ZIP files only
-    GtkFileFilter* filter = gtk_file_filter_new();
-    gtk_file_filter_set_name(filter, "ZIP Files");
-    gtk_file_filter_add_pattern(filter, "*.zip");
-    gtk_file_filter_add_mime_type(filter, "application/zip");
-    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
-    
-    // Run the dialog
-    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-        char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-        filePath = filename;
-        g_free(filename);
-    }
-    
-    gtk_widget_destroy(dialog);
-#endif
     
     // Process the selected file path
     if (!filePath.empty()) {
@@ -85,15 +46,10 @@ void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
             // Now show the opacity dialog
             onBackgroundOpacityDialog(NULL, app);
         } else {
-            GtkWidget* errorDialog = gtk_message_dialog_new(
-                GTK_WINDOW(app->window),
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_OK,
-                "Failed to load background images from ZIP: %s", filePath.c_str()
+            fileDialog.showError(
+                "Error Loading Background",
+                "Failed to load background images from ZIP: " + filePath
             );
-            gtk_dialog_run(GTK_DIALOG(errorDialog));
-            gtk_widget_destroy(errorDialog);
         }
     }
     
