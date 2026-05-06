@@ -228,10 +228,10 @@ int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandL
 
 
 
-void drawBackground(cairo_t *cr, TetrimoneBoard *board, const GtkAllocation &allocation) {
+void drawBackground(cairo_t *cr, TetrimoneBoard *board, int width, int height) {
   // Draw solid background color
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
-  cairo_rectangle(cr, 0, 0, allocation.width, allocation.height);
+  cairo_rectangle(cr, 0, 0, width, height);
   cairo_fill(cr);
 
   // Draw background image if enabled
@@ -252,13 +252,13 @@ void drawBackground(cairo_t *cr, TetrimoneBoard *board, const GtkAllocation &all
 
         // Calculate scaling to fill the game area while maintaining aspect
         // ratio
-        double scaleX = static_cast<double>(allocation.width) / imgWidth;
-        double scaleY = static_cast<double>(allocation.height) / imgHeight;
+        double scaleX = static_cast<double>(width) / imgWidth;
+        double scaleY = static_cast<double>(height) / imgHeight;
         double scale = std::max(scaleX, scaleY);
 
         // Calculate position to center the image
-        double x = (allocation.width - imgWidth * scale) / 2;
-        double y = (allocation.height - imgHeight * scale) / 2;
+        double x = (width - imgWidth * scale) / 2;
+        double y = (height - imgHeight * scale) / 2;
 
         // Apply the transformation
         cairo_translate(cr, x, y);
@@ -281,13 +281,13 @@ void drawBackground(cairo_t *cr, TetrimoneBoard *board, const GtkAllocation &all
 
         // Calculate scaling to fill the game area while maintaining aspect
         // ratio
-        double scaleX = static_cast<double>(allocation.width) / imgWidth;
-        double scaleY = static_cast<double>(allocation.height) / imgHeight;
+        double scaleX = static_cast<double>(width) / imgWidth;
+        double scaleY = static_cast<double>(height) / imgHeight;
         double scale = std::max(scaleX, scaleY);
 
         // Calculate position to center the image
-        double x = (allocation.width - imgWidth * scale) / 2;
-        double y = (allocation.height - imgHeight * scale) / 2;
+        double x = (width - imgWidth * scale) / 2;
+        double y = (height - imgHeight * scale) / 2;
 
         // Apply the transformation
         cairo_translate(cr, x, y);
@@ -305,13 +305,13 @@ void drawBackground(cairo_t *cr, TetrimoneBoard *board, const GtkAllocation &all
           cairo_image_surface_get_height(board->getBackgroundImage());
 
       // Calculate scaling to fill the game area while maintaining aspect ratio
-      double scaleX = static_cast<double>(allocation.width) / imgWidth;
-      double scaleY = static_cast<double>(allocation.height) / imgHeight;
+      double scaleX = static_cast<double>(width) / imgWidth;
+      double scaleY = static_cast<double>(height) / imgHeight;
       double scale = std::max(scaleX, scaleY);
 
       // Calculate position to center the image
-      double x = (allocation.width - imgWidth * scale) / 2;
-      double y = (allocation.height - imgHeight * scale) / 2;
+      double x = (width - imgWidth * scale) / 2;
+      double y = (height - imgHeight * scale) / 2;
 
       // Apply the transformation
       cairo_translate(cr, x, y);
@@ -336,7 +336,7 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
   gtk_widget_get_allocation(widget, &allocation);
 
   // Draw background
-  drawBackground(cr, board, allocation);
+  drawBackground(cr, board, allocation.width, allocation.height);
 
   // Draw gridlines
   drawGridLines(cr, board);
