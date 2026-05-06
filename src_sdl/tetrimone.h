@@ -445,37 +445,7 @@ const std::vector<BlockTrail>& getBlockTrails() const { return blockTrails; }
 gboolean onDrawGameArea(GtkWidget* widget, cairo_t* cr, gpointer data);
 gboolean onDrawNextPiece(GtkWidget* widget, cairo_t* cr, gpointer data);
 
-// OpenGL 3.3+ drawing (modern rendering)
-void tetrimone_gl_init(GtkGLArea *gl_area);
-void tetrimone_gl_next_piece_init(GtkGLArea *gl_area);
-
-// OpenGL primitive drawing functions
-void gl_setup_2d_projection(int width, int height);
-void gl_set_color(float r, float g, float b);
-void gl_set_color_alpha(float r, float g, float b, float a);
-void gl_draw_rect_filled(float x, float y, float width, float height);
-void gl_draw_rect_outline(float x, float y, float width, float height, float line_width);
-void gl_draw_line(float x1, float y1, float x2, float y2, float width);
-void gl_draw_circle(float cx, float cy, float radius, int segments);
-void gl_draw_circle_outline(float cx, float cy, float radius, float line_width, int segments);
-void gl_draw_triangle(float x1, float y1, float x2, float y2, float x3, float y3);
-
-// OpenGL game rendering functions
-void drawBackground_gl(TetrimoneBoard *board, int width, int height);
-void drawGridLines_gl(TetrimoneBoard *board);
-void drawFailureLine_gl();
-void drawSplashScreen_gl(TetrimoneBoard *board, TetrimoneApp *app);
-void drawPlacedBlocks_gl(TetrimoneBoard *board, TetrimoneApp *app);
-void drawCurrentPiece_gl(TetrimoneBoard *board);
-void drawGhostPiece_gl(TetrimoneBoard *board);
-void drawGameOver_gl(TetrimoneBoard *board);
-void drawPauseMenu_gl(TetrimoneBoard *board);
-void drawPropagandaMessage_gl(TetrimoneBoard *board);
-void drawFireworks_gl(TetrimoneBoard *board);
-void drawBlockTrails_gl(TetrimoneBoard *board);
-void drawFireyGlow_gl(double x, double y, double size, float heatLevel, double time);
-void drawFreezyEffect_gl(double x, double y, double size, float heatLevel, double time);
-void drawNextPiecePreview_gl(TetrimoneBoard *board, int previewIndex, int screenX, int screenY, int previewSize);
+void drawBackground(cairo_t *cr, TetrimoneBoard *board, int width, int height);
 
 // Input and event handling
 gboolean onKeyPress(GtkWidget* widget, GdkEventKey* event, gpointer data);
@@ -543,6 +513,7 @@ cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t
 void onGhostPieceToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onViewHighScores(GtkMenuItem* menuItem, gpointer userData);
 void setWindowIcon(GtkWindow* window);
+void onBackgroundImagesDialog(GtkMenuItem* menuItem, gpointer userData);
 
 void onSimpleBlocksToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onRetroMusicToggled(GtkCheckMenuItem* menuItem, gpointer userData);
