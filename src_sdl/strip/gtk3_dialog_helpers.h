@@ -98,6 +98,16 @@ struct GameSetupConfig {
     int height;
 };
 
+struct VolumeControlConfig {
+    std::string title;
+    std::string okButtonLabel;
+    bool isRetroMode;
+    int sfxVolume;
+    int musicVolume;
+    int width;
+    int height;
+};
+
 // ============================================================================
 // File Dialog Interface (framework-agnostic)
 // ============================================================================
@@ -221,6 +231,9 @@ typedef void (*JoystickApplyCallback)(int rotate_cw, int rotate_ccw, int hard_dr
 // Callback for game setup dialog result
 typedef void (*GameSetupApplyCallback)(int junkPercentage, int junkPerLevel, int initialLevel, gpointer data);
 
+// Callback for volume control dialog - receives final SFX and music volumes (0-100)
+typedef void (*VolumeControlCallback)(int sfxVolume, int musicVolume, gpointer data);
+
 // Create and run joystick mapping configuration dialog
 void createJoystickMappingDialog(
     GtkWindow* parent,
@@ -234,6 +247,13 @@ void createGameSetupDialog(
     GtkWindow* parent,
     const GameSetupConfig& config,
     GameSetupApplyCallback onApply,
+    gpointer userData
+);
+
+// Create and run volume control dialog
+void createVolumeControlDialog(
+    GtkWindow* parent,
+    const VolumeControlConfig& config,
     gpointer userData
 );
 

@@ -2,6 +2,10 @@
 #include "highscores.h"
 #include <cstring>
 
+// Forward declarations for volume callbacks (defined in volume.cpp)
+void onVolumeValueChanged(GtkRange* range, gpointer userData);
+void onMusicVolumeValueChanged(GtkRange* range, gpointer userData);
+
 namespace GTK3Helpers {
 
 // ============================================================================
@@ -885,6 +889,110 @@ void createGameSetupDialog(
     
     gtk_widget_destroy(dialog);
     delete dialogData;
+}
+
+// Create and run volume control dialog
+void createVolumeControlDialog(
+    GtkWindow* parent,
+    const VolumeControlConfig& config,
+    gpointer userData
+) {
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        config.title.c_str(),
+        parent,
+        GTK_DIALOG_MODAL,
+        config.okButtonLabel.c_str(),
+        GTK_RESPONSE_OK,
+        NULL
+    );
+    
+    gtk_window_set_default_size(GTK_WINDOW(dialog), config.width, config.height);
+    
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
+    
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    
+    // Add retro mode header if applicable
+    if (config.isRetroMode) {
+        GtkWidget* headerLabel = gtk_label_new(NULL);
+        gtk_label_set_markup(GTK_LABEL(headerLabel), 
+            "<span size='x-large' weight='bold'>★ РЕГУЛИРОВКА ГРОМКОСТИ ★</span>");
+        gtk_box_pack_start(GTK_BOX(vbox), headerLabel, FALSE, FALSE, 5);
+        
+        GtkWidget* subtitleLabel = gtk_label_new(
+            "ПРОТОКОЛ ЗВУКОВОГО КОНТРОЛЯ № 1984/ZB-3");
+        gtk_box_pack_start(GTK_BOX(vbox), subtitleLabel, FALSE, FALSE, 5);
+    }
+    
+    // === SOUND EFFECTS VOLUME CONTROLS ===
+    GtkWidget* sfxLabel = gtk_label_new(
+        config.isRetroMode ? "ГРОМКОСТЬ ЭФФЕКТОВ ГОСУДАРСТВЕННОЙ ВАЖНОСТИ:" : "Sound Effects Volume:");
+    gtk_widget_set_halign(sfxLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(vbox), sfxLabel, FALSE, FALSE, 0);
+    
+    GtkWidget* sfxScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 100.0, 10.0);
+    gtk_range_set_value(GTK_RANGE(sfxScale), config.sfxVolume);
+    gtk_scale_set_digits(GTK_SCALE(sfxScale), 0);
+    gtk_scale_set_value_pos(GTK_SCALE(sfxScale), GTK_POS_RIGHT);
+    gtk_box_pack_start(GTK_BOX(vbox), sfxScale, FALSE, FALSE, 0);
+    
+    // SFX min/max labels
+    GtkWidget* sfxRangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), sfxRangeBox, FALSE, FALSE, 0);
+    
+    GtkWidget* sfxMinLabel = gtk_label_new(
+        config.isRetroMode ? "ОТКЛЮЧЕНО" : "Mute");
+    gtk_widget_set_halign(sfxMinLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(sfxRangeBox), sfxMinLabel, TRUE, TRUE, 0);
+    
+    GtkWidget* sfxMaxLabel = gtk_label_new(
+        config.isRetroMode ? "МАКСИМАЛЬНАЯ ГРОМКОСТЬ" : "Max");
+    gtk_widget_set_halign(sfxMaxLabel, GTK_ALIGN_END);
+    gtk_box_pack_end(GTK_BOX(sfxRangeBox), sfxMaxLabel, TRUE, TRUE, 0);
+    
+    // Connect value-changed signal - volume.cpp defines onVolumeValueChanged
+    g_signal_connect(G_OBJECT(sfxScale), "value-changed",
+                   G_CALLBACK(onVolumeValueChanged), userData);
+    
+    // === SEPARATOR ===
+    GtkWidget* separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_box_pack_start(GTK_BOX(vbox), separator, FALSE, FALSE, 5);
+    
+    // === MUSIC VOLUME CONTROLS ===
+    GtkWidget* musicLabel = gtk_label_new(
+        config.isRetroMode ? "ГРОМКОСТЬ ПАТРИОТИЧЕСКОЙ МУЗЫКИ:" : "Music Volume:");
+    gtk_widget_set_halign(musicLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(vbox), musicLabel, FALSE, FALSE, 0);
+    
+    GtkWidget* musicScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 100.0, 10.0);
+    gtk_range_set_value(GTK_RANGE(musicScale), config.musicVolume);
+    gtk_scale_set_digits(GTK_SCALE(musicScale), 0);
+    gtk_scale_set_value_pos(GTK_SCALE(musicScale), GTK_POS_RIGHT);
+    gtk_box_pack_start(GTK_BOX(vbox), musicScale, FALSE, FALSE, 0);
+    
+    // Music min/max labels
+    GtkWidget* musicRangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), musicRangeBox, FALSE, FALSE, 0);
+    
+    GtkWidget* musicMinLabel = gtk_label_new(
+        config.isRetroMode ? "ТИШИНА" : "Mute");
+    gtk_widget_set_halign(musicMinLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(musicRangeBox), musicMinLabel, TRUE, TRUE, 0);
+    
+    GtkWidget* musicMaxLabel = gtk_label_new(
+        config.isRetroMode ? "СЛАВА РОДИНЕ!" : "Max");
+    gtk_widget_set_halign(musicMaxLabel, GTK_ALIGN_END);
+    gtk_box_pack_end(GTK_BOX(musicRangeBox), musicMaxLabel, TRUE, TRUE, 0);
+    
+    // Connect value-changed signal - volume.cpp defines onMusicVolumeValueChanged
+    g_signal_connect(G_OBJECT(musicScale), "value-changed",
+                   G_CALLBACK(onMusicVolumeValueChanged), userData);
+    
+    gtk_widget_show_all(dialog);
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
 }
 
 }  // namespace GTK3Helpers
