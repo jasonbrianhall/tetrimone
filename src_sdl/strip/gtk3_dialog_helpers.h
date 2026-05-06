@@ -60,6 +60,16 @@ struct ScoreTabulatorConfig {
     int height;
 };
 
+struct OpacitySliderConfig {
+    std::string title;
+    double minValue;
+    double maxValue;
+    double stepValue;
+    double currentValue;
+    int width;
+    int height;
+};
+
 // ============================================================================
 // File Dialog Interface (framework-agnostic)
 // ============================================================================
@@ -159,6 +169,14 @@ gint createAndRunDialog(
     const std::vector<TextConfig>& textElements,
     const RadioGroupConfig* radioConfig = nullptr,
     const std::vector<TextConfig>& footerElements = std::vector<TextConfig>()
+);
+
+// Create an opacity slider dialog
+void createOpacitySliderDialog(
+    GtkWindow* parent,
+    const OpacitySliderConfig& config,
+    GCallback onValueChanged,
+    gpointer userData
 );
 
 }  // namespace GTK3Helpers

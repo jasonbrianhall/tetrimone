@@ -65,73 +65,22 @@ void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
 void onBackgroundOpacityDialog(GtkMenuItem *menuItem, gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
 
-  // Create dialog
-  GtkWidget *dialog = gtk_dialog_new_with_buttons(
-      "Background Opacity", GTK_WINDOW(app->window), GTK_DIALOG_MODAL, "_OK",
-      GTK_RESPONSE_OK, NULL);
+  GTK3Helpers::OpacitySliderConfig config{
+      .title = "Background Opacity",
+      .minValue = 0.0,
+      .maxValue = 1.0,
+      .stepValue = 0.05,
+      .currentValue = app->board->getBackgroundOpacity(),
+      .width = 300,
+      .height = 150
+  };
 
-  // Make it a reasonable size
-  gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 150);
-
-  // Create content area
-  GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-  gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
-
-  // Create a vertical box for content
-  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
-  gtk_container_add(GTK_CONTAINER(contentArea), vbox);
-
-  // Add a label using the helper
-  GTK3Helpers::TextConfig labelConfig;
-  labelConfig.content = "Adjust background opacity:";
-  labelConfig.isMarkup = false;
-  labelConfig.marginTop = 0;
-  labelConfig.marginBottom = 0;
-  GtkWidget *label = GTK3Helpers::createTextLabel(labelConfig);
-  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
-
-  // Create a horizontal scale (slider)
-  GtkWidget *scale =
-      gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 1.0, 0.05);
-  gtk_range_set_value(GTK_RANGE(scale), app->board->getBackgroundOpacity());
-  gtk_scale_set_digits(GTK_SCALE(scale), 2); // 2 decimal places
-  gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
-  gtk_box_pack_start(GTK_BOX(vbox), scale, FALSE, FALSE, 0);
-
-  // Add min/max labels using the helper
-  GtkWidget *rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_pack_start(GTK_BOX(vbox), rangeBox, FALSE, FALSE, 0);
-
-  GTK3Helpers::TextConfig minConfig;
-  minConfig.content = "Transparent";
-  minConfig.isMarkup = false;
-  minConfig.marginTop = 0;
-  minConfig.marginBottom = 0;
-  GtkWidget *minLabel = GTK3Helpers::createTextLabel(minConfig);
-  gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
-
-  GTK3Helpers::TextConfig maxConfig;
-  maxConfig.content = "Opaque";
-  maxConfig.isMarkup = false;
-  maxConfig.marginTop = 0;
-  maxConfig.marginBottom = 0;
-  GtkWidget *maxLabel = GTK3Helpers::createTextLabel(maxConfig);
-  gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
-  gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
-
-  // Connect value-changed signal to update the opacity in real-time
-  g_signal_connect(G_OBJECT(scale), "value-changed",
-                   G_CALLBACK(onOpacityValueChanged), app);
-
-  // Show all dialog widgets
-  gtk_widget_show_all(dialog);
-
-  // Run the dialog
-  gtk_dialog_run(GTK_DIALOG(dialog));
-
-  // Destroy dialog
-  gtk_widget_destroy(dialog);
+  GTK3Helpers::createOpacitySliderDialog(
+      GTK_WINDOW(app->window),
+      config,
+      G_CALLBACK(onOpacityValueChanged),
+      app
+  );
 }
 
 int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args)

@@ -460,4 +460,87 @@ void createScoreTabulatorDialog(
     gtk_widget_destroy(dialog);
 }
 
+// Create an opacity slider dialog
+void createOpacitySliderDialog(
+    GtkWindow* parent,
+    const OpacitySliderConfig& config,
+    GCallback onValueChanged,
+    gpointer userData
+) {
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        config.title.c_str(),
+        parent,
+        GTK_DIALOG_MODAL,
+        "_OK", GTK_RESPONSE_OK,
+        NULL
+    );
+    
+    gtk_window_set_default_size(GTK_WINDOW(dialog), config.width, config.height);
+    
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
+    
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+    
+    // Add instruction label
+    TextConfig instructionConfig{
+        .content = "Adjust background opacity:",
+        .markup = "",
+        .isMarkup = false,
+        .marginTop = 0,
+        .marginBottom = 10
+    };
+    GtkWidget* label = createTextLabel(instructionConfig);
+    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+    
+    // Create slider
+    GtkWidget* scale = gtk_scale_new_with_range(
+        GTK_ORIENTATION_HORIZONTAL,
+        config.minValue,
+        config.maxValue,
+        config.stepValue
+    );
+    gtk_range_set_value(GTK_RANGE(scale), config.currentValue);
+    gtk_scale_set_digits(GTK_SCALE(scale), 2);
+    gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
+    gtk_box_pack_start(GTK_BOX(vbox), scale, FALSE, FALSE, 5);
+    
+    // Connect callback
+    if (onValueChanged) {
+        g_signal_connect(G_OBJECT(scale), "value-changed",
+                        onValueChanged, userData);
+    }
+    
+    // Add range labels
+    GtkWidget* rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), rangeBox, FALSE, FALSE, 0);
+    
+    TextConfig minConfig{
+        .content = "Transparent",
+        .markup = "",
+        .isMarkup = false,
+        .marginTop = 0,
+        .marginBottom = 0
+    };
+    GtkWidget* minLabel = createTextLabel(minConfig);
+    gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
+    
+    TextConfig maxConfig{
+        .content = "Opaque",
+        .markup = "",
+        .isMarkup = false,
+        .marginTop = 0,
+        .marginBottom = 0
+    };
+    GtkWidget* maxLabel = createTextLabel(maxConfig);
+    gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
+    gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
+    
+    gtk_widget_show_all(dialog);
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+}
+
 }  // namespace GTK3Helpers
