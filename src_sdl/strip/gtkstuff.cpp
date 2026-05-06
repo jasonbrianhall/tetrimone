@@ -15,6 +15,134 @@
 #include <direct.h>
 #endif
 
+void drawPlacedBlocks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app) {
+  for (int y = 0; y < GRID_HEIGHT; ++y) {
+    for (int x = 0; x < GRID_WIDTH; ++x) {
+      int value = board->getGridValue(x, y);
+      if (value > 0) {
+        // Check if this line is being cleared
+        double alpha = 1.0;
+        double scale = 1.0;
+        double offsetX = 0.0;
+        double offsetY = 0.0;
+        
+        if (board->isLineClearActive() && board->isLineBeingCleared(y)) {
+          // Get animation progress (0.0 to 1.0)
+          double progress = board->getLineClearProgress();
+          
+          if (board->retroModeActive) {
+            // Soviet-era computer animation: Simple scan line effect
+            if (progress < 0.3) {
+              // Horizontal scan line sweep from left to right
+              double scanProgress = progress / 0.3;
+              int scanX = (int)(scanProgress * GRID_WIDTH);
+              
+              // Only affect blocks that have been "scanned"
+              if (x <= scanX) {
+                alpha = 0.3 + 0.4 * sin(progress * 20.0); // Subtle flicker
+              } else {
+                alpha = 1.0; // Normal until scanned
+              }
+              scale = 1.0;
+            } else if (progress < 0.7) {
+              // All blocks flash in unison (like old CRT monitors)
+              double flashProgress = (progress - 0.3) / 0.4;
+              alpha = 1.0 - flashProgress * 0.7;
+              
+              // Simulate old monitor "collapse" effect - vertical compression
+              scale = 1.0;
+              offsetY = flashProgress * BLOCK_SIZE * 0.3; // Slight downward compression
+            } else {
+              // Final "wipe" effect - blocks disappear in chunks
+              double wipeProgress = (progress - 0.7) / 0.3;
+              
+              // Divide line into segments that disappear sequentially
+              int segment = x / 3; // 3-block segments
+              double segmentDelay = segment * 0.2;
+              
+              if (wipeProgress > segmentDelay) {
+                alpha = 0.0; // Instant disappear once segment is reached
+                scale = 0.0;
+              } else {
+                alpha = 1.0 - wipeProgress * 0.5;
+                scale = 1.0;
+              }
+            }
+          } else {
+            // Modern animations - 10 different types selected randomly
+            int animationType = board->getCurrentAnimationType();
+            LineClearAnimValues animValues = getLineClearAnimationValues(animationType, progress, x, y);
+            alpha = animValues.alpha;
+            scale = animValues.scale;
+            offsetX = animValues.offsetX;
+            offsetY = animValues.offsetY;
+          }
+        }
+
+        // Get color from tetrimoneblock colors
+        auto baseColor = board->isInThemeTransition() ? 
+        board->getInterpolatedColor(value - 1, board->getThemeTransitionProgress()) :
+        TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
+        auto color = getHeatModifiedColor(baseColor, board->getHeatLevel());
+
+        cairo_set_source_rgba(cr, color[0], color[1], color[2], alpha);
+
+        // Calculate position with animation offsets
+        double drawX = x * BLOCK_SIZE + offsetX + (BLOCK_SIZE * (1.0 - scale)) / 2;
+        double drawY = y * BLOCK_SIZE + offsetY + (BLOCK_SIZE * (1.0 - scale)) / 2;
+        double drawSize = BLOCK_SIZE * scale;
+
+        if (board->retroModeActive || board->simpleBlocksActive) {
+          // Simple blocks
+          cairo_rectangle(cr, drawX, drawY, drawSize, drawSize);
+          cairo_fill(cr);
+        } else {
+          // 3D blocks with scaling
+          cairo_rectangle(cr, drawX + 1, drawY + 1, drawSize - 2, drawSize - 2);
+          cairo_fill(cr);
+
+          // Draw highlight (3D effect)
+          cairo_set_source_rgba(cr, 1, 1, 1, 0.3 * alpha);
+          cairo_move_to(cr, drawX + 1, drawY + 1);
+          cairo_line_to(cr, drawX + drawSize - 1, drawY + 1);
+          cairo_line_to(cr, drawX + 1, drawY + drawSize - 1);
+          cairo_close_path(cr);
+          cairo_fill(cr);
+
+          // Draw shadow (3D effect)
+          cairo_set_source_rgba(cr, 0, 0, 0, 0.3 * alpha);
+          cairo_move_to(cr, drawX + drawSize - 1, drawY + 1);
+          cairo_line_to(cr, drawX + drawSize - 1, drawY + drawSize - 1);
+          cairo_line_to(cr, drawX + 1, drawY + drawSize - 1);
+          cairo_close_path(cr);
+          cairo_fill(cr);
+        }
+        
+        if (!board->retroModeActive) { // Only apply effects in modern mode
+          float heatLevel = board->getHeatLevel();
+          
+          // Get current time for animation
+          auto now = std::chrono::high_resolution_clock::now();
+          auto timeMs = std::chrono::duration<double, std::milli>(
+              now.time_since_epoch()).count();
+          
+          // Draw fiery glow effect when hot
+          if (heatLevel > 0.7f) {
+            drawFireyGlow(cr, drawX, drawY, drawSize, heatLevel, timeMs);
+            updateDisplay(app);
+          }
+          
+          // Draw freezy effect when cold
+          if (heatLevel < 0.3f) {
+            drawFreezyEffect(cr, drawX, drawY, drawSize, heatLevel, timeMs);
+            updateDisplay(app);
+          }
+        }   
+      }
+    }
+  }
+}
+
 void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
@@ -196,134 +324,6 @@ void drawBackground(cairo_t *cr, TetrimoneBoard *board, const GtkAllocation &all
 
     // Restore the original state
     cairo_restore(cr);
-  }
-}
-
-void drawPlacedBlocks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app) {
-  for (int y = 0; y < GRID_HEIGHT; ++y) {
-    for (int x = 0; x < GRID_WIDTH; ++x) {
-      int value = board->getGridValue(x, y);
-      if (value > 0) {
-        // Check if this line is being cleared
-        double alpha = 1.0;
-        double scale = 1.0;
-        double offsetX = 0.0;
-        double offsetY = 0.0;
-        
-        if (board->isLineClearActive() && board->isLineBeingCleared(y)) {
-          // Get animation progress (0.0 to 1.0)
-          double progress = board->getLineClearProgress();
-          
-          if (board->retroModeActive) {
-            // Soviet-era computer animation: Simple scan line effect
-            if (progress < 0.3) {
-              // Horizontal scan line sweep from left to right
-              double scanProgress = progress / 0.3;
-              int scanX = (int)(scanProgress * GRID_WIDTH);
-              
-              // Only affect blocks that have been "scanned"
-              if (x <= scanX) {
-                alpha = 0.3 + 0.4 * sin(progress * 20.0); // Subtle flicker
-              } else {
-                alpha = 1.0; // Normal until scanned
-              }
-              scale = 1.0;
-            } else if (progress < 0.7) {
-              // All blocks flash in unison (like old CRT monitors)
-              double flashProgress = (progress - 0.3) / 0.4;
-              alpha = 1.0 - flashProgress * 0.7;
-              
-              // Simulate old monitor "collapse" effect - vertical compression
-              scale = 1.0;
-              offsetY = flashProgress * BLOCK_SIZE * 0.3; // Slight downward compression
-            } else {
-              // Final "wipe" effect - blocks disappear in chunks
-              double wipeProgress = (progress - 0.7) / 0.3;
-              
-              // Divide line into segments that disappear sequentially
-              int segment = x / 3; // 3-block segments
-              double segmentDelay = segment * 0.2;
-              
-              if (wipeProgress > segmentDelay) {
-                alpha = 0.0; // Instant disappear once segment is reached
-                scale = 0.0;
-              } else {
-                alpha = 1.0 - wipeProgress * 0.5;
-                scale = 1.0;
-              }
-            }
-          } else {
-            // Modern animations - 10 different types selected randomly
-            int animationType = board->getCurrentAnimationType();
-            LineClearAnimValues animValues = getLineClearAnimationValues(animationType, progress, x, y);
-            alpha = animValues.alpha;
-            scale = animValues.scale;
-            offsetX = animValues.offsetX;
-            offsetY = animValues.offsetY;
-          }
-        }
-
-        // Get color from tetrimoneblock colors
-        auto baseColor = board->isInThemeTransition() ? 
-        board->getInterpolatedColor(value - 1, board->getThemeTransitionProgress()) :
-        TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
-        auto color = getHeatModifiedColor(baseColor, board->getHeatLevel());
-
-        cairo_set_source_rgba(cr, color[0], color[1], color[2], alpha);
-
-        // Calculate position with animation offsets
-        double drawX = x * BLOCK_SIZE + offsetX + (BLOCK_SIZE * (1.0 - scale)) / 2;
-        double drawY = y * BLOCK_SIZE + offsetY + (BLOCK_SIZE * (1.0 - scale)) / 2;
-        double drawSize = BLOCK_SIZE * scale;
-
-        if (board->retroModeActive || board->simpleBlocksActive) {
-          // Simple blocks
-          cairo_rectangle(cr, drawX, drawY, drawSize, drawSize);
-          cairo_fill(cr);
-        } else {
-          // 3D blocks with scaling
-          cairo_rectangle(cr, drawX + 1, drawY + 1, drawSize - 2, drawSize - 2);
-          cairo_fill(cr);
-
-          // Draw highlight (3D effect)
-          cairo_set_source_rgba(cr, 1, 1, 1, 0.3 * alpha);
-          cairo_move_to(cr, drawX + 1, drawY + 1);
-          cairo_line_to(cr, drawX + drawSize - 1, drawY + 1);
-          cairo_line_to(cr, drawX + 1, drawY + drawSize - 1);
-          cairo_close_path(cr);
-          cairo_fill(cr);
-
-          // Draw shadow (3D effect)
-          cairo_set_source_rgba(cr, 0, 0, 0, 0.3 * alpha);
-          cairo_move_to(cr, drawX + drawSize - 1, drawY + 1);
-          cairo_line_to(cr, drawX + drawSize - 1, drawY + drawSize - 1);
-          cairo_line_to(cr, drawX + 1, drawY + drawSize - 1);
-          cairo_close_path(cr);
-          cairo_fill(cr);
-        }
-        
-        if (!board->retroModeActive) { // Only apply effects in modern mode
-          float heatLevel = board->getHeatLevel();
-          
-          // Get current time for animation
-          auto now = std::chrono::high_resolution_clock::now();
-          auto timeMs = std::chrono::duration<double, std::milli>(
-              now.time_since_epoch()).count();
-          
-          // Draw fiery glow effect when hot
-          if (heatLevel > 0.7f) {
-            drawFireyGlow(cr, drawX, drawY, drawSize, heatLevel, timeMs);
-            updateDisplay(app);
-          }
-          
-          // Draw freezy effect when cold
-          if (heatLevel < 0.3f) {
-            drawFreezyEffect(cr, drawX, drawY, drawSize, heatLevel, timeMs);
-            updateDisplay(app);
-          }
-        }   
-      }
-    }
   }
 }
 
