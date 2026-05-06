@@ -285,17 +285,11 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
   return FALSE;
 }
 
-gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
+void onDrawNextPieceCairo(cairo_t *cr, TetrimoneApp *app, int width, int height) {
   TetrimoneBoard *board = app->board;
-
-  // Get widget dimensions
-  GtkAllocation allocation;
-  gtk_widget_get_allocation(widget, &allocation);
-
   // Draw background
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
-  cairo_rectangle(cr, 0, 0, allocation.width, allocation.height);
+  cairo_rectangle(cr, 0, 0, width, height);
   cairo_fill(cr);
 
   if (!board->isGameOver()) {
@@ -309,9 +303,9 @@ gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
     cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
     cairo_set_line_width(cr, 2);
     cairo_move_to(cr, sectionWidth, 0);
-    cairo_line_to(cr, sectionWidth, allocation.height);
+    cairo_line_to(cr, sectionWidth, height);
     cairo_move_to(cr, sectionWidth * 2, 0);
-    cairo_line_to(cr, sectionWidth * 2, allocation.height);
+    cairo_line_to(cr, sectionWidth * 2, height);
     cairo_stroke(cr);
 
     // Process each piece
@@ -338,7 +332,7 @@ gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
       int availableWidth = sectionWidth;
       int offsetX =
           sectionX + (availableWidth - pieceWidth * previewBlockSize) / 2;
-      int offsetY = headerHeight + (allocation.height - headerHeight -
+      int offsetY = headerHeight + (height - headerHeight -
                                     pieceHeight * previewBlockSize) /
                                        2;
 
@@ -401,12 +395,21 @@ gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
 
             // Reset color for next block
             cairo_set_source_rgb(cr, color[0], color[1], color[2]);
-}
+       }
           }
         }
       }
     }
   }
+}
+
+gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
+
+  // Get widget dimensions
+  GtkAllocation allocation;
+  gtk_widget_get_allocation(widget, &allocation);
+  onDrawNextPieceCairo(cr, app, int allocation.width, int allocation.height)
 
   return FALSE;
 }
