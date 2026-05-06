@@ -81,9 +81,13 @@ void onBackgroundOpacityDialog(GtkMenuItem *menuItem, gpointer userData) {
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
   gtk_container_add(GTK_CONTAINER(contentArea), vbox);
 
-  // Add a label
-  GtkWidget *label = gtk_label_new("Adjust background opacity:");
-  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  // Add a label using the helper
+  GTK3Helpers::TextConfig labelConfig;
+  labelConfig.content = "Adjust background opacity:";
+  labelConfig.isMarkup = false;
+  labelConfig.marginTop = 0;
+  labelConfig.marginBottom = 0;
+  GtkWidget *label = GTK3Helpers::createTextLabel(labelConfig);
   gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 
   // Create a horizontal scale (slider)
@@ -94,15 +98,25 @@ void onBackgroundOpacityDialog(GtkMenuItem *menuItem, gpointer userData) {
   gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
   gtk_box_pack_start(GTK_BOX(vbox), scale, FALSE, FALSE, 0);
 
-  // Add min/max labels
+  // Add min/max labels using the helper
   GtkWidget *rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_box_pack_start(GTK_BOX(vbox), rangeBox, FALSE, FALSE, 0);
 
-  GtkWidget *minLabel = gtk_label_new("Transparent");
+  GTK3Helpers::TextConfig minConfig;
+  minConfig.content = "Transparent";
+  minConfig.isMarkup = false;
+  minConfig.marginTop = 0;
+  minConfig.marginBottom = 0;
+  GtkWidget *minLabel = GTK3Helpers::createTextLabel(minConfig);
   gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
 
-  GtkWidget *maxLabel = gtk_label_new("Opaque");
+  GTK3Helpers::TextConfig maxConfig;
+  maxConfig.content = "Opaque";
+  maxConfig.isMarkup = false;
+  maxConfig.marginTop = 0;
+  maxConfig.marginBottom = 0;
+  GtkWidget *maxLabel = GTK3Helpers::createTextLabel(maxConfig);
   gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
   gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
 
