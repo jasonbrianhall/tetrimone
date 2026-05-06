@@ -6,6 +6,9 @@
 #include <string>
 #include "highscores.h"
 
+// Forward declarations
+struct TetrimoneApp;
+
 namespace GTK3Helpers {
 
 // ============================================================================

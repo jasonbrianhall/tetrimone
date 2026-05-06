@@ -524,23 +524,26 @@ void updateJoystickInfo(GtkLabel* infoLabel, TetrimoneApp* app) {
 void onJoystickTestButton(GtkButton* button, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
-    // Create a new dialog window
+    // Create the dialog
+    GtkWindow* parentWindow = GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button)));
     GtkWidget* testDialog = gtk_dialog_new_with_buttons(
         "Joystick Test",
-        GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))),
+        parentWindow,
         GTK_DIALOG_MODAL,
         "_Close", GTK_RESPONSE_CLOSE,
         NULL
     );
     
-    // Set size
     gtk_window_set_default_size(GTK_WINDOW(testDialog), 600, 400);
     
-    // Get content area
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(testDialog));
     gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
     
-    // Create a text view for displaying joystick input
+    // Add instructions label
+    GtkWidget* instructionLabel = gtk_label_new("Move the joystick and press buttons to see the input values.");
+    gtk_box_pack_start(GTK_BOX(contentArea), instructionLabel, FALSE, FALSE, 10);
+    
+    // Create scrolled text view
     GtkWidget* textScroll = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(textScroll),
                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
@@ -548,39 +551,28 @@ void onJoystickTestButton(GtkButton* button, gpointer userData) {
     
     GtkWidget* textView = gtk_text_view_new();
     gtk_text_view_set_editable(GTK_TEXT_VIEW(textView), FALSE);
-    gtk_container_add(GTK_CONTAINER(textScroll), textView);
-    
-    // Set monospace font
     gtk_text_view_set_monospace(GTK_TEXT_VIEW(textView), TRUE);
+    gtk_container_add(GTK_CONTAINER(textScroll), textView);
     
     // Get the buffer
     GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textView));
     
-    // Add instructions
-    GtkWidget* instructionLabel = gtk_label_new("Move the joystick and press buttons to see the input values.");
-    gtk_box_pack_start(GTK_BOX(contentArea), instructionLabel, FALSE, FALSE, 10);
-    
-    // Set up data for the joystick test timer callback
+    // Set up timer data
     JoystickTestData* testData = new JoystickTestData;
     testData->app = app;
     testData->buffer = buffer;
     
-    // Set up a timer to update the text view with joystick info
+    // Set up timer to update text view
     guint testTimerId = g_timeout_add_full(G_PRIORITY_DEFAULT, 100, 
                                           updateJoystickTestDisplay, 
                                           testData, 
                                           [](gpointer data) { delete static_cast<JoystickTestData*>(data); });
     
-    // Show dialog
     gtk_widget_show_all(testDialog);
-    
-    // Run dialog
     gtk_dialog_run(GTK_DIALOG(testDialog));
     
-    // Clean up timer when dialog is closed
+    // Clean up timer
     g_source_remove(testTimerId);
-    
-    // Destroy dialog
     gtk_widget_destroy(testDialog);
 }
 
