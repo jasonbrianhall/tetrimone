@@ -294,7 +294,7 @@ void onDrawNextPieceCairo(cairo_t *cr, TetrimoneApp *app, int width, int height)
 
   if (!board->isGameOver()) {
     // Calculate section width - each piece gets exactly 1/3 of the total width
-    int sectionWidth = allocation.width / 3;
+    int sectionWidth = width / 3;
 
     // Calculate preview block size (half of the normal block size)
     int previewBlockSize = BLOCK_SIZE / 2;
@@ -409,7 +409,7 @@ gboolean onDrawNextPiece(GtkWidget *widget, cairo_t *cr, gpointer data) {
   // Get widget dimensions
   GtkAllocation allocation;
   gtk_widget_get_allocation(widget, &allocation);
-  onDrawNextPieceCairo(cr, app, int allocation.width, int allocation.height)
+  onDrawNextPieceCairo(cr, app, allocation.width, allocation.height);
 
   return FALSE;
 }
