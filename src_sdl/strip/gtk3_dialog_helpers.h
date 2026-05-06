@@ -179,6 +179,13 @@ void createOpacitySliderDialog(
     gpointer userData
 );
 
+// Create and run a scrolled text dialog in one call
+void createAndRunScrolledTextDialog(
+    GtkWindow* parent,
+    const DialogConfig& dialogConfig,
+    const ScrolledTextConfig& textConfig
+);
+
 }  // namespace GTK3Helpers
 
 #endif  // GTK3_DIALOG_HELPERS_H

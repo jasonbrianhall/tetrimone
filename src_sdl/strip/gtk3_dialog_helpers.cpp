@@ -543,4 +543,31 @@ void createOpacitySliderDialog(
     gtk_widget_destroy(dialog);
 }
 
+// Create and run a scrolled text dialog in one call
+void createAndRunScrolledTextDialog(
+    GtkWindow* parent,
+    const DialogConfig& dialogConfig,
+    const ScrolledTextConfig& textConfig
+) {
+    GtkWidget* dialog = gtk_dialog_new_with_buttons(
+        dialogConfig.title.c_str(),
+        parent,
+        GTK_DIALOG_MODAL,
+        dialogConfig.acceptButtonLabel.c_str(),
+        GTK_RESPONSE_OK,
+        NULL
+    );
+    
+    gtk_window_set_default_size(GTK_WINDOW(dialog), dialogConfig.width, dialogConfig.height);
+    
+    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
+    
+    GtkWidget* scrolledText = createScrolledTextView(textConfig);
+    gtk_container_add(GTK_CONTAINER(contentArea), scrolledText);
+    
+    gtk_widget_show_all(dialog);
+    runDialog(dialog);
+}
+
 }  // namespace GTK3Helpers
