@@ -226,16 +226,12 @@ int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandL
     return status;
 }
 
-gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
+void OnDrawGameAreaCairo(cairo_t *cr, TetrimoneApp *app, int width, int height) {
+
   TetrimoneBoard *board = app->board;
 
-  // Get widget dimensions
-  GtkAllocation allocation;
-  gtk_widget_get_allocation(widget, &allocation);
-
   // Draw background
-  drawBackground(cr, board, allocation.width, allocation.height);
+  drawBackground(cr, board, width, height);
 
   // Draw gridlines
   drawGridLines(cr, board);
@@ -275,6 +271,16 @@ gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
   if (board->isTrailsEnabled() && board->isBlockTrailsActive()) {
     drawBlockTrails(cr, board);
   }
+} 
+
+gboolean onDrawGameArea(GtkWidget *widget, cairo_t *cr, gpointer data) {
+  TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
+
+  // Get widget dimensions
+  GtkAllocation allocation;
+  gtk_widget_get_allocation(widget, &allocation);
+
+  OnDrawGameAreaCairo(cr, app, allocation.width, allocation.height);
   
   return FALSE;
 }
