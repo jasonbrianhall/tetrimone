@@ -1,8 +1,7 @@
 #include <cstring>
 #include <iostream>
-#include "tetrimone.h"
 #include "commandline.h"
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
 #include <iostream>
 #include <string>
 #include "zip.h"

@@ -1,4 +1,5 @@
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
+
 
 // Function to create a Tetrimone icon programmatically
 void setWindowIcon(GtkWindow* window) {

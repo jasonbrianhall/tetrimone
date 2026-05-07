@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <sstream>
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
 #include <iostream>
 
 using namespace GTK3Helpers;

@@ -1,4 +1,3 @@
-#include "tetrimone.h"
 #include "audiomanager.h"
 #include <iostream>
 #include <string>
@@ -6,11 +5,13 @@
 
 #ifdef QT5
 #include "qt5_dialog_helpers.h"
+#include "tetrimone_qt.h"
 #include <QApplication>
 #endif
 
 #ifdef GTK3
 #include "gtk3_dialog_helpers.h"
+#include "tetrimone_gtk.h"
 #ifdef _WIN32
 #include <windows.h>
 #include <commdlg.h>

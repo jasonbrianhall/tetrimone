@@ -1,5 +1,5 @@
 // Enhanced drawgame.cpp with smooth animations
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
 #include "audiomanager.h"
 #include <iostream>
 #include <string>

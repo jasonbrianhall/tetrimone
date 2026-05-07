@@ -3,6 +3,9 @@
 
 #include <string>
 
+// Forward declaration - actual definition comes from tetrimone_gtk3.h or tetrimone_qt5.h
+struct TetrimoneApp;
+
 struct CommandLineArgs {
     int difficulty = -1;           // -1 means use default
     int blockSize = -1;            // -1 means use default

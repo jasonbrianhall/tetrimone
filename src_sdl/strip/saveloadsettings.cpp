@@ -1,7 +1,7 @@
 #ifndef TETRIMONE_SETTINGS_H
 #define TETRIMONE_SETTINGS_H
 
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
 #include <fstream>
 #include <iostream>
 #include <string>

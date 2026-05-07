@@ -1,4 +1,4 @@
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
 
 int TetrimoneBoard::getGhostPieceY() const {
     if (!currentPiece || !ghostPieceEnabled) {

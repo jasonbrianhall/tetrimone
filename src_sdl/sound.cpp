@@ -1,5 +1,5 @@
 #include "audiomanager.h"
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
 #include <algorithm>
 #include <cctype> // Added for std::tolower
 #include <chrono> // Add this for std::chrono and std::this_thread::sleep_for

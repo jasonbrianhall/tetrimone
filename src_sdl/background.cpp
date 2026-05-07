@@ -1,4 +1,4 @@
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
 #include <iostream>
 #include <string>
 #include "zip.h"

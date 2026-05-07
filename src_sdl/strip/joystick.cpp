@@ -1,4 +1,5 @@
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
+
 #include "gtk3_dialog_helpers.h"
 
 using namespace GTK3Helpers;

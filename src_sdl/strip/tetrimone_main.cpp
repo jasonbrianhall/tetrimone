@@ -1,6 +1,6 @@
 #include <cstring>
 #include <iostream>
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
 #include "commandline.h"
 
 void printHelp(const char* programName) {
