@@ -155,6 +155,8 @@ public:
     unsigned int backgroundImageTimer;
     int currentBackgroundIndex, currentPatrioticBackgroundIndex;
     bool useBackgroundZip, useBackgroundImage;
+    void setUseBackgroundImage(bool use) { useBackgroundImage = use; }
+    void setUseBackgroundZip(bool use) { useBackgroundZip = use; }
 
 
     // Status flags (public for callback access)
@@ -276,9 +278,7 @@ public:
     double getBackgroundOpacity() const { return backgroundOpacity; }
     void setBackgroundOpacity(double opacity) { backgroundOpacity = std::max(0.0, std::min(1.0, opacity)); }
     bool isUsingBackgroundImage() const { return useBackgroundImage; }
-    void setUseBackgroundImage(bool use);
     bool isUsingBackgroundZip() const { return useBackgroundZip; }
-    void setUseBackgroundZip(bool use);
     bool loadBackgroundImage(const std::string& imagePath);
     bool loadBackgroundImagesFromZip(const std::string& zipPath);
     void selectRandomBackground();
