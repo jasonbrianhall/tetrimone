@@ -15,6 +15,16 @@
 #include "highscores.h"
 #include "propaganda_messages.h"
 
+#include <QApplication>
+#include <QWidget>
+#include <QLabel>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
+#include <QActionGroup>
+#include <QTimer>
+
+
 // Ensure FireworkParticle and BlockTrail are defined
 // These should come from a particles header or be defined here
 struct FireworkParticle {
@@ -135,29 +145,65 @@ typedef struct {
 
 // Qt5-specific TetrimoneApp structure
 struct TetrimoneApp {
-    void* qtApplication;
-    void* mainWindow;
-    void* gameWidget;
-    void* nextPieceWidget;
-    void* scoreLabel;
-    void* levelLabel;
-    void* linesLabel;
-    void* difficultyLabel;
+    QApplication* app;
+    QWidget* window;
+    QWidget* mainBox;
+    QWidget* gameArea;
+    QWidget* nextPieceArea;
+
+    QLabel* scoreLabel;
+    QLabel* levelLabel;
+    QLabel* linesLabel;
+    QLabel* difficultyLabel;
+
     bool backgroundMusicPlaying = false;
+
     TetrimoneBoard* board;
+    int timerId;          // Qt uses int for QTimer IDs
     int dropSpeed;
-    int difficulty;
+
+    QAction* backgroundToggleAction;
+
+    // Menu bar + actions
+    QMenuBar* menuBar;
+
+    QAction* startAction;
+    QAction* pauseAction;
+    QAction* restartAction;
+    QAction* soundToggleAction;
+    QAction* zenAction;
+
+    QAction* easyAction;
+    QAction* mediumAction;
+    QAction* hardAction;
+    QAction* extremeAction;
+    QAction* insaneAction;
+
+    QAction* trackActions[5];
+    QAction* themeActions[31];
+
+    QLabel* sequenceLabel;
+    QLabel* controlsLabel;
+
+    int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard, 0 = Zen, 4 = Extreme
+
+    QLabel* controlsHeaderLabel;
+
     SDL_Joystick* joystick;
     bool joystickEnabled;
+    int joystickTimerId;   // Qt timers use int
     JoystickMapping joystickMapping;
+
     bool pausedByFocusLoss = false;
-    
+
+    // Rendering mode selection
     enum RenderingMode {
         RENDER_CAIRO = 0,
-        RENDER_OPENGL = 1,
-        RENDER_QT5 = 2
+        RENDER_OPENGL = 1
     };
     RenderingMode renderingMode;
+
+    QAction* renderModeActions[2];  // Cairo / OpenGL radio actions
 };
 
 // TetrimoneBoard - backend-agnostic core
@@ -224,13 +270,6 @@ private:
     std::vector<BlockTrail> blockTrails;
     unsigned int trailUpdateTimer;
     std::chrono::high_resolution_clock::time_point lastTrailTime;
-
-    std::vector<bool> enabledTracks;
-
-    bool isUsingBackgroundImage_;
-    std::string backgroundZipPath;
-    std::vector<std::string> backgroundImages;
-
 
     std::string sounds_zip_path_ = "sound.zip";  // Path to sounds ZIP file
 
@@ -427,6 +466,14 @@ public:
     int junkLinesPercentage;
     int junkLinesPerLevel;
 
+    bool isUsingBackgroundImage_;
+    std::string backgroundZipPath;
+    std::vector<std::string> backgroundImages;
+    bool enabledTracks[5];
+    int initialLevel = 1;        // Default starting level
+    
+    bool loadBackgroundImage(const std::string& imagePath);
+    bool loadBackgroundImagesFromZip(const std::string& zipPath);
 
 };
 
