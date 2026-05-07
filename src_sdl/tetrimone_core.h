@@ -230,19 +230,15 @@ public:
     const TetrimoneBlock& getCurrentPieceRef() const { return *currentPiece; }
     const std::vector<std::unique_ptr<TetrimoneBlock>>& getNextPieces() const { return nextPieces; }
     const TetrimoneBlock* getNextPiece(int index = 0) const { return nextPieces[index].get(); }
-    const TetrimoneBlock& getNextPieceRef(int index = 0) const { return *nextPieces[index]; }
 
     // Heat
-    float getHeatLevel() const { return heatLevel; }
-    void setHeatLevel(float level) { heatLevel = std::max(0.0f, std::min(1.0f, level)); }
-    void decreaseHeat(float amount) { heatLevel = std::max(0.0f, heatLevel - amount); }
-    void increaseHeat(float amount) { heatLevel = std::min(1.0f, heatLevel + amount); }
+    float getHeatLevel();
+    void setHeatLevel(float level);
+    void decreaseHeat(float amount);
+    void increaseHeat(float amount);
     void coolDown();
     void updateHeat();
 
-    // Grid dimensions
-    int getGridWidth() const { return gridWidth; }
-    int getGridHeight() const { return gridHeight; }
     void setGridDimensions(int width, int height);
 
     // Ghost piece
