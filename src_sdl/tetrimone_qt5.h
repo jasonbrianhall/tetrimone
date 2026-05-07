@@ -15,6 +15,30 @@
 #include "highscores.h"
 #include "propaganda_messages.h"
 
+// Ensure FireworkParticle and BlockTrail are defined
+// These should come from a particles header or be defined here
+struct FireworkParticle {
+    double x, y;
+    double vx, vy;
+    double life;
+    double maxLife;
+    std::array<double, 3> color;
+    double size;
+    double gravity;
+    double fade;
+};
+
+struct BlockTrail {
+    double x, y;
+    int rotation;
+    int pieceType;
+    double life;
+    double maxLife;
+    double alpha;
+    std::array<double, 3> color;
+    std::vector<std::vector<int>> shape;
+};
+
 // Animation value struct
 struct LineClearAnimValues {
   double alpha;
@@ -370,6 +394,14 @@ public:
     void createBlockTrail();
     bool isBlockTrailsActive() const { return !blockTrails.empty(); }
     const std::vector<BlockTrail>& getBlockTrails() const { return blockTrails; }
+    
+    // Game setup accessors
+    int getJunkLinesPercentage() const { return junkLinesPercentage; }
+    void setJunkLinesPercentage(int p) { junkLinesPercentage = p; }
+    int getJunkLinesPerLevel() const { return junkLinesPerLevel; }
+    void setJunkLinesPerLevel(int l) { junkLinesPerLevel = l; }
+    bool isSoundEnabled() const { return sound_enabled_; }
+    void setSoundEnabled(bool enabled) { sound_enabled_ = enabled; }
 };
 
 void updateLabels(TetrimoneApp* app);
