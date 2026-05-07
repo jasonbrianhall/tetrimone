@@ -1,5 +1,5 @@
 #include "audiomanager.h"
-#ifdef GTK
+#ifdef GTK3
 #include "tetrimone_gtk.h"
 #endif
 

@@ -1,7 +1,7 @@
 #ifndef TETRIMONE_SETTINGS_H
 #define TETRIMONE_SETTINGS_H
 
-#ifdef GTK
+#ifdef GTK3
 #include "tetrimone_gtk.h"
 #endif
 

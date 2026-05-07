@@ -1,5 +1,12 @@
 #include "highscores.h"
+#ifdef GTK3
 #include "gtk3_dialog_helpers.h"
+#endif
+
+#ifdef QT5
+#include "gtk3_dialog_helpers.h"
+#endif
+
 #include <fstream>
 #include <algorithm>
 #include <cstdlib>
