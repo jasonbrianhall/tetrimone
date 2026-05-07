@@ -1,21 +1,9 @@
 #include "highscores.h"
-#ifdef GTK3
-#include "gtk3_dialog_helpers.h"
-#include "tetrimone_gtk.h"
-#endif
-
-#ifdef QT5
-#include "qt5_dialog_helpers.h"
-#include "tetrimone_qt5.h"
-#endif
-
 #include <fstream>
 #include <algorithm>
 #include <cstdlib>
 #include <sstream>
 #include <iostream>
-
-using namespace GTK3Helpers;
 
 #ifdef _WIN32
     #include <direct.h>
@@ -27,6 +15,10 @@ using namespace GTK3Helpers;
     #define MKDIR(dir) mkdir(dir, 0700)
     #define PATH_SEP "/"
 #endif
+
+// ============================================================================
+// Core Highscores Implementation (Framework-Independent)
+// ============================================================================
 
 Highscores::Highscores() {
     #ifdef _WIN32
@@ -213,19 +205,32 @@ void Highscores::saveScores() {
     }
 }
 
+// Core high score check logic (framework-independent)
+std::string getDifficultyName(int difficulty) {
+    switch (difficulty) {
+        case 0: return "Zen";
+        case 1: return "Easy";
+        case 2: return "Medium";
+        case 3: return "Hard";
+        case 4: return "Extreme";
+        case 5: return "Insane";
+        default: return "Unknown";
+    }
+}
+
+// ============================================================================
+// Framework-Specific High Score Dialogs
+// ============================================================================
+
+#ifdef GTK3
+#include "gtk3_dialog_helpers.h"
+#include "tetrimone_gtk.h"
+
+using namespace GTK3Helpers;
+
 // Version that takes app parameter and shows dialog
 bool TetrimoneBoard::checkAndRecordHighScore(TetrimoneApp* app) {
-    // Determine difficulty name based on app's difficulty setting
-    std::string difficultyName;
-    switch (app->difficulty) {
-        case 0: difficultyName = "Zen"; break;
-        case 1: difficultyName = "Easy"; break;
-        case 2: difficultyName = "Medium"; break;
-        case 3: difficultyName = "Hard"; break;
-        case 4: difficultyName = "Extreme"; break;
-        case 5: difficultyName = "Insane"; break;
-        default: difficultyName = "Unknown"; break;
-    }
+    std::string difficultyName = getDifficultyName(app->difficulty);
     
     // Check if this is a high score
     if (highScores.isHighScore(score, GRID_WIDTH, GRID_HEIGHT, difficultyName, 
@@ -300,3 +305,39 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
     
     createScoreTabulatorDialog(GTK_WINDOW(app->window), config);
 }
+
+#endif  // GTK3
+
+#ifdef QT5
+#include "tetrimone_qt5.h"
+
+// Qt5 stub implementations
+bool TetrimoneBoard::checkAndRecordHighScore(TetrimoneApp* app) {
+    std::string difficultyName = getDifficultyName(app->difficulty);
+    
+    // Check if this is a high score
+    if (highScores.isHighScore(score, GRID_WIDTH, GRID_HEIGHT, difficultyName, 
+                               junkLinesPercentage, junkLinesPerLevel)) {
+        // TODO: Implement Qt5 score entry dialog
+        // For now, just add with default name
+        Score newScore;
+        newScore.name = "Anonymous";
+        newScore.score = score;
+        newScore.width = GRID_WIDTH;
+        newScore.height = GRID_HEIGHT;
+        newScore.difficulty = difficultyName;
+        newScore.initialJunkPercent = junkLinesPercentage;
+        newScore.junkLinesPerLevel = junkLinesPerLevel;
+        
+        highScores.addScore(newScore);
+        return true;
+    }
+    return false;
+}
+
+void onViewHighScores(void* menuItem, void* userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    // TODO: Implement Qt5 high scores viewer dialog
+}
+
+#endif  // QT5
