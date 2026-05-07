@@ -1,17 +1,18 @@
 #include "highscores.h"
 #ifdef GTK3
 #include "gtk3_dialog_helpers.h"
+#include "tetrimone_gtk.h"
 #endif
 
 #ifdef QT5
-#include "gtk3_dialog_helpers.h"
+#include "qt5_dialog_helpers.h"
+#include "tetrimone_qt5.h"
 #endif
 
 #include <fstream>
 #include <algorithm>
 #include <cstdlib>
 #include <sstream>
-#include "tetrimone_gtk.h"
 #include <iostream>
 
 using namespace GTK3Helpers;

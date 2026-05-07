@@ -31,9 +31,29 @@ int TetrimoneBoard::getGhostPieceY() const {
     return yPos - 1;
 }
 
+// ============================================================================
+// Framework-Specific Ghost Piece Toggle
+// ============================================================================
+
+#ifdef GTK3
+
 void onGhostPieceToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     app->board->setGhostPieceEnabled(gtk_check_menu_item_get_active(menuItem));
-    updateDisplay(app);
+    gtk_widget_queue_draw(app->gameArea);
 }
 
+#endif  // GTK3
+
+#ifdef QT5
+
+void onGhostPieceToggled(void* menuItem, void* userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    // TODO: Implement Qt5 toggle handler
+    // For now, just update the board setting
+    // bool isChecked = ...; // Get from Qt5 widget
+    // app->board->setGhostPieceEnabled(isChecked);
+    // if (app->gameWidget) app->gameWidget->update();
+}
+
+#endif  // QT5
