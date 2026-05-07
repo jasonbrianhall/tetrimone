@@ -146,65 +146,65 @@ typedef struct {
 // Qt5-specific TetrimoneApp structure
 struct TetrimoneApp {
     QApplication* app;
-    QWidget* window;
-    QWidget* mainBox;
-    QWidget* gameArea;
-    QWidget* nextPieceArea;
+    QWidget*      window;
+    QWidget*      mainBox;
+    QWidget*      gameArea;
+    QWidget*      nextPieceArea;
 
-    QLabel* scoreLabel;
-    QLabel* levelLabel;
-    QLabel* linesLabel;
-    QLabel* difficultyLabel;
+    QLabel*       scoreLabel;
+    QLabel*       levelLabel;
+    QLabel*       linesLabel;
+    QLabel*       difficultyLabel;
 
-    bool backgroundMusicPlaying = false;
-
+    bool          backgroundMusicPlaying = false;
     TetrimoneBoard* board;
-    int timerId;          // Qt uses int for QTimer IDs
-    int dropSpeed;
 
-    QAction* backgroundToggleAction;
+    int           timerId;        // replaces guint
+    int           dropSpeed;
 
-    // Menu bar + actions
-    QMenuBar* menuBar;
+    QAction*      backgroundToggleMenuItem;
 
-    QAction* startAction;
-    QAction* pauseAction;
-    QAction* restartAction;
-    QAction* soundToggleAction;
-    QAction* zenAction;
+    // Menu related widgets
+    QMenuBar*     menuBar;
+    QAction*      startMenuItem;
+    QAction*      pauseMenuItem;
+    QAction*      restartMenuItem;
+    QAction*      soundToggleMenuItem;
+    QAction*      zenMenuItem;
+    QAction*      easyMenuItem;
+    QAction*      mediumMenuItem;
+    QAction*      hardMenuItem;
+    QAction*      extremeMenuItem;
+    QAction*      insaneMenuItem;
 
-    QAction* easyAction;
-    QAction* mediumAction;
-    QAction* hardAction;
-    QAction* extremeAction;
-    QAction* insaneAction;
+    QAction*      trackMenuItems[5];
+    QAction*      themeMenuItems[31];
 
-    QAction* trackActions[5];
-    QAction* themeActions[31];
+    QLabel*       sequenceLabel;
+    QLabel*       controlsLabel;
 
-    QLabel* sequenceLabel;
-    QLabel* controlsLabel;
+    int           difficulty; // 1 = Easy, 2 = Medium, 3 = Hard, 0 = Zen, 4 = Extreme
 
-    int difficulty; // 1 = Easy, 2 = Medium, 3 = Hard, 0 = Zen, 4 = Extreme
-
-    QLabel* controlsHeaderLabel;
+    QLabel*       controlsHeaderLabel;
 
     SDL_Joystick* joystick;
-    bool joystickEnabled;
-    int joystickTimerId;   // Qt timers use int
-    JoystickMapping joystickMapping;
+    bool          joystickEnabled;
+    int           joystickTimerId;   // replaces guint
 
-    bool pausedByFocusLoss = false;
+    JoystickMapping joystickMapping;
+    bool            pausedByFocusLoss = false;
 
     // Rendering mode selection
     enum RenderingMode {
-        RENDER_CAIRO = 0,
+        RENDER_CAIRO  = 0,
         RENDER_OPENGL = 1
     };
     RenderingMode renderingMode;
 
-    QAction* renderModeActions[2];  // Cairo / OpenGL radio actions
+    QAction*      renderModeMenuItems[2];  // Radio menu items for Cairo and OpenGL
 };
+
+
 
 // TetrimoneBoard - backend-agnostic core
 class TetrimoneBoard {
@@ -495,6 +495,18 @@ void resetGameSettings(TetrimoneApp* app);
 std::array<double, 3> getHeatModifiedColor(const std::array<double, 3>& baseColor, float heatLevel);
 void showIdeologicalFailureDialog(TetrimoneApp* app);
 void showPatrioticPerformanceDialog(TetrimoneApp* app);
+
+void ui_set_sound_enabled(TetrimoneApp *app, bool enabled);
+void ui_set_active_theme(TetrimoneApp *app, int index);
+void ui_set_background_enabled(TetrimoneApp *app, bool enabled);
+void ui_set_window_title(TetrimoneApp *app, const char *title);
+void ui_window_fullscreen(TetrimoneApp *app);
+void ui_set_difficulty_label(TetrimoneApp *app, const char *markup);
+void ui_set_pause_menu_label(TetrimoneApp *app, const char *text);
+void ui_set_isusingbackgroundimage_enabled(TetrimoneApp *app);
+void ui_set_sound_enabled(TetrimoneApp *app);
+void set_difficulty_menu(TetrimoneApp *app, int difficulty);
+void ui_update_track_menu(TetrimoneApp *app);
 
 #include "commandline.h"
 int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args);
