@@ -506,14 +506,15 @@ void resetGameSettings(TetrimoneApp* app) {
     updateLabels(app);
     
     // Update menu checkboxes to match reset settings
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), true);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), false);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), true);
+    ui_set_sound_enabled(app, true);
+    ui_set_background_enabled(app, false);
+    ui_set_mediumMenuItem_enabled(app, true);
     
     // Set track menu items all to enabled
-    for (int i = 0; i < 5; i++) {
+    /*for (int i = 0; i < 5; i++) {
         gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]), true);
-    }
+    }*/
+    app_set_track_items_active(app, 5, true);
     
     // Save the reset settings
     saveGameSettings(app);
@@ -522,6 +523,7 @@ void resetGameSettings(TetrimoneApp* app) {
     rebuildGameUI(app);
 }
 
+#ifdef GTK3
 void onResetSettings(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
@@ -643,5 +645,6 @@ void onResetSettings(GtkMenuItem* menuItem, gpointer userData) {
         }
     }
 }
+#endif
 
 #endif // TETRIMONE_SETTINGS_H

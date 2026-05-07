@@ -495,6 +495,7 @@ void resetGameSettings(TetrimoneApp* app);
 std::array<double, 3> getHeatModifiedColor(const std::array<double, 3>& baseColor, float heatLevel);
 void showIdeologicalFailureDialog(TetrimoneApp* app);
 void showPatrioticPerformanceDialog(TetrimoneApp* app);
+void rebuildGameUI(TetrimoneApp* app);
 
 void ui_set_sound_enabled(TetrimoneApp *app, bool enabled);
 void ui_set_active_theme(TetrimoneApp *app, int index);
@@ -507,6 +508,8 @@ void ui_set_isusingbackgroundimage_enabled(TetrimoneApp *app);
 void ui_set_sound_enabled(TetrimoneApp *app);
 void set_difficulty_menu(TetrimoneApp *app, int difficulty);
 void ui_update_track_menu(TetrimoneApp *app);
+void ui_set_mediumMenuItem_enabled(TetrimoneApp *app, bool enabled);
+void app_set_track_items_active(TetrimoneApp* app, int count, bool active);
 
 #include "commandline.h"
 int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args);

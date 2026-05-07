@@ -1,5 +1,10 @@
 // Enhanced drawgame.cpp with smooth animations
+#ifdef GTK3
 #include "tetrimone_gtk.h"
+#else
+#include "tetrimone_qt5.h"
+#endif
+
 #include "audiomanager.h"
 #include <iostream>
 #include <string>

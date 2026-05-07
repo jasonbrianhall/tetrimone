@@ -723,6 +723,11 @@ void ui_set_background_enabled(TetrimoneApp *app, bool enabled)
     );
 }
 
+void ui_set_mediumMenuItem_enabled(TetrimoneApp *app, bool enabled)
+{
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), enabled);
+}
+
 void ui_set_window_title(TetrimoneApp *app, const char *title)
 {
     gtk_window_set_title(GTK_WINDOW(app->window), title);
@@ -752,3 +757,15 @@ void ui_update_track_menu(TetrimoneApp *app)
         );
     }
 }
+
+void app_set_track_items_active(TetrimoneApp* app, int count, bool active)
+{
+    for (int i = 0; i < count; i++) {
+        gtk_check_menu_item_set_active(
+            GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]),
+            active
+        );
+    }
+}
+
+

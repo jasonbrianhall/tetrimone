@@ -575,6 +575,8 @@ void ui_set_difficulty_label(TetrimoneApp *app, const char *markup);
 void ui_set_pause_menu_label(TetrimoneApp *app, const char *text);
 void ui_set_isusingbackgroundimage_enabled(TetrimoneApp *app);
 void ui_set_sound_enabled(TetrimoneApp *app);
+void ui_set_mediumMenuItem_enabled(TetrimoneApp *app, bool enabled);
+void app_set_track_items_active(TetrimoneApp* app, int count, bool active);
 
 #include "commandline.h"
 int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args);
