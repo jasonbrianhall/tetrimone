@@ -369,9 +369,7 @@ public:
     void cleanupAudio();
     bool loadSoundFromZip(GameSoundEvent event, const std::string& soundFileName);
     bool setSoundsZipPath(const std::string&);
-    bool extractFileFromZip(const std::string &zipFilePath,
-                          const std::string &fileName,
-                          std::vector<uint8_t> &fileData);
+    bool extractFileFromZip(const std::string &zipFilePath, const std::string &fileName, std::vector<uint8_t> &fileData);
 
     bool loadBackgroundImage(const std::string& imagePath);
     void setUseBackgroundImage(bool use) { useBackgroundImage = use; }
