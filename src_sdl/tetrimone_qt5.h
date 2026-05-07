@@ -236,8 +236,6 @@ private:
     std::string backgroundZipPath;
     std::vector<std::string> backgroundImages;
 
-    int junkLinesPercentage;
-    int junkLinesPerLevel;
 
     bool showGridLines;
     std::string sounds_zip_path_ = "sound.zip";  // Path to sounds ZIP file
@@ -411,6 +409,11 @@ public:
     bool saveCachedWav(const std::string& cacheFilePath, const std::vector<unsigned char>& wavData);
     bool loadSoundFromZip(GameSoundEvent event, const std::string& soundFileName);
     bool setSoundsZipPath(const std::string& path);
+
+    int junkLinesPercentage;
+    int junkLinesPerLevel;
+
+
 };
 
 void updateLabels(TetrimoneApp* app);
