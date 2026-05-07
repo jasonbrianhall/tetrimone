@@ -103,96 +103,12 @@ void showIdeologicalFailureDialog(TetrimoneApp* app) {
     onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
 }
 
-void showPatrioticPerformanceDialog(TetrimoneApp* app) {
-    // Only show in patriotic mode
-    if (!app->board->patrioticModeActive) {
-        return;
-    }
-    
-    // Configure dialog appearance
-    DialogConfig dialogConfig{
-        .title = "🇺🇸 PATRIOTIC PERFORMANCE REVIEW - FREEDOM ASSESSMENT 🦅",
-        .acceptButtonLabel = "_Confirm American Excellence",
-        .width = 550,
-        .height = 450
-    };
-    
-    // Configure text elements
-    std::vector<TextConfig> textElements{
-        {
-            .content = "",
-            .markup = "<span size='large' weight='bold' foreground='#CC0000'>"
-                      "🇺🇸 FREEDOM PERFORMANCE ASSESSMENT 🦅\n"
-                      "CITIZEN EXCELLENCE EVALUATION</span>",
-            .isMarkup = true,
-            .marginTop = 0,
-            .marginBottom = 0
-        },
-        {
-            .content = "Your performance has been carefully evaluated by the Department of Freedom & Liberty.\n"
-                      "Please select which freedom category best describes your play:",
-            .markup = "",
-            .isMarkup = false,
-            .marginTop = 0,
-            .marginBottom = 10
-        }
-    };
-    
-    // Configure footer elements
-    std::vector<TextConfig> footerElements{
-        {
-            .content = "",
-            .markup = "<span style='italic' foreground='#0033CC'>"
-                     "🗽 Your performance data will be recorded for the American Gaming Archives 🗽\n"
-                     "(For competitive analysis and freedom improvement purposes)</span>",
-            .isMarkup = true,
-            .marginTop = 10,
-            .marginBottom = 0
-        }
-    };
-    
-    // Configure radio button group
-    RadioGroupConfig radioConfig{
-        .frameTitle = "🦅 Freedom Category Assessment",
-        .options = {
-            "🏆 Outstanding - Pure American Excellence! (I dominate the blocks!)",
-            "💪 Strong Performance - Entrepreneurial Spirit Evident (Pretty good!)",
-            "🎯 Solid Contribution - Meeting Freedom Standards (Not bad)",
-            "⚠️ Needs Improvement - Capitalism isn't the answer (Could do better)",
-            "🚨 Critical Assessment - Re-education Required (Oof, tough game!)",
-            "🎪 Comedy Show - More entertainment than excellence (Haha, blocked myself!)",
-            "💥 Spectacular Failure - In the greatest American tradition of trying! (Wow, that was bad!)"
-        },
-        .defaultSelectedIndex = 0
-    };
-    
-    // Create and run dialog - all GTK3 calls delegated to helper
-    createAndRunDialog(
-        GTK_WINDOW(app->window),
-        dialogConfig,
-        textElements,
-        &radioConfig,
-        footerElements
-    );
-    
-    // The game will restart after this dialog
-    onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
-}
-
 #endif  // GTK3
 
 #ifdef QT5
 
 void showIdeologicalFailureDialog(TetrimoneApp* app) {
     // TODO: Check if in retro mode once getter is added
-    // For now, just restart the game
-    app->board->restart();
-    resetUI(app);
-    startGame(app);
-}
-
-void showPatrioticPerformanceDialog(TetrimoneApp* app) {
-    // TODO: Check if in patriotic mode once getter is added
     // For now, just restart the game
     app->board->restart();
     resetUI(app);
