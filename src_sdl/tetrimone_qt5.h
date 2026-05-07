@@ -84,7 +84,5 @@ struct TetrimoneApp {
 // These are Qt5 implementations of platform-agnostic functions
 // Declarations are in tetrimone_core.h, implementations are Qt5-specific
 
-#include "commandline.h"
-int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args);
 
 #endif // TETRIMONE_QT5_H

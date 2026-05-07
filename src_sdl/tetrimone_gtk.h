@@ -107,8 +107,6 @@ void onAboutDialog(GtkMenuItem* menuItem, gpointer userData);
 void onInstructionsDialog(GtkMenuItem* menuItem, gpointer userData);
 
 // GTK-specific configuration dialogs
-void adjustDropSpeed(TetrimoneApp* app);
-void calculateBlockSize(TetrimoneApp* app);
 gboolean pollJoystick(gpointer data);
 void onBlockSizeDialog(GtkMenuItem* menuItem, gpointer userData);
 void onBlockSizeValueChanged(GtkRange* range, gpointer data);
@@ -138,11 +136,6 @@ void onGridLinesToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void updateWidthValueLabel(GtkAdjustment* adj, gpointer data);
 void updateHeightValueLabel(GtkAdjustment* adj, gpointer data);
 
-// GTK JPEG image loading utilities
-cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename);
-cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t length);
-int currentPatriotBackgroundIndex;
-
 // GTK game feature dialogs
 void onGhostPieceToggled(GtkCheckMenuItem* menuItem, gpointer userData);
 void onViewHighScores(GtkMenuItem* menuItem, gpointer userData);
@@ -154,10 +147,6 @@ void onTestSound(GtkButton* button, gpointer userData);
 void onGameSetupDialog(GtkMenuItem* menuItem, gpointer userData);
 void onResetSettings(GtkMenuItem* menuItem, gpointer userData);
 void onThemeChanged(GtkRadioMenuItem *menuItem, gpointer userData);
-
-// Heat effect functions - Cairo versions (legacy)
-void drawFreezyEffect(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
-void drawFireyGlow(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
 
 // Block trails animation configuration
 void onBlockTrailsToggled(GtkCheckMenuItem* menuItem, gpointer userData);

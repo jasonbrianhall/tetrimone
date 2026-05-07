@@ -148,6 +148,7 @@ public:
     bool propagandaScalingUp;
     unsigned int propagandaScaleTimerId;
     bool showPropagandaMessage;
+    int currentPatriotBackgroundIndex;
 
     // Background images and state
     void* backgroundImage;
@@ -394,6 +395,9 @@ void loadJoystickMapping(TetrimoneApp* app);
 bool saveGameSettings(TetrimoneApp* app);
 bool loadGameSettings(TetrimoneApp* app);
 void resetGameSettings(TetrimoneApp* app);
+void adjustDropSpeed(TetrimoneApp* app);
+void calculateBlockSize(TetrimoneApp* app);
+
 
 // UI state management
 void ui_set_sound_enabled(TetrimoneApp *app, bool enabled);
@@ -420,6 +424,15 @@ void drawSplashScreen(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app);
 void drawGhostPiece(cairo_t *cr, TetrimoneBoard *board);
 void drawCurrentPiece(cairo_t *cr, TetrimoneBoard *board);
 void drawPropagandaMessage(cairo_t *cr, TetrimoneBoard *board);
+
+// GTK JPEG image loading utilities
+cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename);
+cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t length);
+
+// Heat effect functions - Cairo versions (legacy)
+void drawFreezyEffect(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
+void drawFireyGlow(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
+
 
 // Helper function
 LineClearAnimValues getLineClearAnimationValues(int animationType, double progress, int x, int y);
