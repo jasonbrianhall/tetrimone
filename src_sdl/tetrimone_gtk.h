@@ -163,22 +163,4 @@ void onBlockTrailsConfig(GtkMenuItem* menuItem, gpointer userData);
 void onTrailOpacityChanged(GtkAdjustment* adj, gpointer data);
 void onTrailDurationChanged(GtkAdjustment* adj, gpointer data);
 
-// Drawing functions - Cairo version (implementation of platform-agnostic interface)
-void drawGameOver(cairo_t *cr, TetrimoneBoard *board);
-void drawBlockTrails(cairo_t *cr, TetrimoneBoard *board);
-void drawFireworks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app);
-void drawPauseMenu(cairo_t *cr, TetrimoneBoard *board);
-void drawGridLines(cairo_t *cr, TetrimoneBoard *board);
-void drawFailureLine(cairo_t *cr);
-void drawSplashScreen(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app);
-void drawGhostPiece(cairo_t *cr, TetrimoneBoard *board);
-void drawCurrentPiece(cairo_t *cr, TetrimoneBoard *board);
-void drawPropagandaMessage(cairo_t *cr, TetrimoneBoard *board);
-
-// Helper function
-LineClearAnimValues getLineClearAnimationValues(int animationType, double progress, int x, int y);
-
-#include "commandline.h"
-int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args);
-
 #endif // TETRIMONE_GTK3_H
