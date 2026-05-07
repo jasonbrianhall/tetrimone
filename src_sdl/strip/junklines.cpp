@@ -1,14 +1,15 @@
 #ifdef GTK3
 #include "tetrimone_gtk.h"
+#include "gtk3_dialog_helpers.h"
 #endif
 
 #ifdef QT5
 #include "tetrimone_qt5.h"
+#include "qt5_dialog_helpers.h"
 #endif
 
 
 #include "audiomanager.h"
-#include "gtk3_dialog_helpers.h"
 #include <iostream>
 #include <string>
 #include <algorithm>
@@ -19,7 +20,9 @@
 #include "highscores.h"
 #include "propaganda_messages.h"
 
+#ifdef GTK3
 using namespace GTK3Helpers;
+#endif
 
 // Method to generate junk lines
 void TetrimoneBoard::generateJunkLines(int percentage) {

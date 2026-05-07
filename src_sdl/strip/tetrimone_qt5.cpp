@@ -27,12 +27,12 @@ void startGame(TetrimoneApp* app) {
         app->board->resumeBackgroundMusic();
     }
     
-    if (app->board->getJunkLinesPercentage() > 0) {
-        app->board->generateJunkLines(app->board->getJunkLinesPercentage());
+    if (app->board->junkLinesPercentage > 0) {
+        app->board->generateJunkLines(app->board->junkLinesPercentage);
     }
     
-    if (app->board->getJunkLinesPerLevel() > 0) {
-        app->board->addJunkLinesFromBottom(app->board->getJunkLinesPerLevel());
+    if (app->board->junkLinesPerLevel > 0) {
+        app->board->addJunkLinesFromBottom(app->board->junkLinesPerLevel);
     }
 }
 
