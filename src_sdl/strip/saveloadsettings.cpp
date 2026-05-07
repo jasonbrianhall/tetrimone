@@ -437,7 +437,7 @@ if (useBackgroundZip && !bgZipPath.empty()) {
         updateLabels(app);
         
         // Update menu checkboxes to match loaded settings
-        ui_set_sound_enabled(app);
+        ui_set_sound_enabled(app, true);
         
         ui_set_isusingbackgroundimage_enabled(app);
         
