@@ -131,14 +131,6 @@ private:
     static const int TRAIL_UPDATE_INTERVAL = 16;
     static constexpr double TRAIL_SPAWN_DELAY = 120.0;
 
-    // Propaganda messages
-    bool showPropagandaMessage;
-    unsigned int propagandaTimerId;
-    int propagandaMessageDuration;
-    std::string currentPropagandaMessage;
-    double propagandaMessageScale;
-    bool propagandaScalingUp;
-    unsigned int propagandaScaleTimerId;
 
     // Background transition
     bool isTransitioning;
@@ -147,6 +139,16 @@ private:
     void* oldBackground;
     unsigned int transitionTimerId;
 
+public:
+    // Propaganda messages
+    unsigned int propagandaTimerId;
+    int propagandaMessageDuration;
+    std::string currentPropagandaMessage;
+    double propagandaMessageScale;
+    bool propagandaScalingUp;
+    unsigned int propagandaScaleTimerId;
+    bool showPropagandaMessage;
+
     // Background images and state
     void* backgroundImage;
     double backgroundOpacity;
@@ -154,7 +156,7 @@ private:
     int currentBackgroundIndex, currentPatrioticBackgroundIndex;
     bool useBackgroundZip, useBackgroundImage;
 
-public:
+
     // Status flags (public for callback access)
     bool musicPaused = false;
     bool highScoreAlreadyProcessed = false;
@@ -172,7 +174,9 @@ public:
     int junkLinesPercentage = 0, junkLinesPerLevel = 0, initialLevel = 1;
     
     // Background images (public for callback access)
-    std::vector<void*> backgroundImages, patriotBackgroundImages;
+    std::vector<cairo_surface_t*> patriotBackgroundImages;
+    std::vector<cairo_surface_t*> backgroundImages;
+
     std::string backgroundZipPath;
 
     // Constructors
@@ -365,6 +369,8 @@ public:
     bool setSoundsZipPath(const std::string& path);
 
     void setApp(TetrimoneApp* appPtr) { app = appPtr; }
+    bool isInThemeTransition() const { return isThemeTransitioning; }
+
 };
 
 // Platform-agnostic utility and UI functions

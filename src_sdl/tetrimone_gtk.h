@@ -66,6 +66,7 @@ struct TetrimoneApp {
     };
     RenderingMode renderingMode;
     GtkWidget* renderModeMenuItems[2];  // Radio menu items for Cairo and OpenGL
+
 };
 
 // ============================================================================
@@ -140,6 +141,7 @@ void updateHeightValueLabel(GtkAdjustment* adj, gpointer data);
 // GTK JPEG image loading utilities
 cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename);
 cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t length);
+int currentPatriotBackgroundIndex;
 
 // GTK game feature dialogs
 void onGhostPieceToggled(GtkCheckMenuItem* menuItem, gpointer userData);
