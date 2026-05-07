@@ -1,6 +1,13 @@
 #include <cstring>
 #include <iostream>
+#ifdef GTK
 #include "tetrimone_gtk.h"
+#endif
+
+#ifdef QT5
+#include "tetrimone_qt5.h"
+#endif
+
 #include "commandline.h"
 
 void printHelp(const char* programName) {

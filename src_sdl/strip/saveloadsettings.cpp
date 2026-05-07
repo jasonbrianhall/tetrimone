@@ -1,7 +1,14 @@
 #ifndef TETRIMONE_SETTINGS_H
 #define TETRIMONE_SETTINGS_H
 
+#ifdef GTK
 #include "tetrimone_gtk.h"
+#endif
+
+#ifdef QT5
+#include "tetrimone_qt5.h"
+#endif
+
 #include <fstream>
 #include <iostream>
 #include <string>

@@ -1,4 +1,11 @@
+#ifdef GTK
 #include "tetrimone_gtk.h"
+#endif
+
+#ifdef QT5
+#include "tetrimone_qt5.h"
+#endif
+
 
 
 // Function to create a Tetrimone icon programmatically

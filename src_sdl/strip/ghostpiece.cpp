@@ -1,4 +1,10 @@
+#ifdef GTK
 #include "tetrimone_gtk.h"
+#endif
+
+#ifdef QT5
+#include "tetrimone_qt5.h"
+#endif
 
 int TetrimoneBoard::getGhostPieceY() const {
     if (!currentPiece || !ghostPieceEnabled) {
