@@ -8,6 +8,7 @@
 #include "tetrimone_gtk.h"
 #include "gtk3_dialog_helpers.h"
 #include <gtk/gtk.h>
+#include <algorithm>
 
 using namespace GTK3Helpers;
 
@@ -35,6 +36,14 @@ const int AXIS_REPEAT_DELAY = 150;  // ms between repeated movement inputs
 // ============================================================================
 // GTK3-Specific Input Processing
 // ============================================================================
+
+typedef struct {
+  bool active;
+  int direction;
+  Uint32 lastMoveTime;
+  Uint32 repeatDelay;
+  int moveCount;
+} DirectionalControl;
 
 typedef struct {
   TetrimoneApp* app;
@@ -105,7 +114,7 @@ gboolean pollJoystick(gpointer data) {
       horizontalControl.lastMoveTime = currentTime;
       horizontalControl.moveCount = 0;
       
-      app->board->movePiece(moveX);
+      app->board->movePiece(moveX, 0);
       gtk_widget_queue_draw(app->gameArea);
       updateLabels(app);
     } else if (currentTime - horizontalControl.lastMoveTime > horizontalControl.repeatDelay) {
@@ -114,7 +123,7 @@ gboolean pollJoystick(gpointer data) {
       int moves = 1 + acceleration;
       
       for (int i = 0; i < moves; i++) {
-        app->board->movePiece(moveX);
+        app->board->movePiece(moveX, 0);
       }
       horizontalControl.lastMoveTime = currentTime;
       gtk_widget_queue_draw(app->gameArea);
@@ -134,7 +143,7 @@ gboolean pollJoystick(gpointer data) {
       verticalControl.moveCount = 0;
       
       if (moveY > 0) {  // Down/drop
-        app->board->softDrop();
+        app->board->movePiece(0, 1);
       }
       gtk_widget_queue_draw(app->gameArea);
       updateLabels(app);
@@ -145,7 +154,7 @@ gboolean pollJoystick(gpointer data) {
       
       if (moveY > 0) {
         for (int i = 0; i < drops; i++) {
-          app->board->softDrop();
+          app->board->movePiece(0, 1);
         }
       }
       verticalControl.lastMoveTime = currentTime;

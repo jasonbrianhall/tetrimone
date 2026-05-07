@@ -9,6 +9,9 @@
 #include <QTimer>
 #include <QTextEdit>
 #include <QVBoxLayout>
+#include <QDateTime>
+#include <QMessageBox>
+#include <algorithm>
 
 // ============================================================================
 // Forward Declarations - Core Functions (defined in joystick_core.cpp)
@@ -109,7 +112,7 @@ private slots:
         horizontalControl.lastMoveTime = currentTime;
         horizontalControl.moveCount = 0;
         
-        app->board->movePiece(moveX);
+        app->board->movePiece(moveX, 0);
         if (app->gameWidget) {
           app->gameWidget->update();
         }
@@ -120,7 +123,7 @@ private slots:
         int moves = 1 + acceleration;
         
         for (int i = 0; i < moves; i++) {
-          app->board->movePiece(moveX);
+          app->board->movePiece(moveX, 0);
         }
         horizontalControl.lastMoveTime = currentTime;
         if (app->gameWidget) {
@@ -142,7 +145,7 @@ private slots:
         verticalControl.moveCount = 0;
         
         if (moveY > 0) {  // Down/drop
-          app->board->softDrop();
+          app->board->movePiece(0, 1);
         }
         if (app->gameWidget) {
           app->gameWidget->update();
@@ -155,7 +158,7 @@ private slots:
         
         if (moveY > 0) {
           for (int i = 0; i < drops; i++) {
-            app->board->softDrop();
+            app->board->movePiece(0, 1);
           }
         }
         verticalControl.lastMoveTime = currentTime;
