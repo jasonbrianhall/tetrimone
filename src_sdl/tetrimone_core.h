@@ -10,6 +10,8 @@
 #include <string>
 #include "audiomanager.h"
 #include <SDL2/SDL.h>
+#include <cairo/cairo.h>
+
 #include "themes.h"
 #include "tetrimoneblock.h"
 #include "highscores.h"
