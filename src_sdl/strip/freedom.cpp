@@ -1,17 +1,33 @@
 #include "tetrimone.h"
 #include "audiomanager.h"
-#include "gtk3_dialog_helpers.h"
 #include <iostream>
 #include <string>
 #include <algorithm>
+
+#ifdef QT5
+#include "qt5_dialog_helpers.h"
+#include <QApplication>
+#endif
+
+#ifdef GTK3
+#include "gtk3_dialog_helpers.h"
 #ifdef _WIN32
 #include <windows.h>
 #include <commdlg.h>
 #endif
+#include <gtk/gtk.h>
+#endif
+
 #include "highscores.h"
 #include "freedom_messages.h"
 
+#ifdef GTK3
 using namespace GTK3Helpers;
+#endif
+
+#ifdef QT5
+using namespace Qt5Helpers;
+#endif
 
 void showPatrioticPerformanceDialog(TetrimoneApp* app) {
     // Only show in patriotic mode
@@ -89,7 +105,8 @@ void showPatrioticPerformanceDialog(TetrimoneApp* app) {
         .defaultSelectedIndex = 0
     };
     
-    // Create and run dialog - all GTK3 calls delegated to helper
+    // Create and run dialog - works with both GTK3 and Qt5
+    #ifdef GTK3
     createAndRunDialog(
         GTK_WINDOW(app->window),
         dialogConfig,
@@ -97,6 +114,17 @@ void showPatrioticPerformanceDialog(TetrimoneApp* app) {
         &radioConfig,
         footerElements
     );
+    #endif
+    
+    #ifdef QT5
+    createAndRunDialog(
+        nullptr,  // Qt5 uses QApplication's active window
+        dialogConfig,
+        textElements,
+        &radioConfig,
+        footerElements
+    );
+    #endif
     
     // Restart game with renewed American spirit!
     onRestartGame(NULL, app);
