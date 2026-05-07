@@ -1,12 +1,13 @@
 #ifdef GTK
 #include "tetrimone_gtk.h"
+#include "gtk3_dialog_helpers.h"
 #endif
 
 #ifdef QT5
+#include "qt5_dialog_helpers.h"
 #include "tetrimone_qt5.h"
 #endif
 
-#include "gtk3_dialog_helpers.h"
 #include <iostream>
 #include <string>
 #include <iomanip>
