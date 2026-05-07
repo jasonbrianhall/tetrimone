@@ -240,6 +240,7 @@ private:
     int junkLinesPerLevel;
 
     bool showGridLines;
+    std::string sounds_zip_path_ = "sound.zip";  // Path to sounds ZIP file
 
     bool showPropagandaMessage;
     unsigned int propagandaTimerId;
@@ -402,6 +403,14 @@ public:
     void setJunkLinesPerLevel(int l) { junkLinesPerLevel = l; }
     bool isSoundEnabled() const { return sound_enabled_; }
     void setSoundEnabled(bool enabled) { sound_enabled_ = enabled; }
+    
+    // Audio file handling
+    bool extractFileFromZip(const std::string& zipFilePath, const std::string& fileName, std::vector<unsigned char>& data);
+    std::string getCacheFilePath(const std::string& soundFileName);
+    bool loadCachedWav(const std::string& cacheFilePath, std::vector<unsigned char>& wavData);
+    bool saveCachedWav(const std::string& cacheFilePath, const std::vector<unsigned char>& wavData);
+    bool loadSoundFromZip(GameSoundEvent event, const std::string& soundFileName);
+    bool setSoundsZipPath(const std::string& path);
 };
 
 void updateLabels(TetrimoneApp* app);
