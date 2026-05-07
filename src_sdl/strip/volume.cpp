@@ -1,23 +1,17 @@
-#ifdef GTK3
-#include "tetrimone_gtk.h"
-#include "gtk3_dialog_helpers.h"
-#endif
-
-#ifdef QT5
-#include "qt5_dialog_helpers.h"
-#include "tetrimone_qt5.h"
-#endif
-
 #include <iostream>
 #include <string>
 #include <iomanip>
-
-using namespace GTK3Helpers;
 
 // Static variables to backup volume values in case AudioManager doesn't persist them
 static float s_lastSfxVolume = 0.50f;    // Default to 50% if not set
 static float s_lastMusicVolume = 0.50f;  // Default to 50% if not set
 static bool s_volumesInitialized = false;
+
+#ifdef GTK3
+#include "tetrimone_gtk.h"
+#include "gtk3_dialog_helpers.h"
+
+using namespace GTK3Helpers;
 
 void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
@@ -154,3 +148,40 @@ void onMusicVolumeValueChanged(GtkRange* range, gpointer userData) {
     // Update the AudioManager music volume
     AudioManager::getInstance().setMusicVolume(musicVolume);
 }
+
+#endif  // GTK3
+
+#ifdef QT5
+#include "tetrimone_qt5.h"
+
+// Qt5 volume dialog implementation would go here
+// For now, stub out the functions for Qt5
+
+void onVolumeDialog(void* menuItem, void* userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    
+    // TODO: Implement Qt5 volume dialog
+    // For now, just get the volumes like GTK3 does
+    
+    float currentVolume = AudioManager::getInstance().getVolume();
+    float currentMusicVolume = AudioManager::getInstance().getMusicVolume();
+    
+    if (!s_volumesInitialized) {
+        if (currentVolume > 0.0f) {
+            s_lastSfxVolume = currentVolume;
+        }
+        s_volumesInitialized = true;
+    }
+    
+    if (currentVolume <= 0.0f && s_lastSfxVolume > 0.0f) {
+        currentVolume = s_lastSfxVolume;
+        AudioManager::getInstance().setVolume(currentVolume);
+    }
+    
+    if (currentMusicVolume <= 0.0f && s_lastMusicVolume > 0.0f) {
+        currentMusicVolume = s_lastMusicVolume;
+        AudioManager::getInstance().setMusicVolume(currentMusicVolume);
+    }
+}
+
+#endif  // QT5
