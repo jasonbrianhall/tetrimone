@@ -219,10 +219,10 @@ using namespace GTK3Helpers;
 void onGameSetupApply(int junkPercentage, int junkPerLevel, int initialLevel, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
-    // Check if settings have changed
-    bool settingsChanged = (junkPercentage != app->board->junkLinesPercentage) || 
-                          (junkPerLevel != app->board->junkLinesPerLevel) ||
-                          (initialLevel != app->board->initialLevel);
+    // Check if settings have changed (using getter methods)
+    bool settingsChanged = (junkPercentage != app->board->getJunkLinesPercentage()) || 
+                          (junkPerLevel != app->board->getJunkLinesPerLevel()) ||
+                          (initialLevel != app->difficulty);
     
     if (settingsChanged) {
         // Create confirmation dialog
@@ -235,10 +235,10 @@ void onGameSetupApply(int junkPercentage, int junkPerLevel, int initialLevel, gp
         gtk_widget_destroy(confirmDialog);
         
         if (confirmResponse == GTK_RESPONSE_YES) {
-            // Update settings
-            app->board->junkLinesPercentage = junkPercentage;
-            app->board->junkLinesPerLevel = junkPerLevel;
-            app->board->initialLevel = initialLevel;
+            // Update settings (using setter methods)
+            app->board->setJunkLinesPercentage(junkPercentage);
+            app->board->setJunkLinesPerLevel(junkPerLevel);
+            app->difficulty = initialLevel;
             
             // Restart the game with new settings
             app->board->restart();
@@ -281,19 +281,19 @@ void onGameSetupDialog(GtkMenuItem* menuItem, gpointer userData) {
 void onGameSetupApply(int junkPercentage, int junkPerLevel, int initialLevel, void* userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
-    // Check if settings have changed
-    bool settingsChanged = (junkPercentage != app->board->junkLinesPercentage) || 
-                          (junkPerLevel != app->board->junkLinesPerLevel) ||
-                          (initialLevel != app->board->initialLevel);
+    // Check if settings have changed (using getter methods)
+    bool settingsChanged = (junkPercentage != app->board->getJunkLinesPercentage()) || 
+                          (junkPerLevel != app->board->getJunkLinesPerLevel()) ||
+                          (initialLevel != app->difficulty);
     
     if (settingsChanged) {
         // TODO: Implement Qt5 confirmation dialog
         // For now, just apply the settings
         
-        // Update settings
-        app->board->junkLinesPercentage = junkPercentage;
-        app->board->junkLinesPerLevel = junkPerLevel;
-        app->board->initialLevel = initialLevel;
+        // Update settings (using setter methods)
+        app->board->setJunkLinesPercentage(junkPercentage);
+        app->board->setJunkLinesPerLevel(junkPerLevel);
+        app->difficulty = initialLevel;
         
         // Restart the game with new settings
         app->board->restart();
