@@ -437,11 +437,10 @@ if (useBackgroundZip && !bgZipPath.empty()) {
         updateLabels(app);
         
         // Update menu checkboxes to match loaded settings
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), 
-                                      app->board->sound_enabled_);
+        ui_set_sound_enabled(app);
         
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), 
-                                      app->board->isUsingBackgroundImage());
+        ui_set_isusingbackgroundimage_enabled(app);
+        
         
         // Set the correct difficulty radio button
         set_difficulty_menu(app, app->difficulty);

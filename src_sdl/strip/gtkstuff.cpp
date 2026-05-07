@@ -707,6 +707,14 @@ void ui_set_active_theme(TetrimoneApp *app, int index)
     );
 }
 
+void ui_set_sound_enabled(TetrimoneApp *app) {
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem),  app->board->sound_enabled_);
+}
+
+void ui_set_isusingbackgroundimage_enabled(TetrimoneApp *app) {
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), app->board->isUsingBackgroundImage());
+}
+
 void ui_set_background_enabled(TetrimoneApp *app, bool enabled)
 {
     gtk_check_menu_item_set_active(
@@ -744,4 +752,3 @@ void ui_update_track_menu(TetrimoneApp *app)
         );
     }
 }
-
