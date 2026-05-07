@@ -164,7 +164,7 @@ void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
     // Process the selected file path
     if (!filePath.empty()) {
         if (app->board->loadBackgroundImagesFromZip(filePath)) {
-            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), true);
             
             // Process any pending events before showing opacity dialog
             while (gtk_events_pending())
@@ -476,7 +476,7 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
     );
     
     // Allow multiple file selection
-    gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
+    gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), true);
     
     // Add filter for image files
     GtkFileFilter* filterAll = gtk_file_filter_new();
@@ -561,7 +561,7 @@ void onBackgroundImageDialog(GtkMenuItem* menuItem, gpointer userData) {
             app->board->selectRandomBackground();
             
             // Activate background toggle
-            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), true);
             
             // Process any pending events before showing opacity dialog
             while (gtk_events_pending())
@@ -628,7 +628,7 @@ void onPauseGame(GtkMenuItem *menuItem, gpointer userData) {
     if (app->board->isPaused()) {
       pauseGame(app);
       ui_set_pause_menu_label(app, "Resume");
-      gtk_widget_set_sensitive(app->startMenuItem, TRUE);
+      gtk_widget_set_sensitive(app->startMenuItem, true);
     } else {
       startGame(app);
       ui_set_pause_menu_label(app, "Pause");
@@ -674,7 +674,7 @@ void set_difficulty_menu(TetrimoneApp *app, int difficulty)
     }
 
     printf("DEBUG: Setting %s difficulty\n", labels[difficulty]);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(items[difficulty]), TRUE);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(items[difficulty]), true);
 }
 
 void set_theme_menu(TetrimoneApp *app, int index)
@@ -687,7 +687,7 @@ void set_theme_menu(TetrimoneApp *app, int index)
     printf("DEBUG: Setting theme index to %d\n", index);
     gtk_check_menu_item_set_active(
         GTK_CHECK_MENU_ITEM(app->themeMenuItems[index]),
-        TRUE
+        true
     );
 }
 
@@ -703,7 +703,7 @@ void ui_set_active_theme(TetrimoneApp *app, int index)
 {
     gtk_check_menu_item_set_active(
         GTK_CHECK_MENU_ITEM(app->themeMenuItems[index]),
-        TRUE
+        true
     );
 }
 

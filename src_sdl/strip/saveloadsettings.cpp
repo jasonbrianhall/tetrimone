@@ -509,7 +509,7 @@ void resetGameSettings(TetrimoneApp* app) {
     // Update menu checkboxes to match reset settings
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), true);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), false);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), TRUE);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), true);
     
     // Set track menu items all to enabled
     for (int i = 0; i < 5; i++) {
@@ -603,7 +603,7 @@ void onResetSettings(GtkMenuItem* menuItem, gpointer userData) {
         // Set the correct difficulty radio button
         gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->zenMenuItem), FALSE);
         gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->easyMenuItem), FALSE);
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), TRUE);
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), true);
         gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->hardMenuItem), FALSE);
         gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->extremeMenuItem), FALSE);
         gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->insaneMenuItem), FALSE);

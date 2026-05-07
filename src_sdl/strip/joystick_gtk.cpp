@@ -94,7 +94,7 @@ gboolean pollJoystick(gpointer data) {
 
   // Skip movement if game is paused or over
   if (app->board->isGameOver() || app->board->isPaused()) {
-    return TRUE;
+    return true;
   }
 
   // Process analog movement
@@ -166,7 +166,7 @@ gboolean pollJoystick(gpointer data) {
     verticalControl.direction = 0;
   }
 
-  return TRUE;  // Keep timer running
+  return true;  // Keep timer running
 }
 
 // ============================================================================
@@ -179,7 +179,7 @@ gboolean updateJoystickTestDisplay(gpointer userData) {
   TetrimoneApp* app = data->app;
   
   if (!app->joystickEnabled || !app->joystick) {
-    return TRUE;
+    return true;
   }
   
   SDL_JoystickUpdate();
@@ -245,7 +245,7 @@ gboolean updateJoystickTestDisplay(gpointer userData) {
   }
   
   gtk_text_buffer_set_text(buffer, info.c_str(), -1);
-  return TRUE;
+  return true;
 }
 
 // ============================================================================

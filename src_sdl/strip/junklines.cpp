@@ -368,7 +368,7 @@ void applyGameSetupSettings(TetrimoneApp* app, int junkPercentage, int junkPerLe
     }
     
     gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-    gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+    gtk_widget_set_sensitive(app->pauseMenuItem, true);
     
     startGame(app);
 }

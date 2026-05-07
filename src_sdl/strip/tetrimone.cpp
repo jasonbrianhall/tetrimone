@@ -337,7 +337,7 @@ void TetrimoneBoard::createBlockTrail() {
                     drawBoard(board);
                 }
                 
-                return TRUE; // Keep timer running
+                return true; // Keep timer running
             }, this);
     }
 }
@@ -674,7 +674,7 @@ int TetrimoneBoard::clearLines() {
                           board->propagandaScalingUp = true;
                       }
                   }
-                  return TRUE; // Continue the timer
+                  return true; // Continue the timer
               }
               // Stop the timer if message is no longer showing
               board->propagandaScaleTimerId = 0;
@@ -738,7 +738,7 @@ int TetrimoneBoard::clearLines() {
                             board->propagandaScalingUp = true;
                         }
                     }
-                    return TRUE; // Continue the timer
+                    return true; // Continue the timer
                 }
                 // Stop the timer if message is no longer showing
                 board->propagandaScaleTimerId = 0;
@@ -1103,7 +1103,7 @@ gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
       gtk_widget_queue_draw(app->gameArea);
       gtk_widget_queue_draw(app->nextPieceArea);
       updateLabels(app);
-      return TRUE;
+      return true;
     }
 
     // Handle game control keys only when game is active
@@ -1275,7 +1275,7 @@ if (board->retroModeActive) {
             // Trigger a background transition for a nice effect when returning from retro mode
             board->startBackgroundTransition();
         }
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), true);
     }
     
     // Re-enable music if sound is enabled
@@ -1352,7 +1352,7 @@ case GDK_KEY_comma:
                     board->setUseBackgroundZip(true);
                     // Trigger a background transition for a nice effect when returning from patriotic mode
                 }
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), true);
             }
             board->startBackgroundTransition();
             
@@ -1375,7 +1375,7 @@ case GDK_KEY_comma:
                     board->setUseBackgroundZip(true);
                     // Trigger a background transition for a nice effect when returning from patriotic mode
                 }
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), true);
             }
             board->startBackgroundTransition();
             
@@ -1478,7 +1478,7 @@ case GDK_KEY_comma:
   gtk_widget_queue_draw(app->nextPieceArea);
   updateLabels(app);
 
-  return TRUE; // Always claim we handled the key event
+  return true; // Always claim we handled the key event
 }
 
 
@@ -1626,7 +1626,7 @@ if (!board->isPaused() && !board->isSplashScreenActive() && !board->retroModeAct
         app);
     }
   }
-  return TRUE; // Keep the timer running
+  return true; // Keep the timer running
 }
 
 void updateLabels(TetrimoneApp *app) {
@@ -1697,7 +1697,7 @@ void resetUI(TetrimoneApp *app) {
 
   // Update menu state
   gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-  gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+  gtk_widget_set_sensitive(app->pauseMenuItem, true);
   gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
 }
 
@@ -1810,7 +1810,7 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   // Create main horizontal box for game contents
   tetrimoneApp->mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
   gtk_container_set_border_width(GTK_CONTAINER(tetrimoneApp->mainBox), 10);
-  gtk_box_pack_start(GTK_BOX(mainVBox), tetrimoneApp->mainBox, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(mainVBox), tetrimoneApp->mainBox, true, true, 0);
 
   g_signal_connect(G_OBJECT(tetrimoneApp->window), "size-allocate",
                    G_CALLBACK(onScreenSizeChanged), tetrimoneApp);
@@ -1929,7 +1929,7 @@ if (tetrimoneApp->board->retroModeActive) {
 
   // Initialize the menu state
   gtk_widget_set_sensitive(tetrimoneApp->startMenuItem, FALSE);
-  gtk_widget_set_sensitive(tetrimoneApp->pauseMenuItem, TRUE);
+  gtk_widget_set_sensitive(tetrimoneApp->pauseMenuItem, true);
 
   if (tetrimoneApp->board->initializeAudio()) {
     // Only play music if initialization was successful
@@ -2047,7 +2047,7 @@ void createMenu(TetrimoneApp *app) {
 
   // Set medium as default
   gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem),
-                                 TRUE);
+                                 true);
   app->difficulty = 2; // Medium
 
   gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->zenMenuItem);
@@ -2104,7 +2104,7 @@ void createMenu(TetrimoneApp *app) {
   app->backgroundToggleMenuItem =
       gtk_check_menu_item_new_with_label("Enable Background Image");
   gtk_check_menu_item_set_active(
-      GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+      GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), true);
   gtk_menu_shell_append(GTK_MENU_SHELL(backgroundMenu),
                         app->backgroundToggleMenuItem);
   g_signal_connect(G_OBJECT(app->backgroundToggleMenuItem), "toggled",
@@ -2196,7 +2196,7 @@ g_signal_connect(G_OBJECT(blockTrailsConfigMenuItem), "activate",
     
     // Set the current theme as active
     if (i == currentThemeIndex) {
-      gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->themeMenuItems[i]), TRUE);
+      gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->themeMenuItems[i]), true);
     }
     
     gtk_menu_shell_append(GTK_MENU_SHELL(themeMenu), app->themeMenuItems[i]);
@@ -2211,7 +2211,7 @@ g_signal_connect(G_OBJECT(blockTrailsConfigMenuItem), "activate",
   // Sound menu items
   app->soundToggleMenuItem = gtk_check_menu_item_new_with_label("Enable Sound");
   gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem),
-                                 TRUE);
+                                 true);
   gtk_menu_shell_append(GTK_MENU_SHELL(soundMenu), app->soundToggleMenuItem);
   g_signal_connect(G_OBJECT(app->soundToggleMenuItem), "toggled",
                    G_CALLBACK(onSoundToggled), app);
@@ -2236,7 +2236,7 @@ g_signal_connect(G_OBJECT(blockTrailsConfigMenuItem), "activate",
 
     // Set all checked by default
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]),
-                                   TRUE);
+                                   true);
 
     // Store track index in the widget data
     g_object_set_data(G_OBJECT(app->trackMenuItems[i]), "track-index",
@@ -2338,19 +2338,19 @@ g_signal_connect(G_OBJECT(retroMusicMenuItem), "toggled",
   switch (app->board->getMinBlockSize()) {
   case 1:
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize1MenuItem),
-                                   TRUE);
+                                   true);
     break;
   case 2:
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize2MenuItem),
-                                   TRUE);
+                                   true);
     break;
   case 3:
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize3MenuItem),
-                                   TRUE);
+                                   true);
     break;
   case 4:
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize4MenuItem),
-                                   TRUE);
+                                   true);
     break;
   }
 
@@ -2568,7 +2568,7 @@ void onBlockSizeRulesChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
       g_list_free(children);
 
       if (previousItem) {
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(previousItem), TRUE);
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(previousItem), true);
       }
 
       // Unblock signals
@@ -2592,7 +2592,7 @@ void onBlockSizeRulesChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
     }
 
     gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-    gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+    gtk_widget_set_sensitive(app->pauseMenuItem, true);
 
     startGame(app);
     gtk_widget_queue_draw(app->gameArea);
@@ -2612,7 +2612,7 @@ void onStartGame(GtkMenuItem *menuItem, gpointer userData) {
   startGame(app);
 
   gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-  gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+  gtk_widget_set_sensitive(app->pauseMenuItem, true);
 
   gtk_widget_queue_draw(app->gameArea);
   gtk_widget_queue_draw(app->nextPieceArea);
@@ -2633,7 +2633,7 @@ void pauseGame(TetrimoneApp *app) {
   }
 
   // Update menu state
-  gtk_widget_set_sensitive(app->startMenuItem, TRUE);
+  gtk_widget_set_sensitive(app->startMenuItem, true);
   gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Resume");
 }
 
@@ -2648,7 +2648,7 @@ void onRestartGame(GtkMenuItem *menuItem, gpointer userData) {
   }
 
   gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-  gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+  gtk_widget_set_sensitive(app->pauseMenuItem, true);
 
   startGame(app);
   gtk_widget_queue_draw(app->gameArea);
@@ -2803,27 +2803,27 @@ void onDifficultyChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
         switch (previousDifficulty) {
         case 0:
           gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->zenMenuItem),
-                                         TRUE);
+                                         true);
           break;
         case 1:
           gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->easyMenuItem),
-                                         TRUE);
+                                         true);
           break;
         case 2:
           gtk_check_menu_item_set_active(
-              GTK_CHECK_MENU_ITEM(app->mediumMenuItem), TRUE);
+              GTK_CHECK_MENU_ITEM(app->mediumMenuItem), true);
           break;
         case 3:
           gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->hardMenuItem),
-                                         TRUE);
+                                         true);
           break;
         case 4:
           gtk_check_menu_item_set_active(
-              GTK_CHECK_MENU_ITEM(app->extremeMenuItem), TRUE);
+              GTK_CHECK_MENU_ITEM(app->extremeMenuItem), true);
           break;
         case 5:
           gtk_check_menu_item_set_active(
-              GTK_CHECK_MENU_ITEM(app->insaneMenuItem), TRUE);
+              GTK_CHECK_MENU_ITEM(app->insaneMenuItem), true);
           break;
         }
 
@@ -2855,7 +2855,7 @@ gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
     }
 
     gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-    gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+    gtk_widget_set_sensitive(app->pauseMenuItem, true);
 
     startGame(app);
     gtk_widget_queue_draw(app->gameArea);
@@ -2975,7 +2975,7 @@ void startGame(TetrimoneApp *app) {
 
   // Update menu items
   gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-  gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+  gtk_widget_set_sensitive(app->pauseMenuItem, true);
   gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
 }
 
@@ -3086,7 +3086,7 @@ void onBlockSizeValueChanged(GtkRange *range, gpointer data) {
   // Update menu state
   if (app->board->isPaused()) {
     gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Resume");
-    gtk_widget_set_sensitive(app->startMenuItem, TRUE);
+    gtk_widget_set_sensitive(app->startMenuItem, true);
   } else {
     gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
     gtk_widget_set_sensitive(app->startMenuItem, FALSE);
@@ -3304,7 +3304,7 @@ void onTrackToggled(GtkCheckMenuItem *menuItem, gpointer userData) {
   // If no tracks are enabled, re-enable this one
   if (!anyEnabled) {
     app->board->enabledTracks[trackIndex] = true;
-    gtk_check_menu_item_set_active(menuItem, TRUE);
+    gtk_check_menu_item_set_active(menuItem, true);
   }
 }
 
@@ -3373,11 +3373,11 @@ void onBlockSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
 
   GtkWidget *minLabel = gtk_label_new("Small");
   gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, true, true, 0);
 
   GtkWidget *maxLabel = gtk_label_new("Large");
   gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
-  gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
+  gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, true, true, 0);
 
   // Current value label that updates as the slider moves
   GtkWidget *currentValueLabel = gtk_label_new(NULL);
@@ -3445,7 +3445,7 @@ void onGameSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
 
   // Width settings
   GtkWidget *widthFrame = gtk_frame_new("Width");
-  gtk_box_pack_start(GTK_BOX(vbox), widthFrame, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), widthFrame, true, true, 0);
 
   GtkWidget *widthBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
   gtk_container_add(GTK_CONTAINER(widthFrame), widthBox);
@@ -3461,14 +3461,14 @@ void onGameSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
 
   GtkWidget *widthScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, widthAdj);
   gtk_scale_set_digits(GTK_SCALE(widthScale), 0); // No decimal places
-  gtk_box_pack_start(GTK_BOX(widthBox), widthScale, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(widthBox), widthScale, true, true, 0);
 
   GtkWidget *widthLabel = gtk_label_new("");
   gtk_box_pack_start(GTK_BOX(widthBox), widthLabel, FALSE, FALSE, 0);
 
   // Height settings
   GtkWidget *heightFrame = gtk_frame_new("Height");
-  gtk_box_pack_start(GTK_BOX(vbox), heightFrame, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), heightFrame, true, true, 0);
 
   GtkWidget *heightBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
   gtk_container_add(GTK_CONTAINER(heightFrame), heightBox);
@@ -3485,7 +3485,7 @@ void onGameSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
 
   GtkWidget *heightScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, heightAdj);
   gtk_scale_set_digits(GTK_SCALE(heightScale), 0); // No decimal places
-  gtk_box_pack_start(GTK_BOX(heightBox), heightScale, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(heightBox), heightScale, true, true, 0);
 
   GtkWidget *heightLabel = gtk_label_new("");
   gtk_box_pack_start(GTK_BOX(heightBox), heightLabel, FALSE, FALSE, 0);
@@ -3557,7 +3557,7 @@ void onGameSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
         }
 
         gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-        gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+        gtk_widget_set_sensitive(app->pauseMenuItem, true);
 
         startGame(app);
       }
@@ -3586,7 +3586,7 @@ gboolean onWindowFocusChanged(GtkWidget *widget, GdkEventFocus *event, gpointer 
       // Don't update the menu item text to show this is a special pause
       gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Resume");
     }
-    // If focus returns (in_event is TRUE) and pause was caused by focus loss, resume the game
+    // If focus returns (in_event is true) and pause was caused by focus loss, resume the game
     else if (event->in && app->pausedByFocusLoss) {
       app->pausedByFocusLoss = false;
       
@@ -3644,7 +3644,7 @@ void onBlockTrailsConfig(GtkMenuItem* menuItem, gpointer userData) {
     
     // Opacity settings
     GtkWidget* opacityFrame = gtk_frame_new("Trail Opacity");
-    gtk_box_pack_start(GTK_BOX(vbox), opacityFrame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), opacityFrame, true, true, 0);
     
     GtkWidget* opacityBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
     gtk_container_add(GTK_CONTAINER(opacityFrame), opacityBox);
@@ -3661,14 +3661,14 @@ void onBlockTrailsConfig(GtkMenuItem* menuItem, gpointer userData) {
     
     GtkWidget* opacityScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, opacityAdj);
     gtk_scale_set_digits(GTK_SCALE(opacityScale), 2);
-    gtk_box_pack_start(GTK_BOX(opacityBox), opacityScale, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(opacityBox), opacityScale, true, true, 0);
     
     GtkWidget* opacityLabel = gtk_label_new("");
     gtk_box_pack_start(GTK_BOX(opacityBox), opacityLabel, FALSE, FALSE, 0);
     
     // Duration settings
     GtkWidget* durationFrame = gtk_frame_new("Trail Duration");
-    gtk_box_pack_start(GTK_BOX(vbox), durationFrame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), durationFrame, true, true, 0);
     
     GtkWidget* durationBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
     gtk_container_add(GTK_CONTAINER(durationFrame), durationBox);
@@ -3685,7 +3685,7 @@ void onBlockTrailsConfig(GtkMenuItem* menuItem, gpointer userData) {
     
     GtkWidget* durationScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, durationAdj);
     gtk_scale_set_digits(GTK_SCALE(durationScale), 2);
-    gtk_box_pack_start(GTK_BOX(durationBox), durationScale, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(durationBox), durationScale, true, true, 0);
     
     GtkWidget* durationLabel = gtk_label_new("");
     gtk_box_pack_start(GTK_BOX(durationBox), durationLabel, FALSE, FALSE, 0);

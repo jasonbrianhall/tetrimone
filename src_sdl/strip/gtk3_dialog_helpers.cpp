@@ -65,7 +65,7 @@ std::vector<std::string> GTK3FileDialog::openFiles(
         NULL
     );
     
-    gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
+    gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), true);
     
     // Add file filter
     GtkFileFilter* fileFilter = gtk_file_filter_new();
@@ -119,8 +119,8 @@ GtkWidget* createTextLabel(const TextConfig& config) {
         gtk_label_set_text(GTK_LABEL(label), config.content.c_str());
     }
     
-    gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
-    gtk_label_set_selectable(GTK_LABEL(label), TRUE);
+    gtk_label_set_line_wrap(GTK_LABEL(label), true);
+    gtk_label_set_selectable(GTK_LABEL(label), true);
     
     if (config.marginTop > 0 || config.marginBottom > 0) {
         gtk_widget_set_margin_top(label, config.marginTop);
@@ -135,7 +135,7 @@ GtkWidget* createTextLabel(const TextConfig& config) {
 GSList* createRadioGroup(GtkWidget* container, const RadioGroupConfig& config) {
     // Create frame
     GtkWidget* frame = gtk_frame_new(config.frameTitle.c_str());
-    gtk_box_pack_start(GTK_BOX(container), frame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(container), frame, true, true, 0);
     
     GtkWidget* reasonBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_add(GTK_CONTAINER(frame), reasonBox);
@@ -152,7 +152,7 @@ GSList* createRadioGroup(GtkWidget* container, const RadioGroupConfig& config) {
         gtk_box_pack_start(GTK_BOX(reasonBox), radioButton, FALSE, FALSE, 0);
         
         if (static_cast<int>(i) == config.defaultSelectedIndex) {
-            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radioButton), TRUE);
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radioButton), true);
         }
     }
     
@@ -349,7 +349,7 @@ void createScoreTabulatorDialog(
     
     // Create notebook (tabbed interface)
     GtkWidget* notebook = gtk_notebook_new();
-    gtk_box_pack_start(GTK_BOX(contentArea), notebook, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(contentArea), notebook, true, true, 0);
     
     // Create a tab for each score set
     for (const auto& tabData : config.tabs) {
@@ -407,48 +407,48 @@ void createScoreTabulatorDialog(
         GtkTreeViewColumn* nameColumn = gtk_tree_view_column_new_with_attributes(
             "Name", renderer, "text", 0, NULL
         );
-        gtk_tree_view_column_set_expand(nameColumn, TRUE);
+        gtk_tree_view_column_set_expand(nameColumn, true);
         gtk_tree_view_column_set_sort_column_id(nameColumn, 0);
-        gtk_tree_view_column_set_resizable(nameColumn, TRUE);
+        gtk_tree_view_column_set_resizable(nameColumn, true);
         gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), nameColumn);
         
         // Score column
         GtkTreeViewColumn* scoreColumn = gtk_tree_view_column_new_with_attributes(
             "Score", renderer, "text", 1, NULL
         );
-        gtk_tree_view_column_set_expand(scoreColumn, TRUE);
+        gtk_tree_view_column_set_expand(scoreColumn, true);
         gtk_tree_view_column_set_sort_column_id(scoreColumn, 1);
-        gtk_tree_view_column_set_resizable(scoreColumn, TRUE);
+        gtk_tree_view_column_set_resizable(scoreColumn, true);
         gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), scoreColumn);
         
         // Difficulty column
         GtkTreeViewColumn* diffColumn = gtk_tree_view_column_new_with_attributes(
             "Difficulty", renderer, "text", 2, NULL
         );
-        gtk_tree_view_column_set_expand(diffColumn, TRUE);
+        gtk_tree_view_column_set_expand(diffColumn, true);
         gtk_tree_view_column_set_sort_column_id(diffColumn, 2);
-        gtk_tree_view_column_set_resizable(diffColumn, TRUE);
+        gtk_tree_view_column_set_resizable(diffColumn, true);
         gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), diffColumn);
         
         // Grid Size column
         GtkTreeViewColumn* sizeColumn = gtk_tree_view_column_new_with_attributes(
             "Grid Size", renderer, "text", 3, NULL
         );
-        gtk_tree_view_column_set_expand(sizeColumn, TRUE);
+        gtk_tree_view_column_set_expand(sizeColumn, true);
         gtk_tree_view_column_set_sort_column_id(sizeColumn, 3);
-        gtk_tree_view_column_set_resizable(sizeColumn, TRUE);
+        gtk_tree_view_column_set_resizable(sizeColumn, true);
         gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), sizeColumn);
         
         // Junk Settings column
         GtkTreeViewColumn* junkColumn = gtk_tree_view_column_new_with_attributes(
             "Junk Lines", renderer, "text", 4, NULL
         );
-        gtk_tree_view_column_set_expand(junkColumn, TRUE);
+        gtk_tree_view_column_set_expand(junkColumn, true);
         gtk_tree_view_column_set_sort_column_id(junkColumn, 5);
-        gtk_tree_view_column_set_resizable(junkColumn, TRUE);
+        gtk_tree_view_column_set_resizable(junkColumn, true);
         gtk_tree_view_append_column(GTK_TREE_VIEW(treeView), junkColumn);
         
-        gtk_tree_view_set_headers_clickable(GTK_TREE_VIEW(treeView), TRUE);
+        gtk_tree_view_set_headers_clickable(GTK_TREE_VIEW(treeView), true);
         
         // Add tree view to scrolled window
         gtk_container_add(GTK_CONTAINER(scrollWindow), treeView);
@@ -529,7 +529,7 @@ void createOpacitySliderDialog(
     };
     GtkWidget* minLabel = createTextLabel(minConfig);
     gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, true, true, 0);
     
     TextConfig maxConfig{
         .content = "Opaque",
@@ -540,7 +540,7 @@ void createOpacitySliderDialog(
     };
     GtkWidget* maxLabel = createTextLabel(maxConfig);
     gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
-    gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
+    gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, true, true, 0);
     
     gtk_widget_show_all(dialog);
     gtk_dialog_run(GTK_DIALOG(dialog));
@@ -649,7 +649,7 @@ void createJoystickMappingDialog(
         gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(rotateCombo), buttonText);
     }
     gtk_combo_box_set_active(GTK_COMBO_BOX(rotateCombo), config.rotate_cw);
-    gtk_box_pack_start(GTK_BOX(rotateBox), rotateCombo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(rotateBox), rotateCombo, true, true, 0);
     gtk_box_pack_start(GTK_BOX(mappingBox), rotateBox, FALSE, FALSE, 0);
     
     // Rotate CCW
@@ -663,7 +663,7 @@ void createJoystickMappingDialog(
         gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(rotateCCWCombo), buttonText);
     }
     gtk_combo_box_set_active(GTK_COMBO_BOX(rotateCCWCombo), config.rotate_ccw);
-    gtk_box_pack_start(GTK_BOX(rotateCCWBox), rotateCCWCombo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(rotateCCWBox), rotateCCWCombo, true, true, 0);
     gtk_box_pack_start(GTK_BOX(mappingBox), rotateCCWBox, FALSE, FALSE, 0);
     
     // Hard Drop
@@ -677,7 +677,7 @@ void createJoystickMappingDialog(
         gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(hardDropCombo), buttonText);
     }
     gtk_combo_box_set_active(GTK_COMBO_BOX(hardDropCombo), config.hard_drop);
-    gtk_box_pack_start(GTK_BOX(hardDropBox), hardDropCombo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(hardDropBox), hardDropCombo, true, true, 0);
     gtk_box_pack_start(GTK_BOX(mappingBox), hardDropBox, FALSE, FALSE, 0);
     
     // Pause
@@ -691,7 +691,7 @@ void createJoystickMappingDialog(
         gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(pauseCombo), buttonText);
     }
     gtk_combo_box_set_active(GTK_COMBO_BOX(pauseCombo), config.pause_button);
-    gtk_box_pack_start(GTK_BOX(pauseBox), pauseCombo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(pauseBox), pauseCombo, true, true, 0);
     gtk_box_pack_start(GTK_BOX(mappingBox), pauseBox, FALSE, FALSE, 0);
     
     // Axis mappings
@@ -709,7 +709,7 @@ void createJoystickMappingDialog(
         gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(xAxisCombo), axisText);
     }
     gtk_combo_box_set_active(GTK_COMBO_BOX(xAxisCombo), config.x_axis);
-    gtk_box_pack_start(GTK_BOX(xAxisBox), xAxisCombo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(xAxisBox), xAxisCombo, true, true, 0);
     GtkWidget* invertXCheck = gtk_check_button_new_with_label("Invert");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(invertXCheck), config.invert_x);
     gtk_box_pack_start(GTK_BOX(xAxisBox), invertXCheck, FALSE, FALSE, 0);
@@ -726,7 +726,7 @@ void createJoystickMappingDialog(
         gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(yAxisCombo), axisText);
     }
     gtk_combo_box_set_active(GTK_COMBO_BOX(yAxisCombo), config.y_axis);
-    gtk_box_pack_start(GTK_BOX(yAxisBox), yAxisCombo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(yAxisBox), yAxisCombo, true, true, 0);
     GtkWidget* invertYCheck = gtk_check_button_new_with_label("Invert");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(invertYCheck), config.invert_y);
     gtk_box_pack_start(GTK_BOX(yAxisBox), invertYCheck, FALSE, FALSE, 0);
@@ -807,7 +807,7 @@ void createGameSetupDialog(
     
     // Junk Lines Percentage Frame
     GtkWidget* junkFrame = gtk_frame_new("Initial Junk Lines");
-    gtk_box_pack_start(GTK_BOX(vbox), junkFrame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), junkFrame, true, true, 0);
     
     GtkWidget* junkBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_add(GTK_CONTAINER(junkFrame), junkBox);
@@ -816,7 +816,7 @@ void createGameSetupDialog(
     GtkWidget* junkScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, junkAdj);
     gtk_scale_set_digits(GTK_SCALE(junkScale), 0);
     gtk_scale_set_value_pos(GTK_SCALE(junkScale), GTK_POS_RIGHT);
-    gtk_box_pack_start(GTK_BOX(junkBox), junkScale, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(junkBox), junkScale, true, true, 0);
     
     GtkWidget* junkLabel = gtk_label_new("Percentage of board to fill with junk lines (0-50%)");
     gtk_box_pack_start(GTK_BOX(junkBox), junkLabel, FALSE, FALSE, 0);
@@ -824,12 +824,12 @@ void createGameSetupDialog(
     GtkWidget* junkDescription = gtk_label_new(
         "Junk lines contain random blocks with at least 4 empty spaces per row.\n"
         "Similar colors have a higher chance of being placed adjacent to each other.");
-    gtk_label_set_line_wrap(GTK_LABEL(junkDescription), TRUE);
+    gtk_label_set_line_wrap(GTK_LABEL(junkDescription), true);
     gtk_box_pack_start(GTK_BOX(junkBox), junkDescription, FALSE, FALSE, 5);
     
     // Junk Lines Per Level Frame
     GtkWidget* junkPerLevelFrame = gtk_frame_new("Junk Lines Per Level");
-    gtk_box_pack_start(GTK_BOX(vbox), junkPerLevelFrame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), junkPerLevelFrame, true, true, 0);
     
     GtkWidget* junkPerLevelBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_add(GTK_CONTAINER(junkPerLevelFrame), junkPerLevelBox);
@@ -838,7 +838,7 @@ void createGameSetupDialog(
     GtkWidget* junkPerLevelScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, junkPerLevelAdj);
     gtk_scale_set_digits(GTK_SCALE(junkPerLevelScale), 0);
     gtk_scale_set_value_pos(GTK_SCALE(junkPerLevelScale), GTK_POS_RIGHT);
-    gtk_box_pack_start(GTK_BOX(junkPerLevelBox), junkPerLevelScale, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(junkPerLevelBox), junkPerLevelScale, true, true, 0);
     
     GtkWidget* junkPerLevelLabel = gtk_label_new("Number of junk lines to add when advancing to a new level (0-5)");
     gtk_box_pack_start(GTK_BOX(junkPerLevelBox), junkPerLevelLabel, FALSE, FALSE, 0);
@@ -846,12 +846,12 @@ void createGameSetupDialog(
     GtkWidget* junkPerLevelDescription = gtk_label_new(
         "These junk lines will push up from the bottom of the board\n"
         "when you advance to a new level, increasing the challenge.");
-    gtk_label_set_line_wrap(GTK_LABEL(junkPerLevelDescription), TRUE);
+    gtk_label_set_line_wrap(GTK_LABEL(junkPerLevelDescription), true);
     gtk_box_pack_start(GTK_BOX(junkPerLevelBox), junkPerLevelDescription, FALSE, FALSE, 5);
     
     // Initial Level Frame
     GtkWidget* levelFrame = gtk_frame_new("Starting Level");
-    gtk_box_pack_start(GTK_BOX(vbox), levelFrame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), levelFrame, true, true, 0);
     
     GtkWidget* levelBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_add(GTK_CONTAINER(levelFrame), levelBox);
@@ -860,7 +860,7 @@ void createGameSetupDialog(
     GtkWidget* levelScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, levelAdj);
     gtk_scale_set_digits(GTK_SCALE(levelScale), 0);
     gtk_scale_set_value_pos(GTK_SCALE(levelScale), GTK_POS_RIGHT);
-    gtk_box_pack_start(GTK_BOX(levelBox), levelScale, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(levelBox), levelScale, true, true, 0);
     
     GtkWidget* levelLabel = gtk_label_new("Start at higher levels for increased difficulty and points");
     gtk_box_pack_start(GTK_BOX(levelBox), levelLabel, FALSE, FALSE, 0);
@@ -945,12 +945,12 @@ void createVolumeControlDialog(
     GtkWidget* sfxMinLabel = gtk_label_new(
         config.isRetroMode ? "ОТКЛЮЧЕНО" : "Mute");
     gtk_widget_set_halign(sfxMinLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(sfxRangeBox), sfxMinLabel, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(sfxRangeBox), sfxMinLabel, true, true, 0);
     
     GtkWidget* sfxMaxLabel = gtk_label_new(
         config.isRetroMode ? "МАКСИМАЛЬНАЯ ГРОМКОСТЬ" : "Max");
     gtk_widget_set_halign(sfxMaxLabel, GTK_ALIGN_END);
-    gtk_box_pack_end(GTK_BOX(sfxRangeBox), sfxMaxLabel, TRUE, TRUE, 0);
+    gtk_box_pack_end(GTK_BOX(sfxRangeBox), sfxMaxLabel, true, true, 0);
     
     // Connect value-changed signal - volume.cpp defines onVolumeValueChanged
     g_signal_connect(G_OBJECT(sfxScale), "value-changed",
@@ -979,12 +979,12 @@ void createVolumeControlDialog(
     GtkWidget* musicMinLabel = gtk_label_new(
         config.isRetroMode ? "ТИШИНА" : "Mute");
     gtk_widget_set_halign(musicMinLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(musicRangeBox), musicMinLabel, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(musicRangeBox), musicMinLabel, true, true, 0);
     
     GtkWidget* musicMaxLabel = gtk_label_new(
         config.isRetroMode ? "СЛАВА РОДИНЕ!" : "Max");
     gtk_widget_set_halign(musicMaxLabel, GTK_ALIGN_END);
-    gtk_box_pack_end(GTK_BOX(musicRangeBox), musicMaxLabel, TRUE, TRUE, 0);
+    gtk_box_pack_end(GTK_BOX(musicRangeBox), musicMaxLabel, true, true, 0);
     
     // Connect value-changed signal - volume.cpp defines onMusicVolumeValueChanged
     g_signal_connect(G_OBJECT(musicScale), "value-changed",

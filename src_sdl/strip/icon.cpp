@@ -117,7 +117,7 @@ void setWindowIcon(GtkWindow* window) {
     int height = 64;
     
     // Create a pixbuf with an alpha channel (transparency)
-    GdkPixbuf* icon = gdk_pixbuf_new(GDK_COLORSPACE_RGB, TRUE, 8, width, height);
+    GdkPixbuf* icon = gdk_pixbuf_new(GDK_COLORSPACE_RGB, true, 8, width, height);
     
     // Get a pointer to the pixel data
     guchar* pixels = gdk_pixbuf_get_pixels(icon);

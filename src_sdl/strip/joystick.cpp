@@ -216,7 +216,7 @@ gboolean pollJoystick(gpointer data) {
 
   // Skip further input processing if game is over or paused
   if (app->board->isGameOver() || app->board->isPaused()) {
-    return TRUE; // Keep the timer going but don't process movement inputs
+    return true; // Keep the timer going but don't process movement inputs
   }
 
   // Process axes with acceleration using custom mapping
@@ -489,7 +489,7 @@ gboolean pollJoystick(gpointer data) {
   gtk_widget_queue_draw(app->nextPieceArea);
   updateLabels(app);
 
-  return TRUE; // Keep the timer going
+  return true; // Keep the timer going
 }
 
 
@@ -553,11 +553,11 @@ void onJoystickTestButton(GtkButton* button, gpointer userData) {
     GtkWidget* textScroll = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(textScroll),
                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-    gtk_box_pack_start(GTK_BOX(contentArea), textScroll, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(contentArea), textScroll, true, true, 0);
     
     GtkWidget* textView = gtk_text_view_new();
     gtk_text_view_set_editable(GTK_TEXT_VIEW(textView), FALSE);
-    gtk_text_view_set_monospace(GTK_TEXT_VIEW(textView), TRUE);
+    gtk_text_view_set_monospace(GTK_TEXT_VIEW(textView), true);
     gtk_container_add(GTK_CONTAINER(textScroll), textView);
     
     // Get the buffer
@@ -682,7 +682,7 @@ gboolean updateJoystickTestDisplay(gpointer userData) {
     TetrimoneApp* app = data->app;
     
     if (!app->joystickEnabled || !app->joystick) {
-        return TRUE; // Keep the timer going
+        return true; // Keep the timer going
     }
     
     // Update joystick state
@@ -761,7 +761,7 @@ gboolean updateJoystickTestDisplay(gpointer userData) {
     // Update the text buffer
     gtk_text_buffer_set_text(buffer, info.c_str(), -1);
     
-    return TRUE; // Keep the timer going
+    return true; // Keep the timer going
 }
 
 // Callback for joystick mapping apply - called by dialog helper
