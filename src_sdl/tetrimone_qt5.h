@@ -225,11 +225,6 @@ private:
     unsigned int trailUpdateTimer;
     std::chrono::high_resolution_clock::time_point lastTrailTime;
 
-    bool sound_enabled_;
-    bool retroModeActive;
-    bool patrioticModeActive;
-    bool retroMusicActive;
-    bool simpleBlocksActive;
     std::vector<bool> enabledTracks;
 
     bool isUsingBackgroundImage_;
@@ -237,7 +232,6 @@ private:
     std::vector<std::string> backgroundImages;
 
 
-    bool showGridLines;
     std::string sounds_zip_path_ = "sound.zip";  // Path to sounds ZIP file
 
     bool showPropagandaMessage;
@@ -261,6 +255,15 @@ public:
     TetrimoneBoard(int width = GRID_WIDTH, int height = GRID_HEIGHT);
     ~TetrimoneBoard();
 
+    bool simpleBlocksActive = false;
+    bool retroModeActive = false;  // Flag for retro mode
+    bool patrioticModeActive = false;
+    bool retroMusicActive = false;
+    bool showGridLines = false; // Grid lines off by default
+    bool sound_enabled_ = true;
+    std::string backgroundImagePath;
+
+    const std::string& getBackgroundImagePath() const { return backgroundImagePath; }
     void initialize();
     void spawnNewPiece();
     bool canPlace(const TetrimoneBlock& block, int x, int y) const;
@@ -280,6 +283,17 @@ public:
     int clearLines();
     void generateNewPiece();
     void updateGame();
+
+    void fillJunkRows(int startRow, int endRow);
+    std::vector<int> generateRandomPositions(int count, int maxWidth);
+    int selectNextBlockType(int currentType, int currentTypeCount);
+    void shiftGridContentUp(int numRows);
+    void shiftCurrentPieceUp(int numRows);
+    void repositionPieceAboveJunk(TetrimoneBlock* piece, int junkStartRow);
+    void ensureValidPiecePosition();
+
+
+
     int getGridValue(int x, int y) const;
     void restart();
     void dismissSplashScreen();
