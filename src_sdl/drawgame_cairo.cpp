@@ -1,4 +1,14 @@
+#ifdef GTK3
 #include "tetrimone_gtk.h"
+#include <glib.h>
+#endif
+
+#ifdef QT5
+#include "tetrimone_qt5.h"
+#include <QObject>
+#include <QTimer>
+#endif
+
 #include "audiomanager.h"
 #include <iostream>
 #include <string>
@@ -1106,6 +1116,7 @@ void TetrimoneBoard::cleanupBackgroundImages() {
     patriotBackgroundImages.clear();
 }
 
+#ifdef GTK3
 cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename) {
     // Read the file into memory first
     GFile* file = g_file_new_for_path(filename);
@@ -1195,6 +1206,7 @@ cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t
     
     return surface;
 }
+#endif  // GTK3
 
 bool TetrimoneBoard::loadBackgroundImage(const std::string& imagePath) {
     // Clean up previous image if it exists
@@ -1324,27 +1336,35 @@ void TetrimoneBoard::startBackgroundTransition() {
     }
     
     // If already transitioning, cancel the current transition
+#ifdef GTK3
     if (isTransitioning && transitionTimerId > 0) {
         g_source_remove(transitionTimerId);
         transitionTimerId = 0;
     }
+#else  // QT5
+    if (isTransitioning && transitionTimerId) {
+        transitionTimerId->stop();
+        transitionTimerId->deleteLater();
+        transitionTimerId = nullptr;
+    }
+#endif
     
     // Store the current background for the fade out effect
     if (oldBackground != nullptr) {
-        cairo_surface_destroy(oldBackground);
+        cairo_surface_destroy((cairo_surface_t*)oldBackground);
     }
     
     // Clone the current background
     if (backgroundImage != nullptr) {
-        int width = cairo_image_surface_get_width(backgroundImage);
-        int height = cairo_image_surface_get_height(backgroundImage);
+        int width = cairo_image_surface_get_width((cairo_surface_t*)backgroundImage);
+        int height = cairo_image_surface_get_height((cairo_surface_t*)backgroundImage);
         
         oldBackground = cairo_image_surface_create(
-            cairo_image_surface_get_format(backgroundImage),
+            cairo_image_surface_get_format((cairo_surface_t*)backgroundImage),
             width, height);
         
-        cairo_t* cr = cairo_create(oldBackground);
-        cairo_set_source_surface(cr, backgroundImage, 0, 0);
+        cairo_t* cr = cairo_create((cairo_surface_t*)oldBackground);
+        cairo_set_source_surface(cr, (cairo_surface_t*)backgroundImage, 0, 0);
         cairo_paint(cr);
         cairo_destroy(cr);
     }
@@ -1360,6 +1380,7 @@ void TetrimoneBoard::startBackgroundTransition() {
     // We'll call selectRandomBackground() when we're fully faded out
     
     // Start the transition timer - update 20 times per second
+#ifdef GTK3
     transitionTimerId = g_timeout_add(50, 
         [](gpointer data) -> gboolean {
             TetrimoneBoard* board = static_cast<TetrimoneBoard*>(data);
@@ -1367,6 +1388,14 @@ void TetrimoneBoard::startBackgroundTransition() {
             return TRUE; // Keep the timer running
         }, 
         this);
+#else  // QT5
+    transitionTimerId = new QTimer(nullptr);
+    transitionTimerId->setInterval(50);
+    QObject::connect(transitionTimerId, &QTimer::timeout, [this]() {
+        this->updateBackgroundTransition();
+    });
+    transitionTimerId->start();
+#endif
 }
 
 void TetrimoneBoard::updateBackgroundTransition() {
@@ -1397,29 +1426,45 @@ void TetrimoneBoard::updateBackgroundTransition() {
         
         // Clean up the old background
         if (oldBackground != nullptr) {
-            cairo_surface_destroy(oldBackground);
+            cairo_surface_destroy((cairo_surface_t*)oldBackground);
             oldBackground = nullptr;
         }
         
         // Clean up the timer
+#ifdef GTK3
         if (transitionTimerId > 0) {
             g_source_remove(transitionTimerId);
             transitionTimerId = 0;
         }
+#else  // QT5
+        if (transitionTimerId) {
+            transitionTimerId->stop();
+            transitionTimerId->deleteLater();
+            transitionTimerId = nullptr;
+        }
+#endif
     }
 }
 
 void TetrimoneBoard::cancelBackgroundTransition() {
+#ifdef GTK3
     if (isTransitioning && transitionTimerId > 0) {
         g_source_remove(transitionTimerId);
         transitionTimerId = 0;
     }
+#else  // QT5
+    if (isTransitioning && transitionTimerId) {
+        transitionTimerId->stop();
+        transitionTimerId->deleteLater();
+        transitionTimerId = nullptr;
+    }
+#endif
     
     isTransitioning = false;
     
     // Clean up the old background
     if (oldBackground != nullptr) {
-        cairo_surface_destroy(oldBackground);
+        cairo_surface_destroy((cairo_surface_t*)oldBackground);
         oldBackground = nullptr;
     }
 }
