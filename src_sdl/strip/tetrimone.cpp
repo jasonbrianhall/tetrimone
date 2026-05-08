@@ -1000,3 +1000,15 @@ void ui_set_active_theme(TetrimoneApp *app, int index)
 #endif
     
 }
+
+void ui_window_fullscreen(TetrimoneApp *app)
+{
+#ifdef GTK3
+    gtk_window_fullscreen(GTK_WINDOW(app->window));
+#endif
+
+#ifdef QT5
+    app->window->showFullScreen();
+#endif
+}
+
