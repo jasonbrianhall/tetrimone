@@ -468,7 +468,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    TetrimoneApp app;  // whatever your existing init path is
+    TetrimoneApp app;
 
     // Just pass args directly to your backend entry point
     return ui_run_application(argc, argv, &app, &args);

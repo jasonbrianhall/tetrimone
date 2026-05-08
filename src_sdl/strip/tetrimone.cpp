@@ -976,3 +976,16 @@ void drawBoard(TetrimoneBoard *board) {
     board->app->gameArea->update();
 #endif
 }
+
+void TetrimoneBoard::setLevel(int newLevel) {
+    if (newLevel >= 1) {
+        level = newLevel;
+    }
+}
+
+void TetrimoneBoard::setMinBlock(int size) {
+    if (size >= 1 && size <=4) {
+        minBlockSize=size;
+    }
+}
+

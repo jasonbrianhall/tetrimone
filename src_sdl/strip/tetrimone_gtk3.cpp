@@ -1168,19 +1168,6 @@ if (tetrimoneApp->board->retroModeActive) {
   startGame(tetrimoneApp);
 }
 
-void TetrimoneBoard::setLevel(int newLevel) {
-    if (newLevel >= 1) {
-        level = newLevel;
-    }
-}
-
-void TetrimoneBoard::setMinBlock(int size) {
-    if (size >= 1 && size <=4) {
-        minBlockSize=size;
-    }
-}
-
-
 // Function to create the menu bar with a better organization
 void createMenu(TetrimoneApp *app) {
   GtkWidget *menuBar = gtk_menu_bar_new();

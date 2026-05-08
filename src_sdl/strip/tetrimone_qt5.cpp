@@ -733,31 +733,3 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     app->timerId = gameTimer->timerId();
 }
 
-// ============================================================================
-// Application Entry Point
-// ============================================================================
-
-int main_qt5(int argc, char* argv[], TetrimoneApp* app) {
-    (void)argc; // Suppress unused parameter warning
-    (void)argv; // Suppress unused parameter warning
-    
-    // Initialize game board
-    app->board = new TetrimoneBoard();
-    app->difficulty = 1; // Easy
-    app->dropSpeed = 500;
-    app->backgroundMusicPlaying = false;
-    app->joystickEnabled = false;
-    
-    // Initialize SDL for joystick
-    initSDL(app);
-    
-    // Setup UI
-    int windowWidth = GRID_WIDTH * BLOCK_SIZE + 250;
-    int windowHeight = GRID_HEIGHT * BLOCK_SIZE;
-    setupGameUI(app, windowWidth, windowHeight);
-    
-    // Show window
-    app->window->show();
-    
-    return 0;
-}
