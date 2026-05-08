@@ -81,7 +81,13 @@ class TetrimoneBoard {
 private:
     // Core game state
     float heatLevel;
-    unsigned int heatDecayTimer;
+    #ifdef QT5
+        QTimer* heatDecayTimer = nullptr;
+    #endif
+    
+    #ifdef GTK3
+        unsigned int heatDecayTimer;
+    #endif
     std::vector<std::vector<int>> grid;
     std::unique_ptr<TetrimoneBlock> currentPiece;
     std::vector<std::unique_ptr<TetrimoneBlock>> nextPieces;
@@ -151,7 +157,9 @@ private:
         unsigned int propagandaScaleTimerId = 0;
         unsigned int backgroundImageTimer = 0;
         unsigned int transitionTimerId = 0;
-    #else
+    #endif
+    
+    #ifdef QT5
         QTimer* smoothMovementTimer = nullptr;
         QTimer* lineClearAnimationTimer = nullptr;
         QTimer* themeTransitionTimer = nullptr;

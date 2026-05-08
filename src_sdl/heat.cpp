@@ -1,4 +1,11 @@
+#ifdef GTK3
 #include "tetrimone_gtk.h"
+#include <glib.h>
+#else
+#include "tetrimone_qt5.h"
+#include <QObject>
+#include <QTimer>
+#endif
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -13,14 +20,12 @@ void TetrimoneBoard::updateHeat() {
         }, this);
 
 }
-#endif
-
-#ifdef QT5
+#else  // QT5
 void TetrimoneBoard::updateHeat() {
     if (!heatDecayTimer) {
-        heatDecayTimer = new QTimer(this);
+        heatDecayTimer = new QTimer(nullptr);
         heatDecayTimer->setInterval(1000); // 1000 ms
-        connect(heatDecayTimer, &QTimer::timeout, this, [this]() {
+        QObject::connect(heatDecayTimer, &QTimer::timeout, [this]() {
             this->coolDown();
         });
     }
@@ -111,6 +116,3 @@ float TetrimoneBoard::getHeatLevel() {
 void TetrimoneBoard::setHeatLevel(float heatLevelData) {
     heatLevel=heatLevelData;
 }
-
-
-
