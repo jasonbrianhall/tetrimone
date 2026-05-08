@@ -989,3 +989,14 @@ void TetrimoneBoard::setMinBlock(int size) {
     }
 }
 
+void ui_set_active_theme(TetrimoneApp *app, int index)
+{
+#ifdef GTK3
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->themeMenuItems[index]), true);
+#endif
+
+#ifdef QT5
+    app->themeMenuItems[index]->setChecked(true);
+#endif
+    
+}

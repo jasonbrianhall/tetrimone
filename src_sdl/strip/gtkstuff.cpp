@@ -699,14 +699,6 @@ void ui_set_sound_enabled(TetrimoneApp *app, bool enabled)
     );
 }
 
-void ui_set_active_theme(TetrimoneApp *app, int index)
-{
-    gtk_check_menu_item_set_active(
-        GTK_CHECK_MENU_ITEM(app->themeMenuItems[index]),
-        true
-    );
-}
-
 void ui_set_sound_enabled(TetrimoneApp *app) {
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem),  app->board->sound_enabled_);
 }
