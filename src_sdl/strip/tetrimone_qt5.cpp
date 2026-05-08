@@ -1,4 +1,5 @@
 #include "tetrimone_qt5.h"
+#include "tetrimone_core.h"
 #include "audiomanager.h"
 #include <iostream>
 #include <string>

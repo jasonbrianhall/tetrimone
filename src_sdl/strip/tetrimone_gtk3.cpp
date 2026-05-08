@@ -155,10 +155,6 @@ TetrimoneBlock::TetrimoneBlock(int type) : type(type), rotation(0) {
 
 int TetrimoneBlock::getRotation() const { return rotation; }
 
-void TetrimoneBlock::rotate(bool clockwise) {
-  rotation = (rotation + (clockwise ? 1 : 3)) % 4;
-}
-
 void TetrimoneBlock::move(int dx, int dy) {
   x += dx;
   y += dy;
@@ -181,116 +177,6 @@ std::array<double, 3> TetrimoneBlock::getColor() const {
 void TetrimoneBlock::setPosition(int newX, int newY) {
   x = newX;
   y = newY;
-}
-
-// TetrimoneBoard class implementation
-TetrimoneBoard::TetrimoneBoard()
-    : score(0), level(1), linesCleared(0), gameOver(false),paused(false),
-      ghostPieceEnabled(true), splashScreenActive(true),
-      backgroundImage(nullptr), useBackgroundImage(false),
-      backgroundOpacity(0.3), useBackgroundZip(false),
-      currentBackgroundIndex(0), isTransitioning(false), transitionOpacity(0.0),
-      transitionDirection(0), oldBackground(nullptr), transitionTimerId(0),
-      consecutiveClears(0), maxConsecutiveClears(0), lastClearCount(0),
-      sequenceActive(false), lineClearActive(false), lineClearProgress(0.0), lineClearAnimationTimer(0),
-currentPieceInterpolatedX(0), currentPieceInterpolatedY(0),
-lastPieceX(0), lastPieceY(0), smoothMovementTimer(0), movementProgress(0.0),
-      isThemeTransitioning(false), oldThemeIndex(0), newThemeIndex(0),
-      themeTransitionProgress(0.0), themeTransitionTimer(0) {
-  rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
-
-    showPropagandaMessage = false;
-    propagandaTimerId = 0;
-    propagandaMessageDuration = 2000; // 2 seconds display time
-
-fireworksActive = false;
-fireworksTimer = 0;
-fireworksType = 0;
-
-trailsEnabled = true;          // Enabled by default
-maxTrailSegments = 3;          // Keep only 3 trail segments (reduced)
-trailOpacity = 0.6;            // Default opacity
-trailDuration = 0.1;           // Default duration (seconds)
-trailUpdateTimer = 0;
-lastTrailTime = std::chrono::high_resolution_clock::now();
-
-
-heatLevel = 0.5f;
-heatDecayTimer = 0;
-  // Initialize grid with maximum possible dimensions to avoid reallocation
-  grid.resize(MAX_GRID_HEIGHT, std::vector<int>(MAX_GRID_WIDTH, 0));
-
-  // Initialize with 3 next pieces instead of just one
-  nextPieces.resize(3);
-
-  // Generate initial pieces
-  generateNewPiece();
-
-  // Try to load background.zip by default
-  if (loadBackgroundImagesFromZip("background.zip")) {
-    std::cout << "Successfully loaded background images from background.zip"
-              << std::endl;
-    // Background should be enabled by default if successfully loaded
-    useBackgroundImage = true;
-    useBackgroundZip = true;
-  } else {
-    std::cout << "Could not load background.zip, backgrounds will need to be "
-                 "loaded manually"
-              << std::endl;
-  }
-  for (int i = 0; i < 5; i++) {
-    enabledTracks[i] = true;
-  }
-}
-
-TetrimoneBoard::~TetrimoneBoard() {
-    // Cancel any ongoing transition and clean up resources
-    cancelBackgroundTransition();
-
-    // Cancel propaganda message timers
-    if (propagandaTimerId > 0) {
-        g_source_remove(propagandaTimerId);
-        propagandaTimerId = 0;
-    }
-    
-    if (propagandaScaleTimerId > 0) {
-        g_source_remove(propagandaScaleTimerId);
-        propagandaScaleTimerId = 0;
-    }
-
-    if (backgroundImage != nullptr) {
-        cairo_surface_destroy(backgroundImage);
-        backgroundImage = nullptr;
-    }
-
-    if (themeTransitionTimer > 0) {
-        g_source_remove(themeTransitionTimer);
-        themeTransitionTimer = 0;
-    }
-
-if (lineClearAnimationTimer > 0) {
-    g_source_remove(lineClearAnimationTimer);
-    lineClearAnimationTimer = 0;
-}
-
-if (smoothMovementTimer > 0) {
-    g_source_remove(smoothMovementTimer);
-    smoothMovementTimer = 0;
-}
-
-    // Clean up any background images from ZIP
-    cleanupBackgroundImages();
-
-if (fireworksTimer > 0) {
-    g_source_remove(fireworksTimer);
-    fireworksTimer = 0;
-}
-
-if (trailUpdateTimer > 0) {
-    g_source_remove(trailUpdateTimer);
-    trailUpdateTimer = 0;
-}
-
 }
 
 void TetrimoneBoard::createBlockTrail() {
@@ -518,25 +404,6 @@ bool TetrimoneBoard::movePiece(int dx, int dy) {
     // Start smooth movement animation
     startSmoothMovement(oldX, oldY);
     
-    return true;
-}
-
-
-bool TetrimoneBoard::rotatePiece(bool clockwise) {
-    if (gameOver || paused)
-        return false;
-
-    currentPiece->rotate(clockwise);
-
-    if (checkCollision(*currentPiece)) {
-        currentPiece->rotate(!clockwise); // Rotate back in opposite direction
-        return false;
-    }
-
-    if (trailsEnabled && !retroModeActive) {
-         createBlockTrail();
-    }
-
     return true;
 }
 
@@ -1010,85 +877,11 @@ void TetrimoneBoard::generateNewPiece() {
   }
 }
 
-void TetrimoneBoard::updateGame() {
-  if (gameOver || paused || splashScreenActive)
-    return;
-
-  // Existing update code...
-  if (!movePiece(0, 1)) {
-    lockPiece();
-    clearLines();
-    generateNewPiece();
-  }
-}
-
-void TetrimoneBoard::hardDrop() {
-  if (gameOver || paused)
-    return;
-
-  // Move the piece down until collision
-  while (movePiece(0, 1)) {
-    // Give extra points for hard drop
-    score += 2;
-  }
-
-  // Lock the piece
-  lockPiece();
-
-  // Clear any full lines
-  clearLines();
-
-  // Generate a new piece
-  generateNewPiece();
-}
-
 int TetrimoneBoard::getGridValue(int x, int y) const {
   if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
     return 0;
   }
   return grid[y][x];
-}
-
-void TetrimoneBoard::restart() {
-  // Clear the grid
-  for (auto &row : grid) {
-    std::fill(row.begin(), row.end(), 0);
-  }
-  heatLevel = 0.5f;
-  heatDecayTimer = 0;
-  // Reset game state
-  score = 0;
-  level = initialLevel; // Use initialLevel instead of hardcoded 1
-  linesCleared = 0;
-  gameOver = false;
-  paused = false;
-  splashScreenActive = true; // Show splash screen on restart
-
-  // Reset pieces
-  currentPiece.reset();
-  for (auto &piece : nextPieces) {
-    piece.reset();
-  }
-
-  // Generate junk lines if percentage > 0
-  if (junkLinesPercentage > 0) {
-    generateJunkLines(junkLinesPercentage);
-  }
-
-  // Generate new pieces
-  generateNewPiece();
-
-  // Select a random background if using background images from ZIP
-  if (useBackgroundZip && !backgroundImages.empty()) {
-    // Start a smooth background transition
-    startBackgroundTransition();
-  }
-
-  consecutiveClears = 0;
-  maxConsecutiveClears = 0;
-  lastClearCount = 0;
-  sequenceActive = false;
-  highScoreAlreadyProcessed = false;
 }
 
 gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
@@ -3004,30 +2797,6 @@ void onMenuDeactivated(GtkWidget *widget, gpointer userData) {
              "Resume") != 0) {
     onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
   }
-}
-
-bool TetrimoneBoard::isGameOver() const {
-  // If this is the first time checking game over status since it became true,
-  // play the game over sound
-  bool soundPlayed = false;
-  if (gameOver && !soundPlayed) {
-    // Cast away const to allow calling non-const member function
-    TetrimoneBoard *nonConstThis = const_cast<TetrimoneBoard *>(this);
-    if (retroModeActive) {
-        nonConstThis->playSound(GameSoundEvent::GameoverRetro);
-    } else {
-        nonConstThis->playSound(GameSoundEvent::Gameover);
-    }    
-    
-    soundPlayed = true;
-  }
-
-  // If game is no longer over, reset the sound played flag
-  if (!gameOver) {
-    soundPlayed = false;
-  }
-
-  return gameOver;
 }
 
 void calculateBlockSize(TetrimoneApp *app) {
