@@ -23,24 +23,24 @@
 #include <QObject>
 
 // Global variables for key repeat handling
-bool keyDownPressed = false;
-bool keyLeftPressed = false;
-bool keyRightPressed = false;
-int keyDownTimer = 0;
-int keyLeftTimer = 0;
-int keyRightTimer = 0;
-int keyDownDelay = 150;
-int keyLeftDelay = 150;
-int keyRightDelay = 150;
-int keyDownCount = 0;
-int keyLeftCount = 0;
-int keyRightCount = 0;
+extern bool keyDownPressed;
+extern bool keyLeftPressed;
+extern bool keyRightPressed;
+extern int keyDownTimer;
+extern int keyLeftTimer;
+extern int keyRightTimer;
+extern int keyDownDelay;
+extern int keyLeftDelay;
+extern int keyRightDelay;
+extern int keyDownCount;
+extern int keyLeftCount;
+extern int keyRightCount;
 
 // Global variables
-int BLOCK_SIZE = 30;
-int currentThemeIndex = 0;
-int GRID_WIDTH = 10;
-int GRID_HEIGHT = 22;
+extern int BLOCK_SIZE;
+extern int currentThemeIndex;
+extern int GRID_WIDTH;
+extern int GRID_HEIGHT;
 
 // ============================================================================
 // Qt5 Game Area Widget

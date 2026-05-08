@@ -23,6 +23,108 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+// Global variables
+int BLOCK_SIZE = 30;
+int currentThemeIndex = 0;
+int GRID_WIDTH = 10;
+int GRID_HEIGHT = 22;
+
+int keyDownTimer = 0;
+int keyLeftTimer = 0;
+int keyRightTimer = 0;
+int keyDownDelay = 150;
+int keyLeftDelay = 150;
+int keyRightDelay = 150;
+int keyDownCount = 0;
+int keyLeftCount = 0;
+int keyRightCount = 0;
+bool keyDownPressed = false;
+bool keyLeftPressed = false;
+bool keyRightPressed = false;
+
+// ============================================================================
+// TetrimoneBlock class implementation
+// ============================================================================
+TetrimoneBlock::TetrimoneBlock(int type) : type(type), rotation(0) {
+  // Start pieces centered at top
+  x = GRID_WIDTH / 2 - 2;
+  y = 0;
+}
+
+int TetrimoneBlock::getRotation() const { return rotation; }
+
+void TetrimoneBlock::rotate(bool clockwise) {
+  rotation = (rotation + (clockwise ? 1 : 3)) % 4;
+}
+
+std::vector<std::vector<int>> TetrimoneBlock::getShape() const {
+  return TETRIMONEBLOCK_SHAPES[type][rotation];
+}
+
+std::array<double, 3> TetrimoneBlock::getColor() const {
+    int themeIndex = currentThemeIndex;
+    if (themeIndex >= TETRIMONEBLOCK_COLOR_THEMES.size()) {
+        themeIndex = TETRIMONEBLOCK_COLOR_THEMES.size() - 1;
+    }
+    return TETRIMONEBLOCK_COLOR_THEMES[themeIndex][type];
+}
+
+void TetrimoneBlock::setPosition(int newX, int newY) {
+  x = newX;
+  y = newY;
+}
+
+// ============================================================================
+// TetrimoneBoard class implementation
+// ============================================================================
+TetrimoneBoard::TetrimoneBoard()
+    : score(0), level(1), linesCleared(0), gameOver(false), paused(false),
+      ghostPieceEnabled(true), splashScreenActive(true),
+      backgroundImage(nullptr), useBackgroundImage(false),
+      backgroundOpacity(0.3), useBackgroundZip(false),
+      currentBackgroundIndex(0), isTransitioning(false), transitionOpacity(0.0),
+      transitionDirection(0), oldBackground(nullptr), transitionTimerId(0),
+      consecutiveClears(0), maxConsecutiveClears(0), lastClearCount(0),
+      sequenceActive(false), lineClearActive(false), lineClearProgress(0.0), lineClearAnimationTimer(0),
+      currentPieceInterpolatedX(0), currentPieceInterpolatedY(0),
+      lastPieceX(0), lastPieceY(0), smoothMovementTimer(0), movementProgress(0.0),
+      isThemeTransitioning(false), oldThemeIndex(0), newThemeIndex(0),
+      themeTransitionProgress(0.0), themeTransitionTimer(0) {
+  rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
+
+  showPropagandaMessage = false;
+  propagandaTimerId = 0;
+  propagandaMessageDuration = 2000;
+
+  fireworksActive = false;
+  fireworksTimer = 0;
+  fireworksType = 0;
+
+  trailsEnabled = true;
+  maxTrailSegments = 3;
+  trailOpacity = 0.6;
+  trailDuration = 0.1;
+  trailUpdateTimer = 0;
+  lastTrailTime = std::chrono::high_resolution_clock::now();
+
+  heatLevel = 0.5f;
+  heatDecayTimer = 0;
+  grid.resize(MAX_GRID_HEIGHT, std::vector<int>(MAX_GRID_WIDTH, 0));
+  nextPieces.resize(3);
+  generateNewPiece();
+
+  if (loadBackgroundImagesFromZip("background.zip")) {
+    std::cout << "Successfully loaded background images from background.zip" << std::endl;
+    useBackgroundImage = true;
+    useBackgroundZip = true;
+  } else {
+    std::cout << "Could not load background.zip, backgrounds will need to be loaded manually" << std::endl;
+  }
+  for (int i = 0; i < 5; i++) {
+    enabledTracks[i] = true;
+  }
+}
+
 void TetrimoneBoard::updateGame() {
   if (gameOver || paused || splashScreenActive)
     return;
