@@ -1,8 +1,11 @@
 // Enhanced drawgame.cpp with smooth animations
 #ifdef GTK3
 #include "tetrimone_gtk.h"
+#include <glib.h>
 #else
 #include "tetrimone_qt5.h"
+#include <QObject>
+#include <QTimer>
 #endif
 
 #include "audiomanager.h"
@@ -23,7 +26,11 @@
 
 void TetrimoneBoard::getCurrentPieceInterpolatedPosition(double &x, double &y) const {
   if (currentPiece) {
+#ifdef GTK3
     if (smoothMovementTimer > 0 && movementProgress < 1.0) {
+#else
+    if (smoothMovementTimer != nullptr && movementProgress < 1.0) {
+#endif
       // Interpolate between last position and current position
       double t = movementProgress;
       // Use easing function for smoother movement
@@ -46,34 +53,50 @@ bool TetrimoneBoard::isLineBeingCleared(int y) const {
 }
 
 void TetrimoneBoard::startSmoothMovement(int newX, int newY) {
-  if (currentPiece) {
-    lastPieceX = currentPiece->getX();
-    lastPieceY = currentPiece->getY();
-    movementProgress = 0.0;
-    
-    // Set start time for this animation
-    movementStartTime = std::chrono::high_resolution_clock::now();
-    
-    // Only start animation if there's actual movement
-    if (lastPieceX != newX || lastPieceY != newY) {
-      if (smoothMovementTimer > 0) {
-        g_source_remove(smoothMovementTimer);
-      }
-      
-      smoothMovementTimer = g_timeout_add(16, // ~60 FPS
-        [](gpointer userData) -> gboolean {
-          TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
-          board->updateSmoothMovement();
-          
-          // FORCE SCREEN REPAINT
-          if (board->app) {
-            drawBoard(board);
-          }
-          
-          return TRUE;
-        }, this);
+    if (currentPiece) {
+        lastPieceX = currentPiece->getX();
+        lastPieceY = currentPiece->getY();
+        movementProgress = 0.0;
+
+        movementStartTime = std::chrono::high_resolution_clock::now();
+
+        if (lastPieceX != newX || lastPieceY != newY) {
+
+#ifdef GTK3
+            if (smoothMovementTimer > 0) {
+                g_source_remove(smoothMovementTimer);
+            }
+
+            smoothMovementTimer = g_timeout_add(
+                16,
+                [](gpointer userData) -> gboolean {
+                    TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
+                    board->updateSmoothMovement();
+                    return TRUE;
+                },
+                this
+            );
+#else  // QT5
+            if (smoothMovementTimer) {
+                smoothMovementTimer->stop();
+                smoothMovementTimer->deleteLater();
+                smoothMovementTimer = nullptr;
+            }
+
+            smoothMovementTimer = new QTimer(nullptr);
+            smoothMovementTimer->setInterval(16);
+            QObject::connect(smoothMovementTimer, &QTimer::timeout, [this]() {
+                this->updateSmoothMovement();
+            });
+            smoothMovementTimer->start();
+#endif
+
+            // FORCE SCREEN REPAINT
+            if (app) {
+                drawBoard(this);
+            }
+        }
     }
-  }
 }
 
 
@@ -85,10 +108,18 @@ void TetrimoneBoard::updateSmoothMovement() {
   
   if (movementProgress >= 1.0) {
     movementProgress = 1.0;
+#ifdef GTK3
     if (smoothMovementTimer > 0) {
       g_source_remove(smoothMovementTimer);
       smoothMovementTimer = 0;
     }
+#else  // QT5
+    if (smoothMovementTimer) {
+      smoothMovementTimer->stop();
+      smoothMovementTimer->deleteLater();
+      smoothMovementTimer = nullptr;
+    }
+#endif
   }
 }
 
@@ -106,6 +137,7 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
     currentAnimationType = animDist(rng);
   }
   
+#ifdef GTK3
   if (lineClearAnimationTimer > 0) {
     g_source_remove(lineClearAnimationTimer);
   }
@@ -122,6 +154,23 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
       
       return TRUE;
     }, this);
+#else  // QT5
+  if (lineClearAnimationTimer) {
+    lineClearAnimationTimer->stop();
+    lineClearAnimationTimer->deleteLater();
+    lineClearAnimationTimer = nullptr;
+  }
+  
+  lineClearAnimationTimer = new QTimer(nullptr);
+  lineClearAnimationTimer->setInterval(16);
+  QObject::connect(lineClearAnimationTimer, &QTimer::timeout, [this]() {
+    this->updateLineClearAnimation();
+    if (this->app) {
+      drawBoard(this);
+    }
+  });
+  lineClearAnimationTimer->start();
+#endif
 }
 
 
@@ -133,10 +182,18 @@ void TetrimoneBoard::updateLineClearAnimation() {
   
   if (lineClearProgress >= 1.0) {
     // Animation complete - stop timer first
+#ifdef GTK3
     if (lineClearAnimationTimer > 0) {
       g_source_remove(lineClearAnimationTimer);
       lineClearAnimationTimer = 0;
     }
+#else  // QT5
+    if (lineClearAnimationTimer) {
+      lineClearAnimationTimer->stop();
+      lineClearAnimationTimer->deleteLater();
+      lineClearAnimationTimer = nullptr;
+    }
+#endif
     
     // Set progress to exactly 1.0
     lineClearProgress = 1.0;
@@ -193,9 +250,17 @@ void TetrimoneBoard::startThemeTransition(int targetTheme) {
     }
     
     // Cancel any existing transition
+#ifdef GTK3
     if (themeTransitionTimer > 0) {
         g_source_remove(themeTransitionTimer);
     }
+#else  // QT5
+    if (themeTransitionTimer) {
+        themeTransitionTimer->stop();
+        themeTransitionTimer->deleteLater();
+        themeTransitionTimer = nullptr;
+    }
+#endif
     
     // Set up transition
     oldThemeIndex = currentThemeIndex;
@@ -206,6 +271,7 @@ void TetrimoneBoard::startThemeTransition(int targetTheme) {
     // Set start time for this animation
     themeStartTime = std::chrono::high_resolution_clock::now();
     
+#ifdef GTK3
     themeTransitionTimer = g_timeout_add(16, // ~60 FPS
         [](gpointer userData) -> gboolean {
             TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
@@ -219,6 +285,18 @@ void TetrimoneBoard::startThemeTransition(int targetTheme) {
             
             return TRUE;
         }, this);
+#else  // QT5
+    themeTransitionTimer = new QTimer(nullptr);
+    themeTransitionTimer->setInterval(16);
+    QObject::connect(themeTransitionTimer, &QTimer::timeout, [this]() {
+        this->updateThemeTransition();
+        if (this->app) {
+            drawBoard(this);
+            drawNextPieceArea(this);
+        }
+    });
+    themeTransitionTimer->start();
+#endif
 }
 
 void TetrimoneBoard::updateThemeTransition() {
@@ -233,20 +311,36 @@ void TetrimoneBoard::updateThemeTransition() {
         currentThemeIndex = newThemeIndex;
         
         // Clean up
+#ifdef GTK3
         if (themeTransitionTimer > 0) {
             g_source_remove(themeTransitionTimer);
             themeTransitionTimer = 0;
         }
+#else  // QT5
+        if (themeTransitionTimer) {
+            themeTransitionTimer->stop();
+            themeTransitionTimer->deleteLater();
+            themeTransitionTimer = nullptr;
+        }
+#endif
         
         isThemeTransitioning = false;
     }
 }
 
 void TetrimoneBoard::cancelThemeTransition() {
+#ifdef GTK3
     if (themeTransitionTimer > 0) {
         g_source_remove(themeTransitionTimer);
         themeTransitionTimer = 0;
     }
+#else  // QT5
+    if (themeTransitionTimer) {
+        themeTransitionTimer->stop();
+        themeTransitionTimer->deleteLater();
+        themeTransitionTimer = nullptr;
+    }
+#endif
     
     isThemeTransitioning = false;
     themeTransitionProgress = 0.0;
@@ -278,4 +372,3 @@ std::array<double, 3> TetrimoneBoard::getInterpolatedColor(int blockType, double
     
     return interpolatedColor;
 }
-

@@ -154,4 +154,6 @@ void onBlockTrailsConfig(GtkMenuItem* menuItem, gpointer userData);
 void onTrailOpacityChanged(GtkAdjustment* adj, gpointer data);
 void onTrailDurationChanged(GtkAdjustment* adj, gpointer data);
 
+
+
 #endif // TETRIMONE_GTK3_H

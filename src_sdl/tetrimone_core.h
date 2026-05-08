@@ -12,6 +12,12 @@
 #include <SDL2/SDL.h>
 #include <cairo/cairo.h>
 
+#ifdef GTK3
+    #include <glib.h>
+#else
+    class QTimer;
+#endif
+
 #include "themes.h"
 #include "tetrimoneblock.h"
 #include "highscores.h"
@@ -95,7 +101,6 @@ private:
     // Theme transition
     bool isThemeTransitioning;
     double themeTransitionProgress;
-    unsigned int themeTransitionTimerId, themeTransitionTimer;
     int oldThemeIndex, newThemeIndex;
     static const int THEME_TRANSITION_DURATION = 3000;
 
@@ -103,14 +108,12 @@ private:
     bool lineClearActive;
     std::vector<int> linesBeingCleared;
     double lineClearProgress;
-    unsigned int lineClearAnimationTimer;
     static const int LINE_CLEAR_ANIMATION_DURATION = 600;
     std::chrono::high_resolution_clock::time_point lineClearStartTime;
 
     // Smooth movement
     double currentPieceInterpolatedX, currentPieceInterpolatedY;
     int lastPieceX, lastPieceY;
-    unsigned int smoothMovementTimer;
     double movementProgress;
     static const int MOVEMENT_ANIMATION_DURATION = 100;
     std::chrono::high_resolution_clock::time_point movementStartTime, themeStartTime;
@@ -118,7 +121,6 @@ private:
     // Fireworks
     bool fireworksActive;
     std::vector<FireworkParticle> fireworkParticles;
-    unsigned int fireworksTimer;
     std::chrono::high_resolution_clock::time_point fireworksStartTime;
     static const int FIREWORKS_DURATION = 2000;
     int fireworksType;
@@ -126,41 +128,57 @@ private:
     // Block trails
     bool trailsEnabled;
     std::vector<BlockTrail> blockTrails;
-    unsigned int trailUpdateTimer;
     std::chrono::high_resolution_clock::time_point lastTrailTime;
     int maxTrailSegments;
     double trailOpacity, trailDuration;
     static const int TRAIL_UPDATE_INTERVAL = 16;
     static constexpr double TRAIL_SPAWN_DELAY = 120.0;
 
-
     // Background transition
     bool isTransitioning;
     double transitionOpacity;
     int transitionDirection;
     void* oldBackground;
-    unsigned int transitionTimerId;
+
+    // Platform-specific timer members (declared in tetrimone_gtk.h or tetrimone_qt5.h)
+    #ifdef GTK3
+        unsigned int smoothMovementTimer = 0;
+        unsigned int lineClearAnimationTimer = 0;
+        unsigned int themeTransitionTimer = 0;
+        unsigned int fireworksTimer = 0;
+        unsigned int trailUpdateTimer = 0;
+        unsigned int propagandaTimerId = 0;
+        unsigned int propagandaScaleTimerId = 0;
+        unsigned int backgroundImageTimer = 0;
+        unsigned int transitionTimerId = 0;
+    #else
+        QTimer* smoothMovementTimer = nullptr;
+        QTimer* lineClearAnimationTimer = nullptr;
+        QTimer* themeTransitionTimer = nullptr;
+        QTimer* fireworksTimer = nullptr;
+        QTimer* trailUpdateTimer = nullptr;
+        QTimer* propagandaTimerId = nullptr;
+        QTimer* propagandaScaleTimerId = nullptr;
+        QTimer* backgroundImageTimer = nullptr;
+        QTimer* transitionTimerId = nullptr;
+    #endif
 
 public:
     // Propaganda messages
-    unsigned int propagandaTimerId;
     int propagandaMessageDuration;
     std::string currentPropagandaMessage;
     double propagandaMessageScale;
     bool propagandaScalingUp;
-    unsigned int propagandaScaleTimerId;
     bool showPropagandaMessage;
     int currentPatriotBackgroundIndex;
 
     // Background images and state
     void* backgroundImage;
     double backgroundOpacity;
-    unsigned int backgroundImageTimer;
     int currentBackgroundIndex, currentPatrioticBackgroundIndex;
     bool useBackgroundZip, useBackgroundImage;
     void setUseBackgroundImage(bool use) { useBackgroundImage = use; }
     void setUseBackgroundZip(bool use) { useBackgroundZip = use; }
-
 
     // Status flags (public for callback access)
     bool musicPaused = false;
@@ -373,7 +391,6 @@ public:
 
     void setApp(TetrimoneApp* appPtr) { app = appPtr; }
     bool isInThemeTransition() const { return isThemeTransitioning; }
-
 };
 
 // Platform-agnostic utility and UI functions

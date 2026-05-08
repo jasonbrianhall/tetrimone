@@ -83,6 +83,7 @@ struct TetrimoneApp {
 
 // These are Qt5 implementations of platform-agnostic functions
 // Declarations are in tetrimone_core.h, implementations are Qt5-specific
+QTimer* smoothMovementTimer = nullptr;
 
 
 #endif // TETRIMONE_QT5_H

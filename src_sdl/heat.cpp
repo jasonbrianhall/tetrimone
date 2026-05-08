@@ -4,6 +4,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+#ifdef GTK3
 void TetrimoneBoard::updateHeat() {
         heatDecayTimer = g_timeout_add(1000, [](gpointer data) -> gboolean {
             TetrimoneBoard* board = static_cast<TetrimoneBoard*>(data);
@@ -12,6 +13,21 @@ void TetrimoneBoard::updateHeat() {
         }, this);
 
 }
+#endif
+
+#ifdef QT5
+void TetrimoneBoard::updateHeat() {
+    if (!heatDecayTimer) {
+        heatDecayTimer = new QTimer(this);
+        heatDecayTimer->setInterval(1000); // 1000 ms
+        connect(heatDecayTimer, &QTimer::timeout, this, [this]() {
+            this->coolDown();
+        });
+    }
+
+    heatDecayTimer->start();
+}
+#endif
 
 void TetrimoneBoard::coolDown() {
     // Base cooling rate per 100ms (independent of game timer speed)
