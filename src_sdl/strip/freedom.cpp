@@ -5,7 +5,7 @@
 
 #ifdef QT5
 #include "qt5_dialog_helpers.h"
-#include "tetrimone_qt.h"
+#include "tetrimone_qt5.h"
 #include <QApplication>
 #endif
 
@@ -128,5 +128,5 @@ void showPatrioticPerformanceDialog(TetrimoneApp* app) {
     #endif
     
     // Restart game with renewed American spirit!
-    onRestartGame(NULL, app);
+    app->board->restart();
 }
