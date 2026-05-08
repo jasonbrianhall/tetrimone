@@ -902,3 +902,71 @@ void TetrimoneBoard::createBlockTrail() {
 #endif // QT5
     }
 }
+
+
+bool TetrimoneBoard::rotatePiece(bool clockwise) {
+    if (gameOver || paused)
+        return false;
+
+    currentPiece->rotate(clockwise);
+
+    if (checkCollision(*currentPiece)) {
+        currentPiece->rotate(!clockwise); // Rotate back in opposite direction
+        return false;
+    }
+
+    if (trailsEnabled && !retroModeActive) {
+         createBlockTrail();
+    }
+
+    return true;
+}
+
+void TetrimoneBoard::updateBlockTrails() {
+    if (!trailsEnabled) {
+        blockTrails.clear();
+        
+#ifdef DQT5
+        // Qt5: No timer cleanup needed
+#else
+        // GTK3: Remove g_source timer
+        if (trailUpdateTimer > 0) {
+            g_source_remove(trailUpdateTimer);
+            trailUpdateTimer = 0;
+        }
+#endif
+        return;
+    }
+    
+    double deltaTime = TRAIL_UPDATE_INTERVAL / 1000.0;
+    
+    for (auto it = blockTrails.begin(); it != blockTrails.end();) {
+        BlockTrail& trail = *it;
+        trail.life -= deltaTime;
+        trail.alpha = (trail.life / trail.maxLife) * trailOpacity;
+        
+        if (trail.life <= 0.0 || trail.alpha <= 0.05) {
+            it = blockTrails.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
+    if (blockTrails.empty() && trailUpdateTimer > 0) {
+#ifdef DQT5
+        // Qt5: No cleanup
+#else
+        // GTK3: Remove timer
+        g_source_remove(trailUpdateTimer);
+        trailUpdateTimer = 0;
+#endif
+    }
+}
+
+
+int TetrimoneBoard::getGridValue(int x, int y) const {
+  if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
+    return 0;
+  }
+  return grid[y][x];
+}

@@ -301,32 +301,6 @@ void TetrimoneBoard::updateFireworksAnimation() {
     }
 }
 
-
-bool TetrimoneBoard::rotatePiece(bool clockwise) {
-    if (gameOver || paused)
-        return false;
-
-    currentPiece->rotate(clockwise);
-
-    if (checkCollision(*currentPiece)) {
-        currentPiece->rotate(!clockwise); // Rotate back in opposite direction
-        return false;
-    }
-
-    if (trailsEnabled && !retroModeActive) {
-         createBlockTrail();
-    }
-
-    return true;
-}
-
-int TetrimoneBoard::getGridValue(int x, int y) const {
-  if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
-    return 0;
-  }
-  return grid[y][x];
-}
-
 gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(data);
   TetrimoneBoard *board = app->board;
