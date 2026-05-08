@@ -926,11 +926,9 @@ void TetrimoneBoard::updateBlockTrails() {
     if (!trailsEnabled) {
         blockTrails.clear();
         
-#ifdef DQT5
-        // Qt5: No timer cleanup needed
-#else
+#ifdef GTK3
         // GTK3: Remove g_source timer
-        if (trailUpdateTimer > 0) {
+        if (trailUpdateTimer != 0) {
             g_source_remove(trailUpdateTimer);
             trailUpdateTimer = 0;
         }
@@ -952,10 +950,8 @@ void TetrimoneBoard::updateBlockTrails() {
         }
     }
     
-    if (blockTrails.empty() && trailUpdateTimer > 0) {
-#ifdef DQT5
-        // Qt5: No cleanup
-#else
+    if (blockTrails.empty() && trailUpdateTimer != 0) {
+#ifdef GTK3
         // GTK3: Remove timer
         g_source_remove(trailUpdateTimer);
         trailUpdateTimer = 0;
@@ -969,4 +965,14 @@ int TetrimoneBoard::getGridValue(int x, int y) const {
     return 0;
   }
   return grid[y][x];
+}
+
+void drawBoard(TetrimoneBoard *board) {
+#ifdef GTK3
+     gtk_widget_queue_draw(board->app->gameArea);
+#endif
+
+#ifdef QT5
+    board->app->gameArea->update();
+#endif
 }
