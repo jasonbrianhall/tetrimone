@@ -23,6 +23,18 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+void TetrimoneBoard::updateGame() {
+  if (gameOver || paused || splashScreenActive)
+    return;
+
+  // Existing update code...
+  if (!movePiece(0, 1)) {
+    lockPiece();
+    clearLines();
+    generateNewPiece();
+  }
+}
+
 void TetrimoneBoard::hardDrop() {
   if (gameOver || paused)
     return;
@@ -49,7 +61,16 @@ void TetrimoneBoard::restart() {
     std::fill(row.begin(), row.end(), 0);
   }
   heatLevel = 0.5f;
+#ifdef GTK3
   heatDecayTimer = 0;
+#endif
+#ifdef QT5
+  if (heatDecayTimer != nullptr) {
+    heatDecayTimer->stop();
+    delete heatDecayTimer;
+    heatDecayTimer = nullptr;
+  }
+#endif
   // Reset game state
   score = 0;
   level = initialLevel; // Use initialLevel instead of hardcoded 1
@@ -184,150 +205,6 @@ TetrimoneBoard::~TetrimoneBoard() {
     cleanupBackgroundImages();
 }
 
-bool TetrimoneBoard::movePiece(int dx, int dy) {
-    if (gameOver || paused)
-        return false;
-
-    int oldX = currentPiece->getX();
-    int oldY = currentPiece->getY();
-    
-    currentPiece->move(dx, dy);
-
-    if (checkCollision(*currentPiece)) {
-        currentPiece->move(-dx, -dy); // Move back if collision
-        return false;
-    }
-    
-    // Create block trail only for horizontal movement (less intrusive)
-    if (trailsEnabled && !retroModeActive && dx != 0) {
-        createBlockTrail();
-    }
-    
-    // Start smooth movement animation
-    startSmoothMovement(oldX, oldY);
-    
-    return true;
-}
-
-void TetrimoneBoard::updateGame() {
-  if (gameOver || paused || splashScreenActive)
-    return;
-
-  // Existing update code...
-  if (!movePiece(0, 1)) {
-    lockPiece();
-    clearLines();
-    generateNewPiece();
-  }
-}
-
-TetrimoneBoard::TetrimoneBoard()
-    : score(0), level(1), linesCleared(0), gameOver(false),paused(false),
-      ghostPieceEnabled(true), splashScreenActive(true),
-      backgroundImage(nullptr), useBackgroundImage(false),
-      backgroundOpacity(0.3), useBackgroundZip(false),
-      currentBackgroundIndex(0), isTransitioning(false), transitionOpacity(0.0),
-      transitionDirection(0), oldBackground(nullptr), transitionTimerId(0),
-      consecutiveClears(0), maxConsecutiveClears(0), lastClearCount(0),
-      sequenceActive(false), lineClearActive(false), lineClearProgress(0.0), lineClearAnimationTimer(0),
-currentPieceInterpolatedX(0), currentPieceInterpolatedY(0),
-lastPieceX(0), lastPieceY(0), smoothMovementTimer(0), movementProgress(0.0),
-      isThemeTransitioning(false), oldThemeIndex(0), newThemeIndex(0),
-      themeTransitionProgress(0.0), themeTransitionTimer(0) {
-  rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
-
-    showPropagandaMessage = false;
-    propagandaTimerId = 0;
-    propagandaMessageDuration = 2000; // 2 seconds display time
-
-fireworksActive = false;
-fireworksTimer = 0;
-fireworksType = 0;
-
-trailsEnabled = true;          // Enabled by default
-maxTrailSegments = 3;          // Keep only 3 trail segments (reduced)
-trailOpacity = 0.6;            // Default opacity
-trailDuration = 0.1;           // Default duration (seconds)
-trailUpdateTimer = 0;
-lastTrailTime = std::chrono::high_resolution_clock::now();
-
-
-heatLevel = 0.5f;
-heatDecayTimer = 0;
-  // Initialize grid with maximum possible dimensions to avoid reallocation
-  grid.resize(MAX_GRID_HEIGHT, std::vector<int>(MAX_GRID_WIDTH, 0));
-
-  // Initialize with 3 next pieces instead of just one
-  nextPieces.resize(3);
-
-  // Generate initial pieces
-  generateNewPiece();
-
-  // Try to load background.zip by default
-  if (loadBackgroundImagesFromZip("background.zip")) {
-    std::cout << "Successfully loaded background images from background.zip"
-              << std::endl;
-    // Background should be enabled by default if successfully loaded
-    useBackgroundImage = true;
-    useBackgroundZip = true;
-  } else {
-    std::cout << "Could not load background.zip, backgrounds will need to be "
-                 "loaded manually"
-              << std::endl;
-  }
-  for (int i = 0; i < 5; i++) {
-    enabledTracks[i] = true;
-  }
-}
-
-
-bool TetrimoneBoard::rotatePiece(bool clockwise) {
-    if (gameOver || paused)
-        return false;
-
-    currentPiece->rotate(clockwise);
-
-    if (checkCollision(*currentPiece)) {
-        currentPiece->rotate(!clockwise); // Rotate back in opposite direction
-        return false;
-    }
-
-    if (trailsEnabled && !retroModeActive) {
-         createBlockTrail();
-    }
-
-    return true;
-}
-
-void TetrimoneBlock::rotate(bool clockwise) {
-  rotation = (rotation + (clockwise ? 1 : 3)) % 4;
-}
-
-bool TetrimoneBoard::isGameOver() const {
-  // If this is the first time checking game over status since it became true,
-  // play the game over sound
-  bool soundPlayed = false;
-  if (gameOver && !soundPlayed) {
-    // Cast away const to allow calling non-const member function
-    TetrimoneBoard *nonConstThis = const_cast<TetrimoneBoard *>(this);
-    if (retroModeActive) {
-        nonConstThis->playSound(GameSoundEvent::GameoverRetro);
-    } else {
-        nonConstThis->playSound(GameSoundEvent::Gameover);
-    }    
-    
-    soundPlayed = true;
-  }
-
-  // If game is no longer over, reset the sound played flag
-  if (!gameOver) {
-    soundPlayed = false;
-  }
-
-  return gameOver;
-}
-
-
 int TetrimoneBoard::clearLines() {
   std::vector<int> linesToClear;
   int currentlevel = (this->linesCleared / 10) + initialLevel;
@@ -374,6 +251,7 @@ int TetrimoneBoard::clearLines() {
       currentPropagandaMessage = message;
       showPropagandaMessage = true;
       
+#ifdef GTK3
       // Cancel existing timer if any
       if (propagandaTimerId > 0) {
           g_source_remove(propagandaTimerId);
@@ -418,6 +296,57 @@ int TetrimoneBoard::clearLines() {
               return FALSE;
           }, 
           this);
+#endif
+
+#ifdef QT5
+      // Cancel existing timer if any
+      if (propagandaTimerId != nullptr) {
+          propagandaTimerId->stop();
+          delete propagandaTimerId;
+      }
+      
+      // Set timer to hide message after duration
+      propagandaTimerId = new QTimer();
+      QObject::connect(propagandaTimerId, &QTimer::timeout, [this]() {
+          this->showPropagandaMessage = false;
+          this->propagandaTimerId->stop();
+          delete this->propagandaTimerId;
+          this->propagandaTimerId = nullptr;
+      });
+      propagandaTimerId->setSingleShot(true);
+      propagandaTimerId->start(propagandaMessageDuration);
+          
+      // Set timer for pulsing animation effect
+      propagandaMessageScale = 0.7; // Start smaller and grow
+      propagandaScalingUp = true;
+      if (propagandaScaleTimerId != nullptr) {
+          propagandaScaleTimerId->stop();
+          delete propagandaScaleTimerId;
+      }
+      propagandaScaleTimerId = new QTimer();
+      QObject::connect(propagandaScaleTimerId, &QTimer::timeout, [this]() {
+          if (this->showPropagandaMessage) {
+              // Update scale for pulsing effect
+              if (this->propagandaScalingUp) {
+                  this->propagandaMessageScale += 0.04;
+                  if (this->propagandaMessageScale >= 1.2) {
+                      this->propagandaScalingUp = false;
+                  }
+              } else {
+                  this->propagandaMessageScale -= 0.04;
+                  if (this->propagandaMessageScale <= 0.8) {
+                      this->propagandaScalingUp = true;
+                  }
+              }
+          } else {
+              // Stop the timer if message is no longer showing
+              this->propagandaScaleTimerId->stop();
+              delete this->propagandaScaleTimerId;
+              this->propagandaScaleTimerId = nullptr;
+          }
+      });
+      propagandaScaleTimerId->start(50);
+#endif
     }
     else if (patrioticModeActive) {
         // Select a random freedom message
@@ -438,6 +367,7 @@ int TetrimoneBoard::clearLines() {
         currentPropagandaMessage = message;
         showPropagandaMessage = true;
         
+#ifdef GTK3
         // Cancel existing timer if any
         if (propagandaTimerId > 0) {
             g_source_remove(propagandaTimerId);
@@ -482,130 +412,391 @@ int TetrimoneBoard::clearLines() {
                 return FALSE;
             }, 
             this);
-    }
+#endif
 
-    // Play appropriate sound based on number of lines cleared
-    if (linesCleared == 4) {
-      playSound(GameSoundEvent::Excellent); // Play Tetrimone/Excellent sound for 4 lines
-      heatLevel+=0.4;
-      startFireworksAnimation(linesCleared);
-    } else if (linesCleared > 0) {
-      playSound(GameSoundEvent::Clear); // Play normal clear sound for 1-3 lines
-      if (linesCleared == 1) {
-        playSound(GameSoundEvent::Single);
-        heatLevel+=0.1;
-      }
-      if (linesCleared == 2) {
-        playSound(GameSoundEvent::Double);
-        heatLevel+=0.2;
-
-      }
-      if (linesCleared == 3) {
-        playSound(GameSoundEvent::Triple);
-        heatLevel+=0.3;
-
-      }
-    }
-    if (heatLevel>1.0) {
-         heatLevel=1.0;
-    }
-    // Classic Tetrimone scoring
-    int baseScore = 0;
-    switch (linesCleared) {
-    case 1:
-      baseScore = 40 * level;
-      break;
-    case 2:
-      baseScore = 100 * level;
-      break;
-    case 3:
-      baseScore = 300 * level;
-      break;
-    case 4:
-      baseScore = 1200 * level;
-      break;
-    }
-
-    // Calculate sequence bonus
-    int sequenceBonus = 0;
-    if (linesCleared > 0) {
-      if (lastClearCount > 0) {
-        // Player cleared lines in consecutive moves
-        consecutiveClears++;
-        maxConsecutiveClears = std::max(maxConsecutiveClears, consecutiveClears);
-
-        // Bonus increases with each consecutive clear
-        sequenceBonus = baseScore * (consecutiveClears * 0.1); // 10% bonus per consecutive clear
-        if (consecutiveClears>=2) {
-            heatLevel += 0.1 * (consecutiveClears-1);
-            //printf("Heat level increased by %f due to sequence\n", 0.1 * (consecutiveClears-1));
-            if(heatLevel>=1.0) {
-                 heatLevel=1.0;
-            } 
-        }        
-        // Extra bonus for maintaining the same number of lines cleared
-        if (linesCleared == lastClearCount) {
-          sequenceBonus += baseScore * 0.2; // 20% bonus for consistent clears
-          playSound(retroModeActive ? GameSoundEvent::LevelUpRetro : GameSoundEvent::LevelUp); // Special sound for consistent sequence
+#ifdef QT5
+        // Cancel existing timer if any
+        if (propagandaTimerId != nullptr) {
+            propagandaTimerId->stop();
+            delete propagandaTimerId;
         }
-
-        // Notify player about sequence
-        sequenceActive = true;
-      } else {
-        // First clear after a move with no clears
-        consecutiveClears = 1;
-        sequenceActive = false;
-      }
-
-      lastClearCount = linesCleared;
-    } else {
-      // Reset sequence when a move doesn't clear any lines
-      consecutiveClears = 0;
-      lastClearCount = 0;
-      sequenceActive = false;
-    }
-
-    // Apply total score with bonus
-    score += baseScore + sequenceBonus;
-
-    // Update total lines cleared
-    this->linesCleared += linesCleared;
-
-    // Update level every 10 lines
-    level = (this->linesCleared / 10) + initialLevel;
-  } else {
-    // No lines cleared in this move
-    lastClearCount = 0;
-    consecutiveClears = 0;
-    sequenceActive = false;
-  }
-
-if (level > currentlevel) {
-    updateHeat();
-    playSound(retroModeActive ? GameSoundEvent::LevelUpRetro : GameSoundEvent::LevelUp);
-    if (junkLinesPerLevel > 0) {
-        addJunkLinesFromBottom(junkLinesPerLevel);
+        
+        // Set timer to hide message after duration
+        propagandaTimerId = new QTimer();
+        QObject::connect(propagandaTimerId, &QTimer::timeout, [this]() {
+            this->showPropagandaMessage = false;
+            this->propagandaTimerId->stop();
+            delete this->propagandaTimerId;
+            this->propagandaTimerId = nullptr;
+        });
+        propagandaTimerId->setSingleShot(true);
+        propagandaTimerId->start(propagandaMessageDuration);
+            
+        // Set timer for patriotic pulsing animation effect
+        propagandaMessageScale = 0.8; // Start slightly smaller for freedom effect
+        propagandaScalingUp = true;
+        if (propagandaScaleTimerId != nullptr) {
+            propagandaScaleTimerId->stop();
+            delete propagandaScaleTimerId;
+        }
+        propagandaScaleTimerId = new QTimer();
+        QObject::connect(propagandaScaleTimerId, &QTimer::timeout, [this]() {
+            if (this->showPropagandaMessage) {
+                // Update scale for patriotic pulsing effect
+                if (this->propagandaScalingUp) {
+                    this->propagandaMessageScale += 0.03; // Slightly gentler scaling
+                    if (this->propagandaMessageScale >= 1.15) { // Less extreme scaling
+                        this->propagandaScalingUp = false;
+                    }
+                } else {
+                    this->propagandaMessageScale -= 0.03;
+                    if (this->propagandaMessageScale <= 0.85) { // More conservative minimum
+                        this->propagandaScalingUp = true;
+                    }
+                }
+            } else {
+                // Stop the timer if message is no longer showing
+                this->propagandaScaleTimerId->stop();
+                delete this->propagandaScaleTimerId;
+                this->propagandaScaleTimerId = nullptr;
+            }
+        });
+        propagandaScaleTimerId->start(60);
+#endif
     }
     
-    // Only change theme if retro mode is not enabled
-    if (!retroModeActive  && !patrioticModeActive) {
-        // Calculate next theme with wrap-around
-        int nextTheme = (currentThemeIndex + 1) % NUM_COLOR_THEMES;
-        
-        // Start smooth theme transition instead of immediate change
-        startThemeTransition(nextTheme);
-        
-        // Add background transition if using background zip
-        if (useBackgroundZip && !backgroundImages.empty()) {
-            startBackgroundTransition();
-        }
+    // Award points based on lines cleared
+    int points = 0;
+    switch (linesCleared) {
+      case 1:
+        points = 100;
+        playSound(GameSoundEvent::Single);
+        break;
+      case 2:
+        points = 300;
+        playSound(GameSoundEvent::Double);
+        break;
+      case 3:
+        points = 500;
+        playSound(GameSoundEvent::Triple);
+        break;
+      case 4:
+        points = 800;
+        playSound(GameSoundEvent::Tetrimone);
+        break;
     }
-    else if (patrioticModeActive) {
-        if (useBackgroundZip && !backgroundImages.empty()) {
-            startBackgroundTransition();
-        }
-    }    
+    
+    score += points;
+  }
+  
+  return linesCleared;
 }
 
-  return linesCleared;
+bool TetrimoneBoard::isGameOver() const {
+  // If this is the first time checking game over status since it became true,
+  // play the game over sound
+  bool soundPlayed = false;
+  if (gameOver && !soundPlayed) {
+    // Cast away const to allow calling non-const member function
+    TetrimoneBoard *nonConstThis = const_cast<TetrimoneBoard *>(this);
+    if (retroModeActive) {
+        nonConstThis->playSound(GameSoundEvent::GameoverRetro);
+    } else {
+        nonConstThis->playSound(GameSoundEvent::Gameover);
+    }    
+    
+    soundPlayed = true;
+  }
+
+  // If game is no longer over, reset the sound played flag
+  if (!gameOver) {
+    soundPlayed = false;
+  }
+
+  return gameOver;
+}
+
+bool TetrimoneBoard::movePiece(int dx, int dy) {
+    if (gameOver || paused)
+        return false;
+
+    int oldX = currentPiece->getX();
+    int oldY = currentPiece->getY();
+    
+    currentPiece->move(dx, dy);
+
+    if (checkCollision(*currentPiece)) {
+        currentPiece->move(-dx, -dy); // Move back if collision
+        return false;
+    }
+    
+    // Create block trail only for horizontal movement (less intrusive)
+    if (trailsEnabled && !retroModeActive && dx != 0) {
+        createBlockTrail();
+    }
+    
+    // Start smooth movement animation
+    startSmoothMovement(oldX, oldY);
+    
+    return true;
+}
+
+void TetrimoneBoard::lockPiece() {
+  auto shape = currentPiece->getShape();
+  int pieceX = currentPiece->getX();
+  int pieceY = currentPiece->getY();
+  int pieceType = currentPiece->getType();
+
+  // Play drop sound when piece locks into place
+  playSound(GameSoundEvent::Drop);
+
+  for (size_t y = 0; y < shape.size(); ++y) {
+    for (size_t x = 0; x < shape[y].size(); ++x) {
+      if (shape[y][x] == 1) {
+        int gridX = pieceX + x;
+        int gridY = pieceY + y;
+
+        if (gridY >= 0 && gridY < GRID_HEIGHT && gridX >= 0 &&
+            gridX < GRID_WIDTH) {
+          grid[gridY][gridX] =
+              pieceType + 1; // +1 so that empty is 0 and pieces are 1-7
+        }
+      }
+    }
+  }
+}
+
+void TetrimoneBoard::generateNewPiece() {
+  // Move first next piece to current
+  if (!nextPieces[0]) {
+    // First time initialization - create all next pieces
+    for (int i = 0; i < 3; i++) {
+      // Use the existing piece generation logic to create each piece
+      std::vector<int> validPieces;
+        // Otherwise use the regular minBlockSize rules
+        switch (minBlockSize) {
+        case 1: // All pieces
+          for (int j = 0; j < 14; ++j) {
+            validPieces.push_back(j);
+          }
+          break;
+        case 2: // Triomones and Tetromones
+          for (int j = 0; j <= 10; ++j) {
+            validPieces.push_back(j);
+          }
+          break;
+        case 3: // Tetromones only
+          for (int j = 0; j <= 6; ++j) {
+            validPieces.push_back(j);
+          }
+          break;
+        case 4: // Tetromones only, but ensure at least 4 blocks
+          for (int j = 0; j <= 6; ++j) {
+            int blockCount = 0;
+            for (const auto &row : TETRIMONEBLOCK_SHAPES[j][0]) {
+              for (int cell : row) {
+                if (cell == 1)
+                  blockCount++;
+              }
+            }
+            // Only add if block count is exactly 4
+            if (blockCount == 4) {
+              validPieces.push_back(j);
+            }
+          }
+          break;
+        default:
+          // Fallback to standard tetromones
+          for (int j = 0; j <= 6; ++j) {
+            validPieces.push_back(j);
+          }
+          break;
+        }
+
+      // If no valid pieces found, fallback to standard Tetrimones
+      if (validPieces.empty()) {
+        for (int j = 0; j <= 6; ++j) {
+          validPieces.push_back(j);
+        }
+      }
+
+      // Use uniform distribution over valid pieces
+      std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
+      int nextIndex = dist(rng);
+      int nextType = validPieces[nextIndex];
+
+      nextPieces[i] = std::make_unique<TetrimoneBlock>(nextType);
+    }
+
+    // Create the current piece
+    currentPiece = std::make_unique<TetrimoneBlock>(nextPieces[0]->getType());
+  } else {
+    // Move first next piece to current
+    currentPiece = std::move(nextPieces[0]);
+
+    // Shift remaining pieces
+    for (int i = 0; i < 2; i++) {
+      nextPieces[i] = std::move(nextPieces[i + 1]);
+    }
+
+    // Generate a new piece for the last position
+    std::vector<int> validPieces;
+
+      // Otherwise use the regular minBlockSize rules
+      switch (minBlockSize) {
+      case 1: // All pieces
+        for (int i = 0; i < 14; ++i) {
+          validPieces.push_back(i);
+        }
+        break;
+      case 2: // Triomones and Tetromones
+        for (int i = 0; i <= 10; ++i) {
+          validPieces.push_back(i);
+        }
+        break;
+      case 3: // Tetromones only
+        for (int i = 0; i <= 6; ++i) {
+          validPieces.push_back(i);
+        }
+        break;
+      case 4: // Tetromones only, but ensure at least 4 blocks
+        for (int i = 0; i <= 6; ++i) {
+          int blockCount = 0;
+          for (const auto &row : TETRIMONEBLOCK_SHAPES[i][0]) {
+            for (int cell : row) {
+              if (cell == 1)
+                blockCount++;
+            }
+          }
+          // Only add if block count is exactly 4
+          if (blockCount == 4) {
+            validPieces.push_back(i);
+          }
+        }
+        break;
+      default:
+        // Fallback to standard tetromones
+        for (int i = 0; i <= 6; ++i) {
+          validPieces.push_back(i);
+        }
+        break;
+      }
+
+    // If no valid pieces found, fallback to standard Tetromones
+    if (validPieces.empty()) {
+      for (int i = 0; i <= 6; ++i) {
+        validPieces.push_back(i);
+      }
+    }
+
+    // Use uniform distribution over valid pieces
+    std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
+    int nextIndex = dist(rng);
+    int nextType = validPieces[nextIndex];
+
+    nextPieces[2] = std::make_unique<TetrimoneBlock>(nextType);
+  }
+
+  // Check if the new piece collides immediately - game over
+  if (checkCollision(*currentPiece)) {
+    gameOver = true;
+  }
+}
+
+bool TetrimoneBoard::checkCollision(const TetrimoneBlock &piece) const {
+  auto shape = piece.getShape();
+  int pieceX = piece.getX();
+  int pieceY = piece.getY();
+
+  for (size_t y = 0; y < shape.size(); ++y) {
+    for (size_t x = 0; x < shape[y].size(); ++x) {
+      if (shape[y][x] == 1) {
+        int gridX = pieceX + x;
+        int gridY = pieceY + y;
+
+        // Check boundaries
+        if (gridX < 0 || gridX >= GRID_WIDTH || gridY >= GRID_HEIGHT) {
+          return true;
+        }
+
+        // Check collision with placed blocks
+        if (gridY >= 0 && grid[gridY][gridX] != 0) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+void TetrimoneBlock::move(int dx, int dy) {
+  x += dx;
+  y += dy;
+}
+
+void TetrimoneBoard::createBlockTrail() {
+    if (!trailsEnabled || retroModeActive || !currentPiece) return;
+    
+    // Don't create trails if game is paused or over
+    if (isPaused() || isGameOver()) return;
+    
+    auto now = std::chrono::high_resolution_clock::now();
+    auto timeSinceLastTrail = std::chrono::duration<double, std::milli>(now - lastTrailTime).count();
+    
+    // Only create trails if enough time has passed
+    if (timeSinceLastTrail < TRAIL_SPAWN_DELAY) return;
+    lastTrailTime = now;
+    
+    // Create a new trail segment
+    BlockTrail trail;
+    trail.x = currentPiece->getX();
+    trail.y = currentPiece->getY();
+    trail.rotation = currentPiece->getRotation();
+    trail.pieceType = currentPiece->getType();
+    trail.shape = currentPiece->getShape();
+    trail.color = currentPiece->getColor();
+    trail.maxLife = trailDuration; // Use configurable duration
+    trail.life = trail.maxLife;
+    trail.alpha = trailOpacity; // Use configurable opacity
+    
+    blockTrails.push_back(trail);
+    
+    // Remove old trails if we have too many
+    while (blockTrails.size() > maxTrailSegments) {
+        blockTrails.erase(blockTrails.begin());
+    }
+    
+    // Start update timer if not running
+    if (trailUpdateTimer == 0) {
+#ifdef GTK3
+        trailUpdateTimer = g_timeout_add(TRAIL_UPDATE_INTERVAL,
+            [](gpointer userData) -> gboolean {
+                TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
+                board->updateBlockTrails();
+                
+                // Force redraw
+                if (board->app) {
+                    drawBoard(board);
+                }
+                
+                return true; // Keep timer running
+            }, this);
+#endif // GTK3
+
+#ifdef QT5
+        TetrimoneApp* qtApp = static_cast<TetrimoneApp*>(app);
+        if (qtApp) {
+            QTimer* timer = new QTimer();
+            timer->setInterval(TRAIL_UPDATE_INTERVAL);
+            QObject::connect(timer, &QTimer::timeout, [this]() {
+                this->updateBlockTrails();
+                if (this->app) {
+                    drawBoard(this);
+                }
+            });
+            timer->start();
+            trailUpdateTimer = 1; // Non-zero to indicate timer is running
+        }
+#endif // QT5
+    }
 }

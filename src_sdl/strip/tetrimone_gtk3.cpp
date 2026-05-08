@@ -155,9 +155,8 @@ TetrimoneBlock::TetrimoneBlock(int type) : type(type), rotation(0) {
 
 int TetrimoneBlock::getRotation() const { return rotation; }
 
-void TetrimoneBlock::move(int dx, int dy) {
-  x += dx;
-  y += dy;
+void TetrimoneBlock::rotate(bool clockwise) {
+  rotation = (rotation + (clockwise ? 1 : 3)) % 4;
 }
 
 std::vector<std::vector<int>> TetrimoneBlock::getShape() const {
@@ -179,53 +178,114 @@ void TetrimoneBlock::setPosition(int newX, int newY) {
   y = newY;
 }
 
-void TetrimoneBoard::createBlockTrail() {
-    if (!trailsEnabled || retroModeActive || !currentPiece) return;
-    
-    // Don't create trails if game is paused or over
-    if (isPaused() || isGameOver()) return;
-    
-    auto now = std::chrono::high_resolution_clock::now();
-    auto timeSinceLastTrail = std::chrono::duration<double, std::milli>(now - lastTrailTime).count();
-    
-    // Only create trails if enough time has passed
-    if (timeSinceLastTrail < TRAIL_SPAWN_DELAY) return;
-    lastTrailTime = now;
-    
-    // Create a new trail segment
-    BlockTrail trail;
-    trail.x = currentPiece->getX();
-    trail.y = currentPiece->getY();
-    trail.rotation = currentPiece->getRotation();
-    trail.pieceType = currentPiece->getType();
-    trail.shape = currentPiece->getShape();
-    trail.color = currentPiece->getColor();
-    trail.maxLife = trailDuration; // Use configurable duration
-    trail.life = trail.maxLife;
-    trail.alpha = trailOpacity; // Use configurable opacity
-    
-    blockTrails.push_back(trail);
-    
-    // Remove old trails if we have too many
-    while (blockTrails.size() > maxTrailSegments) {
-        blockTrails.erase(blockTrails.begin());
+// TetrimoneBoard class implementation
+TetrimoneBoard::TetrimoneBoard()
+    : score(0), level(1), linesCleared(0), gameOver(false),paused(false),
+      ghostPieceEnabled(true), splashScreenActive(true),
+      backgroundImage(nullptr), useBackgroundImage(false),
+      backgroundOpacity(0.3), useBackgroundZip(false),
+      currentBackgroundIndex(0), isTransitioning(false), transitionOpacity(0.0),
+      transitionDirection(0), oldBackground(nullptr), transitionTimerId(0),
+      consecutiveClears(0), maxConsecutiveClears(0), lastClearCount(0),
+      sequenceActive(false), lineClearActive(false), lineClearProgress(0.0), lineClearAnimationTimer(0),
+currentPieceInterpolatedX(0), currentPieceInterpolatedY(0),
+lastPieceX(0), lastPieceY(0), smoothMovementTimer(0), movementProgress(0.0),
+      isThemeTransitioning(false), oldThemeIndex(0), newThemeIndex(0),
+      themeTransitionProgress(0.0), themeTransitionTimer(0) {
+  rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
+
+    showPropagandaMessage = false;
+    propagandaTimerId = 0;
+    propagandaMessageDuration = 2000; // 2 seconds display time
+
+fireworksActive = false;
+fireworksTimer = 0;
+fireworksType = 0;
+
+trailsEnabled = true;          // Enabled by default
+maxTrailSegments = 3;          // Keep only 3 trail segments (reduced)
+trailOpacity = 0.6;            // Default opacity
+trailDuration = 0.1;           // Default duration (seconds)
+trailUpdateTimer = 0;
+lastTrailTime = std::chrono::high_resolution_clock::now();
+
+
+heatLevel = 0.5f;
+heatDecayTimer = 0;
+  // Initialize grid with maximum possible dimensions to avoid reallocation
+  grid.resize(MAX_GRID_HEIGHT, std::vector<int>(MAX_GRID_WIDTH, 0));
+
+  // Initialize with 3 next pieces instead of just one
+  nextPieces.resize(3);
+
+  // Generate initial pieces
+  generateNewPiece();
+
+  // Try to load background.zip by default
+  if (loadBackgroundImagesFromZip("background.zip")) {
+    std::cout << "Successfully loaded background images from background.zip"
+              << std::endl;
+    // Background should be enabled by default if successfully loaded
+    useBackgroundImage = true;
+    useBackgroundZip = true;
+  } else {
+    std::cout << "Could not load background.zip, backgrounds will need to be "
+                 "loaded manually"
+              << std::endl;
+  }
+  for (int i = 0; i < 5; i++) {
+    enabledTracks[i] = true;
+  }
+}
+
+TetrimoneBoard::~TetrimoneBoard() {
+    // Cancel any ongoing transition and clean up resources
+    cancelBackgroundTransition();
+
+    // Cancel propaganda message timers
+    if (propagandaTimerId > 0) {
+        g_source_remove(propagandaTimerId);
+        propagandaTimerId = 0;
     }
     
-    // Start update timer if not running
-    if (trailUpdateTimer == 0) {
-        trailUpdateTimer = g_timeout_add(TRAIL_UPDATE_INTERVAL,
-            [](gpointer userData) -> gboolean {
-                TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
-                board->updateBlockTrails();
-                
-                // Force redraw
-                if (board->app) {
-                    drawBoard(board);
-                }
-                
-                return true; // Keep timer running
-            }, this);
+    if (propagandaScaleTimerId > 0) {
+        g_source_remove(propagandaScaleTimerId);
+        propagandaScaleTimerId = 0;
     }
+
+    if (backgroundImage != nullptr) {
+        cairo_surface_destroy(backgroundImage);
+        backgroundImage = nullptr;
+    }
+
+    if (themeTransitionTimer > 0) {
+        g_source_remove(themeTransitionTimer);
+        themeTransitionTimer = 0;
+    }
+
+if (lineClearAnimationTimer > 0) {
+    g_source_remove(lineClearAnimationTimer);
+    lineClearAnimationTimer = 0;
+}
+
+if (smoothMovementTimer > 0) {
+    g_source_remove(smoothMovementTimer);
+    smoothMovementTimer = 0;
+}
+
+    // Clean up any background images from ZIP
+    cleanupBackgroundImages();
+
+if (fireworksTimer > 0) {
+    g_source_remove(fireworksTimer);
+    fireworksTimer = 0;
+}
+
+if (trailUpdateTimer > 0) {
+    g_source_remove(trailUpdateTimer);
+    trailUpdateTimer = 0;
+}
+
 }
 
 void TetrimoneBoard::updateBlockTrails() {
@@ -407,55 +467,23 @@ bool TetrimoneBoard::movePiece(int dx, int dy) {
     return true;
 }
 
-bool TetrimoneBoard::checkCollision(const TetrimoneBlock &piece) const {
-  auto shape = piece.getShape();
-  int pieceX = piece.getX();
-  int pieceY = piece.getY();
 
-  for (size_t y = 0; y < shape.size(); ++y) {
-    for (size_t x = 0; x < shape[y].size(); ++x) {
-      if (shape[y][x] == 1) {
-        int gridX = pieceX + x;
-        int gridY = pieceY + y;
+bool TetrimoneBoard::rotatePiece(bool clockwise) {
+    if (gameOver || paused)
+        return false;
 
-        // Check boundaries
-        if (gridX < 0 || gridX >= GRID_WIDTH || gridY >= GRID_HEIGHT) {
-          return true;
-        }
+    currentPiece->rotate(clockwise);
 
-        // Check collision with placed blocks
-        if (gridY >= 0 && grid[gridY][gridX] != 0) {
-          return true;
-        }
-      }
+    if (checkCollision(*currentPiece)) {
+        currentPiece->rotate(!clockwise); // Rotate back in opposite direction
+        return false;
     }
-  }
-  return false;
-}
 
-void TetrimoneBoard::lockPiece() {
-  auto shape = currentPiece->getShape();
-  int pieceX = currentPiece->getX();
-  int pieceY = currentPiece->getY();
-  int pieceType = currentPiece->getType();
-
-  // Play drop sound when piece locks into place
-  playSound(GameSoundEvent::Drop);
-
-  for (size_t y = 0; y < shape.size(); ++y) {
-    for (size_t x = 0; x < shape[y].size(); ++x) {
-      if (shape[y][x] == 1) {
-        int gridX = pieceX + x;
-        int gridY = pieceY + y;
-
-        if (gridY >= 0 && gridY < GRID_HEIGHT && gridX >= 0 &&
-            gridX < GRID_WIDTH) {
-          grid[gridY][gridX] =
-              pieceType + 1; // +1 so that empty is 0 and pieces are 1-7
-        }
-      }
+    if (trailsEnabled && !retroModeActive) {
+         createBlockTrail();
     }
-  }
+
+    return true;
 }
 
 int TetrimoneBoard::clearLines() {
@@ -740,141 +768,25 @@ if (level > currentlevel) {
   return linesCleared;
 }
 
-void TetrimoneBoard::generateNewPiece() {
-  // Move first next piece to current
-  if (!nextPieces[0]) {
-    // First time initialization - create all next pieces
-    for (int i = 0; i < 3; i++) {
-      // Use the existing piece generation logic to create each piece
-      std::vector<int> validPieces;
-        // Otherwise use the regular minBlockSize rules
-        switch (minBlockSize) {
-        case 1: // All pieces
-          for (int j = 0; j < 14; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        case 2: // Triomones and Tetromones
-          for (int j = 0; j <= 10; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        case 3: // Tetromones only
-          for (int j = 0; j <= 6; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        case 4: // Tetromones only, but ensure at least 4 blocks
-          for (int j = 0; j <= 6; ++j) {
-            int blockCount = 0;
-            for (const auto &row : TETRIMONEBLOCK_SHAPES[j][0]) {
-              for (int cell : row) {
-                if (cell == 1)
-                  blockCount++;
-              }
-            }
-            // Only add if block count is exactly 4
-            if (blockCount == 4) {
-              validPieces.push_back(j);
-            }
-          }
-          break;
-        default:
-          // Fallback to standard tetromones
-          for (int j = 0; j <= 6; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        }
 
-      // If no valid pieces found, fallback to standard Tetrimones
-      if (validPieces.empty()) {
-        for (int j = 0; j <= 6; ++j) {
-          validPieces.push_back(j);
-        }
-      }
+void TetrimoneBoard::hardDrop() {
+  if (gameOver || paused)
+    return;
 
-      // Use uniform distribution over valid pieces
-      std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
-      int nextIndex = dist(rng);
-      int nextType = validPieces[nextIndex];
-
-      nextPieces[i] = std::make_unique<TetrimoneBlock>(nextType);
-    }
-
-    // Create the current piece
-    currentPiece = std::make_unique<TetrimoneBlock>(nextPieces[0]->getType());
-  } else {
-    // Move first next piece to current
-    currentPiece = std::move(nextPieces[0]);
-
-    // Shift remaining pieces
-    for (int i = 0; i < 2; i++) {
-      nextPieces[i] = std::move(nextPieces[i + 1]);
-    }
-
-    // Generate a new piece for the last position
-    std::vector<int> validPieces;
-
-      // Otherwise use the regular minBlockSize rules
-      switch (minBlockSize) {
-      case 1: // All pieces
-        for (int i = 0; i < 14; ++i) {
-          validPieces.push_back(i);
-        }
-        break;
-      case 2: // Triomones and Tetromones
-        for (int i = 0; i <= 10; ++i) {
-          validPieces.push_back(i);
-        }
-        break;
-      case 3: // Tetromones only
-        for (int i = 0; i <= 6; ++i) {
-          validPieces.push_back(i);
-        }
-        break;
-      case 4: // Tetromones only, but ensure at least 4 blocks
-        for (int i = 0; i <= 6; ++i) {
-          int blockCount = 0;
-          for (const auto &row : TETRIMONEBLOCK_SHAPES[i][0]) {
-            for (int cell : row) {
-              if (cell == 1)
-                blockCount++;
-            }
-          }
-          // Only add if block count is exactly 4
-          if (blockCount == 4) {
-            validPieces.push_back(i);
-          }
-        }
-        break;
-      default:
-        // Fallback to standard tetromones
-        for (int i = 0; i <= 6; ++i) {
-          validPieces.push_back(i);
-        }
-        break;
-      }
-
-    // If no valid pieces found, fallback to standard Tetromones
-    if (validPieces.empty()) {
-      for (int i = 0; i <= 6; ++i) {
-        validPieces.push_back(i);
-      }
-    }
-
-    // Use uniform distribution over valid pieces
-    std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
-    int nextIndex = dist(rng);
-    int nextType = validPieces[nextIndex];
-
-    nextPieces[2] = std::make_unique<TetrimoneBlock>(nextType);
+  // Move the piece down until collision
+  while (movePiece(0, 1)) {
+    // Give extra points for hard drop
+    score += 2;
   }
 
-  // Check if the new piece collides immediately - game over
-  if (checkCollision(*currentPiece)) {
-    gameOver = true;
-  }
+  // Lock the piece
+  lockPiece();
+
+  // Clear any full lines
+  clearLines();
+
+  // Generate a new piece
+  generateNewPiece();
 }
 
 int TetrimoneBoard::getGridValue(int x, int y) const {
@@ -882,6 +794,48 @@ int TetrimoneBoard::getGridValue(int x, int y) const {
     return 0;
   }
   return grid[y][x];
+}
+
+void TetrimoneBoard::restart() {
+  // Clear the grid
+  for (auto &row : grid) {
+    std::fill(row.begin(), row.end(), 0);
+  }
+  heatLevel = 0.5f;
+  heatDecayTimer = 0;
+  // Reset game state
+  score = 0;
+  level = initialLevel; // Use initialLevel instead of hardcoded 1
+  linesCleared = 0;
+  gameOver = false;
+  paused = false;
+  splashScreenActive = true; // Show splash screen on restart
+
+  // Reset pieces
+  currentPiece.reset();
+  for (auto &piece : nextPieces) {
+    piece.reset();
+  }
+
+  // Generate junk lines if percentage > 0
+  if (junkLinesPercentage > 0) {
+    generateJunkLines(junkLinesPercentage);
+  }
+
+  // Generate new pieces
+  generateNewPiece();
+
+  // Select a random background if using background images from ZIP
+  if (useBackgroundZip && !backgroundImages.empty()) {
+    // Start a smooth background transition
+    startBackgroundTransition();
+  }
+
+  consecutiveClears = 0;
+  maxConsecutiveClears = 0;
+  lastClearCount = 0;
+  sequenceActive = false;
+  highScoreAlreadyProcessed = false;
 }
 
 gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
@@ -2797,6 +2751,30 @@ void onMenuDeactivated(GtkWidget *widget, gpointer userData) {
              "Resume") != 0) {
     onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
   }
+}
+
+bool TetrimoneBoard::isGameOver() const {
+  // If this is the first time checking game over status since it became true,
+  // play the game over sound
+  bool soundPlayed = false;
+  if (gameOver && !soundPlayed) {
+    // Cast away const to allow calling non-const member function
+    TetrimoneBoard *nonConstThis = const_cast<TetrimoneBoard *>(this);
+    if (retroModeActive) {
+        nonConstThis->playSound(GameSoundEvent::GameoverRetro);
+    } else {
+        nonConstThis->playSound(GameSoundEvent::Gameover);
+    }    
+    
+    soundPlayed = true;
+  }
+
+  // If game is no longer over, reset the sound played flag
+  if (!gameOver) {
+    soundPlayed = false;
+  }
+
+  return gameOver;
 }
 
 void calculateBlockSize(TetrimoneApp *app) {
