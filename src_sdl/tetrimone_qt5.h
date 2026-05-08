@@ -13,56 +13,61 @@
 #include "audiomanager.h"
 #include "tetrimone_core.h"
 
+// Forward declarations
+struct TetrimoneApp;
+class GameAreaWidget;
+class NextPieceWidget;
+
 // ============================================================================
 // Qt5-specific TetrimoneApp structure
 // ============================================================================
 
 struct TetrimoneApp {
-    QApplication* app;
-    QWidget*      window;
-    QWidget*      mainBox;
-    QWidget*      gameArea;
-    QWidget*      nextPieceArea;
+    QApplication* app = nullptr;
+    QWidget*      window = nullptr;
+    QWidget*      mainBox = nullptr;
+    QWidget*      gameArea = nullptr;
+    QWidget*      nextPieceArea = nullptr;
 
-    QLabel*       scoreLabel;
-    QLabel*       levelLabel;
-    QLabel*       linesLabel;
-    QLabel*       difficultyLabel;
+    QLabel*       scoreLabel = nullptr;
+    QLabel*       levelLabel = nullptr;
+    QLabel*       linesLabel = nullptr;
+    QLabel*       difficultyLabel = nullptr;
 
     bool          backgroundMusicPlaying = false;
-    TetrimoneBoard* board;
+    TetrimoneBoard* board = nullptr;
 
-    int           timerId;        // replaces guint
-    int           dropSpeed;
+    int           timerId = 0;
+    int           dropSpeed = 500;
 
-    QAction*      backgroundToggleMenuItem;
+    QAction*      backgroundToggleMenuItem = nullptr;
 
     // Menu related widgets
-    QMenuBar*     menuBar;
-    QAction*      startMenuItem;
-    QAction*      pauseMenuItem;
-    QAction*      restartMenuItem;
-    QAction*      soundToggleMenuItem;
-    QAction*      zenMenuItem;
-    QAction*      easyMenuItem;
-    QAction*      mediumMenuItem;
-    QAction*      hardMenuItem;
-    QAction*      extremeMenuItem;
-    QAction*      insaneMenuItem;
+    QMenuBar*     menuBar = nullptr;
+    QAction*      startMenuItem = nullptr;
+    QAction*      pauseMenuItem = nullptr;
+    QAction*      restartMenuItem = nullptr;
+    QAction*      soundToggleMenuItem = nullptr;
+    QAction*      zenMenuItem = nullptr;
+    QAction*      easyMenuItem = nullptr;
+    QAction*      mediumMenuItem = nullptr;
+    QAction*      hardMenuItem = nullptr;
+    QAction*      extremeMenuItem = nullptr;
+    QAction*      insaneMenuItem = nullptr;
 
-    QAction*      trackMenuItems[5];
-    QAction*      themeMenuItems[31];
+    QAction*      trackMenuItems[5] = {nullptr};
+    QAction*      themeMenuItems[31] = {nullptr};
 
-    QLabel*       sequenceLabel;
-    QLabel*       controlsLabel;
+    QLabel*       sequenceLabel = nullptr;
+    QLabel*       controlsLabel = nullptr;
 
-    int           difficulty; // 1 = Easy, 2 = Medium, 3 = Hard, 0 = Zen, 4 = Extreme
+    int           difficulty = 1; // 0=Zen, 1=Easy, 2=Medium, 3=Hard, 4=Extreme
 
-    QLabel*       controlsHeaderLabel;
+    QLabel*       controlsHeaderLabel = nullptr;
 
-    SDL_Joystick* joystick;
-    bool          joystickEnabled;
-    int           joystickTimerId;   // replaces guint
+    SDL_Joystick* joystick = nullptr;
+    bool          joystickEnabled = false;
+    int           joystickTimerId = 0;
 
     JoystickMapping joystickMapping;
     bool            pausedByFocusLoss = false;
@@ -72,16 +77,57 @@ struct TetrimoneApp {
         RENDER_CAIRO  = 0,
         RENDER_OPENGL = 1
     };
-    RenderingMode renderingMode;
+    RenderingMode renderingMode = RENDER_CAIRO;
 
-    QAction*      renderModeMenuItems[2];  // Radio menu items for Cairo and OpenGL
+    QAction*      renderModeMenuItems[2] = {nullptr};
 };
 
 // ============================================================================
 // Qt5-specific UI functions
 // ============================================================================
 
-// These are Qt5 implementations of platform-agnostic functions
-// Declarations are in tetrimone_core.h, implementations are Qt5-specific
+// Core game functions
+void updateLabels(TetrimoneApp* app);
+void startGame(TetrimoneApp* app);
+void pauseGame(TetrimoneApp* app);
+void resetUI(TetrimoneApp* app);
+void cleanupApp(TetrimoneApp* app);
+void updateDisplay(TetrimoneApp* app);
+
+// SDL/Joystick initialization
+void initSDL(TetrimoneApp* app);
+void shutdownSDL(TetrimoneApp* app);
+
+// Event handlers
+void onKeyDownTick(TetrimoneApp* app);
+void onKeyLeftTick(TetrimoneApp* app);
+void onKeyRightTick(TetrimoneApp* app);
+void onGameTick(TetrimoneApp* app);
+
+// Menu actions
+void onStartGameAction(TetrimoneApp* app);
+void onPauseGameAction(TetrimoneApp* app);
+void onRestartGameAction(TetrimoneApp* app);
+void onQuitGameAction(TetrimoneApp* app);
+void onSoundToggleAction(TetrimoneApp* app, bool enabled);
+void onDifficultyChanged(TetrimoneApp* app, int difficulty);
+
+// UI setup
+void setupMenuBar(TetrimoneApp* app);
+void setupGameUI(TetrimoneApp* app, int width, int height);
+
+// Application entry point
+int main_qt5(int argc, char* argv[], TetrimoneApp* app);
+
+// Global variables
+extern int BLOCK_SIZE;
+extern int currentThemeIndex;
+extern int GRID_WIDTH;
+extern int GRID_HEIGHT;
+
+// Key state variables
+extern bool keyDownPressed;
+extern bool keyLeftPressed;
+extern bool keyRightPressed;
 
 #endif // TETRIMONE_QT5_H
