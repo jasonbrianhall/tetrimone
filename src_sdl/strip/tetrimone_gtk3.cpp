@@ -147,42 +147,6 @@ gboolean onKeyRightTick(gpointer userData) {
   return FALSE;
 }
 
-void TetrimoneBoard::updateBlockTrails() {
-    if (!trailsEnabled) {
-        blockTrails.clear();
-        if (trailUpdateTimer > 0) {
-            g_source_remove(trailUpdateTimer);
-            trailUpdateTimer = 0;
-        }
-        return;
-    }
-    
-    double deltaTime = TRAIL_UPDATE_INTERVAL / 1000.0; // Convert to seconds
-    
-    // Update existing trail segments
-    for (auto it = blockTrails.begin(); it != blockTrails.end();) {
-        BlockTrail& trail = *it;
-        
-        // Update life and alpha
-        trail.life -= deltaTime;
-        trail.alpha = (trail.life / trail.maxLife) * trailOpacity; // Use configurable opacity
-        
-        // Remove dead trails
-        if (trail.life <= 0.0 || trail.alpha <= 0.05) {
-            it = blockTrails.erase(it);
-        } else {
-            ++it;
-        }
-    }
-    
-    // Stop timer if no trails left
-    if (blockTrails.empty() && trailUpdateTimer > 0) {
-        g_source_remove(trailUpdateTimer);
-        trailUpdateTimer = 0;
-    }
-}
-
-
 void TetrimoneBoard::startFireworksAnimation(int linesCleared) {
     if (linesCleared != 4) return; // Only for Tetrimone (4 lines)
     

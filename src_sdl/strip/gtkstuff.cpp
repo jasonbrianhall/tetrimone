@@ -210,21 +210,6 @@ void onBackgroundOpacityDialog(GtkMenuItem *menuItem, gpointer userData) {
   );
 }
 
-int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args)
-{
-    GtkApplication *gtkApp =
-        gtk_application_new("org.gtk.tetrimone", G_APPLICATION_DEFAULT_FLAGS);
-
-    g_object_set_data(G_OBJECT(gtkApp), "tetrimone-app", app);
-    g_object_set_data(G_OBJECT(gtkApp), "cmdline-args", (gpointer)args);
-
-    g_signal_connect(gtkApp, "activate", G_CALLBACK(onAppActivate), NULL);
-
-    int status = g_application_run(G_APPLICATION(gtkApp), argc, argv);
-    g_object_unref(gtkApp);
-    return status;
-}
-
 void OnDrawGameAreaCairo(cairo_t *cr, TetrimoneApp *app, int width, int height) {
 
   TetrimoneBoard *board = app->board;
@@ -643,10 +628,6 @@ void onPauseGame(GtkMenuItem *menuItem, gpointer userData) {
 void updateDisplay(TetrimoneApp *app) {
     gtk_widget_queue_draw(app->gameArea);
     gtk_widget_queue_draw(app->nextPieceArea);
-}
-
-void drawBoard(TetrimoneBoard *board) {
-     gtk_widget_queue_draw(board->app->gameArea);
 }
 
 void set_theme_menu(TetrimoneApp *app, int index)
