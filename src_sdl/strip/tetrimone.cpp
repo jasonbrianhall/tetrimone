@@ -1029,7 +1029,7 @@ void ui_set_sound_enabled(TetrimoneApp *app) {
 #endif
 
 #ifdef QT5    
-    app->board->sound_enabled_.setChecked(true);
+    app->board->sound_enabled_=true;
 #endif
 
 
