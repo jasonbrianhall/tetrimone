@@ -1,5 +1,6 @@
 # Last modification 05/07/2025
 # FIXED: Added Cairo library support for rendering
+# FIXED: Added JPEG library support for background images
 
 # Makefile for Tetrimone with Qt5 GUI Backend
 # Windows and Linux Support
@@ -53,6 +54,20 @@ CAIRO_LIBS_LINUX := $(shell pkg-config --libs cairo)
 CAIRO_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags cairo)
 CAIRO_LIBS_WIN := $(shell mingw64-pkg-config --libs cairo)
 
+# JPEG library flags (ADDED - required for JPEG image support)
+JPEG_CFLAGS_LINUX := $(shell pkg-config --cflags libjpeg)
+JPEG_LIBS_LINUX := $(shell pkg-config --libs libjpeg)
+JPEG_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags libjpeg)
+JPEG_LIBS_WIN := $(shell mingw64-pkg-config --libs libjpeg)
+
+# If pkg-config doesn't find JPEG, try standard library name
+ifeq ($(JPEG_LIBS_LINUX),)
+  JPEG_LIBS_LINUX = -ljpeg
+endif
+ifeq ($(JPEG_LIBS_WIN),)
+  JPEG_LIBS_WIN = -ljpeg
+endif
+
 # ZIP library flags
 ZIP_CFLAGS_LINUX := $(shell pkg-config --cflags libzip)
 ZIP_LIBS_LINUX := $(shell pkg-config --libs libzip)
@@ -69,20 +84,20 @@ SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src_sdl/sdlaudioplayer.cpp
 
 # Platform-specific settings
-# FIXED: Added $(CAIRO_CFLAGS_LINUX) to include Cairo compiler flags
-CXXFLAGS_LINUX = $(CXXFLAGS_COMMON) $(QT5_CFLAGS_LINUX) $(SDL_CFLAGS_LINUX) $(AUDIO_FLAGS_LINUX) $(ZIP_CFLAGS_LINUX) $(CAIRO_CFLAGS_LINUX) -DLINUX
-# FIXED: Added $(CAIRO_CFLAGS_WIN) to include Cairo compiler flags for Windows
-CXXFLAGS_WIN = $(CXXFLAGS_COMMON) $(QT5_CFLAGS_WIN) $(SDL_CFLAGS_WIN) $(ZIP_CFLAGS_WIN) $(CAIRO_CFLAGS_WIN) -DWIN32 -DUSE_SDL
+# FIXED: Added $(CAIRO_CFLAGS_LINUX) and $(JPEG_CFLAGS_LINUX) to include compiler flags
+CXXFLAGS_LINUX = $(CXXFLAGS_COMMON) $(QT5_CFLAGS_LINUX) $(SDL_CFLAGS_LINUX) $(AUDIO_FLAGS_LINUX) $(ZIP_CFLAGS_LINUX) $(CAIRO_CFLAGS_LINUX) $(JPEG_CFLAGS_LINUX) -DLINUX
+# FIXED: Added $(CAIRO_CFLAGS_WIN) and $(JPEG_CFLAGS_WIN) to include compiler flags for Windows
+CXXFLAGS_WIN = $(CXXFLAGS_COMMON) $(QT5_CFLAGS_WIN) $(SDL_CFLAGS_WIN) $(ZIP_CFLAGS_WIN) $(CAIRO_CFLAGS_WIN) $(JPEG_CFLAGS_WIN) -DWIN32 -DUSE_SDL
 
 # Debug-specific flags
 CXXFLAGS_LINUX_DEBUG = $(CXXFLAGS_LINUX) $(DEBUG_FLAGS)
 CXXFLAGS_WIN_DEBUG = $(CXXFLAGS_WIN) $(DEBUG_FLAGS)
 
 # Linker flags
-# FIXED: Added $(CAIRO_LIBS_LINUX) to link Cairo libraries for Linux
-LDFLAGS_LINUX = $(QT5_LIBS_LINUX) $(SDL_LIBS_LINUX) $(AUDIO_LIBS_LINUX) $(ZIP_LIBS_LINUX) $(CAIRO_LIBS_LINUX) -pthread
-# FIXED: Added $(CAIRO_LIBS_WIN) to link Cairo libraries for Windows
-LDFLAGS_WIN = $(QT5_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) $(CAIRO_LIBS_WIN) -lwinmm -lstdc++ -lSDL2_mixer
+# FIXED: Added $(CAIRO_LIBS_LINUX) and $(JPEG_LIBS_LINUX) to link libraries for Linux
+LDFLAGS_LINUX = $(QT5_LIBS_LINUX) $(SDL_LIBS_LINUX) $(AUDIO_LIBS_LINUX) $(ZIP_LIBS_LINUX) $(CAIRO_LIBS_LINUX) $(JPEG_LIBS_LINUX) -pthread
+# FIXED: Added $(CAIRO_LIBS_WIN) and $(JPEG_LIBS_WIN) to link libraries for Windows
+LDFLAGS_WIN = $(QT5_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) $(CAIRO_LIBS_WIN) $(JPEG_LIBS_WIN) -lwinmm -lstdc++ -lSDL2_mixer
 
 # Object files
 OBJS_LINUX = $(SRCS_COMMON:.cpp=.o) $(SRCS_LINUX:.cpp=.o)

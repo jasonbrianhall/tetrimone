@@ -1208,6 +1208,140 @@ cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t
 }
 #endif  // GTK3
 
+#ifdef QT5
+extern "C" {
+    #include <jpeglib.h>
+}
+
+cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename) {
+    FILE* fp = fopen(filename, "rb");
+    if (!fp) {
+        std::cerr << "Failed to open JPEG file: " << filename << std::endl;
+        return NULL;
+    }
+
+    struct jpeg_decompress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+
+    // Initialize error handling
+    cinfo.err = jpeg_std_error(&jerr);
+    jpeg_create_decompress(&cinfo);
+
+    // Specify the data source
+    jpeg_stdio_src(&cinfo, fp);
+
+    // Read the image header
+    jpeg_read_header(&cinfo, TRUE);
+
+    // Start decompression
+    jpeg_start_decompress(&cinfo);
+
+    int width = cinfo.output_width;
+    int height = cinfo.output_height;
+    int row_stride = cinfo.output_width * cinfo.output_components;
+
+    // Create cairo surface
+    cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24, width, height);
+    unsigned char* data = cairo_image_surface_get_data(surface);
+    int stride = cairo_image_surface_get_stride(surface);
+
+    // Read scanlines and convert to ARGB32
+    JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)
+        ((j_common_ptr)&cinfo, JPOOL_IMAGE, row_stride, 1);
+
+    while (cinfo.output_scanline < cinfo.output_height) {
+        jpeg_read_scanlines(&cinfo, buffer, 1);
+        unsigned char* row = data + (cinfo.output_scanline - 1) * stride;
+
+        for (int x = 0; x < width; x++) {
+            if (cinfo.output_components == 3) {
+                // RGB to ARGB32
+                row[x * 4 + 0] = buffer[0][x * 3 + 2];  // B
+                row[x * 4 + 1] = buffer[0][x * 3 + 1];  // G
+                row[x * 4 + 2] = buffer[0][x * 3 + 0];  // R
+                row[x * 4 + 3] = 0xFF;                   // A
+            } else if (cinfo.output_components == 1) {
+                // Grayscale to ARGB32
+                unsigned char gray = buffer[0][x];
+                row[x * 4 + 0] = gray;
+                row[x * 4 + 1] = gray;
+                row[x * 4 + 2] = gray;
+                row[x * 4 + 3] = 0xFF;
+            }
+        }
+    }
+
+    // Finish decompression
+    jpeg_finish_decompress(&cinfo);
+    jpeg_destroy_decompress(&cinfo);
+    fclose(fp);
+
+    cairo_surface_mark_dirty(surface);
+    return surface;
+}
+
+cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t length) {
+    // Use libjpeg to decode from memory
+    struct jpeg_decompress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+
+    // Initialize error handling
+    cinfo.err = jpeg_std_error(&jerr);
+    jpeg_create_decompress(&cinfo);
+
+    // Set up memory source
+    jpeg_mem_src(&cinfo, (unsigned char*)data, length);
+
+    // Read the image header
+    jpeg_read_header(&cinfo, TRUE);
+
+    // Start decompression
+    jpeg_start_decompress(&cinfo);
+
+    int width = cinfo.output_width;
+    int height = cinfo.output_height;
+    int row_stride = cinfo.output_width * cinfo.output_components;
+
+    // Create cairo surface
+    cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24, width, height);
+    unsigned char* surf_data = cairo_image_surface_get_data(surface);
+    int stride = cairo_image_surface_get_stride(surface);
+
+    // Read scanlines and convert to ARGB32
+    JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)
+        ((j_common_ptr)&cinfo, JPOOL_IMAGE, row_stride, 1);
+
+    while (cinfo.output_scanline < cinfo.output_height) {
+        jpeg_read_scanlines(&cinfo, buffer, 1);
+        unsigned char* row = surf_data + (cinfo.output_scanline - 1) * stride;
+
+        for (int x = 0; x < width; x++) {
+            if (cinfo.output_components == 3) {
+                // RGB to ARGB32
+                row[x * 4 + 0] = buffer[0][x * 3 + 2];  // B
+                row[x * 4 + 1] = buffer[0][x * 3 + 1];  // G
+                row[x * 4 + 2] = buffer[0][x * 3 + 0];  // R
+                row[x * 4 + 3] = 0xFF;                   // A
+            } else if (cinfo.output_components == 1) {
+                // Grayscale to ARGB32
+                unsigned char gray = buffer[0][x];
+                row[x * 4 + 0] = gray;
+                row[x * 4 + 1] = gray;
+                row[x * 4 + 2] = gray;
+                row[x * 4 + 3] = 0xFF;
+            }
+        }
+    }
+
+    // Finish decompression
+    jpeg_finish_decompress(&cinfo);
+    jpeg_destroy_decompress(&cinfo);
+
+    cairo_surface_mark_dirty(surface);
+    return surface;
+}
+#endif  // QT5
+
 bool TetrimoneBoard::loadBackgroundImage(const std::string& imagePath) {
     // Clean up previous image if it exists
     if (backgroundImage != nullptr) {

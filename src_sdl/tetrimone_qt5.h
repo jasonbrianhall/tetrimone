@@ -22,6 +22,7 @@ class NextPieceWidget;
 // Qt5-specific TetrimoneApp structure
 // ============================================================================
 
+
 struct TetrimoneApp {
     QApplication* app = nullptr;
     QWidget*      window = nullptr;
