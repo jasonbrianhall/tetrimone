@@ -250,181 +250,142 @@ void startGame(TetrimoneApp* app) {
     }
 }
 
+void rebuildGameUI(TetrimoneApp *app)
+{
+    //
+    // 1. Destroy old widgets
+    //
+    if (app->gameArea) {
+        app->gameArea->deleteLater();
+        app->gameArea = nullptr;
+    }
+
+    if (app->nextPieceArea) {
+        app->nextPieceArea->deleteLater();
+        app->nextPieceArea = nullptr;
+    }
+
+    //
+    // 2. Recreate game area and next piece area with app->board
+    //
+    app->gameArea = new GameAreaWidget(app->board);
+    app->nextPieceArea = new NextPieceWidget(app->board);
+
+    //
+    // 3. Add widgets back to layout
+    // (Simplified - you'd need to get the actual layout from your mainBox)
+    //
+    if (app->mainBox) {
+        // Find the layout and re-add widgets
+        if (QLayout* layout = app->mainBox->layout()) {
+            // You might need to clear and rebuild the entire layout
+            // depending on your layout structure
+        }
+    }
+}
+
 void pauseGame(TetrimoneApp* app) {
     if (!app || !app->board) return;
     
-    app->board->setPaused(!app->board->isPaused());
-    
-    if (app->board->isPaused() && app->backgroundMusicPlaying) {
-        app->board->pauseBackgroundMusic();
-    } else if (!app->board->isPaused() && app->backgroundMusicPlaying) {
-        app->board->resumeBackgroundMusic();
+    if (app->board->isPaused()) {
+        app->board->setPaused(false);
+    } else {
+        app->board->setPaused(true);
     }
 }
 
 void resetUI(TetrimoneApp* app) {
-    if (!app || !app->board) return;
-    // UI reset is handled by Qt framework via repaint events
+    if (!app) return;
+    
+    if (app->gameArea) {
+        app->gameArea->update();
+    }
+    
+    if (app->nextPieceArea) {
+        app->nextPieceArea->update();
+    }
 }
 
 void cleanupApp(TetrimoneApp* app) {
     if (!app) return;
     
-    if (app->board) {
-        app->board->pauseBackgroundMusic();
-        app->board->cleanupAudio();
-        delete app->board;
-        app->board = nullptr;
-    }
-    
-    if (app->joystick) {
-        SDL_JoystickClose(app->joystick);
-        app->joystick = nullptr;
+    if (app->timerId) {
+        // Kill timer
+        // qApp->killTimer(app->timerId);
     }
     
     shutdownSDL(app);
 }
 
-void initSDL(TetrimoneApp* app) {
+void updateDisplay(TetrimoneApp* app) {
     if (!app) return;
     
+    resetUI(app);
+    updateLabels(app);
+}
+
+// ============================================================================
+// SDL/Joystick Management
+// ============================================================================
+
+void initSDL(TetrimoneApp* app) {
     if (SDL_Init(SDL_INIT_JOYSTICK) < 0) {
-        std::cerr << "Failed to initialize SDL for joystick: " << SDL_GetError() << std::endl;
+        std::cerr << "SDL initialization failed" << std::endl;
         return;
     }
     
+    // Initialize joystick
     int numJoysticks = SDL_NumJoysticks();
     if (numJoysticks > 0) {
         app->joystick = SDL_JoystickOpen(0);
         if (app->joystick) {
             app->joystickEnabled = true;
+            std::cout << "Joystick initialized: " << SDL_JoystickName(app->joystick) << std::endl;
         }
     }
 }
 
 void shutdownSDL(TetrimoneApp* app) {
-    if (!app) return;
-    
     if (app->joystick) {
         SDL_JoystickClose(app->joystick);
         app->joystick = nullptr;
     }
-    
     SDL_Quit();
 }
 
-void updateDisplay(TetrimoneApp* app) {
-    if (!app || !app->gameArea || !app->nextPieceArea) return;
-    
-    // Qt5: Request repaint from the event loop
-    app->gameArea->update();
-    app->nextPieceArea->update();
-}
-
 // ============================================================================
-// Event Handlers
+// Game Logic - Input Handling
 // ============================================================================
 
 void onKeyDownTick(TetrimoneApp* app) {
-    if (!app || !app->board) return;
-    
-    if (!app->board->isPaused() && !app->board->isGameOver() && 
-        !app->board->isSplashScreenActive() && keyDownPressed) {
-        
-        app->board->movePiece(0, 1);
-        keyDownCount++;
-        
-        // Accelerate by decreasing the delay
-        if (keyDownCount > 6) {
-            keyDownDelay = 20;
-        } else if (keyDownCount > 4) {
-            keyDownDelay = 30;
-        } else if (keyDownCount > 2) {
-            keyDownDelay = 60;
-        }
-        
-        updateDisplay(app);
-        updateLabels(app);
-    }
+    if (!app || !app->board || app->board->isPaused()) return;
+    app->board->moveDown();
+    updateDisplay(app);
 }
 
 void onKeyLeftTick(TetrimoneApp* app) {
-    if (!app || !app->board) return;
-    
-    if (!app->board->isPaused() && !app->board->isGameOver() && 
-        !app->board->isSplashScreenActive() && keyLeftPressed) {
-        
-        app->board->movePiece(-1, 0);
-        keyLeftCount++;
-        
-        if (keyLeftCount > 6) {
-            keyLeftDelay = 30;
-        } else if (keyLeftCount > 4) {
-            keyLeftDelay = 50;
-        } else if (keyLeftCount > 2) {
-            keyLeftDelay = 100;
-        }
-        
-        updateDisplay(app);
-        updateLabels(app);
-    }
+    if (!app || !app->board || app->board->isPaused()) return;
+    app->board->moveLeft();
+    updateDisplay(app);
 }
 
 void onKeyRightTick(TetrimoneApp* app) {
-    if (!app || !app->board) return;
-    
-    if (!app->board->isPaused() && !app->board->isGameOver() && 
-        !app->board->isSplashScreenActive() && keyRightPressed) {
-        
-        app->board->movePiece(1, 0);
-        keyRightCount++;
-        
-        if (keyRightCount > 6) {
-            keyRightDelay = 30;
-        } else if (keyRightCount > 4) {
-            keyRightDelay = 50;
-        } else if (keyRightCount > 2) {
-            keyRightDelay = 100;
-        }
-        
-        updateDisplay(app);
-        updateLabels(app);
-    }
+    if (!app || !app->board || app->board->isPaused()) return;
+    app->board->moveRight();
+    updateDisplay(app);
 }
 
 void onGameTick(TetrimoneApp* app) {
     if (!app || !app->board) return;
     
-    if (!app->board->isPaused() && !app->board->isSplashScreenActive() && 
-        !app->board->retroModeActive) {
-        app->board->coolDown();
-    }
-    
-    if (!app->board->isPaused()) {
-        app->board->updateGame();
-        
-        if (app->board->isGameOver()) {
-            if (!app->board->highScoreAlreadyProcessed) {
-                app->board->highScoreAlreadyProcessed = true;
-                bool isHighScore = app->board->checkAndRecordHighScore(app);
-                
-                if (isHighScore) {
-                    app->board->playSound(GameSoundEvent::Excellent);
-                }
-            }
-        }
-        
+    if (!app->board->isPaused() && !app->board->isGameOver()) {
+        app->board->moveDown();
         updateDisplay(app);
-        updateLabels(app);
-    }
-    
-    if (app->board->retroModeActive) {
-        app->board->setHeatLevel(0.5f);
     }
 }
 
 // ============================================================================
-// Key Event Handler - Qt5 Window Class
+// Qt5 Main Window
 // ============================================================================
 
 class TetrimoneWindow : public QWidget {
@@ -441,36 +402,17 @@ protected:
             return;
         }
         
-        if (!app || !app->board) {
-            QWidget::keyPressEvent(event);
-            return;
-        }
-        
         int key = event->key();
         
-        if (key == Qt::Key_Space) {
-            // Hard drop
-            if (!app->board->isPaused() && !app->board->isGameOver() && 
-                !app->board->isSplashScreenActive()) {
-                app->board->hardDrop();
-                updateDisplay(app);
-                updateLabels(app);
-            }
-        } else if (key == Qt::Key_Up || key == Qt::Key_W) {
-            // Rotate clockwise
-            if (!app->board->isPaused() && !app->board->isGameOver() && 
-                !app->board->isSplashScreenActive()) {
+        if (key == Qt::Key_Up || key == Qt::Key_W) {
+            if (app->board) {
                 app->board->rotatePiece(true);
                 updateDisplay(app);
-                updateLabels(app);
             }
-        } else if (key == Qt::Key_Control) {
-            // Rotate counter-clockwise
-            if (!app->board->isPaused() && !app->board->isGameOver() && 
-                !app->board->isSplashScreenActive()) {
-                app->board->rotatePiece(false);
+        } else if (key == Qt::Key_Space) {
+            if (app->board) {
+                app->board->hardDrop();
                 updateDisplay(app);
-                updateLabels(app);
             }
         } else if (key == Qt::Key_Down || key == Qt::Key_S) {
             keyDownPressed = true;
@@ -692,7 +634,7 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     // Create horizontal layout for game area and info
     QHBoxLayout* gameLayout = new QHBoxLayout();
     
-    // Game area
+    // Game area - FIXED: Pass app->board instead of app
     app->gameArea = new GameAreaWidget(app->board);
     gameLayout->addWidget(app->gameArea);
     
@@ -711,7 +653,7 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     
     infoLayout->addSpacing(20);
     
-    // Next piece area
+    // Next piece area - FIXED: Pass app->board instead of app
     app->nextPieceArea = new NextPieceWidget(app->board);
     infoLayout->addWidget(new QLabel("Next Piece:"));
     infoLayout->addWidget(app->nextPieceArea);
@@ -732,4 +674,3 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     gameTimer->start(app->dropSpeed);
     app->timerId = gameTimer->timerId();
 }
-
