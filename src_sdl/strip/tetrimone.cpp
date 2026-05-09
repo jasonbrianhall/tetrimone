@@ -1228,6 +1228,18 @@ std::string TetrimoneBoard::getDifficultyText(int difficulty) const {
   }
 }
 
+void onAppActivate(TetrimoneApp* app)
+{
+    // Initialize the game UI
+    if (app) {
+        setupGameUI(app, 800, 600);
+        // Apply command-line arguments if they were stored
+        if (app->cmdlineArgs) {
+            applyCommandLineArgs(app, *app->cmdlineArgs);
+        }
+    }
+}
+
 int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args)
 {
 #ifdef GTK3
@@ -1246,7 +1258,7 @@ int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandL
     QApplication qtApp(argc, argv);
 
     // Store args in the app struct (Qt has no g_object_set_data equivalent)
-    app->cmdlineArgs = args;
+    app->cmdlineArgs = const_cast<CommandLineArgs*>(args);
 
     // Equivalent of GTK's "activate" handler
     onAppActivate(app);
