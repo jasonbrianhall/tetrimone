@@ -1057,6 +1057,53 @@ void ui_set_background_enabled(TetrimoneApp *app, bool enabled)
 
 }
 
+void set_difficulty_menu(TetrimoneApp *app, int difficulty)
+{
+    const char *labels[] = {
+        "Zen", "Easy", "Medium", "Hard", "Extreme", "Insane"
+    };
+
+#ifdef GTK3
+    GtkWidget *items[] = {
+        app->zenMenuItem,
+        app->easyMenuItem,
+        app->mediumMenuItem,
+        app->hardMenuItem,
+        app->extremeMenuItem,
+        app->insaneMenuItem
+    };
+#endif
+
+#ifdef QT5
+    QAction *items[] = {
+        app->zenMenuItem,
+        app->easyMenuItem,
+        app->mediumMenuItem,
+        app->hardMenuItem,
+        app->extremeMenuItem,
+        app->insaneMenuItem
+    };
+#endif
+
+    int count = sizeof(labels) / sizeof(labels[0]);
+
+    if (difficulty < 0 || difficulty >= count) {
+        printf("DEBUG: Invalid difficulty %d\n", difficulty);
+        return;
+    }
+
+    printf("DEBUG: Setting %s difficulty\n", labels[difficulty]);
+
+#ifdef GTK3
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(items[difficulty]), true);
+#endif
+
+#ifdef QT5
+    items[difficulty]->setChecked(true);
+#endif
+}
+
+
 void ui_set_mediumMenuItem_enabled(TetrimoneApp *app, bool enabled)
 {
 #ifdef GTK3
@@ -1117,3 +1164,19 @@ void ui_update_track_menu(TetrimoneApp *app)
 
     }
 }
+
+void app_set_track_items_active(TetrimoneApp* app, int count, bool active)
+{
+#ifdef GTK3
+    for (int i = 0; i < count; i++) {
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]), active);
+    }
+#endif
+
+#ifdef QT5
+    for (int i = 0; i < count; i++) {
+        app->trackMenuItems[i]->setChecked(active);
+    }
+#endif
+}
+

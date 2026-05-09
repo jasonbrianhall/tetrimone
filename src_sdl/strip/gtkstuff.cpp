@@ -653,30 +653,6 @@ void drawNextPieceArea(TetrimoneBoard *board) {
      gtk_widget_queue_draw(board->app->nextPieceArea); // For theme color changes
 }
 
-void set_difficulty_menu(TetrimoneApp *app, int difficulty)
-{
-    GtkWidget *items[] = {
-        app->zenMenuItem,
-        app->easyMenuItem,
-        app->mediumMenuItem,
-        app->hardMenuItem,
-        app->extremeMenuItem,
-        app->insaneMenuItem
-    };
-
-    const char *labels[] = {
-        "Zen", "Easy", "Medium", "Hard", "Extreme", "Insane"
-    };
-
-    if (difficulty < 0 || difficulty >= G_N_ELEMENTS(items)) {
-        printf("DEBUG: Invalid difficulty %d\n", difficulty);
-        return;
-    }
-
-    printf("DEBUG: Setting %s difficulty\n", labels[difficulty]);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(items[difficulty]), true);
-}
-
 void set_theme_menu(TetrimoneApp *app, int index)
 {
     if (index < 0) {
@@ -689,18 +665,6 @@ void set_theme_menu(TetrimoneApp *app, int index)
         GTK_CHECK_MENU_ITEM(app->themeMenuItems[index]),
         true
     );
-}
-
-
-
-void app_set_track_items_active(TetrimoneApp* app, int count, bool active)
-{
-    for (int i = 0; i < count; i++) {
-        gtk_check_menu_item_set_active(
-            GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]),
-            active
-        );
-    }
 }
 
 
