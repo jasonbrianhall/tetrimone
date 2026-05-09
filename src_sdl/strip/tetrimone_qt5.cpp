@@ -250,6 +250,19 @@ void startGame(TetrimoneApp* app) {
     }
 }
 
+void onAppActivate(TetrimoneApp* app)
+{
+    // Initialize the game UI
+    if (app) {
+        setupGameUI(app, 800, 600);
+        // Apply command-line arguments if they were stored
+        if (app->cmdlineArgs) {
+            applyCommandLineArgs(app, *app->cmdlineArgs);
+        }
+    }
+}
+
+
 void rebuildGameUI(TetrimoneApp *app)
 {
     //

@@ -106,7 +106,10 @@ void onKeyDownTick(TetrimoneApp* app);
 void onKeyLeftTick(TetrimoneApp* app);
 void onKeyRightTick(TetrimoneApp* app);
 void onGameTick(TetrimoneApp* app);
+
+#ifdef QT5
 void onAppActivate(TetrimoneApp* app);
+#endif
 
 // Menu actions
 void onStartGameAction(TetrimoneApp* app);
