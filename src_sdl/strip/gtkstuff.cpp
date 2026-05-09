@@ -649,10 +649,6 @@ void drawBoard(TetrimoneBoard *board) {
      gtk_widget_queue_draw(board->app->gameArea);
 }
 
-void drawNextPieceArea(TetrimoneBoard *board) {
-     gtk_widget_queue_draw(board->app->nextPieceArea); // For theme color changes
-}
-
 void set_theme_menu(TetrimoneApp *app, int index)
 {
     if (index < 0) {

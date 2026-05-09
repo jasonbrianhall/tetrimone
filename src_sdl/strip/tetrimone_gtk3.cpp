@@ -2069,44 +2069,6 @@ gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
   }
 }
 
-std::string TetrimoneBoard::getDifficultyText(int difficulty) const {
-  if (retroModeActive) {
-    switch (difficulty) {
-    case 0:
-      return "<b>Сложность:</b> Санаторий для Партийной Элиты"; // Luxury Sanatorium for Party Elite
-    case 1:
-      return "<b>Сложность:</b> Стахановское Движение для Начинающих"; // Stakhanovite Movement for Beginners
-    case 2:
-      return "<b>Сложность:</b> Стандартный Рабочий Режим"; // Standard Worker Mode
-    case 3:
-      return "<b>Сложность:</b> Ударный Труд"; // Shock Work
-    case 4:
-      return "<b>Сложность:</b> Сибирская Зима"; // Siberian Winter
-    case 5:
-      return "<b>Сложность:</b> ГУЛАГ"; // GULAG
-    default:
-      return "<b>Сложность:</b> Стандартный Рабочий Режим";
-    }
-  } else {
-    switch (difficulty) {
-    case 0:
-      return "<b>Difficulty:</b> Zen";
-    case 1:
-      return "<b>Difficulty:</b> Easy";
-    case 2:
-      return "<b>Difficulty:</b> Medium";
-    case 3:
-      return "<b>Difficulty:</b> Hard";
-    case 4:
-      return "<b>Difficulty:</b> Extreme";
-    case 5:
-      return "<b>Difficulty:</b> Insane";
-    default:
-      return "<b>Difficulty:</b> Medium";
-    }
-  }
-}
-
 void adjustDropSpeed(TetrimoneApp *app) {
   // Base speed based on level
   int baseSpeed = INITIAL_SPEED - (app->board->getLevel() - 1) * 50;
