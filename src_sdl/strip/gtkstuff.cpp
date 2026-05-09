@@ -691,59 +691,7 @@ void set_theme_menu(TetrimoneApp *app, int index)
     );
 }
 
-void ui_set_sound_enabled(TetrimoneApp *app, bool enabled)
-{
-    gtk_check_menu_item_set_active(
-        GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem),
-        enabled
-    );
-}
 
-void ui_set_sound_enabled(TetrimoneApp *app) {
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem),  app->board->sound_enabled_);
-}
-
-void ui_set_isusingbackgroundimage_enabled(TetrimoneApp *app) {
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), app->board->isUsingBackgroundImage());
-}
-
-void ui_set_background_enabled(TetrimoneApp *app, bool enabled)
-{
-    gtk_check_menu_item_set_active(
-        GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem),
-        enabled
-    );
-}
-
-void ui_set_mediumMenuItem_enabled(TetrimoneApp *app, bool enabled)
-{
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), enabled);
-}
-
-void ui_set_window_title(TetrimoneApp *app, const char *title)
-{
-    gtk_window_set_title(GTK_WINDOW(app->window), title);
-}
-
-void ui_set_difficulty_label(TetrimoneApp *app, const char *markup)
-{
-    gtk_label_set_markup(GTK_LABEL(app->difficultyLabel), markup);
-}
-
-void ui_set_pause_menu_label(TetrimoneApp *app, const char *text)
-{
-    gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), text);
-}
-
-void ui_update_track_menu(TetrimoneApp *app)
-{
-    for (int i = 0; i < 5; i++) {
-        gtk_check_menu_item_set_active(
-            GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]),
-            app->board->enabledTracks[i]
-        );
-    }
-}
 
 void app_set_track_items_active(TetrimoneApp* app, int count, bool active)
 {

@@ -1012,3 +1012,108 @@ void ui_window_fullscreen(TetrimoneApp *app)
 #endif
 }
 
+void ui_set_sound_enabled(TetrimoneApp *app, bool enabled)
+{
+#ifdef GTK3
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), enabled);
+#endif
+
+#ifdef QT5    
+    app->soundToggleMenuItem->setChecked(true);
+#endif
+}
+
+void ui_set_sound_enabled(TetrimoneApp *app) {
+#ifdef GTK3
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem),  app->board->sound_enabled_);
+#endif
+
+#ifdef QT5    
+    app->board->sound_enabled_.setChecked(true);
+#endif
+
+
+}
+
+void ui_set_isusingbackgroundimage_enabled(TetrimoneApp *app) {
+#ifdef GTK3
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), app->board->isUsingBackgroundImage());
+#endif
+
+#ifdef QT5
+    app->backgroundToggleMenuItem->setChecked(app->board->isUsingBackgroundImage());
+#endif
+}
+
+void ui_set_background_enabled(TetrimoneApp *app, bool enabled)
+{
+#ifdef GTK3
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), enabled);
+#endif
+
+#ifdef QT5
+    app->backgroundToggleMenuItem->setChecked(true);
+#endif    
+
+}
+
+void ui_set_mediumMenuItem_enabled(TetrimoneApp *app, bool enabled)
+{
+#ifdef GTK3
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), enabled);
+#endif
+
+#ifdef QT5
+    app->mediumMenuItem->setChecked(true);
+#endif    
+}
+
+void ui_set_window_title(TetrimoneApp *app, const char *title)
+{
+#ifdef GTK3
+    gtk_window_set_title(GTK_WINDOW(app->window), title);
+#endif
+
+#ifdef QT5
+    app->window->setWindowTitle(QString::fromUtf8(title));
+#endif
+}
+
+void ui_set_difficulty_label(TetrimoneApp *app, const char *markup)
+{
+#ifdef GTK3
+    gtk_label_set_markup(GTK_LABEL(app->difficultyLabel), markup);
+#endif
+
+#ifdef QT5
+    app->difficultyLabel->setTextFormat(Qt::RichText);
+    app->difficultyLabel->setText(QString::fromUtf8(markup));
+#endif
+
+}
+
+void ui_set_pause_menu_label(TetrimoneApp *app, const char *text)
+{
+#ifdef GTK3
+    gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), text);
+#endif
+
+#ifdef QT5
+    app->pauseMenuItem->setText(QString::fromUtf8(text));
+#endif
+
+}
+
+void ui_update_track_menu(TetrimoneApp *app)
+{
+    for (int i = 0; i < 5; i++) {
+#ifdef GTK3
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]), app->board->enabledTracks[i]);
+#endif
+
+#ifdef QT5
+        app->trackMenuItems[i]->setChecked(app->board->enabledTracks[i]);
+#endif
+
+    }
+}
