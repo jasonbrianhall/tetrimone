@@ -359,19 +359,19 @@ void shutdownSDL(TetrimoneApp* app) {
 
 void onKeyDownTick(TetrimoneApp* app) {
     if (!app || !app->board || app->board->isPaused()) return;
-    app->board->moveDown();
+    app->board->movePiece(0, 1);
     updateDisplay(app);
 }
 
 void onKeyLeftTick(TetrimoneApp* app) {
     if (!app || !app->board || app->board->isPaused()) return;
-    app->board->moveLeft();
+    app->board->movePiece(-1, 0);
     updateDisplay(app);
 }
 
 void onKeyRightTick(TetrimoneApp* app) {
     if (!app || !app->board || app->board->isPaused()) return;
-    app->board->moveRight();
+    app->board->movePiece(1, 0);
     updateDisplay(app);
 }
 
@@ -379,7 +379,7 @@ void onGameTick(TetrimoneApp* app) {
     if (!app || !app->board) return;
     
     if (!app->board->isPaused() && !app->board->isGameOver()) {
-        app->board->moveDown();
+        app->board->movePiece(0, 1);
         updateDisplay(app);
     }
 }
