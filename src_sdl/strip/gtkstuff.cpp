@@ -301,9 +301,11 @@ void onDrawNextPieceCairo(cairo_t *cr, TetrimoneApp *app, int width, int height)
       int headerHeight = 25;
 
       // Get the piece information
-      const TetrimoneBlock &piece = board->getNextPiece(pieceIndex);
-      auto shape = piece.getShape();
-      auto color = piece.getColor();
+      const TetrimoneBlock* piece = board->getNextPiece(pieceIndex);
+      if (!piece) continue;  // Skip if piece doesn't exist yet
+      
+      auto shape = piece->getShape();
+      auto color = piece->getColor();
 
       // Calculate the shape dimensions in blocks
       int pieceWidth = 0;
