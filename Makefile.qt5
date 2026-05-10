@@ -1,6 +1,4 @@
-# Last modification 05/07/2025
-# FIXED: Added Cairo library support for rendering
-# FIXED: Added JPEG library support for background images
+# Last modification 05/08/2025
 
 # Makefile for Tetrimone with Qt5 GUI Backend
 # Windows and Linux Support
@@ -41,24 +39,24 @@ endif
 # Qt5 flags
 QT5_CFLAGS_LINUX := $(shell pkg-config --cflags Qt5Core Qt5Gui Qt5Widgets)
 QT5_LIBS_LINUX := $(shell pkg-config --libs Qt5Core Qt5Gui Qt5Widgets)
-QT5_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags Qt5Core Qt5Gui Qt5Widgets)
-QT5_LIBS_WIN := $(shell mingw64-pkg-config --libs Qt5Core Qt5Gui Qt5Widgets)
+QT5_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags Qt5Core Qt5Gui Qt5Widgets 2>/dev/null || echo "")
+QT5_LIBS_WIN := $(shell mingw64-pkg-config --libs Qt5Core Qt5Gui Qt5Widgets 2>/dev/null || echo "")
 
-# Qt5 MOC (Meta-Object Compiler)
+# Qt5 MOC (Meta-Object Compiler) - only needed for Q_OBJECT classes
 MOC_LINUX := $(shell pkg-config --variable=libexecdir Qt5Core)/moc
 MOC_WIN = x86_64-w64-mingw32-moc
 
-# Cairo flags (ADDED - required for rendering)
+# Cairo flags (required for rendering)
 CAIRO_CFLAGS_LINUX := $(shell pkg-config --cflags cairo)
 CAIRO_LIBS_LINUX := $(shell pkg-config --libs cairo)
-CAIRO_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags cairo)
-CAIRO_LIBS_WIN := $(shell mingw64-pkg-config --libs cairo)
+CAIRO_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags cairo 2>/dev/null || echo "")
+CAIRO_LIBS_WIN := $(shell mingw64-pkg-config --libs cairo 2>/dev/null || echo "")
 
-# JPEG library flags (ADDED - required for JPEG image support)
+# JPEG library flags (required for JPEG image support)
 JPEG_CFLAGS_LINUX := $(shell pkg-config --cflags libjpeg)
 JPEG_LIBS_LINUX := $(shell pkg-config --libs libjpeg)
-JPEG_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags libjpeg)
-JPEG_LIBS_WIN := $(shell mingw64-pkg-config --libs libjpeg)
+JPEG_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags libjpeg 2>/dev/null || echo "")
+JPEG_LIBS_WIN := $(shell mingw64-pkg-config --libs libjpeg 2>/dev/null || echo "")
 
 # If pkg-config doesn't find JPEG, try standard library name
 ifeq ($(JPEG_LIBS_LINUX),)
@@ -71,22 +69,19 @@ endif
 # ZIP library flags
 ZIP_CFLAGS_LINUX := $(shell pkg-config --cflags libzip)
 ZIP_LIBS_LINUX := $(shell pkg-config --libs libzip)
-ZIP_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags libzip)
-ZIP_LIBS_WIN := $(shell mingw64-pkg-config --libs libzip)
+ZIP_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags libzip 2>/dev/null || echo "")
+ZIP_LIBS_WIN := $(shell mingw64-pkg-config --libs libzip 2>/dev/null || echo "")
 
 # Windows SDL flags
-SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2)
-SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2)
+SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2 2>/dev/null || echo "")
+SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2 2>/dev/null || echo "")
 
-# Source files
-SRCS_COMMON = src_sdl/strip/tetrimone_qt5.cpp src_sdl/strip/tetrimone.cpp src_sdl/audiomanager.cpp src_sdl/sound.cpp src_sdl/audioconverter.cpp src_sdl/strip/volume.cpp src_sdl/strip/ghostpiece.cpp src_sdl/strip/highscores.cpp src_sdl/strip/icon.cpp src_sdl/dbopl.cpp src_sdl/dbopl_wrapper.cpp src_sdl/instruments.cpp src_sdl/midiplayer.cpp src_sdl/virtual_mixer.cpp src_sdl/wav_converter.cpp src_sdl/convertmidi.cpp src_sdl/strip/junklines.cpp src_sdl/strip/propaganda.cpp src_sdl/strip/help.cpp src_sdl/strip/saveloadsettings.cpp src_sdl/drawgame.cpp src_sdl/strip/tetrimone_main.cpp src_sdl/heat.cpp src_sdl/strip/freedom.cpp src_sdl/drawgame_cairo.cpp src_sdl/strip/qt5_dialog_helpers.cpp
+SRCS_COMMON = src_sdl/strip/tetrimone_qt5.cpp src_sdl/strip/tetrimone.cpp src_sdl/audiomanager.cpp src_sdl/sound.cpp src_sdl/audioconverter.cpp src_sdl/strip/volume.cpp src_sdl/strip/ghostpiece.cpp src_sdl/strip/highscores.cpp src_sdl/strip/icon.cpp src_sdl/dbopl.cpp src_sdl/dbopl_wrapper.cpp src_sdl/instruments.cpp src_sdl/midiplayer.cpp src_sdl/virtual_mixer.cpp src_sdl/wav_converter.cpp src_sdl/convertmidi.cpp src_sdl/strip/junklines.cpp src_sdl/strip/propaganda.cpp src_sdl/strip/help.cpp src_sdl/strip/saveloadsettings.cpp src_sdl/drawgame.cpp src_sdl/strip/tetrimone_main.cpp src_sdl/heat.cpp src_sdl/strip/freedom.cpp src_sdl/drawgame_cairo.cpp src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src_sdl/sdlaudioplayer.cpp
 
 # Platform-specific settings
-# FIXED: Added $(CAIRO_CFLAGS_LINUX) and $(JPEG_CFLAGS_LINUX) to include compiler flags
 CXXFLAGS_LINUX = $(CXXFLAGS_COMMON) $(QT5_CFLAGS_LINUX) $(SDL_CFLAGS_LINUX) $(AUDIO_FLAGS_LINUX) $(ZIP_CFLAGS_LINUX) $(CAIRO_CFLAGS_LINUX) $(JPEG_CFLAGS_LINUX) -DLINUX
-# FIXED: Added $(CAIRO_CFLAGS_WIN) and $(JPEG_CFLAGS_WIN) to include compiler flags for Windows
 CXXFLAGS_WIN = $(CXXFLAGS_COMMON) $(QT5_CFLAGS_WIN) $(SDL_CFLAGS_WIN) $(ZIP_CFLAGS_WIN) $(CAIRO_CFLAGS_WIN) $(JPEG_CFLAGS_WIN) -DWIN32 -DUSE_SDL
 
 # Debug-specific flags
@@ -94,15 +89,13 @@ CXXFLAGS_LINUX_DEBUG = $(CXXFLAGS_LINUX) $(DEBUG_FLAGS)
 CXXFLAGS_WIN_DEBUG = $(CXXFLAGS_WIN) $(DEBUG_FLAGS)
 
 # Linker flags
-# FIXED: Added $(CAIRO_LIBS_LINUX) and $(JPEG_LIBS_LINUX) to link libraries for Linux
 LDFLAGS_LINUX = $(QT5_LIBS_LINUX) $(SDL_LIBS_LINUX) $(AUDIO_LIBS_LINUX) $(ZIP_LIBS_LINUX) $(CAIRO_LIBS_LINUX) $(JPEG_LIBS_LINUX) -pthread
-# FIXED: Added $(CAIRO_LIBS_WIN) and $(JPEG_LIBS_WIN) to link libraries for Windows
 LDFLAGS_WIN = $(QT5_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) $(CAIRO_LIBS_WIN) $(JPEG_LIBS_WIN) -lwinmm -lstdc++ -lSDL2_mixer
 
 # Object files
-OBJS_LINUX = $(SRCS_COMMON:.cpp=.o) $(SRCS_LINUX:.cpp=.o) src_sdl/strip/qt5_dialog_helpers_moc.o
+OBJS_LINUX = $(SRCS_COMMON:.cpp=.o) $(SRCS_LINUX:.cpp=.o)
 OBJS_WIN = $(SRCS_COMMON:.cpp=.win.o) $(SRCS_WIN:.cpp=.win.o)
-OBJS_LINUX_DEBUG = $(SRCS_COMMON:.cpp=.debug.o) $(SRCS_LINUX:.cpp=.debug.o) src_sdl/strip/qt5_dialog_helpers_moc.debug.o
+OBJS_LINUX_DEBUG = $(SRCS_COMMON:.cpp=.debug.o) $(SRCS_LINUX:.cpp=.debug.o)
 OBJS_WIN_DEBUG = $(SRCS_COMMON:.cpp=.win.debug.o) $(SRCS_WIN:.cpp=.win.debug.o)
 
 # Target executables
@@ -184,24 +177,14 @@ pulse-debug:
 tetrimone-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX) pack-backgrounds-linux convert-midi convert-wav-to-mp3 pack-sounds
 
 $(BUILD_DIR_LINUX)/$(TARGET_LINUX): $(addprefix $(BUILD_DIR_LINUX)/,$(OBJS_LINUX))
+	@echo "Linking Qt5 Linux executable..."
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
-
-$(BUILD_DIR_LINUX)/src_sdl/strip/qt5_dialog_helpers_moc.o: src_sdl/strip/qt5_dialog_helpers_moc.cpp
-	$(CXX_LINUX) $(CXXFLAGS_LINUX) -c $< -o $@
-
-$(BUILD_DIR_LINUX_DEBUG)/src_sdl/strip/qt5_dialog_helpers_moc.debug.o: src_sdl/strip/qt5_dialog_helpers_moc.cpp
-	$(CXX_LINUX) $(CXXFLAGS_LINUX_DEBUG) -c $< -o $@
+	@echo "Build complete: $@"
 
 # Generic compilation rules for Linux
 $(BUILD_DIR_LINUX)/%.o: %.cpp
+	@mkdir -p $(dir $@)
 	$(CXX_LINUX) $(CXXFLAGS_LINUX) -c $< -o $@
-
-# Special rule for qt5_dialog_helpers - run MOC first
-src_sdl/strip/qt5_dialog_helpers_moc.cpp: src_sdl/strip/qt5_dialog_helpers.h
-	moc-qt5 $(QT5_CFLAGS_LINUX) src_sdl/strip/qt5_dialog_helpers.h -o $@
-
-$(BUILD_DIR_LINUX)/src_sdl/strip/qt5_dialog_helpers.o: src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp
-	$(CXX_LINUX) $(CXXFLAGS_LINUX) -c src_sdl/strip/qt5_dialog_helpers.cpp -o $@
 
 #
 # Linux debug targets
@@ -210,10 +193,13 @@ $(BUILD_DIR_LINUX)/src_sdl/strip/qt5_dialog_helpers.o: src_sdl/strip/qt5_dialog_
 tetrimone-linux-debug: $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG) pack-backgrounds-linux-debug convert-midi convert-wav-to-mp3 pack-sounds link-sound-linux-debug
 
 $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG): $(addprefix $(BUILD_DIR_LINUX_DEBUG)/,$(OBJS_LINUX_DEBUG))
+	@echo "Linking Qt5 Linux Debug executable..."
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
+	@echo "Build complete: $@"
 
 # Generic compilation rules for Linux debug
 $(BUILD_DIR_LINUX_DEBUG)/%.debug.o: %.cpp
+	@mkdir -p $(dir $@)
 	$(CXX_LINUX) $(CXXFLAGS_LINUX_DEBUG) -c $< -o $@
 
 #
@@ -223,10 +209,13 @@ $(BUILD_DIR_LINUX_DEBUG)/%.debug.o: %.cpp
 tetrimone-windows: $(BUILD_DIR_WIN)/$(TARGET_WIN) tetrimone-collect-dlls pack-backgrounds-windows convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows
 
 $(BUILD_DIR_WIN)/$(TARGET_WIN): $(addprefix $(BUILD_DIR_WIN)/,$(OBJS_WIN))
+	@echo "Linking Qt5 Windows executable..."
 	$(CXX_WIN) $^ -o $@ $(LDFLAGS_WIN)
+	@echo "Build complete: $@"
 
 # Generic compilation rules for Windows
 $(BUILD_DIR_WIN)/%.win.o: %.cpp
+	@mkdir -p $(dir $@)
 	$(CXX_WIN) $(CXXFLAGS_WIN) -c $< -o $@
 
 #
@@ -236,10 +225,13 @@ $(BUILD_DIR_WIN)/%.win.o: %.cpp
 tetrimone-windows-debug: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) tetrimone-collect-debug-dlls pack-backgrounds-windows-debug convert-midi convert-wav-to-mp3 pack-sounds link-sound-windows-debug
 
 $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG): $(addprefix $(BUILD_DIR_WIN_DEBUG)/,$(OBJS_WIN_DEBUG))
+	@echo "Linking Qt5 Windows Debug executable..."
 	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) $^ -o $@ $(LDFLAGS_WIN)
+	@echo "Build complete: $@"
 
 # Generic compilation rules for Windows debug
 $(BUILD_DIR_WIN_DEBUG)/%.win.debug.o: %.cpp
+	@mkdir -p $(dir $@)
 	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) -c $< -o $@
 
 #
@@ -283,25 +275,25 @@ tetrimone-collect-debug-dlls: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG)
 .PHONY: pack-backgrounds-linux
 pack-backgrounds-linux:
 	@echo "Packing background images for Linux build..."
-	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.jpg;
+	@cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.jpg;
 	@echo "Background images packed to $(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP)"
 
 .PHONY: pack-backgrounds-linux-debug
 pack-backgrounds-linux-debug:
 	@echo "Packing background images for Linux debug build..."
-	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP) *.jpg;
+	@cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP) *.jpg;
 	@echo "Background images packed to $(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP)"
 
 .PHONY: pack-backgrounds-windows
 pack-backgrounds-windows:
 	@echo "Packing background images for Windows build..."
-	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN)/$(BACKGROUND_ZIP) *.jpg;
+	@cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN)/$(BACKGROUND_ZIP) *.jpg;
 	@echo "Background images packed to $(BUILD_DIR_WIN)/$(BACKGROUND_ZIP)"
 	
 .PHONY: pack-backgrounds-windows-debug
 pack-backgrounds-windows-debug:
 	@echo "Packing background images for Windows debug build..."
-	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP) *.jpg;
+	@cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP) *.jpg;
 	@echo "Background images packed to $(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP)"
 	
 .PHONY: pack-backgrounds-all
@@ -313,29 +305,29 @@ pack-backgrounds-all: pack-backgrounds-linux pack-backgrounds-linux-debug pack-b
 .PHONY: pack-sounds
 pack-sounds: convert-wav-to-mp3
 	@echo "Creating sound.zip with MP3 files in sound directory..."
-	cd $(SOUND_DIR) && zip -r $(SOUND_ZIP) *.mp3 *.mid
+	@cd $(SOUND_DIR) && zip -r $(SOUND_ZIP) *.mp3 *.mid
 	@echo "MP3 files packed to $(SOUND_DIR)/$(SOUND_ZIP)"
 	@$(MAKE) link-sound-linux
 
 .PHONY: link-sound-linux
 link-sound-linux:
 	@echo "Linking sound.zip to Linux build directory..."
-	ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_LINUX)/$(SOUND_ZIP)
+	@ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_LINUX)/$(SOUND_ZIP)
 
 .PHONY: link-sound-linux-debug
 link-sound-linux-debug:
 	@echo "Linking sound.zip to Linux debug build directory..."
-	ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_LINUX_DEBUG)/$(SOUND_ZIP)
+	@ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_LINUX_DEBUG)/$(SOUND_ZIP)
 
 .PHONY: link-sound-windows
 link-sound-windows:
 	@echo "Linking sound.zip to Windows build directory..."
-	ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_WIN)/$(SOUND_ZIP)
+	@ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_WIN)/$(SOUND_ZIP)
 
 .PHONY: link-sound-windows-debug
 link-sound-windows-debug:
 	@echo "Linking sound.zip to Windows debug build directory..."
-	ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_WIN_DEBUG)/$(SOUND_ZIP)
+	@ln -sf ../../$(SOUND_DIR)/$(SOUND_ZIP) $(BUILD_DIR_WIN_DEBUG)/$(SOUND_ZIP)
 
 .PHONY: link-sound-all
 link-sound-all: link-sound-linux link-sound-linux-debug link-sound-windows link-sound-windows-debug
@@ -343,14 +335,16 @@ link-sound-all: link-sound-linux link-sound-linux-debug link-sound-windows link-
 # Clean target
 .PHONY: clean
 clean:
-	find $(BUILD_DIR) -type f -name "*.o" -delete
-	find $(BUILD_DIR) -type f -name "*.dll" -delete
-	find $(BUILD_DIR) -type f -name "*.exe" -delete
-	find $(BUILD_DIR) -type f -name "$(BACKGROUND_ZIP)" -delete
-	rm -f $(BUILD_DIR_LINUX)/$(TARGET_LINUX)
-	rm -f $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG)
-	rm -f $(BUILD_DIR_WIN)/$(TARGET_WIN)
-	rm -f $(SOUND_DIR)/$(SOUND_ZIP)
+	@echo "Cleaning build artifacts..."
+	@find $(BUILD_DIR) -type f -name "*.o" -delete
+	@find $(BUILD_DIR) -type f -name "*.dll" -delete
+	@find $(BUILD_DIR) -type f -name "*.exe" -delete
+	@find $(BUILD_DIR) -type f -name "$(BACKGROUND_ZIP)" -delete
+	@rm -f $(BUILD_DIR_LINUX)/$(TARGET_LINUX)
+	@rm -f $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG)
+	@rm -f $(BUILD_DIR_WIN)/$(TARGET_WIN)
+	@rm -f $(SOUND_DIR)/$(SOUND_ZIP)
+	@echo "Clean complete."
 
 # Clean converted audio files
 .PHONY: clean-audio
