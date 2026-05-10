@@ -1,9 +1,15 @@
-#include "tetrimone.h"
+#ifdef GTK3
+#include "tetrimone_gtk.h"
+#endif
+
+#ifdef QT5
+#include "tetrimone_qt5.h"
+#endif
+
 #include "audiomanager.h"
 #include <iostream>
 #include <string>
 #include <algorithm>
-#include <cmath>
 #ifdef _WIN32
 #include <windows.h>
 #include <commdlg.h>
@@ -17,24 +23,25 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-int BLOCK_SIZE = 30; // Default value, will be updated at runtime
-int currentThemeIndex = 0;
+// Global variables for key repeat handling
+extern bool keyDownPressed;
+extern bool keyLeftPressed;
+extern bool keyRightPressed;
+extern int keyDownTimer;
+extern int keyLeftTimer;
+extern int keyRightTimer;
+extern int keyDownDelay;
+extern int keyLeftDelay;
+extern int keyRightDelay;
+extern int keyDownCount;
+extern int keyLeftCount;
+extern int keyRightCount;
 
-int GRID_WIDTH = 10;
-int GRID_HEIGHT = 22;
-
-static bool keyDownPressed = false;
-static bool keyLeftPressed = false;
-static bool keyRightPressed = false;
-static guint keyDownTimer = 0;
-static guint keyLeftTimer = 0;
-static guint keyRightTimer = 0;
-static int keyDownDelay = 150;
-static int keyLeftDelay = 150;
-static int keyRightDelay = 150;
-static int keyDownCount = 0;
-static int keyLeftCount = 0;
-static int keyRightCount = 0;
+// Global variables
+extern int BLOCK_SIZE;
+extern int currentThemeIndex;
+extern int GRID_WIDTH;
+extern int GRID_HEIGHT;
 
 gboolean onKeyDownTick(gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
@@ -60,8 +67,7 @@ gboolean onKeyDownTick(gpointer userData) {
     keyDownTimer = g_timeout_add(keyDownDelay, onKeyDownTick, app);
     
     // Update the display
-    gtk_widget_queue_draw(app->gameArea);
-    gtk_widget_queue_draw(app->nextPieceArea);
+    updateDisplay(app);
     updateLabels(app);
     
     // Stop this timer instance (we created a new one above)
@@ -96,8 +102,7 @@ gboolean onKeyLeftTick(gpointer userData) {
     keyLeftTimer = g_timeout_add(keyLeftDelay, onKeyLeftTick, app);
     
     // Update the display
-    gtk_widget_queue_draw(app->gameArea);
-    gtk_widget_queue_draw(app->nextPieceArea);
+    updateDisplay(app);
     updateLabels(app);
     
     // Stop this timer instance
@@ -131,8 +136,7 @@ gboolean onKeyRightTick(gpointer userData) {
     keyRightTimer = g_timeout_add(keyRightDelay, onKeyRightTick, app);
     
     // Update the display
-    gtk_widget_queue_draw(app->gameArea);
-    gtk_widget_queue_draw(app->nextPieceArea);
+    updateDisplay(app);
     updateLabels(app);
     
     // Stop this timer instance
@@ -142,238 +146,6 @@ gboolean onKeyRightTick(gpointer userData) {
   keyRightTimer = 0;
   return FALSE;
 }
-
-// TetrimoneBlock class implementation
-TetrimoneBlock::TetrimoneBlock(int type) : type(type), rotation(0) {
-  // Start pieces centered at top
-  x = GRID_WIDTH / 2 - 2;
-  y = 0;
-}
-
-int TetrimoneBlock::getRotation() const { return rotation; }
-
-void TetrimoneBlock::rotate(bool clockwise) {
-  rotation = (rotation + (clockwise ? 1 : 3)) % 4;
-}
-
-void TetrimoneBlock::move(int dx, int dy) {
-  x += dx;
-  y += dy;
-}
-
-std::vector<std::vector<int>> TetrimoneBlock::getShape() const {
-  return TETRIMONEBLOCK_SHAPES[type][rotation];
-}
-
-std::array<double, 3> TetrimoneBlock::getColor() const {
-    // This is a bit tricky since TetrimoneBlock doesn't have access to TetrimoneBoard
-    // We'll need to modify this differently - see the drawing code changes below
-    int themeIndex = currentThemeIndex;
-    if (themeIndex >= TETRIMONEBLOCK_COLOR_THEMES.size()) {
-        themeIndex = TETRIMONEBLOCK_COLOR_THEMES.size() - 1;
-    }
-    return TETRIMONEBLOCK_COLOR_THEMES[themeIndex][type];
-}
-
-void TetrimoneBlock::setPosition(int newX, int newY) {
-  x = newX;
-  y = newY;
-}
-
-// TetrimoneBoard class implementation
-TetrimoneBoard::TetrimoneBoard()
-    : score(0), level(1), linesCleared(0), gameOver(false),paused(false),
-      ghostPieceEnabled(true), splashScreenActive(true),
-      backgroundImage(nullptr), useBackgroundImage(false),
-      backgroundOpacity(0.3), useBackgroundZip(false),
-      currentBackgroundIndex(0), isTransitioning(false), transitionOpacity(0.0),
-      transitionDirection(0), oldBackground(nullptr), transitionTimerId(0),
-      consecutiveClears(0), maxConsecutiveClears(0), lastClearCount(0),
-      sequenceActive(false), lineClearActive(false), lineClearProgress(0.0), lineClearAnimationTimer(0),
-currentPieceInterpolatedX(0), currentPieceInterpolatedY(0),
-lastPieceX(0), lastPieceY(0), smoothMovementTimer(0), movementProgress(0.0),
-      isThemeTransitioning(false), oldThemeIndex(0), newThemeIndex(0),
-      themeTransitionProgress(0.0), themeTransitionTimer(0) {
-  rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
-
-    showPropagandaMessage = false;
-    propagandaTimerId = 0;
-    propagandaMessageDuration = 2000; // 2 seconds display time
-
-fireworksActive = false;
-fireworksTimer = 0;
-fireworksType = 0;
-
-trailsEnabled = true;          // Enabled by default
-maxTrailSegments = 3;          // Keep only 3 trail segments (reduced)
-trailOpacity = 0.6;            // Default opacity
-trailDuration = 0.1;           // Default duration (seconds)
-trailUpdateTimer = 0;
-lastTrailTime = std::chrono::high_resolution_clock::now();
-
-
-heatLevel = 0.5f;
-heatDecayTimer = 0;
-  // Initialize grid with maximum possible dimensions to avoid reallocation
-  grid.resize(MAX_GRID_HEIGHT, std::vector<int>(MAX_GRID_WIDTH, 0));
-
-  // Initialize with 3 next pieces instead of just one
-  nextPieces.resize(3);
-
-  // Generate initial pieces
-  generateNewPiece();
-
-  // Try to load background.zip by default
-  if (loadBackgroundImagesFromZip("background.zip")) {
-    std::cout << "Successfully loaded background images from background.zip"
-              << std::endl;
-    // Background should be enabled by default if successfully loaded
-    useBackgroundImage = true;
-    useBackgroundZip = true;
-  } else {
-    std::cout << "Could not load background.zip, backgrounds will need to be "
-                 "loaded manually"
-              << std::endl;
-  }
-  for (int i = 0; i < 5; i++) {
-    enabledTracks[i] = true;
-  }
-}
-
-TetrimoneBoard::~TetrimoneBoard() {
-    // Cancel any ongoing transition and clean up resources
-    cancelBackgroundTransition();
-
-    // Cancel propaganda message timers
-    if (propagandaTimerId > 0) {
-        g_source_remove(propagandaTimerId);
-        propagandaTimerId = 0;
-    }
-    
-    if (propagandaScaleTimerId > 0) {
-        g_source_remove(propagandaScaleTimerId);
-        propagandaScaleTimerId = 0;
-    }
-
-    if (backgroundImage != nullptr) {
-        cairo_surface_destroy(backgroundImage);
-        backgroundImage = nullptr;
-    }
-
-    if (themeTransitionTimer > 0) {
-        g_source_remove(themeTransitionTimer);
-        themeTransitionTimer = 0;
-    }
-
-if (lineClearAnimationTimer > 0) {
-    g_source_remove(lineClearAnimationTimer);
-    lineClearAnimationTimer = 0;
-}
-
-if (smoothMovementTimer > 0) {
-    g_source_remove(smoothMovementTimer);
-    smoothMovementTimer = 0;
-}
-
-    // Clean up any background images from ZIP
-    cleanupBackgroundImages();
-
-if (fireworksTimer > 0) {
-    g_source_remove(fireworksTimer);
-    fireworksTimer = 0;
-}
-
-if (trailUpdateTimer > 0) {
-    g_source_remove(trailUpdateTimer);
-    trailUpdateTimer = 0;
-}
-
-}
-
-void TetrimoneBoard::createBlockTrail() {
-    if (!trailsEnabled || retroModeActive || !currentPiece) return;
-    
-    // Don't create trails if game is paused or over
-    if (isPaused() || isGameOver()) return;
-    
-    auto now = std::chrono::high_resolution_clock::now();
-    auto timeSinceLastTrail = std::chrono::duration<double, std::milli>(now - lastTrailTime).count();
-    
-    // Only create trails if enough time has passed
-    if (timeSinceLastTrail < TRAIL_SPAWN_DELAY) return;
-    lastTrailTime = now;
-    
-    // Create a new trail segment
-    BlockTrail trail;
-    trail.x = currentPiece->getX();
-    trail.y = currentPiece->getY();
-    trail.rotation = currentPiece->getRotation();
-    trail.pieceType = currentPiece->getType();
-    trail.shape = currentPiece->getShape();
-    trail.color = currentPiece->getColor();
-    trail.maxLife = trailDuration; // Use configurable duration
-    trail.life = trail.maxLife;
-    trail.alpha = trailOpacity; // Use configurable opacity
-    
-    blockTrails.push_back(trail);
-    
-    // Remove old trails if we have too many
-    while (blockTrails.size() > maxTrailSegments) {
-        blockTrails.erase(blockTrails.begin());
-    }
-    
-    // Start update timer if not running
-    if (trailUpdateTimer == 0) {
-        trailUpdateTimer = g_timeout_add(TRAIL_UPDATE_INTERVAL,
-            [](gpointer userData) -> gboolean {
-                TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
-                board->updateBlockTrails();
-                
-                // Force redraw
-                if (board->app) {
-                    gtk_widget_queue_draw(board->app->gameArea);
-                }
-                
-                return TRUE; // Keep timer running
-            }, this);
-    }
-}
-
-void TetrimoneBoard::updateBlockTrails() {
-    if (!trailsEnabled) {
-        blockTrails.clear();
-        if (trailUpdateTimer > 0) {
-            g_source_remove(trailUpdateTimer);
-            trailUpdateTimer = 0;
-        }
-        return;
-    }
-    
-    double deltaTime = TRAIL_UPDATE_INTERVAL / 1000.0; // Convert to seconds
-    
-    // Update existing trail segments
-    for (auto it = blockTrails.begin(); it != blockTrails.end();) {
-        BlockTrail& trail = *it;
-        
-        // Update life and alpha
-        trail.life -= deltaTime;
-        trail.alpha = (trail.life / trail.maxLife) * trailOpacity; // Use configurable opacity
-        
-        // Remove dead trails
-        if (trail.life <= 0.0 || trail.alpha <= 0.05) {
-            it = blockTrails.erase(it);
-        } else {
-            ++it;
-        }
-    }
-    
-    // Stop timer if no trails left
-    if (blockTrails.empty() && trailUpdateTimer > 0) {
-        g_source_remove(trailUpdateTimer);
-        trailUpdateTimer = 0;
-    }
-}
-
 
 void TetrimoneBoard::startFireworksAnimation(int linesCleared) {
     if (linesCleared != 4) return; // Only for Tetrimone (4 lines)
@@ -479,7 +251,7 @@ void TetrimoneBoard::updateFireworksAnimation() {
     
     // FORCE REDRAW - This is crucial!
     if (app) {
-        gtk_widget_queue_draw(app->gameArea);
+        updateDisplay(app);
     }
     
     // End animation when time is up or no particles left
@@ -491,601 +263,6 @@ void TetrimoneBoard::updateFireworksAnimation() {
             fireworksTimer = 0;
         }
     }
-}
-
-bool TetrimoneBoard::movePiece(int dx, int dy) {
-    if (gameOver || paused)
-        return false;
-
-    int oldX = currentPiece->getX();
-    int oldY = currentPiece->getY();
-    
-    currentPiece->move(dx, dy);
-
-    if (checkCollision(*currentPiece)) {
-        currentPiece->move(-dx, -dy); // Move back if collision
-        return false;
-    }
-    
-    // Create block trail only for horizontal movement (less intrusive)
-    if (trailsEnabled && !retroModeActive && dx != 0) {
-        createBlockTrail();
-    }
-    
-    // Start smooth movement animation
-    startSmoothMovement(oldX, oldY);
-    
-    return true;
-}
-
-
-bool TetrimoneBoard::rotatePiece(bool clockwise) {
-    if (gameOver || paused)
-        return false;
-
-    currentPiece->rotate(clockwise);
-
-    if (checkCollision(*currentPiece)) {
-        currentPiece->rotate(!clockwise); // Rotate back in opposite direction
-        return false;
-    }
-
-    if (trailsEnabled && !retroModeActive) {
-         createBlockTrail();
-    }
-
-    return true;
-}
-
-bool TetrimoneBoard::checkCollision(const TetrimoneBlock &piece) const {
-  auto shape = piece.getShape();
-  int pieceX = piece.getX();
-  int pieceY = piece.getY();
-
-  for (size_t y = 0; y < shape.size(); ++y) {
-    for (size_t x = 0; x < shape[y].size(); ++x) {
-      if (shape[y][x] == 1) {
-        int gridX = pieceX + x;
-        int gridY = pieceY + y;
-
-        // Check boundaries
-        if (gridX < 0 || gridX >= GRID_WIDTH || gridY >= GRID_HEIGHT) {
-          return true;
-        }
-
-        // Check collision with placed blocks
-        if (gridY >= 0 && grid[gridY][gridX] != 0) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-void TetrimoneBoard::lockPiece() {
-  auto shape = currentPiece->getShape();
-  int pieceX = currentPiece->getX();
-  int pieceY = currentPiece->getY();
-  int pieceType = currentPiece->getType();
-
-  // Play drop sound when piece locks into place
-  playSound(GameSoundEvent::Drop);
-
-  for (size_t y = 0; y < shape.size(); ++y) {
-    for (size_t x = 0; x < shape[y].size(); ++x) {
-      if (shape[y][x] == 1) {
-        int gridX = pieceX + x;
-        int gridY = pieceY + y;
-
-        if (gridY >= 0 && gridY < GRID_HEIGHT && gridX >= 0 &&
-            gridX < GRID_WIDTH) {
-          grid[gridY][gridX] =
-              pieceType + 1; // +1 so that empty is 0 and pieces are 1-7
-        }
-      }
-    }
-  }
-}
-
-int TetrimoneBoard::clearLines() {
-  std::vector<int> linesToClear;
-  int currentlevel = (this->linesCleared / 10) + initialLevel;
-  
-  // Check each row from bottom to top to find full lines
-  for (int y = GRID_HEIGHT - 1; y >= 0; --y) {
-    bool isFullLine = true;
-    
-    for (int x = 0; x < GRID_WIDTH; ++x) {
-      if (grid[y][x] == 0) {
-        isFullLine = false;
-        break;
-      }
-    }
-    
-    if (isFullLine) {
-      linesToClear.push_back(y);
-    }
-  }
-  
-  int linesCleared = linesToClear.size();
-  
-  if (linesCleared > 0) {
-    // Start the line clearing animation instead of immediately removing lines
-    startLineClearAnimation(linesToClear);
-    // Show propaganda message in retro mode
-    if (retroModeActive) {
-      // Select a random propaganda message
-      std::uniform_int_distribution<int> dist(0, PROPAGANDA_MESSAGES.size() - 1);
-      int msgIndex = dist(rng);
-      
-      // For 4-line clears (Tetrimone), show a special message
-      std::string message;
-      if (linesCleared == 4) {
-          message = TETRIMONE_EXCELLENCE_MESSAGE;
-      } else {
-          message = PROPAGANDA_MESSAGES[msgIndex];
-      }
-      
-      // Output to console for debugging
-      std::cout << message << std::endl;
-
-      // Display message in the GUI
-      currentPropagandaMessage = message;
-      showPropagandaMessage = true;
-      
-      // Cancel existing timer if any
-      if (propagandaTimerId > 0) {
-          g_source_remove(propagandaTimerId);
-      }
-      
-      // Set timer to hide message after duration
-      propagandaTimerId = g_timeout_add(propagandaMessageDuration, 
-          [](gpointer userData) -> gboolean {
-              TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
-              board->showPropagandaMessage = false;
-              board->propagandaTimerId = 0;
-              return FALSE; // Don't repeat the timer
-          }, 
-          this);
-          
-      // Set timer for pulsing animation effect
-      propagandaMessageScale = 0.7; // Start smaller and grow
-      propagandaScalingUp = true;
-      if (propagandaScaleTimerId > 0) {
-          g_source_remove(propagandaScaleTimerId);
-      }
-      propagandaScaleTimerId = g_timeout_add(50, 
-          [](gpointer userData) -> gboolean {
-              TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
-              if (board->showPropagandaMessage) {
-                  // Update scale for pulsing effect
-                  if (board->propagandaScalingUp) {
-                      board->propagandaMessageScale += 0.04;
-                      if (board->propagandaMessageScale >= 1.2) {
-                          board->propagandaScalingUp = false;
-                      }
-                  } else {
-                      board->propagandaMessageScale -= 0.04;
-                      if (board->propagandaMessageScale <= 0.8) {
-                          board->propagandaScalingUp = true;
-                      }
-                  }
-                  return TRUE; // Continue the timer
-              }
-              // Stop the timer if message is no longer showing
-              board->propagandaScaleTimerId = 0;
-              return FALSE;
-          }, 
-          this);
-    }
-    else if (patrioticModeActive) {
-        // Select a random freedom message
-        std::uniform_int_distribution<int> dist(0, AMERICAN_PROPAGANDA_MESSAGES.size() - 1);
-        int msgIndex = dist(rng);
-        
-        // For 4-line clears (Tetrimone), show a special patriotic message
-        std::string message;
-        if (linesCleared == 4) {
-            message = AMERICAN_EXCELLENCE_MESSAGE;
-        } else {
-            message = AMERICAN_PROPAGANDA_MESSAGES[msgIndex];
-        }
-        
-        // Output to console for debugging
-        std::cout << message << std::endl;
-        // Display message in the GUI
-        currentPropagandaMessage = message;
-        showPropagandaMessage = true;
-        
-        // Cancel existing timer if any
-        if (propagandaTimerId > 0) {
-            g_source_remove(propagandaTimerId);
-        }
-        
-        // Set timer to hide message after duration
-        propagandaTimerId = g_timeout_add(propagandaMessageDuration, 
-            [](gpointer userData) -> gboolean {
-                TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
-                board->showPropagandaMessage = false;
-                board->propagandaTimerId = 0;
-                return FALSE; // Don't repeat the timer
-            }, 
-            this);
-            
-        // Set timer for patriotic pulsing animation effect
-        propagandaMessageScale = 0.8; // Start slightly smaller for freedom effect
-        propagandaScalingUp = true;
-        if (propagandaScaleTimerId > 0) {
-            g_source_remove(propagandaScaleTimerId);
-        }
-        propagandaScaleTimerId = g_timeout_add(60, // Slightly slower for more dignified American pulse
-            [](gpointer userData) -> gboolean {
-                TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
-                if (board->showPropagandaMessage) {
-                    // Update scale for patriotic pulsing effect
-                    if (board->propagandaScalingUp) {
-                        board->propagandaMessageScale += 0.03; // Slightly gentler scaling
-                        if (board->propagandaMessageScale >= 1.15) { // Less extreme scaling
-                            board->propagandaScalingUp = false;
-                        }
-                    } else {
-                        board->propagandaMessageScale -= 0.03;
-                        if (board->propagandaMessageScale <= 0.85) { // More conservative minimum
-                            board->propagandaScalingUp = true;
-                        }
-                    }
-                    return TRUE; // Continue the timer
-                }
-                // Stop the timer if message is no longer showing
-                board->propagandaScaleTimerId = 0;
-                return FALSE;
-            }, 
-            this);
-    }
-
-    // Play appropriate sound based on number of lines cleared
-    if (linesCleared == 4) {
-      playSound(GameSoundEvent::Excellent); // Play Tetrimone/Excellent sound for 4 lines
-      heatLevel+=0.4;
-      startFireworksAnimation(linesCleared);
-    } else if (linesCleared > 0) {
-      playSound(GameSoundEvent::Clear); // Play normal clear sound for 1-3 lines
-      if (linesCleared == 1) {
-        playSound(GameSoundEvent::Single);
-        heatLevel+=0.1;
-      }
-      if (linesCleared == 2) {
-        playSound(GameSoundEvent::Double);
-        heatLevel+=0.2;
-
-      }
-      if (linesCleared == 3) {
-        playSound(GameSoundEvent::Triple);
-        heatLevel+=0.3;
-
-      }
-    }
-    if (heatLevel>1.0) {
-         heatLevel=1.0;
-    }
-    // Classic Tetrimone scoring
-    int baseScore = 0;
-    switch (linesCleared) {
-    case 1:
-      baseScore = 40 * level;
-      break;
-    case 2:
-      baseScore = 100 * level;
-      break;
-    case 3:
-      baseScore = 300 * level;
-      break;
-    case 4:
-      baseScore = 1200 * level;
-      break;
-    }
-
-    // Calculate sequence bonus
-    int sequenceBonus = 0;
-    if (linesCleared > 0) {
-      if (lastClearCount > 0) {
-        // Player cleared lines in consecutive moves
-        consecutiveClears++;
-        maxConsecutiveClears = std::max(maxConsecutiveClears, consecutiveClears);
-
-        // Bonus increases with each consecutive clear
-        sequenceBonus = baseScore * (consecutiveClears * 0.1); // 10% bonus per consecutive clear
-        if (consecutiveClears>=2) {
-            heatLevel += 0.1 * (consecutiveClears-1);
-            //printf("Heat level increased by %f due to sequence\n", 0.1 * (consecutiveClears-1));
-            if(heatLevel>=1.0) {
-                 heatLevel=1.0;
-            } 
-        }        
-        // Extra bonus for maintaining the same number of lines cleared
-        if (linesCleared == lastClearCount) {
-          sequenceBonus += baseScore * 0.2; // 20% bonus for consistent clears
-          playSound(retroModeActive ? GameSoundEvent::LevelUpRetro : GameSoundEvent::LevelUp); // Special sound for consistent sequence
-        }
-
-        // Notify player about sequence
-        sequenceActive = true;
-      } else {
-        // First clear after a move with no clears
-        consecutiveClears = 1;
-        sequenceActive = false;
-      }
-
-      lastClearCount = linesCleared;
-    } else {
-      // Reset sequence when a move doesn't clear any lines
-      consecutiveClears = 0;
-      lastClearCount = 0;
-      sequenceActive = false;
-    }
-
-    // Apply total score with bonus
-    score += baseScore + sequenceBonus;
-
-    // Update total lines cleared
-    this->linesCleared += linesCleared;
-
-    // Update level every 10 lines
-    level = (this->linesCleared / 10) + initialLevel;
-  } else {
-    // No lines cleared in this move
-    lastClearCount = 0;
-    consecutiveClears = 0;
-    sequenceActive = false;
-  }
-
-if (level > currentlevel) {
-    updateHeat();
-    playSound(retroModeActive ? GameSoundEvent::LevelUpRetro : GameSoundEvent::LevelUp);
-    if (junkLinesPerLevel > 0) {
-        addJunkLinesFromBottom(junkLinesPerLevel);
-    }
-    
-    // Only change theme if retro mode is not enabled
-    if (!retroModeActive  && !patrioticModeActive) {
-        // Calculate next theme with wrap-around
-        int nextTheme = (currentThemeIndex + 1) % NUM_COLOR_THEMES;
-        
-        // Start smooth theme transition instead of immediate change
-        startThemeTransition(nextTheme);
-        
-        // Add background transition if using background zip
-        if (useBackgroundZip && !backgroundImages.empty()) {
-            startBackgroundTransition();
-        }
-    }
-    else if (patrioticModeActive) {
-        if (useBackgroundZip && !backgroundImages.empty()) {
-            startBackgroundTransition();
-        }
-    }    
-}
-
-  return linesCleared;
-}
-
-void TetrimoneBoard::generateNewPiece() {
-  // Move first next piece to current
-  if (!nextPieces[0]) {
-    // First time initialization - create all next pieces
-    for (int i = 0; i < 3; i++) {
-      // Use the existing piece generation logic to create each piece
-      std::vector<int> validPieces;
-        // Otherwise use the regular minBlockSize rules
-        switch (minBlockSize) {
-        case 1: // All pieces
-          for (int j = 0; j < 14; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        case 2: // Triomones and Tetromones
-          for (int j = 0; j <= 10; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        case 3: // Tetromones only
-          for (int j = 0; j <= 6; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        case 4: // Tetromones only, but ensure at least 4 blocks
-          for (int j = 0; j <= 6; ++j) {
-            int blockCount = 0;
-            for (const auto &row : TETRIMONEBLOCK_SHAPES[j][0]) {
-              for (int cell : row) {
-                if (cell == 1)
-                  blockCount++;
-              }
-            }
-            // Only add if block count is exactly 4
-            if (blockCount == 4) {
-              validPieces.push_back(j);
-            }
-          }
-          break;
-        default:
-          // Fallback to standard tetromones
-          for (int j = 0; j <= 6; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        }
-
-      // If no valid pieces found, fallback to standard Tetrimones
-      if (validPieces.empty()) {
-        for (int j = 0; j <= 6; ++j) {
-          validPieces.push_back(j);
-        }
-      }
-
-      // Use uniform distribution over valid pieces
-      std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
-      int nextIndex = dist(rng);
-      int nextType = validPieces[nextIndex];
-
-      nextPieces[i] = std::make_unique<TetrimoneBlock>(nextType);
-    }
-
-    // Create the current piece
-    currentPiece = std::make_unique<TetrimoneBlock>(nextPieces[0]->getType());
-  } else {
-    // Move first next piece to current
-    currentPiece = std::move(nextPieces[0]);
-
-    // Shift remaining pieces
-    for (int i = 0; i < 2; i++) {
-      nextPieces[i] = std::move(nextPieces[i + 1]);
-    }
-
-    // Generate a new piece for the last position
-    std::vector<int> validPieces;
-
-      // Otherwise use the regular minBlockSize rules
-      switch (minBlockSize) {
-      case 1: // All pieces
-        for (int i = 0; i < 14; ++i) {
-          validPieces.push_back(i);
-        }
-        break;
-      case 2: // Triomones and Tetromones
-        for (int i = 0; i <= 10; ++i) {
-          validPieces.push_back(i);
-        }
-        break;
-      case 3: // Tetromones only
-        for (int i = 0; i <= 6; ++i) {
-          validPieces.push_back(i);
-        }
-        break;
-      case 4: // Tetromones only, but ensure at least 4 blocks
-        for (int i = 0; i <= 6; ++i) {
-          int blockCount = 0;
-          for (const auto &row : TETRIMONEBLOCK_SHAPES[i][0]) {
-            for (int cell : row) {
-              if (cell == 1)
-                blockCount++;
-            }
-          }
-          // Only add if block count is exactly 4
-          if (blockCount == 4) {
-            validPieces.push_back(i);
-          }
-        }
-        break;
-      default:
-        // Fallback to standard tetromones
-        for (int i = 0; i <= 6; ++i) {
-          validPieces.push_back(i);
-        }
-        break;
-      }
-
-    // If no valid pieces found, fallback to standard Tetromones
-    if (validPieces.empty()) {
-      for (int i = 0; i <= 6; ++i) {
-        validPieces.push_back(i);
-      }
-    }
-
-    // Use uniform distribution over valid pieces
-    std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
-    int nextIndex = dist(rng);
-    int nextType = validPieces[nextIndex];
-
-    nextPieces[2] = std::make_unique<TetrimoneBlock>(nextType);
-  }
-
-  // Check if the new piece collides immediately - game over
-  if (checkCollision(*currentPiece)) {
-    gameOver = true;
-  }
-}
-
-void TetrimoneBoard::updateGame() {
-  if (gameOver || paused || splashScreenActive)
-    return;
-
-  // Existing update code...
-  if (!movePiece(0, 1)) {
-    lockPiece();
-    clearLines();
-    generateNewPiece();
-  }
-}
-
-void TetrimoneBoard::hardDrop() {
-  if (gameOver || paused)
-    return;
-
-  // Move the piece down until collision
-  while (movePiece(0, 1)) {
-    // Give extra points for hard drop
-    score += 2;
-  }
-
-  // Lock the piece
-  lockPiece();
-
-  // Clear any full lines
-  clearLines();
-
-  // Generate a new piece
-  generateNewPiece();
-}
-
-int TetrimoneBoard::getGridValue(int x, int y) const {
-  if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
-    return 0;
-  }
-  return grid[y][x];
-}
-
-void TetrimoneBoard::restart() {
-  // Clear the grid
-  for (auto &row : grid) {
-    std::fill(row.begin(), row.end(), 0);
-  }
-  heatLevel = 0.5f;
-  heatDecayTimer = 0;
-  // Reset game state
-  score = 0;
-  level = initialLevel; // Use initialLevel instead of hardcoded 1
-  linesCleared = 0;
-  gameOver = false;
-  paused = false;
-  splashScreenActive = true; // Show splash screen on restart
-
-  // Reset pieces
-  currentPiece.reset();
-  for (auto &piece : nextPieces) {
-    piece.reset();
-  }
-
-  // Generate junk lines if percentage > 0
-  if (junkLinesPercentage > 0) {
-    generateJunkLines(junkLinesPercentage);
-  }
-
-  // Generate new pieces
-  generateNewPiece();
-
-  // Select a random background if using background images from ZIP
-  if (useBackgroundZip && !backgroundImages.empty()) {
-    // Start a smooth background transition
-    startBackgroundTransition();
-  }
-
-  consecutiveClears = 0;
-  maxConsecutiveClears = 0;
-  lastClearCount = 0;
-  sequenceActive = false;
-  highScoreAlreadyProcessed = false;
 }
 
 gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
@@ -1100,7 +277,7 @@ gboolean onKeyPress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
       gtk_widget_queue_draw(app->gameArea);
       gtk_widget_queue_draw(app->nextPieceArea);
       updateLabels(app);
-      return TRUE;
+      return true;
     }
 
     // Handle game control keys only when game is active
@@ -1231,7 +408,7 @@ case GDK_KEY_period:
     // Toggle retro mode with just the period key
     {
         // Save the current theme index when entering retro mode
-        static int savedThemeIndex = 0;
+        int savedThemeIndex = 0;
         
         // Toggle the retro mode flag
         board->retroModeActive = !board->retroModeActive;
@@ -1272,7 +449,7 @@ if (board->retroModeActive) {
             // Trigger a background transition for a nice effect when returning from retro mode
             board->startBackgroundTransition();
         }
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), true);
     }
     
     // Re-enable music if sound is enabled
@@ -1324,7 +501,7 @@ case GDK_KEY_comma:
     // Toggle patriotic mode with comma key
     {
         // Save the current theme index when entering patriotic mode
-        static int savedThemeIndex = 0;
+        int savedThemeIndex = 0;
         
         // Toggle the patriotic mode flag
         board->retroModeActive = false;
@@ -1349,7 +526,7 @@ case GDK_KEY_comma:
                     board->setUseBackgroundZip(true);
                     // Trigger a background transition for a nice effect when returning from patriotic mode
                 }
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), true);
             }
             board->startBackgroundTransition();
             
@@ -1372,7 +549,7 @@ case GDK_KEY_comma:
                     board->setUseBackgroundZip(true);
                     // Trigger a background transition for a nice effect when returning from patriotic mode
                 }
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), true);
             }
             board->startBackgroundTransition();
             
@@ -1475,7 +652,7 @@ case GDK_KEY_comma:
   gtk_widget_queue_draw(app->nextPieceArea);
   updateLabels(app);
 
-  return TRUE; // Always claim we handled the key event
+  return true; // Always claim we handled the key event
 }
 
 
@@ -1623,7 +800,7 @@ if (!board->isPaused() && !board->isSplashScreenActive() && !board->retroModeAct
         app);
     }
   }
-  return TRUE; // Keep the timer running
+  return true; // Keep the timer running
 }
 
 void updateLabels(TetrimoneApp *app) {
@@ -1694,7 +871,7 @@ void resetUI(TetrimoneApp *app) {
 
   // Update menu state
   gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-  gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+  gtk_widget_set_sensitive(app->pauseMenuItem, true);
   gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
 }
 
@@ -1737,40 +914,10 @@ void onScreenSizeChanged(GtkWidget *widget, GdkRectangle *allocation,
                          gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
 
-  // Recalculate BLOCK_SIZE based on actual space available
-  if (app->gameArea) {
-    int gameWidth = gtk_widget_get_allocated_width(app->gameArea);
-    int gameHeight = gtk_widget_get_allocated_height(app->gameArea);
-    
-    if (gameWidth > 0 && gameHeight > 0) {
-      // Calculate block size to fit allocated space
-      int blockSizeW = gameWidth / GRID_WIDTH;
-      int blockSizeH = gameHeight / GRID_HEIGHT;
-      int newBlockSize = std::min(blockSizeW, blockSizeH);
-      
-      // Only update if significantly different
-      if (newBlockSize > 10 && abs(newBlockSize - BLOCK_SIZE) > 2) {
-        BLOCK_SIZE = newBlockSize;
-        printf("DEBUG: BLOCK_SIZE resized to %d\n", BLOCK_SIZE);
-        
-        // Recalculate board dimensions with new BLOCK_SIZE
-        int newBoardWidth = GRID_WIDTH * BLOCK_SIZE;
-        int newBoardHeight = GRID_HEIGHT * BLOCK_SIZE;
-        
-        // Update game area size to new board dimensions
-        gtk_widget_set_hexpand(app->gameArea, FALSE);
-        gtk_widget_set_vexpand(app->gameArea, FALSE);
-        gtk_widget_set_size_request(app->gameArea, newBoardWidth, newBoardHeight);
-        printf("DEBUG: Board resized to %d x %d\n", newBoardWidth, newBoardHeight);
-        
-        // Also update preview pieces to scale with board
-        gtk_widget_set_size_request(app->nextPieceArea, BLOCK_SIZE * 5, BLOCK_SIZE * 4);
-        
-      }
-    }
-  }
+  // We intentionally avoid recalculating the block size here
+  // so that manual resize doesn't affect the game area
 
-  // Redraw at new size
+  // Just redraw everything with the current block size
   gtk_widget_queue_draw(app->gameArea);
   gtk_widget_queue_draw(app->nextPieceArea);
 }
@@ -1821,16 +968,13 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
                  G_CALLBACK(onWindowFocusChanged), tetrimoneApp);
 
   // Use the calculated block size for window dimensions
-  // Set FIXED window size at the red line (visible gray border)
   gtk_window_set_default_size(GTK_WINDOW(tetrimoneApp->window),
-                              GRID_WIDTH * BLOCK_SIZE + 220,
-                              GRID_HEIGHT * BLOCK_SIZE + 60);
-  // Allow resizing for maximize button (Wayland support)
-  gtk_window_set_resizable(GTK_WINDOW(tetrimoneApp->window), TRUE);
+                              GRID_WIDTH * BLOCK_SIZE + 200,
+                              GRID_HEIGHT * BLOCK_SIZE + 40);
+  gtk_window_set_resizable(GTK_WINDOW(tetrimoneApp->window), FALSE);
 
   // Create main vertical box
   GtkWidget *mainVBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_container_set_border_width(GTK_CONTAINER(mainVBox), 0);  // NO border
   gtk_container_add(GTK_CONTAINER(tetrimoneApp->window), mainVBox);
 
   // Create menu
@@ -1838,48 +982,34 @@ void onAppActivate(GtkApplication *app, gpointer userData) {
   gtk_box_pack_start(GTK_BOX(mainVBox), tetrimoneApp->menuBar, FALSE, FALSE, 0);
 
   // Create main horizontal box for game contents
-  tetrimoneApp->mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);  // NO spacing between widgets
-  gtk_container_set_border_width(GTK_CONTAINER(tetrimoneApp->mainBox), 0);  // NO border
-  gtk_box_pack_start(GTK_BOX(mainVBox), tetrimoneApp->mainBox, TRUE, TRUE, 0);
+  tetrimoneApp->mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  gtk_container_set_border_width(GTK_CONTAINER(tetrimoneApp->mainBox), 10);
+  gtk_box_pack_start(GTK_BOX(mainVBox), tetrimoneApp->mainBox, true, true, 0);
 
   g_signal_connect(G_OBJECT(tetrimoneApp->window), "size-allocate",
                    G_CALLBACK(onScreenSizeChanged), tetrimoneApp);
 
   // Create the game area (drawing area)
   tetrimoneApp->gameArea = gtk_drawing_area_new();
-  // Set EXACT size - the board is GRID_WIDTH * BLOCK_SIZE, nothing more
-  int boardWidth = GRID_WIDTH * BLOCK_SIZE;
-  int boardHeight = GRID_HEIGHT * BLOCK_SIZE;
-  printf("BW %i HW %i\n", boardWidth, boardHeight);
-  gtk_widget_set_size_request(tetrimoneApp->gameArea, boardWidth, boardHeight);
-  printf("3 Game area is %i %i\n", boardWidth, boardHeight);
-
-  // EXPAND on resize - allows onScreenSizeChanged to recalculate block size
-  gtk_widget_set_hexpand(tetrimoneApp->gameArea, TRUE);
-  gtk_widget_set_vexpand(tetrimoneApp->gameArea, TRUE);
+  gtk_widget_set_size_request(tetrimoneApp->gameArea, GRID_WIDTH * BLOCK_SIZE,
+                              GRID_HEIGHT * BLOCK_SIZE);
   g_signal_connect(G_OBJECT(tetrimoneApp->gameArea), "draw",
                    G_CALLBACK(onDrawGameArea), tetrimoneApp);
-  // Pack with expansion so resize events fire
   gtk_box_pack_start(GTK_BOX(tetrimoneApp->mainBox), tetrimoneApp->gameArea,
-                     TRUE, TRUE, 0);
+                     FALSE, FALSE, 0);
 
   // Create the side panel (vertical box)
-  GtkWidget *sideBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);  // NO spacing
-  gtk_container_set_border_width(GTK_CONTAINER(sideBox), 0);  // NO border
-  // Side panel stays fixed size
-  gtk_widget_set_hexpand(sideBox, FALSE);
-  gtk_widget_set_vexpand(sideBox, FALSE);
+  GtkWidget *sideBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
   gtk_box_pack_start(GTK_BOX(tetrimoneApp->mainBox), sideBox, FALSE, FALSE, 0);
 
   // Create the next piece preview frame
   GtkWidget *nextPieceFrame = gtk_frame_new("Next Piece");
-  gtk_container_set_border_width(GTK_CONTAINER(nextPieceFrame), 0);  // NO border
   gtk_box_pack_start(GTK_BOX(sideBox), nextPieceFrame, FALSE, FALSE, 0);
 
-  // Create the next piece drawing area - MUCH SMALLER
+  // Create the next piece drawing area
   tetrimoneApp->nextPieceArea = gtk_drawing_area_new();
-  gtk_widget_set_size_request(tetrimoneApp->nextPieceArea, BLOCK_SIZE * 5,
-                              BLOCK_SIZE * 4);
+  gtk_widget_set_size_request(tetrimoneApp->nextPieceArea, 3 * 2 * BLOCK_SIZE,
+                              2.5 * BLOCK_SIZE);
   g_signal_connect(G_OBJECT(tetrimoneApp->nextPieceArea), "draw",
                    G_CALLBACK(onDrawNextPiece), tetrimoneApp);
   gtk_container_add(GTK_CONTAINER(nextPieceFrame), tetrimoneApp->nextPieceArea);
@@ -1973,7 +1103,7 @@ if (tetrimoneApp->board->retroModeActive) {
 
   // Initialize the menu state
   gtk_widget_set_sensitive(tetrimoneApp->startMenuItem, FALSE);
-  gtk_widget_set_sensitive(tetrimoneApp->pauseMenuItem, TRUE);
+  gtk_widget_set_sensitive(tetrimoneApp->pauseMenuItem, true);
 
   if (tetrimoneApp->board->initializeAudio()) {
     // Only play music if initialization was successful
@@ -2001,19 +1131,6 @@ if (tetrimoneApp->board->retroModeActive) {
   // Start the game
   startGame(tetrimoneApp);
 }
-
-void TetrimoneBoard::setLevel(int newLevel) {
-    if (newLevel >= 1) {
-        level = newLevel;
-    }
-}
-
-void TetrimoneBoard::setMinBlock(int size) {
-    if (size >= 1 && size <=4) {
-        minBlockSize=size;
-    }
-}
-
 
 // Function to create the menu bar with a better organization
 void createMenu(TetrimoneApp *app) {
@@ -2091,7 +1208,7 @@ void createMenu(TetrimoneApp *app) {
 
   // Set medium as default
   gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem),
-                                 TRUE);
+                                 true);
   app->difficulty = 2; // Medium
 
   gtk_menu_shell_append(GTK_MENU_SHELL(difficultyMenu), app->zenMenuItem);
@@ -2148,7 +1265,7 @@ void createMenu(TetrimoneApp *app) {
   app->backgroundToggleMenuItem =
       gtk_check_menu_item_new_with_label("Enable Background Image");
   gtk_check_menu_item_set_active(
-      GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
+      GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), true);
   gtk_menu_shell_append(GTK_MENU_SHELL(backgroundMenu),
                         app->backgroundToggleMenuItem);
   g_signal_connect(G_OBJECT(app->backgroundToggleMenuItem), "toggled",
@@ -2240,7 +1357,7 @@ g_signal_connect(G_OBJECT(blockTrailsConfigMenuItem), "activate",
     
     // Set the current theme as active
     if (i == currentThemeIndex) {
-      gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->themeMenuItems[i]), TRUE);
+      gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->themeMenuItems[i]), true);
     }
     
     gtk_menu_shell_append(GTK_MENU_SHELL(themeMenu), app->themeMenuItems[i]);
@@ -2255,7 +1372,7 @@ g_signal_connect(G_OBJECT(blockTrailsConfigMenuItem), "activate",
   // Sound menu items
   app->soundToggleMenuItem = gtk_check_menu_item_new_with_label("Enable Sound");
   gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem),
-                                 TRUE);
+                                 true);
   gtk_menu_shell_append(GTK_MENU_SHELL(soundMenu), app->soundToggleMenuItem);
   g_signal_connect(G_OBJECT(app->soundToggleMenuItem), "toggled",
                    G_CALLBACK(onSoundToggled), app);
@@ -2280,7 +1397,7 @@ g_signal_connect(G_OBJECT(blockTrailsConfigMenuItem), "activate",
 
     // Set all checked by default
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]),
-                                   TRUE);
+                                   true);
 
     // Store track index in the widget data
     g_object_set_data(G_OBJECT(app->trackMenuItems[i]), "track-index",
@@ -2382,19 +1499,19 @@ g_signal_connect(G_OBJECT(retroMusicMenuItem), "toggled",
   switch (app->board->getMinBlockSize()) {
   case 1:
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize1MenuItem),
-                                   TRUE);
+                                   true);
     break;
   case 2:
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize2MenuItem),
-                                   TRUE);
+                                   true);
     break;
   case 3:
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize3MenuItem),
-                                   TRUE);
+                                   true);
     break;
   case 4:
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(blockSize4MenuItem),
-                                   TRUE);
+                                   true);
     break;
   }
 
@@ -2612,7 +1729,7 @@ void onBlockSizeRulesChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
       g_list_free(children);
 
       if (previousItem) {
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(previousItem), TRUE);
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(previousItem), true);
       }
 
       // Unblock signals
@@ -2636,7 +1753,7 @@ void onBlockSizeRulesChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
     }
 
     gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-    gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+    gtk_widget_set_sensitive(app->pauseMenuItem, true);
 
     startGame(app);
     gtk_widget_queue_draw(app->gameArea);
@@ -2656,7 +1773,7 @@ void onStartGame(GtkMenuItem *menuItem, gpointer userData) {
   startGame(app);
 
   gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-  gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+  gtk_widget_set_sensitive(app->pauseMenuItem, true);
 
   gtk_widget_queue_draw(app->gameArea);
   gtk_widget_queue_draw(app->nextPieceArea);
@@ -2677,7 +1794,7 @@ void pauseGame(TetrimoneApp *app) {
   }
 
   // Update menu state
-  gtk_widget_set_sensitive(app->startMenuItem, TRUE);
+  gtk_widget_set_sensitive(app->startMenuItem, true);
   gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Resume");
 }
 
@@ -2692,7 +1809,7 @@ void onRestartGame(GtkMenuItem *menuItem, gpointer userData) {
   }
 
   gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-  gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+  gtk_widget_set_sensitive(app->pauseMenuItem, true);
 
   startGame(app);
   gtk_widget_queue_draw(app->gameArea);
@@ -2847,27 +1964,27 @@ void onDifficultyChanged(GtkRadioMenuItem *menuItem, gpointer userData) {
         switch (previousDifficulty) {
         case 0:
           gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->zenMenuItem),
-                                         TRUE);
+                                         true);
           break;
         case 1:
           gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->easyMenuItem),
-                                         TRUE);
+                                         true);
           break;
         case 2:
           gtk_check_menu_item_set_active(
-              GTK_CHECK_MENU_ITEM(app->mediumMenuItem), TRUE);
+              GTK_CHECK_MENU_ITEM(app->mediumMenuItem), true);
           break;
         case 3:
           gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->hardMenuItem),
-                                         TRUE);
+                                         true);
           break;
         case 4:
           gtk_check_menu_item_set_active(
-              GTK_CHECK_MENU_ITEM(app->extremeMenuItem), TRUE);
+              GTK_CHECK_MENU_ITEM(app->extremeMenuItem), true);
           break;
         case 5:
           gtk_check_menu_item_set_active(
-              GTK_CHECK_MENU_ITEM(app->insaneMenuItem), TRUE);
+              GTK_CHECK_MENU_ITEM(app->insaneMenuItem), true);
           break;
         }
 
@@ -2899,7 +2016,7 @@ gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
     }
 
     gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-    gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+    gtk_widget_set_sensitive(app->pauseMenuItem, true);
 
     startGame(app);
     gtk_widget_queue_draw(app->gameArea);
@@ -2912,44 +2029,6 @@ gtk_label_set_markup(GTK_LABEL(app->difficultyLabel),
         app->timerId > 0) {
       g_source_remove(app->timerId);
       app->timerId = g_timeout_add(app->dropSpeed, onTimerTick, app);
-    }
-  }
-}
-
-std::string TetrimoneBoard::getDifficultyText(int difficulty) const {
-  if (retroModeActive) {
-    switch (difficulty) {
-    case 0:
-      return "<b>Сложность:</b> Санаторий для Партийной Элиты"; // Luxury Sanatorium for Party Elite
-    case 1:
-      return "<b>Сложность:</b> Стахановское Движение для Начинающих"; // Stakhanovite Movement for Beginners
-    case 2:
-      return "<b>Сложность:</b> Стандартный Рабочий Режим"; // Standard Worker Mode
-    case 3:
-      return "<b>Сложность:</b> Ударный Труд"; // Shock Work
-    case 4:
-      return "<b>Сложность:</b> Сибирская Зима"; // Siberian Winter
-    case 5:
-      return "<b>Сложность:</b> ГУЛАГ"; // GULAG
-    default:
-      return "<b>Сложность:</b> Стандартный Рабочий Режим";
-    }
-  } else {
-    switch (difficulty) {
-    case 0:
-      return "<b>Difficulty:</b> Zen";
-    case 1:
-      return "<b>Difficulty:</b> Easy";
-    case 2:
-      return "<b>Difficulty:</b> Medium";
-    case 3:
-      return "<b>Difficulty:</b> Hard";
-    case 4:
-      return "<b>Difficulty:</b> Extreme";
-    case 5:
-      return "<b>Difficulty:</b> Insane";
-    default:
-      return "<b>Difficulty:</b> Medium";
     }
   }
 }
@@ -3019,28 +2098,8 @@ void startGame(TetrimoneApp *app) {
 
   // Update menu items
   gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-  gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+  gtk_widget_set_sensitive(app->pauseMenuItem, true);
   gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
-}
-
-void onPauseGame(GtkMenuItem *menuItem, gpointer userData) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
-  if (!app->board->isGameOver()) {
-    bool isPaused = app->board->isPaused();
-    app->board->togglePause();
-
-    if (app->board->isPaused()) {
-      pauseGame(app);
-      gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Resume");
-      gtk_widget_set_sensitive(app->startMenuItem, TRUE);
-    } else {
-      startGame(app);
-      gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
-      gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-    }
-
-    gtk_widget_queue_draw(app->gameArea);
-  }
 }
 
 void onMenuActivated(GtkWidget *widget, gpointer userData) {
@@ -3068,30 +2127,6 @@ void onMenuDeactivated(GtkWidget *widget, gpointer userData) {
              "Resume") != 0) {
     onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
   }
-}
-
-bool TetrimoneBoard::isGameOver() const {
-  // If this is the first time checking game over status since it became true,
-  // play the game over sound
-  static bool soundPlayed = false;
-  if (gameOver && !soundPlayed) {
-    // Cast away const to allow calling non-const member function
-    TetrimoneBoard *nonConstThis = const_cast<TetrimoneBoard *>(this);
-    if (retroModeActive) {
-        nonConstThis->playSound(GameSoundEvent::GameoverRetro);
-    } else {
-        nonConstThis->playSound(GameSoundEvent::Gameover);
-    }    
-    
-    soundPlayed = true;
-  }
-
-  // If game is no longer over, reset the sound played flag
-  if (!gameOver) {
-    soundPlayed = false;
-  }
-
-  return gameOver;
 }
 
 void calculateBlockSize(TetrimoneApp *app) {
@@ -3150,7 +2185,7 @@ void onBlockSizeValueChanged(GtkRange *range, gpointer data) {
   // Update menu state
   if (app->board->isPaused()) {
     gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Resume");
-    gtk_widget_set_sensitive(app->startMenuItem, TRUE);
+    gtk_widget_set_sensitive(app->startMenuItem, true);
   } else {
     gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Pause");
     gtk_widget_set_sensitive(app->startMenuItem, FALSE);
@@ -3173,21 +2208,13 @@ void rebuildGameUI(TetrimoneApp *app) {
   }
 
   // Resize the window to match the new block size
-  // Use fixed padding for consistent gray border
-  gtk_window_set_default_size(GTK_WINDOW(app->window), 
-                              GRID_WIDTH * BLOCK_SIZE + 220,
-                              GRID_HEIGHT * BLOCK_SIZE + 60);
+  gtk_window_resize(GTK_WINDOW(app->window), GRID_WIDTH * BLOCK_SIZE + 200,
+                    GRID_HEIGHT * BLOCK_SIZE + 40);
 
-  // Create new game area with exact board size
+  // Create new game area with correct size
   app->gameArea = gtk_drawing_area_new();
-  // Set EXACT size - the board is GRID_WIDTH * BLOCK_SIZE, nothing more
-  int boardWidth = GRID_WIDTH * BLOCK_SIZE;
-  int boardHeight = GRID_HEIGHT * BLOCK_SIZE;
-  gtk_widget_set_size_request(app->gameArea, boardWidth, boardHeight);
-  printf("1 Game area is %i %i\n", boardWidth, boardHeight);
-  // EXPAND on resize - allows onScreenSizeChanged to recalculate block size
-  gtk_widget_set_hexpand(app->gameArea, TRUE);
-  gtk_widget_set_vexpand(app->gameArea, TRUE);
+  gtk_widget_set_size_request(app->gameArea, GRID_WIDTH * BLOCK_SIZE,
+                              GRID_HEIGHT * BLOCK_SIZE);
   g_signal_connect(G_OBJECT(app->gameArea), "draw", G_CALLBACK(onDrawGameArea),
                    app);
 
@@ -3199,27 +2226,27 @@ void rebuildGameUI(TetrimoneApp *app) {
   }
   g_list_free(children);
 
-  // Recreate the main box contents with expansion so resize events fire
-  gtk_box_pack_start(GTK_BOX(app->mainBox), app->gameArea, TRUE, TRUE, 0);
+  // Recreate the main box contents
+  gtk_box_pack_start(GTK_BOX(app->mainBox), app->gameArea, FALSE, FALSE, 0);
 
   // Create the side panel (vertical box)
-  GtkWidget *sideBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);  // NO spacing
-  gtk_container_set_border_width(GTK_CONTAINER(sideBox), 0);  // NO border
-  // Side panel stays fixed size
-  gtk_widget_set_hexpand(sideBox, FALSE);
-  gtk_widget_set_vexpand(sideBox, FALSE);
+  GtkWidget *sideBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
   gtk_box_pack_start(GTK_BOX(app->mainBox), sideBox, FALSE, FALSE, 0);
 
   // Create the next piece preview frame
   GtkWidget *nextPieceFrame = gtk_frame_new("Next Pieces");
-  gtk_container_set_border_width(GTK_CONTAINER(nextPieceFrame), 0);  // NO border
   gtk_box_pack_start(GTK_BOX(sideBox), nextPieceFrame, FALSE, FALSE, 0);
 
-  // Create the next piece drawing area - MUCH SMALLER
-  app->nextPieceArea = gtk_drawing_area_new();
-  gtk_widget_set_size_request(app->nextPieceArea, BLOCK_SIZE * 5, BLOCK_SIZE * 4);
-  printf("2 Game area is %i %i\n", BLOCK_SIZE*5, BLOCK_SIZE*4);
+  // Create the next piece drawing area - sized for 3 horizontal pieces with
+  // half-size blocks
+  int previewBlockSize = BLOCK_SIZE / 2;
+  int previewWidth =
+      3 * 4 * previewBlockSize; // 3 sections, each 4 blocks wide at half size
+  int previewHeight =
+      4 * previewBlockSize + 30; // Height for pieces plus header
 
+  app->nextPieceArea = gtk_drawing_area_new();
+  gtk_widget_set_size_request(app->nextPieceArea, previewWidth, previewHeight);
   g_signal_connect(G_OBJECT(app->nextPieceArea), "draw",
                    G_CALLBACK(onDrawNextPiece), app);
   gtk_container_add(GTK_CONTAINER(nextPieceFrame), app->nextPieceArea);
@@ -3376,7 +2403,7 @@ void onTrackToggled(GtkCheckMenuItem *menuItem, gpointer userData) {
   // If no tracks are enabled, re-enable this one
   if (!anyEnabled) {
     app->board->enabledTracks[trackIndex] = true;
-    gtk_check_menu_item_set_active(menuItem, TRUE);
+    gtk_check_menu_item_set_active(menuItem, true);
   }
 }
 
@@ -3445,11 +2472,11 @@ void onBlockSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
 
   GtkWidget *minLabel = gtk_label_new("Small");
   gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, true, true, 0);
 
   GtkWidget *maxLabel = gtk_label_new("Large");
   gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
-  gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
+  gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, true, true, 0);
 
   // Current value label that updates as the slider moves
   GtkWidget *currentValueLabel = gtk_label_new(NULL);
@@ -3517,7 +2544,7 @@ void onGameSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
 
   // Width settings
   GtkWidget *widthFrame = gtk_frame_new("Width");
-  gtk_box_pack_start(GTK_BOX(vbox), widthFrame, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), widthFrame, true, true, 0);
 
   GtkWidget *widthBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
   gtk_container_add(GTK_CONTAINER(widthFrame), widthBox);
@@ -3533,14 +2560,14 @@ void onGameSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
 
   GtkWidget *widthScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, widthAdj);
   gtk_scale_set_digits(GTK_SCALE(widthScale), 0); // No decimal places
-  gtk_box_pack_start(GTK_BOX(widthBox), widthScale, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(widthBox), widthScale, true, true, 0);
 
   GtkWidget *widthLabel = gtk_label_new("");
   gtk_box_pack_start(GTK_BOX(widthBox), widthLabel, FALSE, FALSE, 0);
 
   // Height settings
   GtkWidget *heightFrame = gtk_frame_new("Height");
-  gtk_box_pack_start(GTK_BOX(vbox), heightFrame, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), heightFrame, true, true, 0);
 
   GtkWidget *heightBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
   gtk_container_add(GTK_CONTAINER(heightFrame), heightBox);
@@ -3557,7 +2584,7 @@ void onGameSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
 
   GtkWidget *heightScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, heightAdj);
   gtk_scale_set_digits(GTK_SCALE(heightScale), 0); // No decimal places
-  gtk_box_pack_start(GTK_BOX(heightBox), heightScale, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(heightBox), heightScale, true, true, 0);
 
   GtkWidget *heightLabel = gtk_label_new("");
   gtk_box_pack_start(GTK_BOX(heightBox), heightLabel, FALSE, FALSE, 0);
@@ -3629,7 +2656,7 @@ void onGameSizeDialog(GtkMenuItem *menuItem, gpointer userData) {
         }
 
         gtk_widget_set_sensitive(app->startMenuItem, FALSE);
-        gtk_widget_set_sensitive(app->pauseMenuItem, TRUE);
+        gtk_widget_set_sensitive(app->pauseMenuItem, true);
 
         startGame(app);
       }
@@ -3658,7 +2685,7 @@ gboolean onWindowFocusChanged(GtkWidget *widget, GdkEventFocus *event, gpointer 
       // Don't update the menu item text to show this is a special pause
       gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), "Resume");
     }
-    // If focus returns (in_event is TRUE) and pause was caused by focus loss, resume the game
+    // If focus returns (in_event is true) and pause was caused by focus loss, resume the game
     else if (event->in && app->pausedByFocusLoss) {
       app->pausedByFocusLoss = false;
       
@@ -3716,7 +2743,7 @@ void onBlockTrailsConfig(GtkMenuItem* menuItem, gpointer userData) {
     
     // Opacity settings
     GtkWidget* opacityFrame = gtk_frame_new("Trail Opacity");
-    gtk_box_pack_start(GTK_BOX(vbox), opacityFrame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), opacityFrame, true, true, 0);
     
     GtkWidget* opacityBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
     gtk_container_add(GTK_CONTAINER(opacityFrame), opacityBox);
@@ -3733,14 +2760,14 @@ void onBlockTrailsConfig(GtkMenuItem* menuItem, gpointer userData) {
     
     GtkWidget* opacityScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, opacityAdj);
     gtk_scale_set_digits(GTK_SCALE(opacityScale), 2);
-    gtk_box_pack_start(GTK_BOX(opacityBox), opacityScale, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(opacityBox), opacityScale, true, true, 0);
     
     GtkWidget* opacityLabel = gtk_label_new("");
     gtk_box_pack_start(GTK_BOX(opacityBox), opacityLabel, FALSE, FALSE, 0);
     
     // Duration settings
     GtkWidget* durationFrame = gtk_frame_new("Trail Duration");
-    gtk_box_pack_start(GTK_BOX(vbox), durationFrame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), durationFrame, true, true, 0);
     
     GtkWidget* durationBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
     gtk_container_add(GTK_CONTAINER(durationFrame), durationBox);
@@ -3757,7 +2784,7 @@ void onBlockTrailsConfig(GtkMenuItem* menuItem, gpointer userData) {
     
     GtkWidget* durationScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, durationAdj);
     gtk_scale_set_digits(GTK_SCALE(durationScale), 2);
-    gtk_box_pack_start(GTK_BOX(durationBox), durationScale, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(durationBox), durationScale, true, true, 0);
     
     GtkWidget* durationLabel = gtk_label_new("");
     gtk_box_pack_start(GTK_BOX(durationBox), durationLabel, FALSE, FALSE, 0);

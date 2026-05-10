@@ -1,0 +1,302 @@
+#include <cstring>
+#include <iostream>
+#include "tetrimone_gtk.h"
+#include "commandline.h"
+
+void printHelp(const char* programName) {
+    std::cout << "Tetrimone - A block falling puzzle game\n\n";
+    std::cout << "Usage: " << programName << " [OPTIONS]\n\n";
+    std::cout << "Game Options:\n";
+    std::cout << "  -d, --difficulty LEVEL     Set difficulty (0=Zen, 1=Easy, 2=Medium, 3=Hard, 4=Extreme, 5=Insane)\n";
+    std::cout << "  -l, --level LEVEL          Set initial level (1-99)\n";
+    std::cout << "  --min-block-size SIZE      Set minimum block size (1-4)\n";
+    std::cout << "  --junk-lines PERCENT       Set junk lines percentage (0-50)\n";
+    std::cout << "  --junk-per-level LINES     Set junk lines added per level (0-5)\n\n";
+    
+    std::cout << "Display Options:\n";
+    std::cout << "  -b, --block-size SIZE      Set block size in pixels (20-80)\n";
+    std::cout << "  -w, --width WIDTH          Set grid width\n";
+    std::cout << "  -h, --height HEIGHT        Set grid height\n";
+    std::cout << "  -t, --theme INDEX          Set color theme (0-30)\n";
+    std::cout << "  -f, --fullscreen           Start in fullscreen mode\n";
+    std::cout << "  --background IMAGE         Set background image file\n";
+    std::cout << "  --background-zip ZIP       Set background images ZIP file\n";
+    std::cout << "  --background-opacity VAL   Set background opacity (0.0-1.0)\n";
+    std::cout << "  --grid-lines               Show grid lines\n";
+    std::cout << "  --simple-blocks            Use simple blocks (no 3D effect)\n";
+    std::cout << "  --no-ghost                 Disable ghost piece\n\n";
+    
+    std::cout << "Audio Options:\n";
+    std::cout << "  --no-sound                 Disable all sound effects\n";
+    std::cout << "  --no-music                 Disable background music\n";
+    std::cout << "  --retro-music              Use retro music tracks\n";
+    std::cout << "  --sound-zip ZIP            Set sound effects ZIP file\n\n";
+    
+    std::cout << "Special Modes:\n";
+    std::cout << "  --retro                    Enable Soviet retro mode\n\n";
+    
+    std::cout << "Information:\n";
+    std::cout << "  --help                     Show this help message\n";
+    std::cout << "  --version                  Show version information\n\n";
+    
+    std::cout << "Examples:\n";
+    std::cout << "  " << programName << " --difficulty 3 --level 5\n";
+    std::cout << "  " << programName << " --retro --block-size 40\n";
+    std::cout << "  " << programName << " --width 12 --height 20 --theme 15\n";
+    std::cout << "  " << programName << " --background-zip backgrounds.zip --no-music\n";
+}
+
+void printVersion() {
+    std::cout << "Tetrimone\n";
+    std::cout << "A modern block falling puzzle game with extended features\n";
+    std::cout << "Built with GTK+ and SDL2\n";
+}
+
+ArgType getArgType(const std::string& arg) {
+    if (arg == "--help" || arg == "-help") return ArgType::HELP;
+    if (arg == "--version") return ArgType::VERSION;
+    if (arg == "-d") return ArgType::DIFFICULTY_SHORT;
+    if (arg == "--difficulty") return ArgType::DIFFICULTY_LONG;
+    if (arg == "-l") return ArgType::LEVEL_SHORT;
+    if (arg == "--level") return ArgType::LEVEL_LONG;
+    if (arg == "-b") return ArgType::BLOCK_SIZE_SHORT;
+    if (arg == "--block-size") return ArgType::BLOCK_SIZE_LONG;
+    if (arg == "-w") return ArgType::WIDTH_SHORT;
+    if (arg == "--width") return ArgType::WIDTH_LONG;
+    if (arg == "-h") return ArgType::HEIGHT_SHORT;
+    if (arg == "--height") return ArgType::HEIGHT_LONG;
+    if (arg == "-t") return ArgType::THEME_SHORT;
+    if (arg == "--theme") return ArgType::THEME_LONG;
+    if (arg == "--min-block-size") return ArgType::MIN_BLOCK_SIZE;
+    if (arg == "--junk-lines") return ArgType::JUNK_LINES;
+    if (arg == "--junk-per-level") return ArgType::JUNK_PER_LEVEL;
+    if (arg == "--background") return ArgType::BACKGROUND;
+    if (arg == "--background-zip") return ArgType::BACKGROUND_ZIP;
+    if (arg == "--background-opacity") return ArgType::BACKGROUND_OPACITY;
+    if (arg == "--sound-zip") return ArgType::SOUND_ZIP;
+    if (arg == "-f") return ArgType::FULLSCREEN_SHORT;
+    if (arg == "--fullscreen") return ArgType::FULLSCREEN_LONG;
+    if (arg == "--no-sound") return ArgType::NO_SOUND;
+    if (arg == "--no-music") return ArgType::NO_MUSIC;
+    if (arg == "--no-ghost") return ArgType::NO_GHOST;
+    if (arg == "--grid-lines") return ArgType::GRID_LINES;
+    if (arg == "--retro") {printf("Retro\n"); return ArgType::RETRO;}
+    if (arg == "--simple-blocks") return ArgType::SIMPLE_BLOCKS;
+    if (arg == "--retro-music") return ArgType::RETRO_MUSIC;
+    return ArgType::UNKNOWN;
+}
+
+CommandLineArgs parseCommandLine(int argc, char* argv[]) {
+    CommandLineArgs args;
+    
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        ArgType argType = getArgType(arg);
+        
+        printf("DEBUG: arg='%s', argType=%d\n", arg.c_str(), (int)argType);  // Add this line
+        
+        switch (argType) {
+            case ArgType::HELP:
+                args.help = true;
+                break;
+                
+            case ArgType::VERSION:
+                args.version = true;
+                break;
+                
+            case ArgType::DIFFICULTY_SHORT:
+            case ArgType::DIFFICULTY_LONG:
+                if (i + 1 < argc) {
+                    args.difficulty = std::atoi(argv[++i]);
+                    if (args.difficulty < 0 || args.difficulty > 5) {
+                        std::cerr << "Error: Difficulty must be between 0-5\n";
+                        args.difficulty = 2; // Default to medium
+                    }
+                } else {
+                    std::cerr << "Error: --difficulty requires a value\n";
+                }
+                break;
+                
+            case ArgType::LEVEL_SHORT:
+            case ArgType::LEVEL_LONG:
+                if (i + 1 < argc) {
+                    args.initialLevel = std::atoi(argv[++i]);
+                    if (args.initialLevel < 1 || args.initialLevel > 99) {
+                        std::cerr << "Error: Level must be between 1-99\n";
+                        args.initialLevel = 1;
+                    }
+                } else {
+                    std::cerr << "Error: --level requires a value\n";
+                }
+                break;
+                
+            case ArgType::BLOCK_SIZE_SHORT:
+            case ArgType::BLOCK_SIZE_LONG:
+                if (i + 1 < argc) {
+                    args.blockSize = std::atoi(argv[++i]);
+                    if (args.blockSize < MIN_BLOCK_SIZE || args.blockSize > MAX_BLOCK_SIZE) {
+                        std::cerr << "Error: Block size must be between " << MIN_BLOCK_SIZE 
+                                  << "-" << MAX_BLOCK_SIZE << "\n";
+                        args.blockSize = -1;
+                    }
+                } else {
+                    std::cerr << "Error: --block-size requires a value\n";
+                }
+                break;
+                
+            case ArgType::WIDTH_SHORT:
+            case ArgType::WIDTH_LONG:
+                if (i + 1 < argc) {
+                    args.gridWidth = std::atoi(argv[++i]);
+                    if (args.gridWidth < MIN_GRID_WIDTH || args.gridWidth > MAX_GRID_WIDTH) {
+                        std::cerr << "Error: Grid width must be between " << MIN_GRID_WIDTH 
+                                  << "-" << MAX_GRID_WIDTH << "\n";
+                        args.gridWidth = -1;
+                    }
+                } else {
+                    std::cerr << "Error: --width requires a value\n";
+                }
+                break;
+                
+            case ArgType::HEIGHT_SHORT:
+            case ArgType::HEIGHT_LONG:
+                if (i + 1 < argc) {
+                    args.gridHeight = std::atoi(argv[++i]);
+                    if (args.gridHeight < MIN_GRID_HEIGHT || args.gridHeight > MAX_GRID_HEIGHT) {
+                        std::cerr << "Error: Grid height must be between " << MIN_GRID_HEIGHT 
+                                  << "-" << MAX_GRID_HEIGHT << "\n";
+                        args.gridHeight = -1;
+                    }
+                } else {
+                    std::cerr << "Error: --height requires a value\n";
+                }
+                break;
+                
+            case ArgType::THEME_SHORT:
+            case ArgType::THEME_LONG:
+                if (i + 1 < argc) {
+                    args.themeIndex = std::atoi(argv[++i]);
+                    if (args.themeIndex < 0 || args.themeIndex >= NUM_COLOR_THEMES) {
+                        std::cerr << "Error: Theme index must be between 0-" << (NUM_COLOR_THEMES-1) << "\n";
+                        args.themeIndex = -1;
+                    }
+                } else {
+                    std::cerr << "Error: --theme requires a value\n";
+                }
+                break;
+                
+            case ArgType::MIN_BLOCK_SIZE:
+                if (i + 1 < argc) {
+                    args.minBlockSize = std::atoi(argv[++i]);
+                    if (args.minBlockSize < 1 || args.minBlockSize > 4) {
+                        std::cerr << "Error: Minimum block size must be between 1-4\n";
+                        args.minBlockSize = -1;
+                    }
+                } else {
+                    std::cerr << "Error: --min-block-size requires a value\n";
+                }
+                break;
+                
+            case ArgType::JUNK_LINES:
+                if (i + 1 < argc) {
+                    args.junkLinesPercentage = std::atoi(argv[++i]);
+                    if (args.junkLinesPercentage < 0 || args.junkLinesPercentage > 50) {
+                        std::cerr << "Error: Junk lines percentage must be between 0-50\n";
+                        args.junkLinesPercentage = -1;
+                    }
+                } else {
+                    std::cerr << "Error: --junk-lines requires a value\n";
+                }
+                break;
+                
+            case ArgType::JUNK_PER_LEVEL:
+                if (i + 1 < argc) {
+                    args.junkLinesPerLevel = std::atoi(argv[++i]);
+                    if (args.junkLinesPerLevel < 0 || args.junkLinesPerLevel > 5) {
+                        std::cerr << "Error: Junk lines per level must be between 0-5\n";
+                        args.junkLinesPerLevel = -1;
+                    }
+                } else {
+                    std::cerr << "Error: --junk-per-level requires a value\n";
+                }
+                break;
+                
+            case ArgType::BACKGROUND:
+                if (i + 1 < argc) {
+                    args.backgroundImage = argv[++i];
+                } else {
+                    std::cerr << "Error: --background requires a file path\n";
+                }
+                break;
+                
+            case ArgType::BACKGROUND_ZIP:
+                if (i + 1 < argc) {
+                    args.backgroundZip = argv[++i];
+                } else {
+                    std::cerr << "Error: --background-zip requires a file path\n";
+                }
+                break;
+                
+            case ArgType::BACKGROUND_OPACITY:
+                if (i + 1 < argc) {
+                    args.backgroundOpacity = std::atof(argv[++i]);
+                    if (args.backgroundOpacity < 0.0 || args.backgroundOpacity > 1.0) {
+                        std::cerr << "Error: Background opacity must be between 0.0-1.0\n";
+                        args.backgroundOpacity = -1.0;
+                    }
+                } else {
+                    std::cerr << "Error: --background-opacity requires a value\n";
+                }
+                break;
+                
+            case ArgType::SOUND_ZIP:
+                if (i + 1 < argc) {
+                    args.soundZip = argv[++i];
+                } else {
+                    std::cerr << "Error: --sound-zip requires a file path\n";
+                }
+                break;
+                
+            case ArgType::FULLSCREEN_SHORT:
+            case ArgType::FULLSCREEN_LONG:
+                args.fullscreen = true;
+                break;
+                
+            case ArgType::NO_SOUND:
+                args.soundEnabled = false;
+                break;
+                
+            case ArgType::NO_MUSIC:
+                args.musicEnabled = false;
+                break;
+                
+            case ArgType::NO_GHOST:
+                args.ghostPiece = false;
+                break;
+                
+            case ArgType::GRID_LINES:
+                args.gridLines = true;
+                break;
+                
+            case ArgType::RETRO:
+                args.retroMode = true;
+                break;
+                
+            case ArgType::SIMPLE_BLOCKS:
+                args.simpleBlocks = true;
+                break;
+                
+            case ArgType::RETRO_MUSIC:
+                args.retroMusic = true;
+                break;
+                
+    case ArgType::UNKNOWN:
+    default:
+        printf("DEBUG: Hit UNKNOWN/default case, argType=%d\n", (int)argType);
+        std::cerr << "Warning: Unknown option '" << arg << "'\n";
+        break;
+        }
+    }
+    
+    return args;
+}
