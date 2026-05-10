@@ -138,7 +138,7 @@ TetrimoneBoard::TetrimoneBoard()
 
   heatLevel = 0.5f;
   heatDecayTimer = 0;
-  minBlockSize = 4;  // Default to Tetromones only
+  minBlockSize = 1;
   grid.resize(MAX_GRID_HEIGHT, std::vector<int>(MAX_GRID_WIDTH, 0));
   
   // Initialize currentPiece first to ensure it's never null
