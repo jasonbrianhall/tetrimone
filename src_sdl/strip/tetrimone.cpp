@@ -985,8 +985,10 @@ void TetrimoneBoard::setLevel(int newLevel) {
 }
 
 void TetrimoneBoard::setMinBlock(int size) {
-    if (size >= 1 && size <=4) {
-        minBlockSize=size;
+    if (size >= 1 && size <= 4) {
+        minBlockSize = size;
+    } else {
+        minBlockSize = 4;  // Set to max if out of range
     }
 }
 
