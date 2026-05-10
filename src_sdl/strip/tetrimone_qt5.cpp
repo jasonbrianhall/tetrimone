@@ -154,12 +154,17 @@ protected:
             keyRightDelay = 150;
             onKeyRightTick(app);
         } else if (key == Qt::Key_Space) {
-            if (!board->isPaused() && !board->isGameOver() && !board->isSplashScreenActive()) {
+            // If splash screen is active, dismiss it and start game
+            if (board->isSplashScreenActive()) {
+                board->setSplashScreenActive(false);
+                startGame(app);
+            } else if (!board->isPaused() && !board->isGameOver()) {
+                // Otherwise, rotate piece
                 board->rotatePiece(1);
             }
             updateDisplay(app);
         } else if (key == Qt::Key_Z) {
-            if (!board->isPaused() && !board->isGameOver() && !board->isSplashScreenActive()) {
+            if (!board->isSplashScreenActive() && !board->isPaused() && !board->isGameOver()) {
                 board->rotatePiece(-1);
             }
             updateDisplay(app);
