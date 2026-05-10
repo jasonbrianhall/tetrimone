@@ -765,7 +765,10 @@ void drawPropagandaMessage(cairo_t *cr, TetrimoneBoard *board) {
 
 void drawCurrentPiece(cairo_t *cr, TetrimoneBoard *board) {
   if (!board->isGameOver() && !board->isPaused() && !board->isSplashScreenActive()) {
-    const TetrimoneBlock &piece = board->getCurrentPiece();
+    const TetrimoneBlock* piecePtr = board->getCurrentPiece();
+    if (!piecePtr) return;  // Safety check
+    
+    const TetrimoneBlock &piece = *piecePtr;
     auto shape = piece.getShape();
     auto color = board->isInThemeTransition() ? 
     board->getInterpolatedColor(piece.getType(), board->getThemeTransitionProgress()) :
@@ -820,7 +823,10 @@ void drawGhostPiece(cairo_t *cr, TetrimoneBoard *board) {
   if (!board->isGameOver() && !board->isPaused() && 
       !board->isSplashScreenActive() && board->isGhostPieceEnabled()) {
     
-    const TetrimoneBlock &piece = board->getCurrentPiece();
+    const TetrimoneBlock* piecePtr = board->getCurrentPiece();
+    if (!piecePtr) return;  // Safety check
+    
+    const TetrimoneBlock &piece = *piecePtr;
     auto shape = piece.getShape();
     auto color = piece.getColor();
     

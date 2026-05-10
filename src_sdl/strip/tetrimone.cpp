@@ -46,6 +46,15 @@ bool keyRightPressed = false;
 // TetrimoneBlock class implementation
 // ============================================================================
 TetrimoneBlock::TetrimoneBlock(int type) : type(type), rotation(0) {
+  // Validate type on construction
+  if (type < 0) {
+    fprintf(stderr, "ERROR: TetrimoneBlock created with negative type: %d\n", type);
+    this->type = 0;
+  } else if (type >= 14) {  // Max valid piece type
+    fprintf(stderr, "ERROR: TetrimoneBlock created with type > 14: %d\n", type);
+    this->type = 0;
+  }
+  
   // Start pieces centered at top
   x = GRID_WIDTH / 2 - 2;
   y = 0;
@@ -58,14 +67,34 @@ void TetrimoneBlock::rotate(bool clockwise) {
 }
 
 std::vector<std::vector<int>> TetrimoneBlock::getShape() const {
+  // Safety check - ensure type is valid
+  if (type < 0 || type >= (int)TETRIMONEBLOCK_SHAPES.size()) {
+    // Return empty shape as fallback
+    return std::vector<std::vector<int>>();
+  }
+  if (rotation < 0 || rotation >= (int)TETRIMONEBLOCK_SHAPES[type].size()) {
+    // Return the first rotation as fallback
+    return TETRIMONEBLOCK_SHAPES[type][0];
+  }
   return TETRIMONEBLOCK_SHAPES[type][rotation];
 }
 
 std::array<double, 3> TetrimoneBlock::getColor() const {
+    // Safety check - ensure type is valid
+    if (type < 0 || type >= (int)TETRIMONEBLOCK_COLOR_THEMES[0].size()) {
+        // Return a default color if type is invalid
+        return {1.0, 1.0, 1.0}; // White fallback
+    }
+    
     int themeIndex = currentThemeIndex;
-    if (themeIndex >= TETRIMONEBLOCK_COLOR_THEMES.size()) {
+    if (themeIndex < 0 || themeIndex >= (int)TETRIMONEBLOCK_COLOR_THEMES.size()) {
         themeIndex = TETRIMONEBLOCK_COLOR_THEMES.size() - 1;
     }
+    
+    if (type >= (int)TETRIMONEBLOCK_COLOR_THEMES[themeIndex].size()) {
+        return {1.0, 1.0, 1.0}; // White fallback
+    }
+    
     return TETRIMONEBLOCK_COLOR_THEMES[themeIndex][type];
 }
 
@@ -111,7 +140,11 @@ TetrimoneBoard::TetrimoneBoard()
   heatDecayTimer = 0;
   minBlockSize = 4;  // Default to Tetromones only
   grid.resize(MAX_GRID_HEIGHT, std::vector<int>(MAX_GRID_WIDTH, 0));
-  nextPieces.resize(3);
+  
+  // Initialize currentPiece first to ensure it's never null
+  currentPiece = std::make_unique<TetrimoneBlock>(0);
+  
+  // generateNewPiece will populate the deque and set currentPiece properly
   generateNewPiece();
 
   if (loadBackgroundImagesFromZip("background.zip")) {
@@ -670,134 +703,77 @@ void TetrimoneBoard::lockPiece() {
 }
 
 void TetrimoneBoard::generateNewPiece() {
-  // Move first next piece to current
-  if (!nextPieces[0]) {
-    // First time initialization - create all next pieces
-    for (int i = 0; i < 3; i++) {
-      // Use the existing piece generation logic to create each piece
-      std::vector<int> validPieces;
-        // Otherwise use the regular minBlockSize rules
-        switch (minBlockSize) {
-        case 1: // All pieces
-          for (int j = 0; j < 14; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        case 2: // Triomones and Tetromones
-          for (int j = 0; j <= 10; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        case 3: // Tetromones only
-          for (int j = 0; j <= 6; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        case 4: // Tetromones only, but ensure at least 4 blocks
-          for (int j = 0; j <= 6; ++j) {
-            int blockCount = 0;
-            for (const auto &row : TETRIMONEBLOCK_SHAPES[j][0]) {
-              for (int cell : row) {
-                if (cell == 1)
-                  blockCount++;
-              }
-            }
-            // Only add if block count is exactly 4
-            if (blockCount == 4) {
-              validPieces.push_back(j);
-            }
-          }
-          break;
-        default:
-          // Fallback to standard tetromones
-          for (int j = 0; j <= 6; ++j) {
-            validPieces.push_back(j);
-          }
-          break;
-        }
-
-      // If no valid pieces found, fallback to standard Tetrimones
-      if (validPieces.empty()) {
-        for (int j = 0; j <= 6; ++j) {
-          validPieces.push_back(j);
-        }
-      }
-
-      // Use uniform distribution over valid pieces
-      std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
-      int nextIndex = dist(rng);
-      int nextType = validPieces[nextIndex];
-
-      nextPieces[i] = std::make_unique<TetrimoneBlock>(nextType);
-    }
-
-    // Create the current piece
-    currentPiece = std::make_unique<TetrimoneBlock>(nextPieces[0]->getType());
-  } else {
-    // Move first next piece to current
-    currentPiece = std::move(nextPieces[0]);
-
-    // Shift remaining pieces
-    for (int i = 0; i < 2; i++) {
-      nextPieces[i] = std::move(nextPieces[i + 1]);
-    }
-
-    // Generate a new piece for the last position
+  // Helper lambda to generate a random valid piece type
+  auto generateRandomPieceType = [this]() -> int {
     std::vector<int> validPieces;
-
-      // Otherwise use the regular minBlockSize rules
-      switch (minBlockSize) {
+    switch (minBlockSize) {
       case 1: // All pieces
-        for (int i = 0; i < 14; ++i) {
-          validPieces.push_back(i);
+        for (int j = 0; j < 14; ++j) {
+          validPieces.push_back(j);
         }
         break;
       case 2: // Triomones and Tetromones
-        for (int i = 0; i <= 10; ++i) {
-          validPieces.push_back(i);
+        for (int j = 0; j <= 10; ++j) {
+          validPieces.push_back(j);
         }
         break;
       case 3: // Tetromones only
-        for (int i = 0; i <= 6; ++i) {
-          validPieces.push_back(i);
+        for (int j = 0; j <= 6; ++j) {
+          validPieces.push_back(j);
         }
         break;
       case 4: // Tetromones only, but ensure at least 4 blocks
-        for (int i = 0; i <= 6; ++i) {
+        for (int j = 0; j <= 6; ++j) {
           int blockCount = 0;
-          for (const auto &row : TETRIMONEBLOCK_SHAPES[i][0]) {
+          for (const auto &row : TETRIMONEBLOCK_SHAPES[j][0]) {
             for (int cell : row) {
-              if (cell == 1)
-                blockCount++;
+              if (cell == 1) blockCount++;
             }
           }
-          // Only add if block count is exactly 4
           if (blockCount == 4) {
-            validPieces.push_back(i);
+            validPieces.push_back(j);
           }
         }
         break;
       default:
-        // Fallback to standard tetromones
-        for (int i = 0; i <= 6; ++i) {
-          validPieces.push_back(i);
+        for (int j = 0; j <= 6; ++j) {
+          validPieces.push_back(j);
         }
         break;
-      }
+    }
 
-    // If no valid pieces found, fallback to standard Tetromones
     if (validPieces.empty()) {
-      for (int i = 0; i <= 6; ++i) {
-        validPieces.push_back(i);
+      for (int j = 0; j <= 6; ++j) {
+        validPieces.push_back(j);
       }
     }
 
-    // Use uniform distribution over valid pieces
     std::uniform_int_distribution<int> dist(0, validPieces.size() - 1);
-    int nextIndex = dist(rng);
-    int nextType = validPieces[nextIndex];
+    return validPieces[dist(rng)];
+  };
 
-    nextPieces[2] = std::make_unique<TetrimoneBlock>(nextType);
+  // If queue is empty, initialize with 20 pieces
+  if (nextPieces.empty()) {
+    for (int i = 0; i < 20; i++) {
+      int pieceType = generateRandomPieceType();
+      nextPieces.push_back(std::make_unique<TetrimoneBlock>(pieceType));
+    }
+  }
+
+  // Always ensure we have at least 20 pieces in the queue
+  while (nextPieces.size() < 20) {
+    int pieceType = generateRandomPieceType();
+    nextPieces.push_back(std::make_unique<TetrimoneBlock>(pieceType));
+  }
+
+  // Pop the first piece and make it current
+  if (!nextPieces.empty()) {
+    int currentType = nextPieces.front()->getType();
+    currentPiece = std::make_unique<TetrimoneBlock>(currentType);
+    nextPieces.pop_front();
+  } else {
+    // Fallback - should never happen
+    currentPiece = std::make_unique<TetrimoneBlock>(0);
   }
 
   // Check if the new piece collides immediately - game over

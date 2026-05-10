@@ -2,6 +2,7 @@
 #define QT5_DIALOG_HELPERS_H
 
 #include <QDialog>
+#include <QButtonGroup>
 #include <vector>
 #include <string>
 
@@ -33,6 +34,29 @@ struct RadioGroupConfig {
     std::string frameTitle;
     std::vector<std::string> options;
     int defaultSelectedIndex;
+};
+
+// ============================================================================
+// Qt5 Dialog Classes
+// ============================================================================
+
+class FreedomPerformanceDialog : public QDialog {
+    Q_OBJECT
+public:
+    FreedomPerformanceDialog(QWidget* parent,
+                             const DialogConfig& dialogConfig,
+                             const std::vector<TextConfig>& textElements,
+                             const RadioGroupConfig* radioConfig,
+                             const std::vector<TextConfig>& footerElements);
+    
+    int getSelectedIndex() const;
+
+private slots:
+    void onRadioSelected(int id);
+
+private:
+    QButtonGroup* buttonGroup;
+    int selectedIndex;
 };
 
 // ============================================================================

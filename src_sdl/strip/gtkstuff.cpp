@@ -236,7 +236,11 @@ void OnDrawGameAreaCairo(cairo_t *cr, TetrimoneApp *app, int width, int height) 
   drawPropagandaMessage(cr, board);
 
   // Draw current piece with smooth movement animation
-  drawCurrentPiece(cr, board);
+  if (board->getCurrentPiece()) {
+    drawCurrentPiece(cr, board);
+  } else {
+    fprintf(stderr, "WARNING: getCurrentPiece() returned null, skipping drawCurrentPiece\n");
+  }
 
   // Draw ghost piece with interpolated position
   drawGhostPiece(cr, board);

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <array>
+#include <deque>
 #include <random>
 #include <chrono>
 #include <memory>
@@ -75,6 +76,9 @@ public:
     int getX() const { return x; }
     int getY() const { return y; }
     void setPosition(int newX, int newY);
+    bool isValid() const { 
+        return type >= 0 && type < 14 && rotation >= 0 && rotation < 4; 
+    }
 };
 
 class TetrimoneBoard {
@@ -90,7 +94,7 @@ private:
     #endif
     std::vector<std::vector<int>> grid;
     std::unique_ptr<TetrimoneBlock> currentPiece;
-    std::vector<std::unique_ptr<TetrimoneBlock>> nextPieces;
+    std::deque<std::unique_ptr<TetrimoneBlock>> nextPieces;
     int score, level, linesCleared;
     bool gameOver, paused;
     std::mt19937 rng;
@@ -261,10 +265,40 @@ public:
     void setGameOver(bool g) { gameOver = g; }
 
     // Pieces
-    const TetrimoneBlock* getCurrentPiece() const { return currentPiece.get(); }
-    const TetrimoneBlock& getCurrentPieceRef() const { return *currentPiece; }
-    const std::vector<std::unique_ptr<TetrimoneBlock>>& getNextPieces() const { return nextPieces; }
-    const TetrimoneBlock* getNextPiece(int index = 0) const { return nextPieces[index].get(); }
+    const TetrimoneBlock* getCurrentPiece() const { 
+      if (!currentPiece) {
+        fprintf(stderr, "ERROR: currentPiece is null!\n");
+        return nullptr;
+      }
+      if (!currentPiece->isValid()) {
+        fprintf(stderr, "ERROR: currentPiece is invalid! type=%d, rotation=%d\n", 
+                currentPiece->getType(), currentPiece->getRotation());
+        return nullptr;
+      }
+      return currentPiece.get(); 
+    }
+    const TetrimoneBlock& getCurrentPieceRef() const { 
+      if (!currentPiece) {
+        // This shouldn't happen, but safety fallback
+        static TetrimoneBlock fallback(0);
+        return fallback;
+      }
+      return *currentPiece; 
+    }
+    const TetrimoneBlock* getNextPiece(int index = 0) const { 
+      if (index < 0 || index >= (int)nextPieces.size()) {
+        return nullptr;
+      }
+      return nextPieces[index].get();
+    }
+    
+    const std::deque<std::unique_ptr<TetrimoneBlock>>& getNextPieces() const { 
+      return nextPieces; 
+    }
+    
+    size_t getNextPiecesCount() const {
+      return nextPieces.size();
+    }
 
     // Heat
     float getHeatLevel();
