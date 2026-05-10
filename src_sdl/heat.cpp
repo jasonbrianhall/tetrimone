@@ -64,10 +64,6 @@ void TetrimoneBoard::coolDown() {
     
     // Round to nearest hundredth
     heatLevel = round(heatLevel * 10000.0f) / 10000.0f;
-    //printf("Heat level %f\n", heatLevel);
-    #ifdef DEBUG
-    printf("Heat level %f\n", heatLevel);
-    #endif
 }
 
 void TetrimoneBoard::increaseHeat(float amount) {
@@ -77,10 +73,6 @@ void TetrimoneBoard::increaseHeat(float amount) {
     if (heatLevel > 1.0f) {
         heatLevel = 1.0f;
     }
-    
-    #ifdef DEBUG
-    printf("Heat increased to %f\n", heatLevel);
-    #endif
 }
 
 void TetrimoneBoard::decreaseHeat(float amount) {
@@ -89,10 +81,6 @@ void TetrimoneBoard::decreaseHeat(float amount) {
     if (heatLevel < 0) {
         heatLevel = 0.0f;
     }
-    
-    #ifdef DEBUG
-    printf("Heat decreased to %f\n", heatLevel);
-    #endif
 }
 
 
