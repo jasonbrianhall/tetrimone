@@ -632,6 +632,12 @@ void setupMenuBar(TetrimoneApp* app) {
 }
 
 void setupGameUI(TetrimoneApp* app, int width, int height) {
+    // Create the game board if it doesn't exist
+    if (!app->board) {
+        app->board = new TetrimoneBoard();
+        app->board->app = app;
+    }
+    
     // Create main window
     app->window = new TetrimoneWindow(app);
     app->window->setWindowTitle("Tetrimone");
