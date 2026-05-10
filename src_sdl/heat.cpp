@@ -36,6 +36,11 @@ void TetrimoneBoard::updateHeat() {
 #endif
 
 void TetrimoneBoard::coolDown() {
+    // Don't cool down if game is paused
+    if (paused) {
+        return;
+    }
+    
     // Base cooling rate per 100ms (independent of game timer speed)
     float baseCoolingRate = 0.005f;
     

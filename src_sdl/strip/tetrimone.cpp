@@ -343,7 +343,7 @@ TetrimoneBoard::~TetrimoneBoard() {
 
 int TetrimoneBoard::clearLines() {
   std::vector<int> linesToClear;
-  int currentlevel = (this->linesCleared / 10) + initialLevel;
+  int currentLevel = (this->linesCleared / 10) + initialLevel;
   
   // Check each row from bottom to top to find full lines
   for (int y = GRID_HEIGHT - 1; y >= 0; --y) {
@@ -623,6 +623,23 @@ int TetrimoneBoard::clearLines() {
     }
     
     score += points;
+    
+    // Update the member variable with total lines cleared
+    this->linesCleared += linesCleared;
+    
+    // Check if we've reached a level up (every 10 lines)
+    int newLevel = (this->linesCleared / 10) + initialLevel;
+    if (newLevel > level) {
+      // Level up!
+      level = newLevel;
+      playSound(GameSoundEvent::LevelUp);
+      
+      // Change theme automatically on level up
+      // Cycle through themes (0 to NUM_COLOR_THEMES - 1)
+      int nextTheme = (currentThemeIndex + 1) % NUM_COLOR_THEMES;
+      startThemeTransition(nextTheme);
+      currentThemeIndex = nextTheme;
+    }
   }
   
   return linesCleared;
