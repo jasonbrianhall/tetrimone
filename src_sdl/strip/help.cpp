@@ -427,20 +427,151 @@ void onInstructionsDialog(GtkMenuItem *menuItem, gpointer userData) {
   }
 }
 
-#endif  // GTK3
+#endif  // QT5
 
 #ifdef QT5
 #include "tetrimone_qt5.h"
+#include <QMessageBox>
+#include <QTextEdit>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QPushButton>
 
-// Qt5 stub implementations
+// Qt5 implementations
 void onAboutDialog(void* menuItem, void* userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
-    // TODO: Implement Qt5 about dialog with mode-specific content
+    if (!app || !app->window) return;
+    
+    if (app->board->retroModeActive) {
+        QMessageBox::about(app->window, "Государственное Сообщение",
+            "БЛОЧНАЯ РЕВОЛЮЦИЯ\n"
+            "(Block Revolution)\n\n"
+            "Официальный Выпуск: Производственный Цикл 1.0\n\n"
+            "Передовая Система Геометрической Оптимизации\n"
+            "(Advanced Geometric Optimization System)\n\n"
+            "★ Одобрено Центральным Комитетом Блочного Позиционирования ★\n"
+            "(Approved by the Central Block Positioning Committee)\n\n"
+            "Где нет блоков - там нет прогресса!\n"
+            "(Where there are no blocks, there is no progress!)\n\n"
+            "© Государственное Бюро Управления Блоками, Московское Отделение\n"
+            "(State Block Management Bureau, Moscow Division)");
+    } else if (app->board->patrioticModeActive) {
+        QMessageBox::about(app->window, "🇺🇸 FREEDOM BLOCKS - AMERICAN EXCELLENCE EDITION 🦅",
+            "FREEDOM BLOCKS\n"
+            "🇺🇸 AMERICAN EXCELLENCE EDITION 🦅\n\n"
+            "Premium Release: Freedom Edition v1.0 🎯\n\n"
+            "🚀 Revolutionary Block Management Solution\n"
+            "Powered by American Innovation & Entrepreneurial Spirit\n\n"
+            "⭐ CERTIFIED BY THE DEPARTMENT OF FREEDOM & LIBERTY ⭐\n"
+            "🦅 Where Eagles Soar, Blocks Fall With Purpose! 🦅\n"
+            "Life, Liberty, and the Pursuit of Perfect Line Clears!\n\n"
+            "© FREEDOM BLOCKS™ - PROUDLY AMERICAN");
+    } else {
+        QMessageBox::about(app->window, "About Tetrimone",
+            "Tetrimone - A Modern Block Falling Puzzle Game\n\n"
+            "A contemporary interpretation of the classic block-falling puzzle game,\n"
+            "featuring extended gameplay mechanics, customizable difficulty levels,\n"
+            "and enhanced visual presentation.\n\n"
+            "Built with Qt5 and SDL2\n"
+            "© 2024 Tetrimone Project");
+    }
 }
 
 void onInstructionsDialog(void* menuItem, void* userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
-    // TODO: Implement Qt5 instructions dialog with mode-specific content
+    if (!app || !app->window) return;
+    
+    QString instructions;
+    
+    if (app->board->retroModeActive) {
+        instructions = 
+            "РЕВОЛЮЦИОННАЯ СПРАВКА ПО УПРАВЛЕНИЮ БЛОКАМИ\n"
+            "=========================================\n\n"
+            "ОСНОВНЫЕ КОМАНДЫ:\n\n"
+            "Управление:\n"
+            "• Влево/Вправо или A/D: Горизонтальное движение блока\n"
+            "• Вверх или W: Вращение блока по часовой стрелке\n"
+            "• Z: Вращение против часовой стрелки\n"
+            "• Вниз или S: Мягкое падение\n"
+            "• Пробел: Жёсткое падение\n"
+            "• P: Пауза/Возобновление\n\n"
+            "СИСТЕМА ОЧКОВ:\n"
+            "• 1 линия: 40 × уровень\n"
+            "• 2 линии: 100 × уровень\n"
+            "• 3 линии: 300 × уровень\n"
+            "• 4 линии: 1200 × уровень (РЕВОЛЮЦИОННАЯ ПОБЕДА!)\n\n"
+            "СОВЕТЫ:\n"
+            "• Держите стопку низкой и ровной - порядок в государстве!\n"
+            "• Сохраняйте I-блоки для революционных побед (4 линии)\n"
+            "• Смотрите на следующий блок\n"
+            "• Красная линия = конец производства (поражение)\n\n"
+            "Да здравствует революция блоков!";
+    } else if (app->board->patrioticModeActive) {
+        instructions = 
+            "🇺🇸 FREEDOM BLOCKS - OFFICIAL PATRIOT MANUAL 🦅\n"
+            "=============================================\n\n"
+            "CORE FREEDOM COMMANDS:\n\n"
+            "Movement:\n"
+            "• Left/Right Arrow or A/D: Lateral freedom navigation\n"
+            "• Up Arrow or W: Clockwise rotation (The American way!)\n"
+            "• Z: Counter-clockwise rotation (Freedom of choice!)\n"
+            "• Down Arrow or S: Soft drop\n"
+            "• Space: Hard drop - DECISIVE like American action!\n"
+            "• P: Pause/Resume\n\n"
+            "FREEDOM SCORING:\n"
+            "• 1 line: 40 × level (Victory for Democracy!)\n"
+            "• 2 lines: 100 × level\n"
+            "• 3 lines: 300 × level\n"
+            "• 4 lines: 1200 × level (TETRIMONE - MAXIMUM FREEDOM!)\n\n"
+            "PATRIOTIC TIPS:\n"
+            "• Keep the stack low and even\n"
+            "• Save I-pieces for Tetrimone clears (4 lines)\n"
+            "• Watch the preview for the next piece\n"
+            "• Red line indicates the game over zone\n\n"
+            "Remember: IN BLOCKS, AS IN LIFE - AMERICA ALWAYS WINS! 🇺🇸";
+    } else {
+        instructions = 
+            "Tetrimone Instructions\n"
+            "======================\n\n"
+            "Goal: Arrange falling blocks to complete lines.\n\n"
+            "Controls:\n"
+            "• Left/Right Arrow or A/D: Move block left/right\n"
+            "• Up Arrow or W: Rotate block clockwise\n"
+            "• Z: Rotate block counter-clockwise\n"
+            "• Down Arrow or S: Move block down (soft drop)\n"
+            "• Space: Hard drop (instantly places block at bottom)\n"
+            "• P: Pause/Resume game\n"
+            "• R: Restart game when game over\n\n"
+            "Scoring:\n"
+            "• 1 line: 40 × level\n"
+            "• 2 lines: 100 × level\n"
+            "• 3 lines: 300 × level\n"
+            "• 4 lines: 1200 × level\n"
+            "• Sequence bonus: 10% extra per consecutive clear\n"
+            "• Consistency bonus: 20% extra for repeating same line count\n"
+            "• Hard drops: 2 points per cell\n\n"
+            "Tips:\n"
+            "• Keep the stack low and even\n"
+            "• Save I-pieces for Tetrimone clears (4 lines)\n"
+            "• Watch the preview for the next piece\n"
+            "• Red line indicates the game over zone";
+    }
+    
+    QDialog dialog(app->window);
+    dialog.setWindowTitle("Instructions");
+    dialog.setGeometry(100, 100, 600, 500);
+    
+    QVBoxLayout layout(&dialog);
+    QTextEdit* textEdit = new QTextEdit(&dialog);
+    textEdit->setText(instructions);
+    textEdit->setReadOnly(true);
+    layout.addWidget(textEdit);
+    
+    QPushButton okButton("OK", &dialog);
+    QObject::connect(&okButton, &QPushButton::clicked, &dialog, &QDialog::accept);
+    layout.addWidget(&okButton);
+    
+    dialog.exec();
 }
 
 #endif  // QT5

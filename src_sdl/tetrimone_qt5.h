@@ -81,6 +81,8 @@ struct TetrimoneApp {
     RenderingMode renderingMode = RENDER_CAIRO;
 
     QAction*      renderModeMenuItems[2] = {nullptr};
+
+    CommandLineArgs* cmdlineArgs = nullptr;
 };
 
 // ============================================================================
@@ -104,6 +106,14 @@ void onKeyDownTick(TetrimoneApp* app);
 void onKeyLeftTick(TetrimoneApp* app);
 void onKeyRightTick(TetrimoneApp* app);
 void onGameTick(TetrimoneApp* app);
+
+// Help dialogs
+void onAboutDialog(void* menuItem, void* userData);
+void onInstructionsDialog(void* menuItem, void* userData);
+
+#ifdef QT5
+void onAppActivate(TetrimoneApp* app);
+#endif
 
 // Menu actions
 void onStartGameAction(TetrimoneApp* app);

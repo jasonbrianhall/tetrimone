@@ -255,6 +255,10 @@ void onAppActivate(TetrimoneApp* app)
     // Initialize the game UI
     if (app) {
         setupGameUI(app, 800, 600);
+        // Show the window
+        if (app->window) {
+            app->window->show();
+        }
         // Apply command-line arguments if they were stored
         if (app->cmdlineArgs) {
             applyCommandLineArgs(app, *app->cmdlineArgs);
@@ -620,14 +624,12 @@ void setupMenuBar(TetrimoneApp* app) {
     QMenu* helpMenu = app->menuBar->addMenu("&Help");
     QAction* aboutAction = helpMenu->addAction("&About");
     QObject::connect(aboutAction, &QAction::triggered, [app]() {
-        QMessageBox::about(app->window, "About Tetrimone",
-            "Tetrimone - A Qt5 Tetris Clone\n\n"
-            "Controls:\n"
-            "Arrow Keys or WASD - Move\n"
-            "Space - Hard Drop\n"
-            "Up/W - Rotate Clockwise\n"
-            "Ctrl - Rotate Counter-Clockwise\n"
-            "P - Pause/Resume");
+        onAboutDialog(nullptr, app);
+    });
+    
+    QAction* instructionsAction = helpMenu->addAction("&Instructions");
+    QObject::connect(instructionsAction, &QAction::triggered, [app]() {
+        onInstructionsDialog(nullptr, app);
     });
 }
 
