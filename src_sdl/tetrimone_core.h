@@ -100,7 +100,7 @@ private:
     std::mt19937 rng;
     bool splashScreenActive;
     std::atomic<bool> musicStopFlag{false};
-    int minBlockSize = 1;
+    int minBlockSize = 4;
     int gridWidth = GRID_WIDTH, gridHeight = GRID_HEIGHT;
     bool ghostPieceEnabled;
     int consecutiveClears, maxConsecutiveClears, lastClearCount;
