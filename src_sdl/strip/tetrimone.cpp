@@ -700,6 +700,12 @@ void TetrimoneBoard::lockPiece() {
       }
     }
   }
+  
+  // Increase heat when a piece locks
+  increaseHeat(0.1f);
+  
+  // Ensure heat decay timer is running
+  updateHeat();
 }
 
 void TetrimoneBoard::generateNewPiece() {

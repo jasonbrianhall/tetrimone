@@ -13,24 +13,25 @@
 
 #ifdef GTK3
 void TetrimoneBoard::updateHeat() {
-        heatDecayTimer = g_timeout_add(1000, [](gpointer data) -> gboolean {
+    // Only create timer if it doesn't already exist
+    if (heatDecayTimer == 0) {
+        heatDecayTimer = g_timeout_add(100, [](gpointer data) -> gboolean {
             TetrimoneBoard* board = static_cast<TetrimoneBoard*>(data);
             board->coolDown();
             return TRUE; // Keep timer running
         }, this);
-
+    }
 }
 #else  // QT5
 void TetrimoneBoard::updateHeat() {
     if (!heatDecayTimer) {
         heatDecayTimer = new QTimer(nullptr);
-        heatDecayTimer->setInterval(1000); // 1000 ms
+        heatDecayTimer->setInterval(100); // 100 ms for more responsive heat changes
         QObject::connect(heatDecayTimer, &QTimer::timeout, [this]() {
             this->coolDown();
         });
+        heatDecayTimer->start();
     }
-
-    heatDecayTimer->start();
 }
 #endif
 
@@ -61,6 +62,31 @@ void TetrimoneBoard::coolDown() {
     //printf("Heat level %f\n", heatLevel);
     #ifdef DEBUG
     printf("Heat level %f\n", heatLevel);
+    #endif
+}
+
+void TetrimoneBoard::increaseHeat(float amount) {
+    heatLevel += amount;
+    
+    // Cap heat at 1.0
+    if (heatLevel > 1.0f) {
+        heatLevel = 1.0f;
+    }
+    
+    #ifdef DEBUG
+    printf("Heat increased to %f\n", heatLevel);
+    #endif
+}
+
+void TetrimoneBoard::decreaseHeat(float amount) {
+    heatLevel -= amount;
+    
+    if (heatLevel < 0) {
+        heatLevel = 0.0f;
+    }
+    
+    #ifdef DEBUG
+    printf("Heat decreased to %f\n", heatLevel);
     #endif
 }
 
