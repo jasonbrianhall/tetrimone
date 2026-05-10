@@ -100,9 +100,9 @@ LDFLAGS_LINUX = $(QT5_LIBS_LINUX) $(SDL_LIBS_LINUX) $(AUDIO_LIBS_LINUX) $(ZIP_LI
 LDFLAGS_WIN = $(QT5_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) $(CAIRO_LIBS_WIN) $(JPEG_LIBS_WIN) -lwinmm -lstdc++ -lSDL2_mixer
 
 # Object files
-OBJS_LINUX = $(SRCS_COMMON:.cpp=.o) $(SRCS_LINUX:.cpp=.o)
+OBJS_LINUX = $(SRCS_COMMON:.cpp=.o) $(SRCS_LINUX:.cpp=.o) src_sdl/strip/qt5_dialog_helpers_moc.o
 OBJS_WIN = $(SRCS_COMMON:.cpp=.win.o) $(SRCS_WIN:.cpp=.win.o)
-OBJS_LINUX_DEBUG = $(SRCS_COMMON:.cpp=.debug.o) $(SRCS_LINUX:.cpp=.debug.o)
+OBJS_LINUX_DEBUG = $(SRCS_COMMON:.cpp=.debug.o) $(SRCS_LINUX:.cpp=.debug.o) src_sdl/strip/qt5_dialog_helpers_moc.debug.o
 OBJS_WIN_DEBUG = $(SRCS_COMMON:.cpp=.win.debug.o) $(SRCS_WIN:.cpp=.win.debug.o)
 
 # Target executables
@@ -186,13 +186,19 @@ tetrimone-linux: $(BUILD_DIR_LINUX)/$(TARGET_LINUX) pack-backgrounds-linux conve
 $(BUILD_DIR_LINUX)/$(TARGET_LINUX): $(addprefix $(BUILD_DIR_LINUX)/,$(OBJS_LINUX))
 	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
 
+$(BUILD_DIR_LINUX)/src_sdl/strip/qt5_dialog_helpers_moc.o: src_sdl/strip/qt5_dialog_helpers_moc.cpp
+	$(CXX_LINUX) $(CXXFLAGS_LINUX) -c $< -o $@
+
+$(BUILD_DIR_LINUX_DEBUG)/src_sdl/strip/qt5_dialog_helpers_moc.debug.o: src_sdl/strip/qt5_dialog_helpers_moc.cpp
+	$(CXX_LINUX) $(CXXFLAGS_LINUX_DEBUG) -c $< -o $@
+
 # Generic compilation rules for Linux
 $(BUILD_DIR_LINUX)/%.o: %.cpp
 	$(CXX_LINUX) $(CXXFLAGS_LINUX) -c $< -o $@
 
 # Special rule for qt5_dialog_helpers - run MOC first
 src_sdl/strip/qt5_dialog_helpers_moc.cpp: src_sdl/strip/qt5_dialog_helpers.h
-	moc-qt5 $< -o $@
+	moc-qt5 $(QT5_CFLAGS_LINUX) src_sdl/strip/qt5_dialog_helpers.h -o $@
 
 $(BUILD_DIR_LINUX)/src_sdl/strip/qt5_dialog_helpers.o: src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp
 	$(CXX_LINUX) $(CXXFLAGS_LINUX) -c src_sdl/strip/qt5_dialog_helpers.cpp -o $@
@@ -210,10 +216,6 @@ $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG): $(addprefix $(BUILD_DIR_LINUX_DE
 $(BUILD_DIR_LINUX_DEBUG)/%.debug.o: %.cpp
 	$(CXX_LINUX) $(CXXFLAGS_LINUX_DEBUG) -c $< -o $@
 
-# Special rule for qt5_dialog_helpers debug - run MOC first
-$(BUILD_DIR_LINUX_DEBUG)/src_sdl/strip/qt5_dialog_helpers.debug.o: src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp
-	$(CXX_LINUX) $(CXXFLAGS_LINUX_DEBUG) -c src_sdl/strip/qt5_dialog_helpers.cpp -o $@
-
 #
 # Windows build targets
 #
@@ -227,10 +229,6 @@ $(BUILD_DIR_WIN)/$(TARGET_WIN): $(addprefix $(BUILD_DIR_WIN)/,$(OBJS_WIN))
 $(BUILD_DIR_WIN)/%.win.o: %.cpp
 	$(CXX_WIN) $(CXXFLAGS_WIN) -c $< -o $@
 
-# Special rule for qt5_dialog_helpers Windows - run MOC first
-$(BUILD_DIR_WIN)/src_sdl/strip/qt5_dialog_helpers.win.o: src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp
-	$(CXX_WIN) $(CXXFLAGS_WIN) -c src_sdl/strip/qt5_dialog_helpers.cpp -o $@
-
 #
 # Windows debug targets
 #
@@ -243,10 +241,6 @@ $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG): $(addprefix $(BUILD_DIR_WIN_DEBUG)/,
 # Generic compilation rules for Windows debug
 $(BUILD_DIR_WIN_DEBUG)/%.win.debug.o: %.cpp
 	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) -c $< -o $@
-
-# Special rule for qt5_dialog_helpers Windows debug - run MOC first
-$(BUILD_DIR_WIN_DEBUG)/src_sdl/strip/qt5_dialog_helpers.win.debug.o: src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp
-	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) -c src_sdl/strip/qt5_dialog_helpers.cpp -o $@
 
 #
 # MIDI to WAV conversion

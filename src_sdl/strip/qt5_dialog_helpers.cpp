@@ -16,16 +16,13 @@
 
 namespace Qt5Helpers {
 
-// Qt5 Implementation
-class FreedomPerformanceDialog : public QDialog {
-    Q_OBJECT
-public:
-    FreedomPerformanceDialog(QWidget* parent,
+// Constructor implementation
+FreedomPerformanceDialog::FreedomPerformanceDialog(QWidget* parent,
                              const DialogConfig& dialogConfig,
                              const std::vector<TextConfig>& textElements,
                              const RadioGroupConfig* radioConfig,
                              const std::vector<TextConfig>& footerElements)
-        : QDialog(parent), selectedIndex(-1) {
+    : QDialog(parent), selectedIndex(-1) {
         setWindowTitle(QString::fromStdString(dialogConfig.title));
         setFixedSize(dialogConfig.width, dialogConfig.height);
         
@@ -98,18 +95,14 @@ public:
         buttonLayout->addWidget(acceptBtn);
         mainLayout->addLayout(buttonLayout);
     }
-    
-    int getSelectedIndex() const { return selectedIndex; }
 
-private slots:
-    void onRadioSelected(int id) {
-        selectedIndex = id;
-    }
+int FreedomPerformanceDialog::getSelectedIndex() const {
+    return selectedIndex;
+}
 
-private:
-    QButtonGroup* buttonGroup;
-    int selectedIndex;
-};
+void FreedomPerformanceDialog::onRadioSelected(int id) {
+    selectedIndex = id;
+}
 
 int createAndRunDialog(
     void* parent,
@@ -126,6 +119,4 @@ int createAndRunDialog(
 }
 
 }  // namespace Qt5Helpers
-
-#include "qt5_dialog_helpers_moc.cpp"
 
