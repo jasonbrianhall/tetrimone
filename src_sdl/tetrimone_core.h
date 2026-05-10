@@ -270,10 +270,10 @@ public:
         fprintf(stderr, "ERROR: currentPiece is null!\n");
         return nullptr;
       }
+      // Always return the piece, even if invalid - let drawing code handle it
       if (!currentPiece->isValid()) {
-        fprintf(stderr, "ERROR: currentPiece is invalid! type=%d, rotation=%d\n", 
+        fprintf(stderr, "WARNING: currentPiece is invalid! type=%d, rotation=%d\n", 
                 currentPiece->getType(), currentPiece->getRotation());
-        return nullptr;
       }
       return currentPiece.get(); 
     }
@@ -317,7 +317,23 @@ public:
 
     // Block size
     int getMinBlockSize() const { return minBlockSize; }
-    void setMinBlockSize(int size) { minBlockSize = std::max(1, std::min(size, 4)); }
+    void setMinBlockSize(int size) { 
+      // Clamp value between 1 and 4
+      minBlockSize = std::max(1, std::min(size, 4)); 
+      // Note: This may require regenerating the next pieces queue
+      // if called during gameplay
+    }
+    
+    // Safe difficulty setter for GUI - implemented in tetrimone.cpp
+    void setDifficultyFromGUI(int newDifficulty);
+    
+    // Safe block size setter for GUI
+    void setMinBlockSizeFromGUI(int size) {
+      if (size < 1 || size > 4) {
+        return; // Invalid block size
+      }
+      setMinBlockSize(size);
+    }
 
     // Splash screen
     bool isSplashScreenActive() const { return splashScreenActive; }

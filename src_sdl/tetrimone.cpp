@@ -724,16 +724,6 @@ void TetrimoneBoard::lockPiece() {
 }
 
 void TetrimoneBoard::generateNewPiece() {
-  // Ensure currentPiece is always valid
-  if (!currentPiece) {
-    currentPiece = std::make_unique<TetrimoneBlock>(0);
-  }
-  
-  // Validate minBlockSize
-  if (minBlockSize < 1 || minBlockSize > 4) {
-    minBlockSize = 4;  // Default to tetromones only
-  }
-  
   // Helper lambda to generate a random valid piece type
   auto generateRandomPieceType = [this]() -> int {
     std::vector<int> validPieces;
@@ -783,7 +773,7 @@ void TetrimoneBoard::generateNewPiece() {
     return validPieces[dist(rng)];
   };
 
-  // If queue is empty or cleared, initialize with 20 pieces
+  // If queue is empty, initialize with 20 pieces
   if (nextPieces.empty()) {
     for (int i = 0; i < 20; i++) {
       int pieceType = generateRandomPieceType();
@@ -799,16 +789,9 @@ void TetrimoneBoard::generateNewPiece() {
 
   // Pop the first piece and make it current
   if (!nextPieces.empty()) {
-    auto frontPiece = nextPieces.front().get();
-    if (frontPiece) {
-      int currentType = frontPiece->getType();
-      currentPiece = std::make_unique<TetrimoneBlock>(currentType);
-      nextPieces.pop_front();
-    } else {
-      // Fallback - should never happen but be safe
-      currentPiece = std::make_unique<TetrimoneBlock>(0);
-      nextPieces.pop_front();
-    }
+    int currentType = nextPieces.front()->getType();
+    currentPiece = std::make_unique<TetrimoneBlock>(currentType);
+    nextPieces.pop_front();
   } else {
     // Fallback - should never happen
     currentPiece = std::make_unique<TetrimoneBlock>(0);
