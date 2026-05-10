@@ -1,5 +1,6 @@
 #include <cstring>
 #include <iostream>
+#include <vector>
 #ifdef GTK3
 #include "tetrimone_gtk.h"
 #endif
@@ -458,6 +459,33 @@ int main(int argc, char *argv[])
 {
     CommandLineArgs args = parseCommandLine(argc, argv);
 
+    // Print all parsed arguments
+    std::cout << "\n=== PARSED COMMAND LINE ARGUMENTS ===\n";
+    std::cout << "difficulty: " << args.difficulty << "\n";
+    std::cout << "blockSize: " << args.blockSize << "\n";
+    std::cout << "minBlockSize: " << args.minBlockSize << "\n";
+    std::cout << "gridWidth: " << args.gridWidth << "\n";
+    std::cout << "gridHeight: " << args.gridHeight << "\n";
+    std::cout << "initialLevel: " << args.initialLevel << "\n";
+    std::cout << "junkLinesPercentage: " << args.junkLinesPercentage << "\n";
+    std::cout << "junkLinesPerLevel: " << args.junkLinesPerLevel << "\n";
+    std::cout << "themeIndex: " << args.themeIndex << "\n";
+    std::cout << "soundEnabled: " << args.soundEnabled << "\n";
+    std::cout << "musicEnabled: " << args.musicEnabled << "\n";
+    std::cout << "ghostPiece: " << args.ghostPiece << "\n";
+    std::cout << "gridLines: " << args.gridLines << "\n";
+    std::cout << "retroMode: " << args.retroMode << "\n";
+    std::cout << "simpleBlocks: " << args.simpleBlocks << "\n";
+    std::cout << "retroMusic: " << args.retroMusic << "\n";
+    std::cout << "fullscreen: " << args.fullscreen << "\n";
+    std::cout << "help: " << args.help << "\n";
+    std::cout << "version: " << args.version << "\n";
+    std::cout << "backgroundImage: " << (args.backgroundImage.empty() ? "(empty)" : args.backgroundImage) << "\n";
+    std::cout << "backgroundZip: " << (args.backgroundZip.empty() ? "(empty)" : args.backgroundZip) << "\n";
+    std::cout << "soundZip: " << (args.soundZip.empty() ? "(empty)" : args.soundZip) << "\n";
+    std::cout << "backgroundOpacity: " << args.backgroundOpacity << "\n";
+    std::cout << "====================================\n\n";
+
     if (args.help) {
         printHelp(argv[0]);
         return 0;
@@ -468,10 +496,77 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    // Filter out known Tetrimone arguments before passing to GTK
+    // GTK will complain about unknown arguments, so we strip ours
+    std::vector<char*> filteredArgv;
+    filteredArgv.push_back(argv[0]); // Always keep program name
+    
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        ArgType argType = getArgType(arg);
+        
+        // Skip known Tetrimone arguments and their values
+        if (argType == ArgType::UNKNOWN) {
+            // This is not a known argument, keep it for GTK
+            filteredArgv.push_back(argv[i]);
+        } else {
+            // This is a known Tetrimone argument
+            // Skip it and its value if it takes one
+            switch (argType) {
+                // Arguments that take a value - skip the next arg too
+                case ArgType::DIFFICULTY_SHORT:
+                case ArgType::DIFFICULTY_LONG:
+                case ArgType::LEVEL_SHORT:
+                case ArgType::LEVEL_LONG:
+                case ArgType::BLOCK_SIZE_SHORT:
+                case ArgType::BLOCK_SIZE_LONG:
+                case ArgType::WIDTH_SHORT:
+                case ArgType::WIDTH_LONG:
+                case ArgType::HEIGHT_SHORT:
+                case ArgType::HEIGHT_LONG:
+                case ArgType::THEME_SHORT:
+                case ArgType::THEME_LONG:
+                case ArgType::MIN_BLOCK_SIZE:
+                case ArgType::JUNK_LINES:
+                case ArgType::JUNK_PER_LEVEL:
+                case ArgType::BACKGROUND:
+                case ArgType::BACKGROUND_ZIP:
+                case ArgType::BACKGROUND_OPACITY:
+                case ArgType::SOUND_ZIP:
+                    if (i + 1 < argc) {
+                        i++; // Skip the value
+                    }
+                    break;
+                    
+                // Arguments that don't take a value
+                case ArgType::FULLSCREEN_SHORT:
+                case ArgType::FULLSCREEN_LONG:
+                case ArgType::NO_SOUND:
+                case ArgType::NO_MUSIC:
+                case ArgType::NO_GHOST:
+                case ArgType::GRID_LINES:
+                case ArgType::RETRO:
+                case ArgType::SIMPLE_BLOCKS:
+                case ArgType::RETRO_MUSIC:
+                case ArgType::HELP:
+                case ArgType::VERSION:
+                    break; // Just skip this argument
+            }
+        }
+    }
+    
+    // Create new argv array for GTK
+    char** newArgv = new char*[filteredArgv.size()];
+    for (size_t i = 0; i < filteredArgv.size(); i++) {
+        newArgv[i] = filteredArgv[i];
+    }
+    int newArgc = filteredArgv.size();
+
     TetrimoneApp app;
 
-    // Just pass args directly to your backend entry point
-    return ui_run_application(argc, argv, &app, &args);
+    // Pass filtered args to GTK
+    int result = ui_run_application(newArgc, newArgv, &app, &args);
+    
+    delete[] newArgv;
+    return result;
 }
-
-
