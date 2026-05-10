@@ -45,7 +45,7 @@ QT5_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags Qt5Core Qt5Gui Qt5Widgets)
 QT5_LIBS_WIN := $(shell mingw64-pkg-config --libs Qt5Core Qt5Gui Qt5Widgets)
 
 # Qt5 MOC (Meta-Object Compiler)
-MOC_LINUX = moc
+MOC_LINUX := $(shell pkg-config --variable=libexecdir Qt5Core)/moc
 MOC_WIN = x86_64-w64-mingw32-moc
 
 # Cairo flags (ADDED - required for rendering)
@@ -190,6 +190,13 @@ $(BUILD_DIR_LINUX)/$(TARGET_LINUX): $(addprefix $(BUILD_DIR_LINUX)/,$(OBJS_LINUX
 $(BUILD_DIR_LINUX)/%.o: %.cpp
 	$(CXX_LINUX) $(CXXFLAGS_LINUX) -c $< -o $@
 
+# Special rule for qt5_dialog_helpers - run MOC first
+src_sdl/strip/qt5_dialog_helpers_moc.cpp: src_sdl/strip/qt5_dialog_helpers.h
+	moc-qt5 $< -o $@
+
+$(BUILD_DIR_LINUX)/src_sdl/strip/qt5_dialog_helpers.o: src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp
+	$(CXX_LINUX) $(CXXFLAGS_LINUX) -c src_sdl/strip/qt5_dialog_helpers.cpp -o $@
+
 #
 # Linux debug targets
 #
@@ -202,6 +209,10 @@ $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG): $(addprefix $(BUILD_DIR_LINUX_DE
 # Generic compilation rules for Linux debug
 $(BUILD_DIR_LINUX_DEBUG)/%.debug.o: %.cpp
 	$(CXX_LINUX) $(CXXFLAGS_LINUX_DEBUG) -c $< -o $@
+
+# Special rule for qt5_dialog_helpers debug - run MOC first
+$(BUILD_DIR_LINUX_DEBUG)/src_sdl/strip/qt5_dialog_helpers.debug.o: src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp
+	$(CXX_LINUX) $(CXXFLAGS_LINUX_DEBUG) -c src_sdl/strip/qt5_dialog_helpers.cpp -o $@
 
 #
 # Windows build targets
@@ -216,6 +227,10 @@ $(BUILD_DIR_WIN)/$(TARGET_WIN): $(addprefix $(BUILD_DIR_WIN)/,$(OBJS_WIN))
 $(BUILD_DIR_WIN)/%.win.o: %.cpp
 	$(CXX_WIN) $(CXXFLAGS_WIN) -c $< -o $@
 
+# Special rule for qt5_dialog_helpers Windows - run MOC first
+$(BUILD_DIR_WIN)/src_sdl/strip/qt5_dialog_helpers.win.o: src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp
+	$(CXX_WIN) $(CXXFLAGS_WIN) -c src_sdl/strip/qt5_dialog_helpers.cpp -o $@
+
 #
 # Windows debug targets
 #
@@ -228,6 +243,10 @@ $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG): $(addprefix $(BUILD_DIR_WIN_DEBUG)/,
 # Generic compilation rules for Windows debug
 $(BUILD_DIR_WIN_DEBUG)/%.win.debug.o: %.cpp
 	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) -c $< -o $@
+
+# Special rule for qt5_dialog_helpers Windows debug - run MOC first
+$(BUILD_DIR_WIN_DEBUG)/src_sdl/strip/qt5_dialog_helpers.win.debug.o: src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp
+	$(CXX_WIN) $(CXXFLAGS_WIN_DEBUG) -c src_sdl/strip/qt5_dialog_helpers.cpp -o $@
 
 #
 # MIDI to WAV conversion
