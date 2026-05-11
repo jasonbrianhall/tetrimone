@@ -327,6 +327,7 @@ protected:
                 }
                 // Lock the piece and spawn next one
                 board->lockPiece();
+                board->clearLines();  // Check for and clear full lines
                 board->generateNewPiece();
             }
             updateDisplay(app);
@@ -574,6 +575,7 @@ void onGameTick(TetrimoneApp* app) {
         if (!app->board->movePiece(0, 1)) {
             // If move failed (hit bottom or obstacle), lock the piece and spawn next
             app->board->lockPiece();
+            app->board->clearLines();  // Check for and clear full lines
             app->board->generateNewPiece();
         }
         
