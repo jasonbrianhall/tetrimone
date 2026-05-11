@@ -34,8 +34,6 @@
 #include <QFont>
 #include <QFontMetrics>
 #include <QCloseEvent>
-#include <SDL2/SDL.h>
-#include <cairo/cairo.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -61,22 +59,6 @@ extern int currentThemeIndex;
 extern int GRID_WIDTH;
 extern int GRID_HEIGHT;
 
-// Forward declarations
-void onKeyDownTick(TetrimoneApp* app);
-void onKeyLeftTick(TetrimoneApp* app);
-void onKeyRightTick(TetrimoneApp* app);
-void onGameTick(TetrimoneApp* app);
-void updateDisplay(TetrimoneApp* app);
-void pauseGame(TetrimoneApp* app);
-void cleanupApp(TetrimoneApp* app);
-void onStartGameAction(TetrimoneApp* app);
-void onPauseGameAction(TetrimoneApp* app);
-void onRestartGameAction(TetrimoneApp* app);
-void onQuitGameAction(TetrimoneApp* app);
-void onDifficultyChanged(TetrimoneApp* app, int difficulty);
-void onSoundToggleAction(TetrimoneApp* app, bool enabled);
-void updateLabels(TetrimoneApp* app);
-
 // ============================================================================
 // Qt5 Game Area Widget with Full Rendering
 // ============================================================================
@@ -97,159 +79,55 @@ protected:
     void paintEvent(QPaintEvent* event) override {
         if (!board) return;
         
-        // Create SDL surface for Cairo to render to
-        int w = width();
-        int h = height();
-        SDL_Surface* surface = SDL_CreateRGBSurface(0, w, h, 32,
-            0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
-        
-        if (!surface) return;
-        
-        // Create Cairo surface from SDL surface
-        cairo_surface_t* cairo_surface = cairo_image_surface_create_for_data(
-            (unsigned char*)surface->pixels,
-            CAIRO_FORMAT_ARGB32,
-            w, h,
-            surface->pitch
-        );
-        
-        cairo_t* cr = cairo_create(cairo_surface);
+        QPainter painter(this);
         
         // Draw background
-        cairo_set_source_rgb(cr, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, w, h);
-        cairo_fill(cr);
+        drawBackground(&painter, width(), height());
         
-        // Draw board using the same rendering as GTK3
-        drawBoard(board);  // This will update the game area
-        
-        // Render grid
+        // Draw board grid
         for (int y = 0; y < GRID_HEIGHT; y++) {
             for (int x = 0; x < GRID_WIDTH; x++) {
                 int gridValue = board->getGridValue(x, y);
                 if (gridValue > 0) {
-                    drawBlockCairo(cr, x, y, gridValue);
+                    drawBlock(&painter, x, y, gridValue);
                 }
             }
         }
         
+        // Draw ghost piece
+        if (board->isGhostPieceEnabled()) {
+            drawGhostPiece(&painter);
+        }
+        
         // Draw current piece
-        const TetrimoneBlock* piece = board->getCurrentPiece();
-        if (piece) {
-            std::vector<std::vector<int>> shape = piece->getShape();
-            int pieceX = piece->getX();
-            int pieceY = piece->getY();
-            
-            for (size_t row = 0; row < shape.size(); row++) {
-                for (size_t col = 0; col < shape[row].size(); col++) {
-                    if (shape[row][col]) {
-                        int x = pieceX + col;
-                        int y = pieceY + row;
-                        if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-                            drawBlockCairo(cr, x, y, piece->getType());
-                        }
-                    }
-                }
-            }
+        drawCurrentPiece(&painter);
+        
+        // Draw block trails if enabled
+        if (board->isTrailsEnabled()) {
+            drawBlockTrails(&painter);
+        }
+        
+        // Draw grid lines if enabled
+        if (board->isShowingGridLines()) {
+            drawGridLines(&painter);
         }
         
         // Draw game over screen
         if (board->isGameOver()) {
-            drawGameOverCairo(cr, w, h);
+            drawGameOverScreen(&painter);
         }
         
-        // Draw pause screen
+        // Draw pause menu
         if (board->isPaused() && !board->isGameOver()) {
-            drawPauseScreenCairo(cr, w, h);
+            drawPauseScreen(&painter);
         }
         
-        // Draw splash screen
+        // Draw splash screen if active
         if (board->isSplashScreenActive()) {
-            drawSplashScreenCairo(cr, w, h);
+            drawSplashScreen(&painter);
         }
-        
-        // Convert SDL surface to QImage and display
-        QImage img((uchar*)surface->pixels, w, h, surface->pitch, QImage::Format_ARGB32);
-        QPainter painter(this);
-        painter.drawImage(0, 0, img);
-        
-        // Cleanup
-        cairo_destroy(cr);
-        cairo_surface_destroy(cairo_surface);
-        SDL_FreeSurface(surface);
-        
+
         (void)event;
-    }
-    
-    void drawBlockCairo(cairo_t* cr, int x, int y, int type) {
-        int px = x * BLOCK_SIZE;
-        int py = y * BLOCK_SIZE;
-        
-        std::array<double, 3> color = getTetrimineColor(type);
-        cairo_set_source_rgb(cr, color[0], color[1], color[2]);
-        cairo_rectangle(cr, px, py, BLOCK_SIZE, BLOCK_SIZE);
-        cairo_fill(cr);
-        
-        cairo_set_source_rgb(cr, 0, 0, 0);
-        cairo_set_line_width(cr, 1);
-        cairo_rectangle(cr, px, py, BLOCK_SIZE, BLOCK_SIZE);
-        cairo_stroke(cr);
-    }
-    
-    void drawGameOverCairo(cairo_t* cr, int w, int h) {
-        cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
-        cairo_rectangle(cr, 0, 0, w, h);
-        cairo_fill(cr);
-        
-        cairo_set_source_rgb(cr, 1, 1, 1);
-        cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-        cairo_set_font_size(cr, 40);
-        cairo_move_to(cr, w/2 - 80, h/2);
-        cairo_show_text(cr, "GAME OVER");
-    }
-    
-    void drawPauseScreenCairo(cairo_t* cr, int w, int h) {
-        cairo_set_source_rgba(cr, 0, 0, 0, 0.5);
-        cairo_rectangle(cr, 0, 0, w, h);
-        cairo_fill(cr);
-        
-        cairo_set_source_rgb(cr, 1, 1, 1);
-        cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-        cairo_set_font_size(cr, 40);
-        cairo_move_to(cr, w/2 - 60, h/2);
-        cairo_show_text(cr, "PAUSED");
-    }
-    
-    void drawSplashScreenCairo(cairo_t* cr, int w, int h) {
-        cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
-        cairo_rectangle(cr, 0, 0, w, h);
-        cairo_fill(cr);
-        
-        cairo_set_source_rgb(cr, 1, 1, 1);
-        cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-        cairo_set_font_size(cr, 50);
-        cairo_move_to(cr, w/2 - 120, h/2 - 50);
-        cairo_show_text(cr, "TETRIMONE");
-        
-        cairo_set_font_size(cr, 20);
-        cairo_move_to(cr, w/2 - 100, h/2 + 50);
-        cairo_show_text(cr, "Press SPACE to start");
-    }
-    
-    std::array<double, 3> getTetrimineColor(int type) {
-        const std::array<double, 3> colors[] = {
-            {0.0, 1.0, 1.0},  // I - Cyan
-            {1.0, 1.0, 0.0},  // O - Yellow
-            {1.0, 0.0, 1.0},  // T - Magenta
-            {0.0, 1.0, 0.0},  // S - Green
-            {1.0, 0.0, 0.0},  // Z - Red
-            {0.0, 0.0, 1.0},  // J - Blue
-            {1.0, 0.5, 0.0},  // L - Orange
-        };
-        if (type >= 0 && type < 7) {
-            return colors[type];
-        }
-        return {1.0, 1.0, 1.0};
     }
 
     void keyPressEvent(QKeyEvent* event) override {
@@ -335,6 +213,169 @@ private:
     TetrimoneBoard* board;
     TetrimoneApp* app;
     QPixmap* backgroundPixmap;
+
+    void drawBackground(QPainter* painter, int width, int height) {
+        painter->fillRect(0, 0, width, height, Qt::black);
+    }
+
+    void drawBlock(QPainter* painter, int x, int y, int type) {
+        int px = x * BLOCK_SIZE;
+        int py = y * BLOCK_SIZE;
+        
+        std::array<double, 3> color = getTetrimineColor(type);
+        QColor blockColor(
+            static_cast<int>(color[0] * 255),
+            static_cast<int>(color[1] * 255),
+            static_cast<int>(color[2] * 255)
+        );
+        
+        painter->fillRect(px, py, BLOCK_SIZE, BLOCK_SIZE, blockColor);
+        painter->setPen(QColor(0, 0, 0, 128));
+        painter->drawRect(px, py, BLOCK_SIZE, BLOCK_SIZE);
+    }
+
+    void drawGhostPiece(QPainter* painter) {
+        if (!board->isGhostPieceEnabled()) return;
+        
+        // Draw semi-transparent ghost piece at landing position
+        int ghostY = board->getGhostPieceY();
+        const TetrimoneBlock* piece = board->getCurrentPiece();
+        if (!piece) return;
+        
+        int currentX = piece->getX();
+        std::vector<std::vector<int>> shape = piece->getShape();
+        
+        // Draw ghost blocks at ghostY position
+        for (size_t row = 0; row < shape.size(); row++) {
+            for (size_t col = 0; col < shape[row].size(); col++) {
+                if (shape[row][col]) {
+                    int x = currentX + col;
+                    int y = ghostY + row;
+                    if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+                        int px = x * BLOCK_SIZE;
+                        int py = y * BLOCK_SIZE;
+                        QColor ghostColor(128, 128, 128, 100);
+                        painter->fillRect(px, py, BLOCK_SIZE, BLOCK_SIZE, ghostColor);
+                        painter->setPen(QColor(64, 64, 64, 150));
+                        painter->drawRect(px, py, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                }
+            }
+        }
+    }
+
+    void drawCurrentPiece(QPainter* painter) {
+        const TetrimoneBlock* piece = board->getCurrentPiece();
+        if (!piece) return;
+        
+        int pieceType = piece->getType();
+        int currentX = piece->getX();
+        int currentY = piece->getY();
+        std::vector<std::vector<int>> shape = piece->getShape();
+        
+        for (size_t row = 0; row < shape.size(); row++) {
+            for (size_t col = 0; col < shape[row].size(); col++) {
+                if (shape[row][col]) {
+                    int x = currentX + col;
+                    int y = currentY + row;
+                    if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+                        drawBlock(painter, x, y, pieceType);
+                    }
+                }
+            }
+        }
+    }
+
+    void drawBlockTrails(QPainter* painter) {
+        // Draw particle trails if implemented in board
+        (void)painter;
+    }
+
+    void drawGridLines(QPainter* painter) {
+        painter->setPen(QPen(QColor(64, 64, 64), 1));
+        
+        for (int x = 0; x <= GRID_WIDTH; x++) {
+            painter->drawLine(x * BLOCK_SIZE, 0, x * BLOCK_SIZE, height());
+        }
+        
+        for (int y = 0; y <= GRID_HEIGHT; y++) {
+            painter->drawLine(0, y * BLOCK_SIZE, width(), y * BLOCK_SIZE);
+        }
+    }
+
+    void drawGameOverScreen(QPainter* painter) {
+        painter->fillRect(rect(), QColor(0, 0, 0, 200));
+        
+        painter->setPen(Qt::white);
+        QFont font = painter->font();
+        font.setPointSize(36);
+        font.setBold(true);
+        painter->setFont(font);
+        
+        painter->drawText(rect(), Qt::AlignCenter, "GAME OVER");
+        
+        font.setPointSize(14);
+        painter->setFont(font);
+        painter->setPen(Qt::yellow);
+        QRect scoreRect = rect();
+        scoreRect.setTop(rect().center().y() + 40);
+        painter->drawText(scoreRect, Qt::AlignCenter, 
+            QString("Score: %1\nPress Space to restart").arg(board->getScore()));
+    }
+
+    void drawPauseScreen(QPainter* painter) {
+        painter->fillRect(rect(), QColor(0, 0, 0, 180));
+        
+        painter->setPen(Qt::white);
+        QFont font = painter->font();
+        font.setPointSize(32);
+        font.setBold(true);
+        painter->setFont(font);
+        
+        painter->drawText(rect(), Qt::AlignCenter, "PAUSED");
+    }
+
+    void drawSplashScreen(QPainter* painter) {
+        painter->fillRect(rect(), QColor(0, 0, 0, 220));
+        
+        painter->setPen(Qt::white);
+        QFont font = painter->font();
+        font.setPointSize(28);
+        font.setBold(true);
+        painter->setFont(font);
+        
+        QRect titleRect = rect();
+        titleRect.setHeight(100);
+        painter->drawText(titleRect, Qt::AlignCenter, "TETRIMONE");
+        
+        font.setPointSize(12);
+        painter->setFont(font);
+        painter->setPen(Qt::cyan);
+        
+        QString instructions = "Press SPACE to start\n\n"
+                             "Controls:\n"
+                             "Arrow Keys or WASD - Move\n"
+                             "SPACE - Rotate\n"
+                             "Z - Rotate Counter-Clockwise\n"
+                             "P - Pause\n";
+        
+        QRect instructRect = rect();
+        instructRect.setTop(120);
+        painter->drawText(instructRect, Qt::AlignCenter, instructions);
+    }
+
+    std::array<double, 3> getTetrimineColor(int type) {
+        const std::array<double, 3> colors[] = {
+            {0.0, 1.0, 1.0},  // I - Cyan
+            {1.0, 1.0, 0.0},  // O - Yellow
+            {1.0, 0.0, 1.0},  // T - Magenta
+            {0.0, 1.0, 0.0},  // S - Green
+            {1.0, 0.0, 0.0},  // Z - Red
+            {0.0, 0.0, 1.0},  // J - Blue
+            {1.0, 0.5, 0.0}   // L - Orange
+        };
+        return colors[std::min(type - 1, 6)];
+    }
 };
 
 // ============================================================================
@@ -361,35 +402,40 @@ protected:
         font.setBold(true);
         painter.setFont(font);
         
-        painter.drawText(10, 25, "Next Piece:");
+        painter.drawText(10, 25, "Next Pieces:");
         
-        // Draw next piece preview
-        const TetrimoneBlock* nextBlock = board->getNextPiece(0);
-        if (!nextBlock) return;
+        // Draw next 4 pieces in the queue
+        int blockSize = 15;
+        int spacing = 5;
+        int startY = 50;
         
-        int nextType = nextBlock->getType();
-        std::vector<std::vector<int>> nextShape = nextBlock->getShape();
-        
-        int previewX = 20;
-        int previewY = 50;
-        int blockSize = 20;
-        
-        for (size_t row = 0; row < nextShape.size(); row++) {
-            for (size_t col = 0; col < nextShape[row].size(); col++) {
-                if (nextShape[row][col]) {
-                    int px = previewX + col * blockSize;
-                    int py = previewY + row * blockSize;
-                    
-                    std::array<double, 3> color = getTetrimineColor(nextType);
-                    QColor blockColor(
-                        static_cast<int>(color[0] * 255),
-                        static_cast<int>(color[1] * 255),
-                        static_cast<int>(color[2] * 255)
-                    );
-                    
-                    painter.fillRect(px, py, blockSize, blockSize, blockColor);
-                    painter.setPen(QColor(0, 0, 0, 128));
-                    painter.drawRect(px, py, blockSize, blockSize);
+        for (int pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
+            const TetrimoneBlock* nextBlock = board->getNextPiece(pieceIndex);
+            if (!nextBlock) continue;
+            
+            int nextType = nextBlock->getType();
+            std::vector<std::vector<int>> nextShape = nextBlock->getShape();
+            
+            int previewX = 20;
+            int previewY = startY + pieceIndex * (blockSize * 4 + spacing);
+            
+            for (size_t row = 0; row < nextShape.size(); row++) {
+                for (size_t col = 0; col < nextShape[row].size(); col++) {
+                    if (nextShape[row][col]) {
+                        int px = previewX + col * blockSize;
+                        int py = previewY + row * blockSize;
+                        
+                        std::array<double, 3> color = getTetrimineColor(nextType);
+                        QColor blockColor(
+                            static_cast<int>(color[0] * 255),
+                            static_cast<int>(color[1] * 255),
+                            static_cast<int>(color[2] * 255)
+                        );
+                        
+                        painter.fillRect(px, py, blockSize, blockSize, blockColor);
+                        painter.setPen(QColor(0, 0, 0, 128));
+                        painter.drawRect(px, py, blockSize, blockSize);
+                    }
                 }
             }
         }
@@ -566,6 +612,11 @@ void startGame(TetrimoneApp* app) {
     
     app->board->restart();
     
+    // Ensure game timer is running
+    if (app->gameTimer) {
+        app->gameTimer->start(app->dropSpeed);
+    }
+    
     if (!app->backgroundMusicPlaying) {
         app->board->resumeBackgroundMusic();
         app->backgroundMusicPlaying = true;
@@ -587,6 +638,15 @@ void pauseGame(TetrimoneApp* app) {
     if (!app || !app->board) return;
     
     app->board->togglePause();
+    
+    // Control game timer based on pause state
+    if (app->gameTimer) {
+        if (app->board->isPaused()) {
+            app->gameTimer->stop();
+        } else {
+            app->gameTimer->start(app->dropSpeed);
+        }
+    }
 }
 
 void resetUI(TetrimoneApp* app) {
@@ -884,7 +944,7 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     infoLayout->addSpacing(20);
     
     // Next piece label
-    app->controlsHeaderLabel = new QLabel("Next Piece:");
+    app->controlsHeaderLabel = new QLabel("Next Pieces:");
     app->controlsHeaderLabel->setFont(labelFont);
     infoLayout->addWidget(app->controlsHeaderLabel);
     
@@ -913,13 +973,13 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     // Setup menus
     setupMenuBar(app);
     
-    // Setup game timer for piece falling
-    QTimer* gameTimer = new QTimer(app->window);
-    QObject::connect(gameTimer, &QTimer::timeout, [app]() {
+    // Setup game timer for piece falling - SAVE REFERENCE
+    app->gameTimer = new QTimer(app->window);
+    QObject::connect(app->gameTimer, &QTimer::timeout, [app]() {
         onGameTick(app);
     });
-    gameTimer->start(app->dropSpeed);
-    app->timerId = gameTimer->timerId();
+    // Don't start yet - wait for game to actually start
+    app->gameTimer->setInterval(app->dropSpeed);
 }
 
 // ============================================================================

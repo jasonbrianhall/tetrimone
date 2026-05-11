@@ -213,7 +213,8 @@ void TetrimoneBoard::restart() {
   linesCleared = 0;
   gameOver = false;
   paused = false;
-  splashScreenActive = true; // Show splash screen on restart
+  // DON'T re-enable splash screen - let the caller control this
+  // splashScreenActive = true;
 
   // Reset pieces
   currentPiece.reset();
