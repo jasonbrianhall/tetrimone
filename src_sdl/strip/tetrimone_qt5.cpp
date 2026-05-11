@@ -77,15 +77,140 @@ void onDifficultyChanged(TetrimoneApp* app, int difficulty);
 void onSoundToggleAction(TetrimoneApp* app, bool enabled);
 void updateLabels(TetrimoneApp* app);
 
-// Cairo drawing functions from drawgame_cairo.cpp
-void drawGridLines(cairo_t *cr, TetrimoneBoard *board);
-void drawCurrentPiece(cairo_t *cr, TetrimoneBoard *board);
-void drawGhostPiece(cairo_t *cr, TetrimoneBoard *board);
-void drawBlockTrails(cairo_t *cr, TetrimoneBoard *board);
-void drawGameOver(cairo_t *cr, TetrimoneBoard *board);
-void drawPauseMenu(cairo_t *cr, TetrimoneBoard *board);
-void drawFireworks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app);
-void drawSplashScreen(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app);
+// Forward declarations for drawing helpers
+void drawFireyGlow(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
+void drawFreezyEffect(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
+LineClearAnimValues getLineClearAnimationValues(int animationType, double progress, int x, int y);
+std::array<double, 3> getHeatModifiedColor(const std::array<double, 3>& baseColor, float heatLevel);
+
+// Implementation of drawPlacedBlocks (locked/placed blocks with animations)
+void drawPlacedBlocks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app) {
+  for (int y = 0; y < GRID_HEIGHT; ++y) {
+    for (int x = 0; x < GRID_WIDTH; ++x) {
+      int value = board->getGridValue(x, y);
+      if (value > 0) {
+        // Check if this line is being cleared
+        double alpha = 1.0;
+        double scale = 1.0;
+        double offsetX = 0.0;
+        double offsetY = 0.0;
+        
+        if (board->isLineClearActive() && board->isLineBeingCleared(y)) {
+          // Get animation progress (0.0 to 1.0)
+          double progress = board->getLineClearProgress();
+          
+          if (board->retroModeActive) {
+            // Soviet-era computer animation: Simple scan line effect
+            if (progress < 0.3) {
+              // Horizontal scan line sweep from left to right
+              double scanProgress = progress / 0.3;
+              int scanX = (int)(scanProgress * GRID_WIDTH);
+              
+              // Only affect blocks that have been "scanned"
+              if (x <= scanX) {
+                alpha = 0.3 + 0.4 * sin(progress * 20.0); // Subtle flicker
+              } else {
+                alpha = 1.0; // Normal until scanned
+              }
+              scale = 1.0;
+            } else if (progress < 0.7) {
+              // All blocks flash in unison (like old CRT monitors)
+              double flashProgress = (progress - 0.3) / 0.4;
+              alpha = 1.0 - flashProgress * 0.7;
+              
+              // Simulate old monitor "collapse" effect - vertical compression
+              scale = 1.0;
+              offsetY = flashProgress * BLOCK_SIZE * 0.3; // Slight downward compression
+            } else {
+              // Final "wipe" effect - blocks disappear in chunks
+              double wipeProgress = (progress - 0.7) / 0.3;
+              
+              // Divide line into segments that disappear sequentially
+              int segment = x / 3; // 3-block segments
+              double segmentDelay = segment * 0.2;
+              
+              if (wipeProgress > segmentDelay) {
+                alpha = 0.0; // Instant disappear once segment is reached
+                scale = 0.0;
+              } else {
+                alpha = 1.0 - wipeProgress * 0.5;
+                scale = 1.0;
+              }
+            }
+          } else {
+            // Modern animations - 10 different types selected randomly
+            int animationType = board->getCurrentAnimationType();
+            LineClearAnimValues animValues = getLineClearAnimationValues(animationType, progress, x, y);
+            alpha = animValues.alpha;
+            scale = animValues.scale;
+            offsetX = animValues.offsetX;
+            offsetY = animValues.offsetY;
+          }
+        }
+
+        // Get color from tetrimoneblock colors
+        auto baseColor = board->isInThemeTransition() ? 
+        board->getInterpolatedColor(value - 1, board->getThemeTransitionProgress()) :
+        TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
+        auto color = getHeatModifiedColor(baseColor, board->getHeatLevel());
+
+        cairo_set_source_rgba(cr, color[0], color[1], color[2], alpha);
+
+        // Calculate position with animation offsets
+        double drawX = x * BLOCK_SIZE + offsetX + (BLOCK_SIZE * (1.0 - scale)) / 2;
+        double drawY = y * BLOCK_SIZE + offsetY + (BLOCK_SIZE * (1.0 - scale)) / 2;
+        double drawSize = BLOCK_SIZE * scale;
+
+        if (board->retroModeActive || board->simpleBlocksActive) {
+          // Simple blocks
+          cairo_rectangle(cr, drawX, drawY, drawSize, drawSize);
+          cairo_fill(cr);
+        } else {
+          // 3D blocks with scaling
+          cairo_rectangle(cr, drawX + 1, drawY + 1, drawSize - 2, drawSize - 2);
+          cairo_fill(cr);
+
+          // Draw highlight (3D effect)
+          cairo_set_source_rgba(cr, 1, 1, 1, 0.3 * alpha);
+          cairo_move_to(cr, drawX + 1, drawY + 1);
+          cairo_line_to(cr, drawX + drawSize - 1, drawY + 1);
+          cairo_line_to(cr, drawX + 1, drawY + drawSize - 1);
+          cairo_close_path(cr);
+          cairo_fill(cr);
+
+          // Draw shadow (3D effect)
+          cairo_set_source_rgba(cr, 0, 0, 0, 0.3 * alpha);
+          cairo_move_to(cr, drawX + drawSize - 1, drawY + 1);
+          cairo_line_to(cr, drawX + drawSize - 1, drawY + drawSize - 1);
+          cairo_line_to(cr, drawX + 1, drawY + drawSize - 1);
+          cairo_close_path(cr);
+          cairo_fill(cr);
+        }
+        
+        if (!board->retroModeActive) { // Only apply effects in modern mode
+          float heatLevel = board->getHeatLevel();
+          
+          // Get current time for animation
+          auto now = std::chrono::high_resolution_clock::now();
+          auto timeMs = std::chrono::duration<double, std::milli>(
+              now.time_since_epoch()).count();
+          
+          // Draw fiery glow effect when hot
+          if (heatLevel > 0.7f) {
+            drawFireyGlow(cr, drawX, drawY, drawSize, heatLevel, timeMs);
+            updateDisplay(app);
+          }
+          
+          // Draw freezy effect when cold
+          if (heatLevel < 0.3f) {
+            drawFreezyEffect(cr, drawX, drawY, drawSize, heatLevel, timeMs);
+            updateDisplay(app);
+          }
+        }   
+      }
+    }
+  }
+}
 
 // ============================================================================
 // Qt5 Game Area Widget with Full Rendering
@@ -134,56 +259,17 @@ protected:
         cairo_rectangle(cr, 0, 0, w, h);
         cairo_fill(cr);
         
-        // Draw grid lines
+        // Call ONLY the existing drawing functions from drawgame_cairo.cpp
         drawGridLines(cr, board);
-        
-        // Draw all blocks in the grid
-        for (int y = 0; y < GRID_HEIGHT; y++) {
-            for (int x = 0; x < GRID_WIDTH; x++) {
-                int gridValue = board->getGridValue(x, y);
-                if (gridValue > 0) {
-                    // Draw block at grid position using Cairo
-                    int px = x * BLOCK_SIZE;
-                    int py = y * BLOCK_SIZE;
-                    
-                    std::array<double, 3> color = board->getInterpolatedColor(gridValue, 0.0);
-                    cairo_set_source_rgb(cr, color[0], color[1], color[2]);
-                    cairo_rectangle(cr, px, py, BLOCK_SIZE, BLOCK_SIZE);
-                    cairo_fill(cr);
-                    
-                    cairo_set_source_rgb(cr, 0, 0, 0);
-                    cairo_set_line_width(cr, 1);
-                    cairo_rectangle(cr, px, py, BLOCK_SIZE, BLOCK_SIZE);
-                    cairo_stroke(cr);
-                }
-            }
-        }
-        
-        // Draw ghost piece
-        drawGhostPiece(cr, board);
-        
-        // Draw current piece
+        drawPlacedBlocks(cr, board, app);  // Draw locked blocks with animations
         drawCurrentPiece(cr, board);
-        
-        // Draw block trails
+        drawGhostPiece(cr, board);
         drawBlockTrails(cr, board);
-        
-        // Draw game over screen
-        if (board->isGameOver()) {
-            drawGameOver(cr, board);
-        }
-        
-        // Draw pause menu
-        if (board->isPaused() && !board->isGameOver()) {
-            drawPauseMenu(cr, board);
-        }
-        
-        // Draw splash screen
+        drawGameOver(cr, board);
+        drawPauseMenu(cr, board);
         if (board->isSplashScreenActive()) {
             drawSplashScreen(cr, board, app);
         }
-        
-        // Draw fireflies/effects
         drawFireworks(cr, board, app);
         
         // Convert SDL surface to QImage and display
@@ -208,15 +294,15 @@ protected:
         int key = event->key();
         
         if (key == Qt::Key_Down || key == Qt::Key_S) {
-            // Down - rotate right
+            // Down - soft drop (accelerate falling)
+            keyDownPressed = true;
+            keyDownCount = 0;
+            keyDownDelay = 50;  // Faster falling when held
+            onKeyDownTick(app);
+        } else if (key == Qt::Key_Up || key == Qt::Key_W) {
+            // Up - rotate piece
             if (!board->isSplashScreenActive() && !board->isPaused() && !board->isGameOver()) {
                 board->rotatePiece(1);
-            }
-            updateDisplay(app);
-        } else if (key == Qt::Key_Up || key == Qt::Key_W) {
-            // Up - rotate left
-            if (!board->isSplashScreenActive() && !board->isPaused() && !board->isGameOver()) {
-                board->rotatePiece(-1);
             }
             updateDisplay(app);
         } else if (key == Qt::Key_Left || key == Qt::Key_A) {
@@ -239,8 +325,9 @@ protected:
                 while (board->movePiece(0, 1)) {
                     // Keep moving down until we hit something
                 }
-                // Lock the piece in place
+                // Lock the piece and spawn next one
                 board->lockPiece();
+                board->generateNewPiece();
             }
             updateDisplay(app);
         } else if (key == Qt::Key_Z) {
@@ -304,7 +391,8 @@ class NextPieceWidget : public QWidget {
 public:
     explicit NextPieceWidget(TetrimoneBoard* board, QWidget* parent = nullptr)
         : QWidget(parent), board(board) {
-        setMinimumSize(150, 150);
+        setMinimumSize(150, 350);
+        setMaximumSize(150, 350);
     }
 
 protected:
@@ -316,41 +404,57 @@ protected:
         
         painter.setPen(Qt::white);
         QFont font = painter.font();
-        font.setPointSize(12);
+        font.setPointSize(10);
         font.setBold(true);
         painter.setFont(font);
         
-        painter.drawText(10, 25, "Next Piece:");
+        painter.drawText(10, 20, "Next Pieces:");
         
-        // Draw next piece preview
-        const TetrimoneBlock* nextBlock = board->getNextPiece(0);
-        if (!nextBlock) return;
-        
-        int nextType = nextBlock->getType();
-        std::vector<std::vector<int>> nextShape = nextBlock->getShape();
-        
-        int previewX = 20;
-        int previewY = 50;
+        // Draw three next pieces
+        int previewStartY = 40;
+        int spaceBetween = 110;
         int blockSize = 20;
+        int previewX = 20;
         
-        for (size_t row = 0; row < nextShape.size(); row++) {
-            for (size_t col = 0; col < nextShape[row].size(); col++) {
-                if (nextShape[row][col]) {
-                    int px = previewX + col * blockSize;
-                    int py = previewY + row * blockSize;
-                    
-                    std::array<double, 3> color = getTetrimineColor(nextType);
-                    QColor blockColor(
-                        static_cast<int>(color[0] * 255),
-                        static_cast<int>(color[1] * 255),
-                        static_cast<int>(color[2] * 255)
-                    );
-                    
-                    painter.fillRect(px, py, blockSize, blockSize, blockColor);
-                    painter.setPen(QColor(0, 0, 0, 128));
-                    painter.drawRect(px, py, blockSize, blockSize);
+        int validPieceCount = 0;
+        for (int pieceIndex = 0; pieceIndex < 3; pieceIndex++) {
+            const TetrimoneBlock* nextBlock = board->getNextPiece(pieceIndex);
+            if (!nextBlock || !nextBlock->isValid()) {
+                continue;  // Skip invalid or null pieces
+            }
+            
+            int nextType = nextBlock->getType();
+            std::vector<std::vector<int>> nextShape = nextBlock->getShape();
+            
+            int previewY = previewStartY + (validPieceCount * spaceBetween);
+            
+            // Draw label
+            painter.setPen(Qt::white);
+            painter.setFont(font);
+            std::string label = "#" + std::to_string(validPieceCount + 1);
+            painter.drawText(10, previewY - 10, QString::fromStdString(label));
+            
+            // Draw piece
+            for (size_t row = 0; row < nextShape.size(); row++) {
+                for (size_t col = 0; col < nextShape[row].size(); col++) {
+                    if (nextShape[row][col]) {
+                        int px = previewX + col * blockSize;
+                        int py = previewY + row * blockSize;
+                        
+                        std::array<double, 3> color = getTetrimineColor(nextType);
+                        QColor blockColor(
+                            static_cast<int>(color[0] * 255),
+                            static_cast<int>(color[1] * 255),
+                            static_cast<int>(color[2] * 255)
+                        );
+                        
+                        painter.fillRect(px, py, blockSize, blockSize, blockColor);
+                        painter.setPen(QColor(0, 0, 0, 128));
+                        painter.drawRect(px, py, blockSize, blockSize);
+                    }
                 }
             }
+            validPieceCount++;
         }
 
         (void)event;
@@ -466,7 +570,12 @@ void onGameTick(TetrimoneApp* app) {
     if (!app->board->isPaused() && !app->board->isGameOver() && 
         !app->board->isSplashScreenActive()) {
         
-        app->board->movePiece(0, 1);
+        // Try to move piece down
+        if (!app->board->movePiece(0, 1)) {
+            // If move failed (hit bottom or obstacle), lock the piece and spawn next
+            app->board->lockPiece();
+            app->board->generateNewPiece();
+        }
         
         if (app->board->isGameOver()) {
             // Game over logic
@@ -857,8 +966,8 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     app->controlsLabel = new QLabel(
         "Controls:\n"
         "Left/Right - Move\n"
-        "Up/Down - Rotate\n"
-        "Z - Rotate CCW\n"
+        "Up - Rotate\n"
+        "Down - Soft Drop\n"
         "Space - Hard Drop\n"
         "P - Pause"
     );
