@@ -99,17 +99,17 @@ OBJS_LINUX_DEBUG = $(SRCS_COMMON:.cpp=.debug.o) $(SRCS_LINUX:.cpp=.debug.o)
 OBJS_WIN_DEBUG = $(SRCS_COMMON:.cpp=.win.debug.o) $(SRCS_WIN:.cpp=.win.debug.o)
 
 # Target executables
-TARGET_LINUX = tetrimone
-TARGET_WIN = tetrimone.exe
-TARGET_LINUX_DEBUG = tetrimone_debug
-TARGET_WIN_DEBUG = tetrimone_debug.exe
+TARGET_LINUX = tetrimone_qt5
+TARGET_WIN = tetrimone_qt5.exe
+TARGET_LINUX_DEBUG = tetrimone_debug_qt5
+TARGET_WIN_DEBUG = tetrimone_debug_qt5.exe
 
 # Build directories
 BUILD_DIR = build
-BUILD_DIR_LINUX = $(BUILD_DIR)/linux
-BUILD_DIR_WIN = $(BUILD_DIR)/windows
-BUILD_DIR_LINUX_DEBUG = $(BUILD_DIR)/linux_debug
-BUILD_DIR_WIN_DEBUG = $(BUILD_DIR)/windows_debug
+BUILD_DIR_LINUX = $(BUILD_DIR)/linux_qt5
+BUILD_DIR_WIN = $(BUILD_DIR)/windows_qt5
+BUILD_DIR_LINUX_DEBUG = $(BUILD_DIR)/linux_qt5_debug
+BUILD_DIR_WIN_DEBUG = $(BUILD_DIR)/windows_qt5_debug
 
 # Windows DLL settings
 DLL_SOURCE_DIR = /usr/x86_64-w64-mingw32/sys-root/mingw/bin
