@@ -95,7 +95,11 @@ class GameAreaWidget : public QWidget {
 public:
     explicit GameAreaWidget(TetrimoneBoard* board, TetrimoneApp* app, QWidget* parent = nullptr)
         : QWidget(parent), board(board), app(app), backgroundPixmap(nullptr) {
-        setMinimumSize(GRID_WIDTH * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
+        int boardWidth = GRID_WIDTH * BLOCK_SIZE;
+        int boardHeight = GRID_HEIGHT * BLOCK_SIZE;
+        setMinimumSize(boardWidth, boardHeight);
+        setMaximumSize(boardWidth, boardHeight);
+        setFixedSize(boardWidth, boardHeight);
         setFocusPolicy(Qt::StrongFocus);
     }
 
@@ -204,10 +208,17 @@ protected:
         int key = event->key();
         
         if (key == Qt::Key_Down || key == Qt::Key_S) {
-            keyDownPressed = true;
-            keyDownCount = 0;
-            keyDownDelay = 150;
-            onKeyDownTick(app);
+            // Down - rotate right
+            if (!board->isSplashScreenActive() && !board->isPaused() && !board->isGameOver()) {
+                board->rotatePiece(1);
+            }
+            updateDisplay(app);
+        } else if (key == Qt::Key_Up || key == Qt::Key_W) {
+            // Up - rotate left
+            if (!board->isSplashScreenActive() && !board->isPaused() && !board->isGameOver()) {
+                board->rotatePiece(-1);
+            }
+            updateDisplay(app);
         } else if (key == Qt::Key_Left || key == Qt::Key_A) {
             keyLeftPressed = true;
             keyLeftCount = 0;
@@ -219,16 +230,21 @@ protected:
             keyRightDelay = 150;
             onKeyRightTick(app);
         } else if (key == Qt::Key_Space) {
-            // If splash screen is active, dismiss it and start game
+            // Spacebar - hard drop
             if (board->isSplashScreenActive()) {
                 board->setSplashScreenActive(false);
                 startGame(app);
             } else if (!board->isPaused() && !board->isGameOver()) {
-                // Otherwise, rotate piece
-                board->rotatePiece(1);
+                // Hard drop - move piece all the way down
+                while (board->movePiece(0, 1)) {
+                    // Keep moving down until we hit something
+                }
+                // Lock the piece in place
+                board->lockPiece();
             }
             updateDisplay(app);
         } else if (key == Qt::Key_Z) {
+            // Z for counter-clockwise rotation (alternate binding)
             if (!board->isSplashScreenActive() && !board->isPaused() && !board->isGameOver()) {
                 board->rotatePiece(-1);
             }
@@ -840,9 +856,10 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     // Controls info
     app->controlsLabel = new QLabel(
         "Controls:\n"
-        "Arrows - Move\n"
-        "Space - Rotate\n"
-        "Z - Rot. Counter\n"
+        "Left/Right - Move\n"
+        "Up/Down - Rotate\n"
+        "Z - Rotate CCW\n"
+        "Space - Hard Drop\n"
         "P - Pause"
     );
     app->controlsLabel->setStyleSheet("QLabel { font-size: 9px; }");
