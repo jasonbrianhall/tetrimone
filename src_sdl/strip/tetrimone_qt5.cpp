@@ -77,6 +77,16 @@ void onDifficultyChanged(TetrimoneApp* app, int difficulty);
 void onSoundToggleAction(TetrimoneApp* app, bool enabled);
 void updateLabels(TetrimoneApp* app);
 
+// Cairo drawing functions from drawgame_cairo.cpp
+void drawGridLines(cairo_t *cr, TetrimoneBoard *board);
+void drawCurrentPiece(cairo_t *cr, TetrimoneBoard *board);
+void drawGhostPiece(cairo_t *cr, TetrimoneBoard *board);
+void drawBlockTrails(cairo_t *cr, TetrimoneBoard *board);
+void drawGameOver(cairo_t *cr, TetrimoneBoard *board);
+void drawPauseMenu(cairo_t *cr, TetrimoneBoard *board);
+void drawFireworks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app);
+void drawSplashScreen(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app);
+
 // ============================================================================
 // Qt5 Game Area Widget with Full Rendering
 // ============================================================================
@@ -120,53 +130,57 @@ protected:
         cairo_rectangle(cr, 0, 0, w, h);
         cairo_fill(cr);
         
-        // Draw board using the same rendering as GTK3
-        drawBoard(board);  // This will update the game area
+        // Draw grid lines
+        drawGridLines(cr, board);
         
-        // Render grid
+        // Draw all blocks in the grid
         for (int y = 0; y < GRID_HEIGHT; y++) {
             for (int x = 0; x < GRID_WIDTH; x++) {
                 int gridValue = board->getGridValue(x, y);
                 if (gridValue > 0) {
-                    drawBlockCairo(cr, x, y, gridValue);
+                    // Draw block at grid position using Cairo
+                    int px = x * BLOCK_SIZE;
+                    int py = y * BLOCK_SIZE;
+                    
+                    std::array<double, 3> color = board->getInterpolatedColor(gridValue, 0.0);
+                    cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+                    cairo_rectangle(cr, px, py, BLOCK_SIZE, BLOCK_SIZE);
+                    cairo_fill(cr);
+                    
+                    cairo_set_source_rgb(cr, 0, 0, 0);
+                    cairo_set_line_width(cr, 1);
+                    cairo_rectangle(cr, px, py, BLOCK_SIZE, BLOCK_SIZE);
+                    cairo_stroke(cr);
                 }
             }
         }
         
+        // Draw ghost piece
+        drawGhostPiece(cr, board);
+        
         // Draw current piece
-        const TetrimoneBlock* piece = board->getCurrentPiece();
-        if (piece) {
-            std::vector<std::vector<int>> shape = piece->getShape();
-            int pieceX = piece->getX();
-            int pieceY = piece->getY();
-            
-            for (size_t row = 0; row < shape.size(); row++) {
-                for (size_t col = 0; col < shape[row].size(); col++) {
-                    if (shape[row][col]) {
-                        int x = pieceX + col;
-                        int y = pieceY + row;
-                        if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-                            drawBlockCairo(cr, x, y, piece->getType());
-                        }
-                    }
-                }
-            }
-        }
+        drawCurrentPiece(cr, board);
+        
+        // Draw block trails
+        drawBlockTrails(cr, board);
         
         // Draw game over screen
         if (board->isGameOver()) {
-            drawGameOverCairo(cr, w, h);
+            drawGameOver(cr, board);
         }
         
-        // Draw pause screen
+        // Draw pause menu
         if (board->isPaused() && !board->isGameOver()) {
-            drawPauseScreenCairo(cr, w, h);
+            drawPauseMenu(cr, board);
         }
         
         // Draw splash screen
         if (board->isSplashScreenActive()) {
-            drawSplashScreenCairo(cr, w, h);
+            drawSplashScreen(cr, board, app);
         }
+        
+        // Draw fireflies/effects
+        drawFireworks(cr, board, app);
         
         // Convert SDL surface to QImage and display
         QImage img((uchar*)surface->pixels, w, h, surface->pitch, QImage::Format_ARGB32);
@@ -179,77 +193,6 @@ protected:
         SDL_FreeSurface(surface);
         
         (void)event;
-    }
-    
-    void drawBlockCairo(cairo_t* cr, int x, int y, int type) {
-        int px = x * BLOCK_SIZE;
-        int py = y * BLOCK_SIZE;
-        
-        std::array<double, 3> color = getTetrimineColor(type);
-        cairo_set_source_rgb(cr, color[0], color[1], color[2]);
-        cairo_rectangle(cr, px, py, BLOCK_SIZE, BLOCK_SIZE);
-        cairo_fill(cr);
-        
-        cairo_set_source_rgb(cr, 0, 0, 0);
-        cairo_set_line_width(cr, 1);
-        cairo_rectangle(cr, px, py, BLOCK_SIZE, BLOCK_SIZE);
-        cairo_stroke(cr);
-    }
-    
-    void drawGameOverCairo(cairo_t* cr, int w, int h) {
-        cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
-        cairo_rectangle(cr, 0, 0, w, h);
-        cairo_fill(cr);
-        
-        cairo_set_source_rgb(cr, 1, 1, 1);
-        cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-        cairo_set_font_size(cr, 40);
-        cairo_move_to(cr, w/2 - 80, h/2);
-        cairo_show_text(cr, "GAME OVER");
-    }
-    
-    void drawPauseScreenCairo(cairo_t* cr, int w, int h) {
-        cairo_set_source_rgba(cr, 0, 0, 0, 0.5);
-        cairo_rectangle(cr, 0, 0, w, h);
-        cairo_fill(cr);
-        
-        cairo_set_source_rgb(cr, 1, 1, 1);
-        cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-        cairo_set_font_size(cr, 40);
-        cairo_move_to(cr, w/2 - 60, h/2);
-        cairo_show_text(cr, "PAUSED");
-    }
-    
-    void drawSplashScreenCairo(cairo_t* cr, int w, int h) {
-        cairo_set_source_rgba(cr, 0, 0, 0, 0.7);
-        cairo_rectangle(cr, 0, 0, w, h);
-        cairo_fill(cr);
-        
-        cairo_set_source_rgb(cr, 1, 1, 1);
-        cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-        cairo_set_font_size(cr, 50);
-        cairo_move_to(cr, w/2 - 120, h/2 - 50);
-        cairo_show_text(cr, "TETRIMONE");
-        
-        cairo_set_font_size(cr, 20);
-        cairo_move_to(cr, w/2 - 100, h/2 + 50);
-        cairo_show_text(cr, "Press SPACE to start");
-    }
-    
-    std::array<double, 3> getTetrimineColor(int type) {
-        const std::array<double, 3> colors[] = {
-            {0.0, 1.0, 1.0},  // I - Cyan
-            {1.0, 1.0, 0.0},  // O - Yellow
-            {1.0, 0.0, 1.0},  // T - Magenta
-            {0.0, 1.0, 0.0},  // S - Green
-            {1.0, 0.0, 0.0},  // Z - Red
-            {0.0, 0.0, 1.0},  // J - Blue
-            {1.0, 0.5, 0.0},  // L - Orange
-        };
-        if (type >= 0 && type < 7) {
-            return colors[type];
-        }
-        return {1.0, 1.0, 1.0};
     }
 
     void keyPressEvent(QKeyEvent* event) override {
