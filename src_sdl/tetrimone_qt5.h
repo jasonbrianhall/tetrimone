@@ -10,6 +10,7 @@
 #include <QActionGroup>
 #include <QTimer>
 #include <SDL2/SDL.h>
+#include <cairo/cairo.h>
 #include "audiomanager.h"
 #include "tetrimone_core.h"
 
@@ -19,9 +20,44 @@ class GameAreaWidget;
 class NextPieceWidget;
 
 // ============================================================================
-// Qt5-specific TetrimoneApp structure
+// SDL/Cairo GPU-Accelerated Renderer
 // ============================================================================
 
+class SDLCairoRenderer {
+private:
+    SDL_Window* window;
+    SDL_Renderer* sdlRenderer;
+    SDL_Texture* texture;
+    cairo_surface_t* cairoSurface;
+    cairo_t* cairoContext;
+    int width, height;
+    Uint32 pixelFormat;
+    int pitch;
+    void* pixelBuffer;
+
+public:
+    SDLCairoRenderer(int w, int h);
+    ~SDLCairoRenderer();
+    
+    bool init(const char* title, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    cairo_t* getCairoContext() { return cairoContext; }
+    cairo_surface_t* getCairoSurface() { return cairoSurface; }
+    void clearCairoSurface(double r, double g, double b, double a = 1.0);
+    void syncSurfaceToTexture();
+    void present();
+    bool resize(int newWidth, int newHeight);
+    int getWidth() const { return width; }
+    int getHeight() const { return height; }
+    SDL_Window* getSDLWindow() { return window; }
+    SDL_Renderer* getSDLRenderer() { return sdlRenderer; }
+    bool saveFrameToPNG(const char* filename);
+    void* getPixelBuffer() { return pixelBuffer; }
+    void cleanup();
+};
+
+// ============================================================================
+// Qt5-specific TetrimoneApp structure
+// ============================================================================
 
 struct TetrimoneApp {
     QApplication* app = nullptr;
@@ -59,6 +95,27 @@ struct TetrimoneApp {
     QAction*      trackMenuItems[5] = {nullptr};
     QAction*      themeMenuItems[31] = {nullptr};
 
+    // Additional menu items from GTK3 version
+    QAction*      blockSizeMenuItem = nullptr;
+    QAction*      joystickConfigMenuItem = nullptr;
+    QAction*      backgroundImageMenuItem = nullptr;
+    QAction*      backgroundToggleMenuItem_Display = nullptr;
+    QAction*      backgroundOpacityMenuItem = nullptr;
+    QAction*      backgroundZipMenuItem = nullptr;
+    QAction*      volumeMenuItem = nullptr;
+    QAction*      blockSizeRulesMenuItem = nullptr;
+    QAction*      gameSizeMenuItem = nullptr;
+    QAction*      gridLinesMenuItem = nullptr;
+    QAction*      ghostPieceMenuItem = nullptr;
+    QAction*      highScoresMenuItem = nullptr;
+    QAction*      backgroundImagesMenuItem = nullptr;
+    QAction*      simpleBlocksMenuItem = nullptr;
+    QAction*      retroMusicMenuItem = nullptr;
+    QAction*      blockTrailsMenuItem = nullptr;
+    QAction*      blockTrailsConfigMenuItem = nullptr;
+    QAction*      gameSetupMenuItem = nullptr;
+    QAction*      resetSettingsMenuItem = nullptr;
+
     QLabel*       sequenceLabel = nullptr;
     QLabel*       controlsLabel = nullptr;
 
@@ -83,6 +140,10 @@ struct TetrimoneApp {
     QAction*      renderModeMenuItems[2] = {nullptr};
 
     CommandLineArgs* cmdlineArgs = nullptr;
+    
+    // GPU-accelerated SDL/Cairo renderer
+    SDLCairoRenderer* sdlCairoRenderer = nullptr;
+    bool useGPUAcceleration = true;
 };
 
 // ============================================================================
@@ -110,6 +171,8 @@ void onGameTick(TetrimoneApp* app);
 // Help dialogs
 void onAboutDialog(void* menuItem, void* userData);
 void onInstructionsDialog(void* menuItem, void* userData);
+void showIdeologicalFailureDialog(TetrimoneApp* app);
+void showPatrioticPerformanceDialog(TetrimoneApp* app);
 
 #ifdef QT5
 void onAppActivate(TetrimoneApp* app);
@@ -123,9 +186,53 @@ void onQuitGameAction(TetrimoneApp* app);
 void onSoundToggleAction(TetrimoneApp* app, bool enabled);
 void onDifficultyChanged(TetrimoneApp* app, int difficulty);
 
+// TODO: Additional menu callbacks from GTK3 version
+void onBlockSizeDialog(TetrimoneApp* app);
+void onBlockSizeValueChanged(int value, TetrimoneApp* app);
+void onResizeWindowButtonClicked(TetrimoneApp* app);
+void onJoystickConfig(TetrimoneApp* app);
+void onJoystickRescan(TetrimoneApp* app);
+void updateJoystickInfo(TetrimoneApp* app);
+void onJoystickMapApply(TetrimoneApp* app);
+void onJoystickMapReset(TetrimoneApp* app);
+void onBackgroundImageDialog(TetrimoneApp* app);
+void onBackgroundToggled(TetrimoneApp* app, bool enabled);
+void onBackgroundOpacityDialog(TetrimoneApp* app);
+void onOpacityValueChanged(int value, TetrimoneApp* app);
+void updateSizeValueLabel(int value, TetrimoneApp* app);
+void onBackgroundZipDialog(TetrimoneApp* app);
+void onVolumeDialog(TetrimoneApp* app);
+void onVolumeValueChanged(int value, TetrimoneApp* app);
+void onMusicVolumeValueChanged(int value, TetrimoneApp* app);
+void onTrackToggled(TetrimoneApp* app, int trackIndex, bool enabled);
+void onBlockSizeRulesChanged(TetrimoneApp* app, int mode);
+void onGameSizeDialog(TetrimoneApp* app);
+void onGridLinesToggled(TetrimoneApp* app, bool enabled);
+void updateWidthValueLabel(int value, TetrimoneApp* app);
+void updateHeightValueLabel(int value, TetrimoneApp* app);
+void onGhostPieceToggled(TetrimoneApp* app, bool enabled);
+void onViewHighScores(TetrimoneApp* app);
+void onBackgroundImagesDialog(TetrimoneApp* app);
+void onSimpleBlocksToggled(TetrimoneApp* app, bool enabled);
+void onRetroMusicToggled(TetrimoneApp* app, bool enabled);
+void onTestSound(TetrimoneApp* app);
+void onGameSetupDialog(TetrimoneApp* app);
+void onResetSettings(TetrimoneApp* app);
+void onThemeChanged(TetrimoneApp* app, int themeIndex);
+void onBlockTrailsToggled(TetrimoneApp* app, bool enabled);
+void onBlockTrailsConfig(TetrimoneApp* app);
+void onTrailOpacityChanged(int value, TetrimoneApp* app);
+void onTrailDurationChanged(int value, TetrimoneApp* app);
+void onRenderModeChanged(TetrimoneApp* app, int mode);
+
 // UI setup
 void setupMenuBar(TetrimoneApp* app);
 void setupGameUI(TetrimoneApp* app, int width, int height);
+
+// GPU rendering initialization and functions
+void initGPURenderer(TetrimoneApp* app, int width, int height);
+void shutdownGPURenderer(TetrimoneApp* app);
+void renderFrameGPU(TetrimoneApp* app);
 
 // Application entry point
 int main_qt5(int argc, char* argv[], TetrimoneApp* app);

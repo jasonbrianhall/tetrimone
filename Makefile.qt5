@@ -76,7 +76,7 @@ ZIP_LIBS_WIN := $(shell mingw64-pkg-config --libs libzip 2>/dev/null || echo "")
 SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2 2>/dev/null || echo "")
 SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2 2>/dev/null || echo "")
 
-SRCS_COMMON = src_sdl/strip/tetrimone_qt5.cpp src_sdl/strip/tetrimone.cpp src_sdl/audiomanager.cpp src_sdl/sound.cpp src_sdl/audioconverter.cpp src_sdl/strip/volume.cpp src_sdl/strip/ghostpiece.cpp src_sdl/strip/highscores.cpp src_sdl/strip/icon.cpp src_sdl/dbopl.cpp src_sdl/dbopl_wrapper.cpp src_sdl/instruments.cpp src_sdl/midiplayer.cpp src_sdl/virtual_mixer.cpp src_sdl/wav_converter.cpp src_sdl/convertmidi.cpp src_sdl/strip/junklines.cpp src_sdl/strip/propaganda.cpp src_sdl/strip/help.cpp src_sdl/strip/saveloadsettings.cpp src_sdl/drawgame.cpp src_sdl/strip/tetrimone_main.cpp src_sdl/heat.cpp src_sdl/strip/freedom.cpp src_sdl/drawgame_cairo.cpp src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp
+SRCS_COMMON = src_sdl/strip/tetrimone_qt5.cpp src_sdl/strip/tetrimone.cpp src_sdl/audiomanager.cpp src_sdl/sound.cpp src_sdl/audioconverter.cpp src_sdl/strip/volume.cpp src_sdl/strip/ghostpiece.cpp src_sdl/strip/highscores.cpp src_sdl/strip/icon.cpp src_sdl/dbopl.cpp src_sdl/dbopl_wrapper.cpp src_sdl/instruments.cpp src_sdl/midiplayer.cpp src_sdl/virtual_mixer.cpp src_sdl/wav_converter.cpp src_sdl/convertmidi.cpp src_sdl/strip/junklines.cpp src_sdl/strip/propaganda.cpp src_sdl/strip/help.cpp src_sdl/strip/saveloadsettings.cpp src_sdl/drawgame.cpp src_sdl/strip/tetrimone_main.cpp src_sdl/heat.cpp src_sdl/strip/freedom.cpp src_sdl/drawgame_cairo.cpp src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp src_sdl/strip/drawgame_cairo_gridblocks.cpp  
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src_sdl/sdlaudioplayer.cpp
 
@@ -99,17 +99,17 @@ OBJS_LINUX_DEBUG = $(SRCS_COMMON:.cpp=.debug.o) $(SRCS_LINUX:.cpp=.debug.o)
 OBJS_WIN_DEBUG = $(SRCS_COMMON:.cpp=.win.debug.o) $(SRCS_WIN:.cpp=.win.debug.o)
 
 # Target executables
-TARGET_LINUX = tetrimone
-TARGET_WIN = tetrimone.exe
-TARGET_LINUX_DEBUG = tetrimone_debug
-TARGET_WIN_DEBUG = tetrimone_debug.exe
+TARGET_LINUX = tetrimone_qt5
+TARGET_WIN = tetrimone_qt5.exe
+TARGET_LINUX_DEBUG = tetrimone_debug_qt5
+TARGET_WIN_DEBUG = tetrimone_debug_qt5.exe
 
 # Build directories
 BUILD_DIR = build
-BUILD_DIR_LINUX = $(BUILD_DIR)/linux
-BUILD_DIR_WIN = $(BUILD_DIR)/windows
-BUILD_DIR_LINUX_DEBUG = $(BUILD_DIR)/linux_debug
-BUILD_DIR_WIN_DEBUG = $(BUILD_DIR)/windows_debug
+BUILD_DIR_LINUX = $(BUILD_DIR)/linux_qt5
+BUILD_DIR_WIN = $(BUILD_DIR)/windows_qt5
+BUILD_DIR_LINUX_DEBUG = $(BUILD_DIR)/linux_qt5_debug
+BUILD_DIR_WIN_DEBUG = $(BUILD_DIR)/windows_qt5_debug
 
 # Windows DLL settings
 DLL_SOURCE_DIR = /usr/x86_64-w64-mingw32/sys-root/mingw/bin

@@ -213,7 +213,8 @@ void TetrimoneBoard::restart() {
   linesCleared = 0;
   gameOver = false;
   paused = false;
-  splashScreenActive = true; // Show splash screen on restart
+  // DON'T re-enable splash screen - let the caller control this
+  // splashScreenActive = true;
 
   // Reset pieces
   currentPiece.reset();
@@ -229,8 +230,8 @@ void TetrimoneBoard::restart() {
 
   // Select a random background if using background images from ZIP
   if (useBackgroundZip && !backgroundImages.empty()) {
-    // Start a smooth background transition
-    startBackgroundTransition();
+    // Just select a random background without transitioning at game start
+    selectRandomBackground();
   }
 
   consecutiveClears = 0;
@@ -628,8 +629,8 @@ int TetrimoneBoard::clearLines() {
     // Check if we've reached a level up (every 10 lines)
     int newLevel = (this->linesCleared / 10) + initialLevel;
     if (newLevel > level) {
-      // Level up!
-      level = newLevel;
+      // Level up! - use setLevel to trigger background transition
+      setLevel(newLevel);
       playSound(GameSoundEvent::LevelUp);
       
       // Change theme automatically on level up
@@ -995,6 +996,9 @@ void drawBoard(TetrimoneBoard *board) {
 void TetrimoneBoard::setLevel(int newLevel) {
     if (newLevel >= 1) {
         level = newLevel;
+        
+        // Start background transition when leveling up (fade to new image)
+        startBackgroundTransition();
     }
 }
 
@@ -1285,4 +1289,5 @@ int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandL
 #endif
 
 }
+
 

@@ -2,6 +2,8 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <chrono>
+#include <random>
 #ifdef _WIN32
 #include <windows.h>
 #include <commdlg.h>
@@ -17,6 +19,7 @@
 
 #ifdef QT5
 #include "tetrimone_qt5.h"
+#include <QMessageBox>
 #endif
 
 // ============================================================================
@@ -108,11 +111,40 @@ void showIdeologicalFailureDialog(TetrimoneApp* app) {
 #ifdef QT5
 
 void showIdeologicalFailureDialog(TetrimoneApp* app) {
-    // TODO: Check if in retro mode once getter is added
-    // For now, just restart the game
-    app->board->restart();
-    resetUI(app);
-    startGame(app);
+    if (!app || !app->board) return;
+    
+    // Use the propaganda messages vector
+    extern const std::vector<std::string> PROPAGANDA_MESSAGES;
+    
+    std::string message;
+    if (PROPAGANDA_MESSAGES.empty()) {
+        message = "YOUR BLOCKS HAVE FAILED THE STATE!";
+    } else {
+        static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
+        std::uniform_int_distribution<int> dist(0, PROPAGANDA_MESSAGES.size() - 1);
+        message = PROPAGANDA_MESSAGES[dist(rng)];
+    }
+    
+    // Set the message in the board for drawing
+    app->board->currentPropagandaMessage = message;
+    app->board->showPropagandaMessage = true;
+    
+    // Also try to set sequenceLabel if it exists
+    if (app->sequenceLabel) {
+        app->sequenceLabel->setText(QString::fromStdString(message));
+    }
+    
+    // Force screen update
+    updateDisplay(app);
+    
+    // Set timer to clear message after 2 seconds
+    QTimer::singleShot(2000, [app]() {
+        app->board->showPropagandaMessage = false;
+        if (app->sequenceLabel) {
+            app->sequenceLabel->setText("");
+        }
+        updateDisplay(app);
+    });
 }
 
 #endif  // QT5

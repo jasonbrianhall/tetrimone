@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include "highscores.h"
 #include "propaganda_messages.h"
 #include "freedom_messages.h"
@@ -34,12 +35,253 @@
 #include <QFont>
 #include <QFontMetrics>
 #include <QCloseEvent>
+#include <QDebug>
+#include <fstream>
+#include <SDL2/SDL.h>
+#include <cairo/cairo.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
+// ============================================================================
+// SDLCairoRenderer Implementation
+// ============================================================================
+
+SDLCairoRenderer::SDLCairoRenderer(int w, int h)
+    : window(nullptr), sdlRenderer(nullptr), texture(nullptr),
+      cairoSurface(nullptr), cairoContext(nullptr),
+      width(w), height(h), pixelFormat(SDL_PIXELFORMAT_ARGB8888),
+      pitch(0), pixelBuffer(nullptr) {}
+
+bool SDLCairoRenderer::init(const char* title, Uint32 flags) {
+    if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
+        std::cerr << "SDL video init failed: " << SDL_GetError() << std::endl;
+        return false;
+    }
+
+    window = SDL_CreateWindow(
+        title,
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED,
+        width,
+        height,
+        flags
+    );
+
+    if (!window) {
+        std::cerr << "Failed to create SDL window: " << SDL_GetError() << std::endl;
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        return false;
+    }
+
+    sdlRenderer = SDL_CreateRenderer(
+        window, -1,
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
+    );
+
+    if (!sdlRenderer) {
+        std::cerr << "Failed to create SDL renderer: " << SDL_GetError() << std::endl;
+        SDL_DestroyWindow(window);
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        return false;
+    }
+
+    texture = SDL_CreateTexture(
+        sdlRenderer,
+        pixelFormat,
+        SDL_TEXTUREACCESS_STREAMING,
+        width,
+        height
+    );
+
+    if (!texture) {
+        std::cerr << "Failed to create SDL texture: " << SDL_GetError() << std::endl;
+        SDL_DestroyRenderer(sdlRenderer);
+        SDL_DestroyWindow(window);
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        return false;
+    }
+
+    pitch = width * 4;
+    pixelBuffer = malloc(pitch * height);
+
+    if (!pixelBuffer) {
+        std::cerr << "Failed to allocate pixel buffer" << std::endl;
+        SDL_DestroyTexture(texture);
+        SDL_DestroyRenderer(sdlRenderer);
+        SDL_DestroyWindow(window);
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        return false;
+    }
+
+    cairoSurface = cairo_image_surface_create_for_data(
+        (unsigned char*)pixelBuffer,
+        CAIRO_FORMAT_ARGB32,
+        width,
+        height,
+        pitch
+    );
+
+    if (cairo_surface_status(cairoSurface) != CAIRO_STATUS_SUCCESS) {
+        std::cerr << "Failed to create cairo surface" << std::endl;
+        free(pixelBuffer);
+        SDL_DestroyTexture(texture);
+        SDL_DestroyRenderer(sdlRenderer);
+        SDL_DestroyWindow(window);
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        return false;
+    }
+
+    cairoContext = cairo_create(cairoSurface);
+
+    if (cairo_status(cairoContext) != CAIRO_STATUS_SUCCESS) {
+        std::cerr << "Failed to create cairo context" << std::endl;
+        cairo_surface_destroy(cairoSurface);
+        free(pixelBuffer);
+        SDL_DestroyTexture(texture);
+        SDL_DestroyRenderer(sdlRenderer);
+        SDL_DestroyWindow(window);
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        return false;
+    }
+
+    return true;
+}
+
+void SDLCairoRenderer::clearCairoSurface(double r, double g, double b, double a) {
+    cairo_set_source_rgba(cairoContext, r, g, b, a);
+    cairo_paint(cairoContext);
+}
+
+void SDLCairoRenderer::syncSurfaceToTexture() {
+    if (!texture || !pixelBuffer) return;
+    cairo_surface_flush(cairoSurface);
+    SDL_UpdateTexture(texture, nullptr, pixelBuffer, pitch);
+}
+
+void SDLCairoRenderer::present() {
+    if (!sdlRenderer) return;
+    SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, 255);
+    SDL_RenderClear(sdlRenderer);
+    SDL_RenderCopy(sdlRenderer, texture, nullptr, nullptr);
+    SDL_RenderPresent(sdlRenderer);
+}
+
+bool SDLCairoRenderer::resize(int newWidth, int newHeight) {
+    if (newWidth <= 0 || newHeight <= 0) return false;
+
+    if (cairoContext) {
+        cairo_destroy(cairoContext);
+        cairoContext = nullptr;
+    }
+    if (cairoSurface) {
+        cairo_surface_destroy(cairoSurface);
+        cairoSurface = nullptr;
+    }
+    if (pixelBuffer) {
+        free(pixelBuffer);
+        pixelBuffer = nullptr;
+    }
+    if (texture) {
+        SDL_DestroyTexture(texture);
+        texture = nullptr;
+    }
+
+    width = newWidth;
+    height = newHeight;
+
+    SDL_SetWindowSize(window, width, height);
+
+    texture = SDL_CreateTexture(
+        sdlRenderer,
+        pixelFormat,
+        SDL_TEXTUREACCESS_STREAMING,
+        width,
+        height
+    );
+
+    if (!texture) {
+        std::cerr << "Failed to recreate texture" << std::endl;
+        return false;
+    }
+
+    pitch = width * 4;
+    pixelBuffer = malloc(pitch * height);
+
+    if (!pixelBuffer) {
+        SDL_DestroyTexture(texture);
+        texture = nullptr;
+        return false;
+    }
+
+    cairoSurface = cairo_image_surface_create_for_data(
+        (unsigned char*)pixelBuffer,
+        CAIRO_FORMAT_ARGB32,
+        width,
+        height,
+        pitch
+    );
+
+    if (cairo_surface_status(cairoSurface) != CAIRO_STATUS_SUCCESS) {
+        free(pixelBuffer);
+        pixelBuffer = nullptr;
+        return false;
+    }
+
+    cairoContext = cairo_create(cairoSurface);
+
+    if (cairo_status(cairoContext) != CAIRO_STATUS_SUCCESS) {
+        cairo_surface_destroy(cairoSurface);
+        free(pixelBuffer);
+        pixelBuffer = nullptr;
+        return false;
+    }
+
+    return true;
+}
+
+bool SDLCairoRenderer::saveFrameToPNG(const char* filename) {
+    if (!cairoSurface) return false;
+    return cairo_surface_write_to_png(cairoSurface, filename) == CAIRO_STATUS_SUCCESS;
+}
+
+void SDLCairoRenderer::cleanup() {
+    if (cairoContext) {
+        cairo_destroy(cairoContext);
+        cairoContext = nullptr;
+    }
+    if (cairoSurface) {
+        cairo_surface_destroy(cairoSurface);
+        cairoSurface = nullptr;
+    }
+    if (pixelBuffer) {
+        free(pixelBuffer);
+        pixelBuffer = nullptr;
+    }
+    if (texture) {
+        SDL_DestroyTexture(texture);
+        texture = nullptr;
+    }
+    if (sdlRenderer) {
+        SDL_DestroyRenderer(sdlRenderer);
+        sdlRenderer = nullptr;
+    }
+    if (window) {
+        SDL_DestroyWindow(window);
+        window = nullptr;
+    }
+    SDL_QuitSubSystem(SDL_INIT_VIDEO);
+}
+
+SDLCairoRenderer::~SDLCairoRenderer() {
+    cleanup();
+}
+
+// ============================================================================
 // Global variables for key repeat handling
+// ============================================================================
+
 extern bool keyDownPressed;
 extern bool keyLeftPressed;
 extern bool keyRightPressed;
@@ -53,81 +295,292 @@ extern int keyDownCount;
 extern int keyLeftCount;
 extern int keyRightCount;
 
-// Global variables
 extern int BLOCK_SIZE;
 extern int currentThemeIndex;
 extern int GRID_WIDTH;
 extern int GRID_HEIGHT;
 
+// Forward declarations
+void onKeyDownTick(TetrimoneApp* app);
+void onKeyLeftTick(TetrimoneApp* app);
+void onKeyRightTick(TetrimoneApp* app);
+void onGameTick(TetrimoneApp* app);
+void updateDisplay(TetrimoneApp* app);
+void pauseGame(TetrimoneApp* app);
+void cleanupApp(TetrimoneApp* app);
+void onStartGameAction(TetrimoneApp* app);
+void onPauseGameAction(TetrimoneApp* app);
+void onRestartGameAction(TetrimoneApp* app);
+void onQuitGameAction(TetrimoneApp* app);
+void onDifficultyChanged(TetrimoneApp* app, int difficulty);
+void onSoundToggleAction(TetrimoneApp* app, bool enabled);
+void updateLabels(TetrimoneApp* app);
+
+void drawFireyGlow(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
+void drawFreezyEffect(cairo_t* cr, double x, double y, double size, float heatLevel, double time);
+LineClearAnimValues getLineClearAnimationValues(int animationType, double progress, int x, int y);
+std::array<double, 3> getHeatModifiedColor(const std::array<double, 3>& baseColor, float heatLevel);
+
 // ============================================================================
-// Qt5 Game Area Widget with Full Rendering
+// Implementation of drawPlacedBlocks (locked/placed blocks with animations)
+// ============================================================================
+
+void drawPlacedBlocks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app) {
+  for (int y = 0; y < GRID_HEIGHT; ++y) {
+    for (int x = 0; x < GRID_WIDTH; ++x) {
+      int value = board->getGridValue(x, y);
+      if (value > 0) {
+        double alpha = 1.0;
+        double scale = 1.0;
+        double offsetX = 0.0;
+        double offsetY = 0.0;
+        
+        if (board->isLineClearActive() && board->isLineBeingCleared(y)) {
+          double progress = board->getLineClearProgress();
+          
+          if (board->retroModeActive) {
+            if (progress < 0.3) {
+              double scanProgress = progress / 0.3;
+              int scanX = (int)(scanProgress * GRID_WIDTH);
+              if (x <= scanX) {
+                alpha = 0.3 + 0.4 * sin(progress * 20.0);
+              } else {
+                alpha = 1.0;
+              }
+              scale = 1.0;
+            } else if (progress < 0.7) {
+              double flashProgress = (progress - 0.3) / 0.4;
+              alpha = 1.0 - flashProgress * 0.7;
+              scale = 1.0;
+              offsetY = flashProgress * BLOCK_SIZE * 0.3;
+            } else {
+              double wipeProgress = (progress - 0.7) / 0.3;
+              int segment = x / 3;
+              double segmentDelay = segment * 0.2;
+              
+              if (wipeProgress > segmentDelay) {
+                alpha = 0.0;
+                scale = 0.0;
+              } else {
+                alpha = 1.0 - wipeProgress * 0.5;
+                scale = 1.0;
+              }
+            }
+          } else {
+            int animationType = board->getCurrentAnimationType();
+            LineClearAnimValues animValues = getLineClearAnimationValues(animationType, progress, x, y);
+            alpha = animValues.alpha;
+            scale = animValues.scale;
+            offsetX = animValues.offsetX;
+            offsetY = animValues.offsetY;
+          }
+        }
+
+        auto baseColor = board->isInThemeTransition() ? 
+        board->getInterpolatedColor(value - 1, board->getThemeTransitionProgress()) :
+        TETRIMONEBLOCK_COLOR_THEMES[currentThemeIndex][value - 1];
+        auto color = getHeatModifiedColor(baseColor, board->getHeatLevel());
+
+        cairo_set_source_rgba(cr, color[0], color[1], color[2], alpha);
+
+        double drawX = x * BLOCK_SIZE + offsetX + (BLOCK_SIZE * (1.0 - scale)) / 2;
+        double drawY = y * BLOCK_SIZE + offsetY + (BLOCK_SIZE * (1.0 - scale)) / 2;
+        double drawSize = BLOCK_SIZE * scale;
+
+        if (board->retroModeActive || board->simpleBlocksActive) {
+          cairo_rectangle(cr, drawX, drawY, drawSize, drawSize);
+          cairo_fill(cr);
+        } else {
+          cairo_rectangle(cr, drawX + 1, drawY + 1, drawSize - 2, drawSize - 2);
+          cairo_fill(cr);
+
+          cairo_set_source_rgba(cr, 1, 1, 1, 0.3 * alpha);
+          cairo_move_to(cr, drawX + 1, drawY + 1);
+          cairo_line_to(cr, drawX + drawSize - 1, drawY + 1);
+          cairo_line_to(cr, drawX + 1, drawY + drawSize - 1);
+          cairo_close_path(cr);
+          cairo_fill(cr);
+
+          cairo_set_source_rgba(cr, 0, 0, 0, 0.3 * alpha);
+          cairo_move_to(cr, drawX + drawSize - 1, drawY + 1);
+          cairo_line_to(cr, drawX + drawSize - 1, drawY + drawSize - 1);
+          cairo_line_to(cr, drawX + 1, drawY + drawSize - 1);
+          cairo_close_path(cr);
+          cairo_fill(cr);
+        }
+        
+        if (!board->retroModeActive) {
+          float heatLevel = board->getHeatLevel();
+          auto now = std::chrono::high_resolution_clock::now();
+          auto timeMs = std::chrono::duration<double, std::milli>(
+              now.time_since_epoch()).count();
+          
+          if (heatLevel > 0.7f) {
+            drawFireyGlow(cr, drawX, drawY, drawSize, heatLevel, timeMs);
+          }
+          
+          if (heatLevel < 0.3f) {
+            drawFreezyEffect(cr, drawX, drawY, drawSize, heatLevel, timeMs);
+          }
+        }   
+      }
+    }
+  }
+}
+
+// ============================================================================
+// Qt5 Game Area Widget with Full SDL Rendering (Dynamic Scaling)
 // ============================================================================
 
 class GameAreaWidget : public QWidget {
 public:
     explicit GameAreaWidget(TetrimoneBoard* board, TetrimoneApp* app, QWidget* parent = nullptr)
         : QWidget(parent), board(board), app(app), backgroundPixmap(nullptr) {
-        setMinimumSize(GRID_WIDTH * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
         setFocusPolicy(Qt::StrongFocus);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        setMinimumSize(200, 440);
     }
 
     ~GameAreaWidget() {
         if (backgroundPixmap) delete backgroundPixmap;
     }
 
+    QSize sizeHint() const override {
+        // Will expand to fill available space
+        return QSize(400, 880);
+    }
+
 protected:
     void paintEvent(QPaintEvent* event) override {
-        if (!board) return;
+        if (!board || !app) return;
         
-        QPainter painter(this);
+        int w = width();
+        int h = height();
         
-        // Draw background
-        drawBackground(&painter, width(), height());
+        if (w <= 0 || h <= 0) return;
         
-        // Draw board grid
-        for (int y = 0; y < GRID_HEIGHT; y++) {
-            for (int x = 0; x < GRID_WIDTH; x++) {
-                int gridValue = board->getGridValue(x, y);
-                if (gridValue > 0) {
-                    drawBlock(&painter, x, y, gridValue);
+        // Calculate scaling factor - make blocks fill the HEIGHT (22 blocks)
+        int blockSize = h / 22;  // Fill the full height with 22 blocks
+        
+        double scale = blockSize / 30.0;  // 30 is the base block size
+        
+        // Use GPU renderer if available
+        if (app->sdlCairoRenderer) {
+            cairo_t* cr = app->sdlCairoRenderer->getCairoContext();
+            
+            // Draw background image with transition support
+            if (board->useBackgroundImage && board->getBackgroundImage() != nullptr) {
+                cairo_surface_t* bgImage = (cairo_surface_t*)board->getBackgroundImage();
+                
+                // Draw old background during transition (fade out)
+                if (board->isInBackgroundTransition() && board->getOldBackground() != nullptr) {
+                    cairo_surface_t* oldBg = (cairo_surface_t*)board->getOldBackground();
+                    cairo_set_source_surface(cr, oldBg, 0, 0);
+                    cairo_paint_with_alpha(cr, board->getTransitionOpacity());
+                    
+                    // Draw new background on top (fade in)
+                    cairo_set_source_surface(cr, bgImage, 0, 0);
+                    cairo_paint_with_alpha(cr, 1.0 - board->getTransitionOpacity());
+                } else {
+                    // Normal drawing without transition
+                    cairo_set_source_surface(cr, bgImage, 0, 0);
+                    cairo_paint(cr);
                 }
+            } else {
+                // Fallback to black background
+                app->sdlCairoRenderer->clearCairoSurface(0, 0, 0, 1.0);
             }
+            
+            if (cr) {
+                cairo_scale(cr, scale, scale);
+                
+                drawGridLines(cr, board);
+                drawPlacedBlocks(cr, board, app);
+                drawCurrentPiece(cr, board);
+                drawGhostPiece(cr, board);
+                drawBlockTrails(cr, board);
+                drawGameOver(cr, board);
+                drawPauseMenu(cr, board);
+                if (board->isSplashScreenActive()) {
+                    drawSplashScreen(cr, board, app);
+                }
+                drawFireworks(cr, board, app);
+                drawPropagandaMessage(cr, board);
+                
+                app->sdlCairoRenderer->syncSurfaceToTexture();
+                app->sdlCairoRenderer->present();
+            }
+        } else {
+            // Fallback: CPU rendering with Qt
+            SDL_Surface* surface = SDL_CreateRGBSurface(0, w, h, 32,
+                0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+            
+            if (!surface) return;
+            
+            cairo_surface_t* cairo_surface = cairo_image_surface_create_for_data(
+                (unsigned char*)surface->pixels,
+                CAIRO_FORMAT_ARGB32,
+                w, h,
+                surface->pitch
+            );
+            
+            cairo_t* cr = cairo_create(cairo_surface);
+            
+            // Draw background image with transition support
+            if (board->useBackgroundImage && board->getBackgroundImage() != nullptr) {
+                cairo_surface_t* bgImage = (cairo_surface_t*)board->getBackgroundImage();
+                
+                // Draw old background during transition (fade out)
+                if (board->isInBackgroundTransition() && board->getOldBackground() != nullptr) {
+                    cairo_surface_t* oldBg = (cairo_surface_t*)board->getOldBackground();
+                    cairo_set_source_surface(cr, oldBg, 0, 0);
+                    cairo_paint_with_alpha(cr, board->getTransitionOpacity());
+                    
+                    // Draw new background on top (fade in)
+                    cairo_set_source_surface(cr, bgImage, 0, 0);
+                    cairo_paint_with_alpha(cr, 1.0 - board->getTransitionOpacity());
+                } else {
+                    // Normal drawing without transition
+                    cairo_set_source_surface(cr, bgImage, 0, 0);
+                    cairo_paint(cr);
+                }
+            } else {
+                // Fallback to black background
+                cairo_set_source_rgb(cr, 0, 0, 0);
+                cairo_rectangle(cr, 0, 0, w, h);
+                cairo_fill(cr);
+            }
+            
+            cairo_scale(cr, scale, scale);
+            
+            drawGridLines(cr, board);
+            drawPlacedBlocks(cr, board, app);
+            drawCurrentPiece(cr, board);
+            drawGhostPiece(cr, board);
+            drawBlockTrails(cr, board);
+            drawGameOver(cr, board);
+            drawPauseMenu(cr, board);
+            if (board->isSplashScreenActive()) {
+                drawSplashScreen(cr, board, app);
+            }
+            drawFireworks(cr, board, app);
+            drawPropagandaMessage(cr, board);
+            
+            QImage img((uchar*)surface->pixels, w, h, surface->pitch, QImage::Format_ARGB32);
+            QPainter painter(this);
+            painter.drawImage(0, 0, img);
+            
+            cairo_destroy(cr);
+            cairo_surface_destroy(cairo_surface);
+            SDL_FreeSurface(surface);
         }
         
-        // Draw ghost piece
-        if (board->isGhostPieceEnabled()) {
-            drawGhostPiece(&painter);
-        }
-        
-        // Draw current piece
-        drawCurrentPiece(&painter);
-        
-        // Draw block trails if enabled
-        if (board->isTrailsEnabled()) {
-            drawBlockTrails(&painter);
-        }
-        
-        // Draw grid lines if enabled
-        if (board->isShowingGridLines()) {
-            drawGridLines(&painter);
-        }
-        
-        // Draw game over screen
-        if (board->isGameOver()) {
-            drawGameOverScreen(&painter);
-        }
-        
-        // Draw pause menu
-        if (board->isPaused() && !board->isGameOver()) {
-            drawPauseScreen(&painter);
-        }
-        
-        // Draw splash screen if active
-        if (board->isSplashScreenActive()) {
-            drawSplashScreen(&painter);
-        }
-
         (void)event;
+    }
+
+    void resizeEvent(QResizeEvent* event) override {
+        QWidget::resizeEvent(event);
+        update();
     }
 
     void keyPressEvent(QKeyEvent* event) override {
@@ -141,8 +594,13 @@ protected:
         if (key == Qt::Key_Down || key == Qt::Key_S) {
             keyDownPressed = true;
             keyDownCount = 0;
-            keyDownDelay = 150;
+            keyDownDelay = 50;
             onKeyDownTick(app);
+        } else if (key == Qt::Key_Up || key == Qt::Key_W) {
+            if (!board->isSplashScreenActive() && !board->isPaused() && !board->isGameOver()) {
+                board->rotatePiece(1);
+            }
+            updateDisplay(app);
         } else if (key == Qt::Key_Left || key == Qt::Key_A) {
             keyLeftPressed = true;
             keyLeftCount = 0;
@@ -154,13 +612,15 @@ protected:
             keyRightDelay = 150;
             onKeyRightTick(app);
         } else if (key == Qt::Key_Space) {
-            // If splash screen is active, dismiss it and start game
             if (board->isSplashScreenActive()) {
                 board->setSplashScreenActive(false);
                 startGame(app);
             } else if (!board->isPaused() && !board->isGameOver()) {
-                // Otherwise, rotate piece
-                board->rotatePiece(1);
+                while (board->movePiece(0, 1)) {
+                }
+                board->lockPiece();
+                board->clearLines();
+                board->generateNewPiece();
             }
             updateDisplay(app);
         } else if (key == Qt::Key_Z) {
@@ -170,6 +630,46 @@ protected:
             updateDisplay(app);
         } else if (key == Qt::Key_P) {
             pauseGame(app);
+            updateDisplay(app);
+        } else if (key == Qt::Key_R) {
+            // Restart game on 'r' key
+            if (board->isGameOver()) {
+                onRestartGameAction(app);
+                updateDisplay(app);
+            }
+        } else if (key == Qt::Key_Comma) {
+            // Toggle retro/propaganda mode with comma key
+            board->retroModeActive = !board->retroModeActive;
+            board->patrioticModeActive = false;
+            if (board->retroModeActive) {
+                std::cout << "✓ Retro mode ACTIVATED - БЛОЧНАЯ РЕВОЛЮЦИЯ" << std::endl;
+                app->window->setWindowTitle("БЛОЧНАЯ РЕВОЛЮЦИЯ");
+                board->setHeatLevel(0.5);  // Set heat level for retro mode
+                // Switch to Soviet Retro theme (last theme in the list)
+                extern int currentThemeIndex;
+                extern const size_t NUM_COLOR_THEMES;
+                currentThemeIndex = NUM_COLOR_THEMES - 1;
+            } else {
+                std::cout << "✓ Retro mode deactivated" << std::endl;
+                app->window->setWindowTitle("Tetrimone");
+                board->setHeatLevel(0.0);  // Reset heat level
+            }
+            updateDisplay(app);
+        } else if (key == Qt::Key_Period) {
+            // Toggle patriot mode with period key
+            board->patrioticModeActive = !board->patrioticModeActive;
+            board->retroModeActive = false;
+            if (board->patrioticModeActive) {
+                std::cout << "✓ Patriot mode ACTIVATED - GOD BLESS AMERICA" << std::endl;
+                app->window->setWindowTitle("FREEDOM BLOCKS - GOD BLESS AMERICA");
+                // Switch to American Patriotic theme (second-to-last theme in the list)
+                extern int currentThemeIndex;
+                extern const size_t NUM_COLOR_THEMES;
+                currentThemeIndex = NUM_COLOR_THEMES - 2;
+            } else {
+                std::cout << "✓ Patriot mode deactivated" << std::endl;
+                app->window->setWindowTitle("Tetrimone");
+            }
             updateDisplay(app);
         } else if (key == Qt::Key_Escape) {
             if (board->isSplashScreenActive()) {
@@ -213,243 +713,205 @@ private:
     TetrimoneBoard* board;
     TetrimoneApp* app;
     QPixmap* backgroundPixmap;
-
-    void drawBackground(QPainter* painter, int width, int height) {
-        painter->fillRect(0, 0, width, height, Qt::black);
-    }
-
-    void drawBlock(QPainter* painter, int x, int y, int type) {
-        int px = x * BLOCK_SIZE;
-        int py = y * BLOCK_SIZE;
-        
-        std::array<double, 3> color = getTetrimineColor(type);
-        QColor blockColor(
-            static_cast<int>(color[0] * 255),
-            static_cast<int>(color[1] * 255),
-            static_cast<int>(color[2] * 255)
-        );
-        
-        painter->fillRect(px, py, BLOCK_SIZE, BLOCK_SIZE, blockColor);
-        painter->setPen(QColor(0, 0, 0, 128));
-        painter->drawRect(px, py, BLOCK_SIZE, BLOCK_SIZE);
-    }
-
-    void drawGhostPiece(QPainter* painter) {
-        if (!board->isGhostPieceEnabled()) return;
-        
-        // Draw semi-transparent ghost piece at landing position
-        int ghostY = board->getGhostPieceY();
-        const TetrimoneBlock* piece = board->getCurrentPiece();
-        if (!piece) return;
-        
-        int currentX = piece->getX();
-        std::vector<std::vector<int>> shape = piece->getShape();
-        
-        // Draw ghost blocks at ghostY position
-        for (size_t row = 0; row < shape.size(); row++) {
-            for (size_t col = 0; col < shape[row].size(); col++) {
-                if (shape[row][col]) {
-                    int x = currentX + col;
-                    int y = ghostY + row;
-                    if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-                        int px = x * BLOCK_SIZE;
-                        int py = y * BLOCK_SIZE;
-                        QColor ghostColor(128, 128, 128, 100);
-                        painter->fillRect(px, py, BLOCK_SIZE, BLOCK_SIZE, ghostColor);
-                        painter->setPen(QColor(64, 64, 64, 150));
-                        painter->drawRect(px, py, BLOCK_SIZE, BLOCK_SIZE);
-                    }
-                }
-            }
-        }
-    }
-
-    void drawCurrentPiece(QPainter* painter) {
-        const TetrimoneBlock* piece = board->getCurrentPiece();
-        if (!piece) return;
-        
-        int pieceType = piece->getType();
-        int currentX = piece->getX();
-        int currentY = piece->getY();
-        std::vector<std::vector<int>> shape = piece->getShape();
-        
-        for (size_t row = 0; row < shape.size(); row++) {
-            for (size_t col = 0; col < shape[row].size(); col++) {
-                if (shape[row][col]) {
-                    int x = currentX + col;
-                    int y = currentY + row;
-                    if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-                        drawBlock(painter, x, y, pieceType);
-                    }
-                }
-            }
-        }
-    }
-
-    void drawBlockTrails(QPainter* painter) {
-        // Draw particle trails if implemented in board
-        (void)painter;
-    }
-
-    void drawGridLines(QPainter* painter) {
-        painter->setPen(QPen(QColor(64, 64, 64), 1));
-        
-        for (int x = 0; x <= GRID_WIDTH; x++) {
-            painter->drawLine(x * BLOCK_SIZE, 0, x * BLOCK_SIZE, height());
-        }
-        
-        for (int y = 0; y <= GRID_HEIGHT; y++) {
-            painter->drawLine(0, y * BLOCK_SIZE, width(), y * BLOCK_SIZE);
-        }
-    }
-
-    void drawGameOverScreen(QPainter* painter) {
-        painter->fillRect(rect(), QColor(0, 0, 0, 200));
-        
-        painter->setPen(Qt::white);
-        QFont font = painter->font();
-        font.setPointSize(36);
-        font.setBold(true);
-        painter->setFont(font);
-        
-        painter->drawText(rect(), Qt::AlignCenter, "GAME OVER");
-        
-        font.setPointSize(14);
-        painter->setFont(font);
-        painter->setPen(Qt::yellow);
-        QRect scoreRect = rect();
-        scoreRect.setTop(rect().center().y() + 40);
-        painter->drawText(scoreRect, Qt::AlignCenter, 
-            QString("Score: %1\nPress Space to restart").arg(board->getScore()));
-    }
-
-    void drawPauseScreen(QPainter* painter) {
-        painter->fillRect(rect(), QColor(0, 0, 0, 180));
-        
-        painter->setPen(Qt::white);
-        QFont font = painter->font();
-        font.setPointSize(32);
-        font.setBold(true);
-        painter->setFont(font);
-        
-        painter->drawText(rect(), Qt::AlignCenter, "PAUSED");
-    }
-
-    void drawSplashScreen(QPainter* painter) {
-        painter->fillRect(rect(), QColor(0, 0, 0, 220));
-        
-        painter->setPen(Qt::white);
-        QFont font = painter->font();
-        font.setPointSize(28);
-        font.setBold(true);
-        painter->setFont(font);
-        
-        QRect titleRect = rect();
-        titleRect.setHeight(100);
-        painter->drawText(titleRect, Qt::AlignCenter, "TETRIMONE");
-        
-        font.setPointSize(12);
-        painter->setFont(font);
-        painter->setPen(Qt::cyan);
-        
-        QString instructions = "Press SPACE to start\n\n"
-                             "Controls:\n"
-                             "Arrow Keys or WASD - Move\n"
-                             "SPACE - Rotate\n"
-                             "Z - Rotate Counter-Clockwise\n"
-                             "P - Pause\n";
-        
-        QRect instructRect = rect();
-        instructRect.setTop(120);
-        painter->drawText(instructRect, Qt::AlignCenter, instructions);
-    }
-
-    std::array<double, 3> getTetrimineColor(int type) {
-        const std::array<double, 3> colors[] = {
-            {0.0, 1.0, 1.0},  // I - Cyan
-            {1.0, 1.0, 0.0},  // O - Yellow
-            {1.0, 0.0, 1.0},  // T - Magenta
-            {0.0, 1.0, 0.0},  // S - Green
-            {1.0, 0.0, 0.0},  // Z - Red
-            {0.0, 0.0, 1.0},  // J - Blue
-            {1.0, 0.5, 0.0}   // L - Orange
-        };
-        return colors[std::min(type - 1, 6)];
-    }
 };
 
 // ============================================================================
-// Qt5 Next Piece Widget
+// Qt5 Next Piece Widget with SDL Rendering (3D Blocks)
 // ============================================================================
 
 class NextPieceWidget : public QWidget {
 public:
-    explicit NextPieceWidget(TetrimoneBoard* board, QWidget* parent = nullptr)
-        : QWidget(parent), board(board) {
-        setMinimumSize(150, 150);
+    explicit NextPieceWidget(TetrimoneBoard* board, TetrimoneApp* app, QWidget* parent = nullptr)
+        : QWidget(parent), board(board), app(app) {
+        setMinimumSize(150, 350);
+        setMaximumSize(150, 350);
     }
 
 protected:
     void paintEvent(QPaintEvent* event) override {
         if (!board) return;
         
-        QPainter painter(this);
-        painter.fillRect(rect(), Qt::black);
+        int w = width();
+        int h = height();
         
-        painter.setPen(Qt::white);
-        QFont font = painter.font();
-        font.setPointSize(12);
-        font.setBold(true);
-        painter.setFont(font);
-        
-        painter.drawText(10, 25, "Next Piece:");
-        
-        // Draw next piece preview
-        const TetrimoneBlock* nextBlock = board->getNextPiece(0);
-        if (!nextBlock) return;
-        
-        int nextType = nextBlock->getType();
-        std::vector<std::vector<int>> nextShape = nextBlock->getShape();
-        
-        int previewX = 20;
-        int previewY = 50;
-        int blockSize = 20;
-        
-        for (size_t row = 0; row < nextShape.size(); row++) {
-            for (size_t col = 0; col < nextShape[row].size(); col++) {
-                if (nextShape[row][col]) {
-                    int px = previewX + col * blockSize;
-                    int py = previewY + row * blockSize;
-                    
-                    std::array<double, 3> color = getTetrimineColor(nextType);
-                    QColor blockColor(
-                        static_cast<int>(color[0] * 255),
-                        static_cast<int>(color[1] * 255),
-                        static_cast<int>(color[2] * 255)
-                    );
-                    
-                    painter.fillRect(px, py, blockSize, blockSize, blockColor);
-                    painter.setPen(QColor(0, 0, 0, 128));
-                    painter.drawRect(px, py, blockSize, blockSize);
+        // Use GPU renderer if available
+        if (app && app->sdlCairoRenderer) {
+            app->sdlCairoRenderer->clearCairoSurface(0.15, 0.15, 0.2, 1.0);
+            cairo_t* cr = app->sdlCairoRenderer->getCairoContext();
+            
+            // Draw title
+            cairo_set_source_rgb(cr, 1, 1, 1);
+            cairo_select_font_face(cr, "monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+            cairo_set_font_size(cr, 16);
+            cairo_move_to(cr, 10, 25);
+            cairo_show_text(cr, "Next:");
+            
+            int previewStartY = 50;
+            int spaceBetween = 80;
+            int blockSize = 15;
+            int previewX = 25;
+            
+            int validPieceCount = 0;
+            for (int pieceIndex = 0; pieceIndex < 3; pieceIndex++) {
+                const TetrimoneBlock* nextBlock = board->getNextPiece(pieceIndex);
+                if (!nextBlock || !nextBlock->isValid()) {
+                    continue;
                 }
+                
+                int nextType = nextBlock->getType();
+                std::vector<std::vector<int>> nextShape = nextBlock->getShape();
+                
+                int previewY = previewStartY + (validPieceCount * spaceBetween);
+                
+                // Draw label
+                cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
+                cairo_set_font_size(cr, 10);
+                std::string label = "#" + std::to_string(validPieceCount + 1);
+                cairo_move_to(cr, 10, previewY + 5);
+                cairo_show_text(cr, label.c_str());
+                
+                // Draw piece with 3D effect
+                for (size_t row = 0; row < nextShape.size(); row++) {
+                    for (size_t col = 0; col < nextShape[row].size(); col++) {
+                        if (nextShape[row][col]) {
+                            int px = previewX + col * blockSize;
+                            int py = previewY + row * blockSize;
+                            
+                            std::array<double, 3> color = getTetrimineColor(nextType);
+                            
+                            // Main block
+                            cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+                            cairo_rectangle(cr, px + 1, py + 1, blockSize - 2, blockSize - 2);
+                            cairo_fill(cr);
+                            
+                            // 3D highlight
+                            cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
+                            cairo_move_to(cr, px + 1, py + 1);
+                            cairo_line_to(cr, px + blockSize - 1, py + 1);
+                            cairo_line_to(cr, px + 1, py + blockSize - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                            
+                            // 3D shadow
+                            cairo_set_source_rgba(cr, 0, 0, 0, 0.3);
+                            cairo_move_to(cr, px + blockSize - 1, py + 1);
+                            cairo_line_to(cr, px + blockSize - 1, py + blockSize - 1);
+                            cairo_line_to(cr, px + 1, py + blockSize - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                        }
+                    }
+                }
+                validPieceCount++;
             }
+            
+            app->sdlCairoRenderer->syncSurfaceToTexture();
+            app->sdlCairoRenderer->present();
+        } else {
+            // Fallback: Qt rendering
+            SDL_Surface* surface = SDL_CreateRGBSurface(0, w, h, 32,
+                0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+            
+            if (!surface) return;
+            
+            cairo_surface_t* cairo_surface = cairo_image_surface_create_for_data(
+                (unsigned char*)surface->pixels,
+                CAIRO_FORMAT_ARGB32,
+                w, h,
+                surface->pitch
+            );
+            
+            cairo_t* cr = cairo_create(cairo_surface);
+            
+            cairo_set_source_rgb(cr, 0.15, 0.15, 0.2);
+            cairo_rectangle(cr, 0, 0, w, h);
+            cairo_fill(cr);
+            
+            cairo_set_source_rgb(cr, 1, 1, 1);
+            cairo_select_font_face(cr, "monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+            cairo_set_font_size(cr, 16);
+            cairo_move_to(cr, 10, 25);
+            cairo_show_text(cr, "Next:");
+            
+            int previewStartY = 50;
+            int spaceBetween = 80;
+            int blockSize = 15;
+            int previewX = 25;
+            
+            int validPieceCount = 0;
+            for (int pieceIndex = 0; pieceIndex < 3; pieceIndex++) {
+                const TetrimoneBlock* nextBlock = board->getNextPiece(pieceIndex);
+                if (!nextBlock || !nextBlock->isValid()) {
+                    continue;
+                }
+                
+                int nextType = nextBlock->getType();
+                std::vector<std::vector<int>> nextShape = nextBlock->getShape();
+                
+                int previewY = previewStartY + (validPieceCount * spaceBetween);
+                
+                cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
+                cairo_set_font_size(cr, 10);
+                std::string label = "#" + std::to_string(validPieceCount + 1);
+                cairo_move_to(cr, 10, previewY + 5);
+                cairo_show_text(cr, label.c_str());
+                
+                for (size_t row = 0; row < nextShape.size(); row++) {
+                    for (size_t col = 0; col < nextShape[row].size(); col++) {
+                        if (nextShape[row][col]) {
+                            int px = previewX + col * blockSize;
+                            int py = previewY + row * blockSize;
+                            
+                            std::array<double, 3> color = getTetrimineColor(nextType);
+                            
+                            cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+                            cairo_rectangle(cr, px + 1, py + 1, blockSize - 2, blockSize - 2);
+                            cairo_fill(cr);
+                            
+                            cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
+                            cairo_move_to(cr, px + 1, py + 1);
+                            cairo_line_to(cr, px + blockSize - 1, py + 1);
+                            cairo_line_to(cr, px + 1, py + blockSize - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                            
+                            cairo_set_source_rgba(cr, 0, 0, 0, 0.3);
+                            cairo_move_to(cr, px + blockSize - 1, py + 1);
+                            cairo_line_to(cr, px + blockSize - 1, py + blockSize - 1);
+                            cairo_line_to(cr, px + 1, py + blockSize - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                        }
+                    }
+                }
+                validPieceCount++;
+            }
+            
+            QImage img((uchar*)surface->pixels, w, h, surface->pitch, QImage::Format_ARGB32);
+            QPainter painter(this);
+            painter.drawImage(0, 0, img);
+            
+            cairo_destroy(cr);
+            cairo_surface_destroy(cairo_surface);
+            SDL_FreeSurface(surface);
         }
-
+        
         (void)event;
     }
 
 private:
     TetrimoneBoard* board;
+    TetrimoneApp* app;
 
     std::array<double, 3> getTetrimineColor(int type) {
         const std::array<double, 3> colors[] = {
-            {0.0, 1.0, 1.0},  // I - Cyan
-            {1.0, 1.0, 0.0},  // O - Yellow
-            {1.0, 0.0, 1.0},  // T - Magenta
-            {0.0, 1.0, 0.0},  // S - Green
-            {1.0, 0.0, 0.0},  // Z - Red
-            {0.0, 0.0, 1.0},  // J - Blue
-            {1.0, 0.5, 0.0}   // L - Orange
+            {0.0, 1.0, 1.0},
+            {1.0, 1.0, 0.0},
+            {1.0, 0.0, 1.0},
+            {0.0, 1.0, 0.0},
+            {1.0, 0.0, 0.0},
+            {0.0, 0.0, 1.0},
+            {1.0, 0.5, 0.0}
         };
         return colors[std::min(type - 1, 6)];
     }
@@ -476,7 +938,6 @@ void onKeyDownTick(TetrimoneApp* app) {
             keyDownDelay = 60;
         }
         
-        // Schedule next tick using Qt timer
         QTimer::singleShot(keyDownDelay, [app]() { onKeyDownTick(app); });
         
         updateDisplay(app);
@@ -545,15 +1006,104 @@ void onKeyRightTick(TetrimoneApp* app) {
 void onGameTick(TetrimoneApp* app) {
     if (!app || !app->board) return;
     
+    // Update background transition if active
+    if (app->board->isInBackgroundTransition()) {
+        app->board->updateBackgroundTransition();
+    }
+    
     if (!app->board->isPaused() && !app->board->isGameOver() && 
         !app->board->isSplashScreenActive()) {
         
-        app->board->movePiece(0, 1);
+        if (!app->board->movePiece(0, 1)) {
+            app->board->lockPiece();
+            int linesCleared = app->board->clearLines();
+            app->board->generateNewPiece();
+            
+            // Show propaganda/freedom messages when lines are cleared
+            if (linesCleared > 0) {
+                if (app->board->retroModeActive) {
+                    QTimer::singleShot(1500, [app]() {
+                        showIdeologicalFailureDialog(app);
+                    });
+                }
+                if (app->board->patrioticModeActive) {
+                    QTimer::singleShot(1500, [app]() {
+                        showPatrioticPerformanceDialog(app);
+                    });
+                }
+            }
+        }
+        
+        // Random KGB inspection during retro mode
+        if (!app->board->isPaused() && !app->board->isGameOver() && app->board->retroModeActive) {
+            static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
+            std::uniform_int_distribution<int> dist(1, 1000);
+            
+            if (dist(rng) == 1) {
+                app->board->setPaused(true);
+                
+                QMessageBox* dialog = new QMessageBox(QMessageBox::Warning,
+                    "КГБ ИНСПЕКЦИЯ",
+                    "КГБ ИНСПЕКЦИЯ В ПРОЦЕССЕ...\n(KGB INSPECTION IN PROGRESS...)",
+                    QMessageBox::NoButton,
+                    qobject_cast<QWidget*>(app->window));
+                dialog->show();
+                
+                QTimer::singleShot(2000, [dialog]() {
+                    dialog->close();
+                    dialog->deleteLater();
+                });
+                
+                QTimer::singleShot(2100, [app]() {
+                    app->board->setPaused(false);
+                });
+            }
+        }
+        
+        // Random freedom inspection during patriotic mode
+        if (!app->board->isPaused() && !app->board->isGameOver() && app->board->patrioticModeActive) {
+            static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
+            std::uniform_int_distribution<int> dist(1, 1776);
+            
+            if (dist(rng) == 1) {
+                app->board->setPaused(true);
+                
+                const char* freedomInspections[] = {
+                    "🇺🇸 FREEDOM INSPECTION IN PROGRESS! 🦅\n(Checking your liberty levels...)",
+                    "📺 COMMERCIAL BREAK! 🍔\n(This freedom brought to you by sponsors!)",
+                    "🏈 TOUCHDOWN! AMERICA SCORES! 🎯\n(Brief patriotic celebration pause!)",
+                    "☕ COFFEE BREAK TIME! ⏰\n(Even freedom fighters need caffeine!)",
+                    "📱 SOCIAL MEDIA NOTIFICATION! 💬\n(Someone liked your freedom post!)",
+                    "🛒 FLASH SALE ALERT! 💳\n(50% off freedom accessories!)",
+                    "🎬 MOVIE TRAILER PREVIEW! 🍿\n(Coming soon: BLOCKS 2: FREEDOM EDITION!)",
+                    "🚗 TRAFFIC UPDATE! 🛣️\n(Highway to freedom temporarily slowed!)",
+                    "🌮 FOOD TRUCK ALERT! 🚚\n(Taco Tuesday freedom fuel available!)",
+                    "📺 BREAKING NEWS! 📰\n(Local gamer achieves blocks and liberty!)"
+                };
+                
+                std::uniform_int_distribution<int> msgDist(0, 9);
+                const char* selectedMessage = freedomInspections[msgDist(rng)];
+                
+                QMessageBox* dialog = new QMessageBox(QMessageBox::Information,
+                    "FREEDOM INSPECTION",
+                    selectedMessage,
+                    QMessageBox::NoButton,
+                    qobject_cast<QWidget*>(app->window));
+                dialog->show();
+                
+                QTimer::singleShot(2500, [dialog]() {
+                    dialog->close();
+                    dialog->deleteLater();
+                });
+                
+                QTimer::singleShot(2600, [app]() {
+                    app->board->setPaused(false);
+                });
+            }
+        }
         
         if (app->board->isGameOver()) {
-            // Game over logic
             if (app->board->isSoundEnabled()) {
-                // Play game over sound if available
             }
         }
     }
@@ -569,16 +1119,67 @@ void onGameTick(TetrimoneApp* app) {
 void updateLabels(TetrimoneApp* app) {
     if (!app || !app->board) return;
     
+    // Update score label with Soviet-style text in retro mode
+    QString scoreText;
+    if (app->board->retroModeActive) {
+        scoreText = QString("Партийная Лояльность: %1%").arg(app->board->getScore());
+    } else {
+        scoreText = QString("Score: %1").arg(app->board->getScore());
+    }
     if (app->scoreLabel) {
-        app->scoreLabel->setText(QString("Score: %1").arg(app->board->getScore()));
-    }
-    if (app->levelLabel) {
-        app->levelLabel->setText(QString("Level: %1").arg(app->board->getLevel()));
-    }
-    if (app->linesLabel) {
-        app->linesLabel->setText(QString("Lines: %1").arg(app->board->getLinesCleared()));
+        app->scoreLabel->setText(scoreText);
     }
     
+    // Update level label with Soviet-style text in retro mode
+    QString levelText;
+    if (app->board->retroModeActive) {
+        levelText = QString("Пятилетка: %1").arg(app->board->getLevel());
+    } else {
+        levelText = QString("Level: %1").arg(app->board->getLevel());
+    }
+    if (app->levelLabel) {
+        app->levelLabel->setText(levelText);
+    }
+    
+    // Update lines label with Soviet propaganda in retro mode
+    QString linesText;
+    if (app->board->retroModeActive) {
+        linesText = QString("Уничтожено врагов народа: %1").arg(app->board->getLinesCleared());
+    } else {
+        linesText = QString("Lines: %1").arg(app->board->getLinesCleared());
+    }
+    if (app->linesLabel) {
+        app->linesLabel->setText(linesText);
+    }
+    
+    // Update sequence label
+    QString sequenceText;
+    if (app->board->isSequenceActive() && app->board->getConsecutiveClears() > 1) {
+        if (app->board->retroModeActive) {
+            sequenceText = QString("Коллективная эффективность: %1 (Рекорд: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        } else {
+            sequenceText = QString("Sequence: %1 (Max: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        }
+    } else {
+        if (app->board->retroModeActive) {
+            sequenceText = QString("Коллективная эффективность: %1 (Рекорд: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        } else {
+            sequenceText = QString("Sequence: %1 (Max: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        }
+    }
+    if (app->sequenceLabel) {
+        app->sequenceLabel->setText(sequenceText);
+    }
+    
+    // Update difficulty label
     if (app->difficultyLabel) {
         QString difficulty;
         switch (app->difficulty) {
@@ -590,6 +1191,93 @@ void updateLabels(TetrimoneApp* app) {
             default: difficulty = "Unknown"; break;
         }
         app->difficultyLabel->setText(QString("Difficulty: %1").arg(difficulty));
+    }
+    
+    // Update controls label with all stats and controls like GTK3
+    if (app->controlsLabel) {
+        QString difficulty;
+        switch (app->difficulty) {
+            case 0: difficulty = "Zen"; break;
+            case 1: difficulty = "Easy"; break;
+            case 2: difficulty = "Medium"; break;
+            case 3: difficulty = "Hard"; break;
+            case 4: difficulty = "Extreme"; break;
+            default: difficulty = "Unknown"; break;
+        }
+        
+        QString scoreText;
+        if (app->board->retroModeActive) {
+            scoreText = QString("Партийная Лояльность: %1%").arg(app->board->getScore());
+        } else {
+            scoreText = QString("Score: %1").arg(app->board->getScore());
+        }
+        
+        QString levelText;
+        if (app->board->retroModeActive) {
+            levelText = QString("Пятилетка: %1").arg(app->board->getLevel());
+        } else {
+            levelText = QString("Level: %1").arg(app->board->getLevel());
+        }
+        
+        QString linesText;
+        if (app->board->retroModeActive) {
+            linesText = QString("Уничтожено врагов народа: %1").arg(app->board->getLinesCleared());
+        } else {
+            linesText = QString("Lines: %1").arg(app->board->getLinesCleared());
+        }
+        
+        QString sequenceText;
+        if (app->board->retroModeActive) {
+            sequenceText = QString("Коллективная эффективность: %1 (Рекорд: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        } else {
+            sequenceText = QString("Sequence: %1 (Max: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        }
+        
+        QString controlsText;
+        if (app->board->retroModeActive) {
+            controlsText = QString(
+                "%1\n"
+                "%2\n"
+                "%3\n"
+                "%4\n"
+                "Партийные Директивы: %5\n\n"
+                "Управление клавиатурой:\n"
+                "• Влево/Вправо/A/D: Переместить блок\n"
+                "• Вверх/W: Повернуть по часовой\n"
+                "• Z: Повернуть против часовой\n"
+                "• Вниз/S: Мягкое падение\n"
+                "• Пробел: Жёсткое падение\n"
+                "• P: Пауза/Возобновить\n"
+                "• R: Перезагрузить игру\n"
+                "• M: Включить музыку\n\n"
+                "Поддержка контроллера доступна.\n"
+                "Настройте в меню управления."
+            ).arg(scoreText, levelText, linesText, sequenceText, difficulty);
+        } else {
+            controlsText = QString(
+                "%1\n"
+                "%2\n"
+                "%3\n"
+                "%4\n"
+                "Difficulty: %5\n\n"
+                "Keyboard Controls:\n"
+                "• Left/Right/A/D: Move block\n"
+                "• Up/W: Rotate clockwise\n"
+                "• Z: Rotate counter-clockwise\n"
+                "• Down/S: Soft drop\n"
+                "• Space: Hard drop\n"
+                "• P: Pause/Resume game\n"
+                "• R: Restart game\n"
+                "• M: Toggle music\n\n"
+                "Controller support is available.\n"
+                "Configure in Controls menu."
+            ).arg(scoreText, levelText, linesText, sequenceText, difficulty);
+        }
+        app->controlsLabel->setText(controlsText);
     }
 }
 
@@ -644,7 +1332,11 @@ void cleanupApp(TetrimoneApp* app) {
         app->board->pauseBackgroundMusic();
     }
     
-    // Qt handles cleanup automatically with parent/child relationships
+    if (app->sdlCairoRenderer) {
+        app->sdlCairoRenderer->cleanup();
+        delete app->sdlCairoRenderer;
+        app->sdlCairoRenderer = nullptr;
+    }
 }
 
 // ============================================================================
@@ -680,21 +1372,14 @@ void onQuitGameAction(TetrimoneApp* app) {
 void onSoundToggleAction(TetrimoneApp* app, bool enabled) {
     if (app->board) {
         app->board->setSoundEnabled(enabled);
+        std::cout << (enabled ? "✓ Sound enabled" : "✓ Sound disabled") << std::endl;
     }
 }
 
 void onDifficultyChanged(TetrimoneApp* app, int difficulty) {
     app->difficulty = difficulty;
-    // Difficulty affects level progression - note: actual difficulty logic is in game loop
     updateLabels(app);
 }
-
-// ============================================================================
-// Dialog Handlers - Implemented in help.cpp
-// ============================================================================
-// Forward declarations - actual implementations are in help.cpp
-// void onAboutDialog(void* menuItem, void* userData);
-// void onInstructionsDialog(void* menuItem, void* userData);
 
 // ============================================================================
 // Qt5-specific TetrimoneWindow Class
@@ -734,21 +1419,131 @@ private:
 };
 
 // ============================================================================
+// GPU Rendering Functions
+// ============================================================================
+
+void initGPURenderer(TetrimoneApp* app, int width, int height) {
+    if (!app || !app->useGPUAcceleration) return;
+    
+    if (app->sdlCairoRenderer) {
+        delete app->sdlCairoRenderer;
+    }
+    
+    app->sdlCairoRenderer = new SDLCairoRenderer(width, height);
+    
+    if (app->sdlCairoRenderer->init("Tetrimone - GPU Accelerated", 
+                                     SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN)) {
+        std::cout << "✓ GPU-accelerated rendering enabled (OpenGL)" << std::endl;
+    } else {
+        std::cerr << "Failed to initialize GPU renderer, falling back to CPU" << std::endl;
+        delete app->sdlCairoRenderer;
+        app->sdlCairoRenderer = nullptr;
+        app->useGPUAcceleration = false;
+    }
+}
+
+void shutdownGPURenderer(TetrimoneApp* app) {
+    if (!app) return;
+    
+    if (app->sdlCairoRenderer) {
+        app->sdlCairoRenderer->cleanup();
+        delete app->sdlCairoRenderer;
+        app->sdlCairoRenderer = nullptr;
+    }
+}
+
+void renderFrameGPU(TetrimoneApp* app) {
+    if (!app || !app->sdlCairoRenderer || !app->board) return;
+    
+    app->sdlCairoRenderer->clearCairoSurface(0, 0, 0, 1.0);
+    cairo_t* cr = app->sdlCairoRenderer->getCairoContext();
+    
+    drawGridLines(cr, app->board);
+    drawPlacedBlocks(cr, app->board, app);
+    drawCurrentPiece(cr, app->board);
+    drawGhostPiece(cr, app->board);
+    drawBlockTrails(cr, app->board);
+    drawGameOver(cr, app->board);
+    drawPauseMenu(cr, app->board);
+    if (app->board->isSplashScreenActive()) {
+        drawSplashScreen(cr, app->board, app);
+    }
+    drawFireworks(cr, app->board, app);
+    
+    app->sdlCairoRenderer->syncSurfaceToTexture();
+    app->sdlCairoRenderer->present();
+}
+
+// ============================================================================
 // Application Initialization - Qt5
 // ============================================================================
 
 void onAppActivate(TetrimoneApp* app) {
     if (!app) return;
     
-    // Initialize the game UI
     setupGameUI(app, 800, 600);
     
-    // Show the window
+    // Initialize audio system after board is created
+    if (app->board) {
+        std::cout << "\n=== AUDIO INITIALIZATION ===" << std::endl;
+        
+        // First enable sound if it's not already
+        std::cout << "Step 1: Enabling sound..." << std::endl;
+        app->board->setSoundEnabled(true);
+        std::cout << "  Sound enabled state: " << (app->board->isSoundEnabled() ? "TRUE" : "FALSE") << std::endl;
+        
+        // Get sound zip path from command line args if available
+        std::string soundZipPath = "sound.zip";
+        if (app->cmdlineArgs && !app->cmdlineArgs->soundZip.empty()) {
+            soundZipPath = app->cmdlineArgs->soundZip;
+            std::cout << "Step 2: Using sound.zip from command line: " << soundZipPath << std::endl;
+        } else {
+            std::cout << "Step 2: No command line arg, using default: " << soundZipPath << std::endl;
+        }
+        
+        // Check if file exists
+        std::ifstream checkFile(soundZipPath);
+        if (checkFile.good()) {
+            std::cout << "Step 3: ✓ sound.zip file exists" << std::endl;
+            checkFile.close();
+        } else {
+            std::cout << "Step 3: ✗ sound.zip file NOT found at: " << soundZipPath << std::endl;
+        }
+        
+        // Set the sounds zip path
+        std::cout << "Step 4: Setting sounds zip path..." << std::endl;
+        std::cout << "  Before setSoundsZipPath - sound enabled: " << (app->board->isSoundEnabled() ? "TRUE" : "FALSE") << std::endl;
+        std::cout << "  Calling setSoundsZipPath(\"" << soundZipPath << "\")..." << std::endl;
+        
+        bool setPathResult = app->board->setSoundsZipPath(soundZipPath);
+        std::cout << "  setSoundsZipPath returned: " << (setPathResult ? "TRUE" : "FALSE") << std::endl;
+        
+        if (setPathResult) {
+            std::cout << "Step 4: ✓ setSoundsZipPath succeeded" << std::endl;
+        } else {
+            std::cout << "Step 4: ✗ setSoundsZipPath failed" << std::endl;
+            std::cout << "  This usually means initializeAudio() failed inside setSoundsZipPath" << std::endl;
+        }
+        
+        // Initialize audio
+        std::cout << "Step 5: Calling initializeAudio()..." << std::endl;
+        bool audioInit = app->board->initializeAudio();
+        std::cout << "  initializeAudio returned: " << (audioInit ? "TRUE" : "FALSE") << std::endl;
+        
+        if (audioInit) {
+            std::cout << "Step 5: ✓ Audio system initialized successfully" << std::endl;
+        } else {
+            std::cerr << "Step 5: ✗ Audio initialization failed" << std::endl;
+            std::cerr << "  Check if sound.zip is valid and contains required audio files" << std::endl;
+        }
+        
+        std::cout << "=== AUDIO INITIALIZATION COMPLETE ===" << std::endl << std::endl;
+    }
+    
     if (app->window) {
         app->window->show();
     }
     
-    // Show splash screen
     if (app->board) {
         app->board->setSplashScreenActive(true);
     }
@@ -759,15 +1554,13 @@ void onAppActivate(TetrimoneApp* app) {
 void rebuildGameUI(TetrimoneApp* app) {
     if (!app || !app->window) return;
     
-    // Rebuild the game area widget with new settings
-    // This is called when settings like block size or grid dimensions change
     updateDisplay(app);
 }
 
 void setupMenuBar(TetrimoneApp* app) {
     if (!app || !app->menuBar) return;
     
-    // File Menu
+    // ===== FILE MENU =====
     QMenu* fileMenu = app->menuBar->addMenu("&File");
     
     app->startMenuItem = fileMenu->addAction("&Start Game");
@@ -792,72 +1585,263 @@ void setupMenuBar(TetrimoneApp* app) {
         onQuitGameAction(app);
     });
     
-    // Game Menu
+    // ===== GAME MENU =====
     QMenu* gameMenu = app->menuBar->addMenu("&Game");
     
     // Difficulty submenu
     QMenu* difficultyMenu = gameMenu->addMenu("&Difficulty");
     QActionGroup* difficultyGroup = new QActionGroup(difficultyMenu);
     
-    const char* difficultyNames[] = {"Zen", "Easy", "Medium", "Hard", "Extreme"};
-    for (int i = 0; i < 5; i++) {
-        QAction* action = difficultyMenu->addAction(difficultyNames[i]);
-        action->setCheckable(true);
-        action->setActionGroup(difficultyGroup);
-        if (i == app->difficulty) action->setChecked(true);
-        
-        QObject::connect(action, &QAction::triggered, [app, i]() {
-            onDifficultyChanged(app, i);
+    const char* difficultyNames[] = {"Zen", "Easy", "Medium", "Hard", "Extreme", "Insane"};
+    app->zenMenuItem = difficultyMenu->addAction("Zen");
+    app->zenMenuItem->setCheckable(true);
+    app->zenMenuItem->setActionGroup(difficultyGroup);
+    QObject::connect(app->zenMenuItem, &QAction::triggered, [app]() {
+        onDifficultyChanged(app, 0);
+    });
+    
+    app->easyMenuItem = difficultyMenu->addAction("Easy");
+    app->easyMenuItem->setCheckable(true);
+    app->easyMenuItem->setActionGroup(difficultyGroup);
+    QObject::connect(app->easyMenuItem, &QAction::triggered, [app]() {
+        onDifficultyChanged(app, 1);
+    });
+    
+    app->mediumMenuItem = difficultyMenu->addAction("Medium");
+    app->mediumMenuItem->setCheckable(true);
+    app->mediumMenuItem->setActionGroup(difficultyGroup);
+    app->mediumMenuItem->setChecked(true);
+    QObject::connect(app->mediumMenuItem, &QAction::triggered, [app]() {
+        onDifficultyChanged(app, 2);
+    });
+    
+    app->hardMenuItem = difficultyMenu->addAction("Hard");
+    app->hardMenuItem->setCheckable(true);
+    app->hardMenuItem->setActionGroup(difficultyGroup);
+    QObject::connect(app->hardMenuItem, &QAction::triggered, [app]() {
+        onDifficultyChanged(app, 3);
+    });
+    
+    app->extremeMenuItem = difficultyMenu->addAction("Extreme");
+    app->extremeMenuItem->setCheckable(true);
+    app->extremeMenuItem->setActionGroup(difficultyGroup);
+    QObject::connect(app->extremeMenuItem, &QAction::triggered, [app]() {
+        onDifficultyChanged(app, 4);
+    });
+    
+    app->insaneMenuItem = difficultyMenu->addAction("Insane");
+    app->insaneMenuItem->setCheckable(true);
+    app->insaneMenuItem->setActionGroup(difficultyGroup);
+    QObject::connect(app->insaneMenuItem, &QAction::triggered, [app]() {
+        onDifficultyChanged(app, 5);
+    });
+    
+    gameMenu->addSeparator();
+    
+    app->highScoresMenuItem = gameMenu->addAction("&High Scores");
+    QObject::connect(app->highScoresMenuItem, &QAction::triggered, [app]() {
+        onViewHighScores(app);
+    });
+    
+    gameMenu->addSeparator();
+    
+    app->gameSetupMenuItem = gameMenu->addAction("&Game Setup");
+    QObject::connect(app->gameSetupMenuItem, &QAction::triggered, [app]() {
+        onGameSetupDialog(app);
+    });
+    
+    app->resetSettingsMenuItem = gameMenu->addAction("&Reset Settings");
+    QObject::connect(app->resetSettingsMenuItem, &QAction::triggered, [app]() {
+        onResetSettings(app);
+    });
+    
+    // ===== GRAPHICS MENU =====
+    QMenu* graphicsMenu = app->menuBar->addMenu("&Graphics");
+    
+    // Block Size
+    app->blockSizeMenuItem = graphicsMenu->addAction("&Block Size...");
+    QObject::connect(app->blockSizeMenuItem, &QAction::triggered, [app]() {
+        onBlockSizeDialog(app);
+    });
+    
+    // Game Size
+    app->gameSizeMenuItem = graphicsMenu->addAction("&Game Size...");
+    QObject::connect(app->gameSizeMenuItem, &QAction::triggered, [app]() {
+        onGameSizeDialog(app);
+    });
+    
+    graphicsMenu->addSeparator();
+    
+    // Background submenu
+    QMenu* backgroundMenu = graphicsMenu->addMenu("&Background");
+    
+    app->backgroundImageMenuItem = backgroundMenu->addAction("&Set Image...");
+    QObject::connect(app->backgroundImageMenuItem, &QAction::triggered, [app]() {
+        onBackgroundImageDialog(app);
+    });
+    
+    app->backgroundImagesMenuItem = backgroundMenu->addAction("&Browse Images...");
+    QObject::connect(app->backgroundImagesMenuItem, &QAction::triggered, [app]() {
+        onBackgroundImagesDialog(app);
+    });
+    
+    app->backgroundZipMenuItem = backgroundMenu->addAction("&Load from ZIP...");
+    QObject::connect(app->backgroundZipMenuItem, &QAction::triggered, [app]() {
+        onBackgroundZipDialog(app);
+    });
+    
+    app->backgroundOpacityMenuItem = backgroundMenu->addAction("&Opacity...");
+    QObject::connect(app->backgroundOpacityMenuItem, &QAction::triggered, [app]() {
+        onBackgroundOpacityDialog(app);
+    });
+    
+    backgroundMenu->addSeparator();
+    
+    app->backgroundToggleMenuItem_Display = backgroundMenu->addAction("&Enable Background");
+    app->backgroundToggleMenuItem_Display->setCheckable(true);
+    app->backgroundToggleMenuItem_Display->setChecked(true);
+    QObject::connect(app->backgroundToggleMenuItem_Display, &QAction::triggered, [app](bool checked) {
+        onBackgroundToggled(app, checked);
+    });
+    
+    graphicsMenu->addSeparator();
+    
+    // Color Themes submenu
+    QMenu* themeMenu = graphicsMenu->addMenu("&Color Themes");
+    QActionGroup* themeGroup = new QActionGroup(themeMenu);
+    
+    const char* themeNames[] = {
+        "Watercolor", "Neon", "Pastel", "Earth Tones", "Monochrome Blue",
+        "Monochrome Green", "Sunset", "Ocean", "Grayscale", "Candy",
+        "Neon Dark", "Jewel Tones", "Retro Gaming", "Autumn", "Winter",
+        "Spring", "Summer", "Monochrome Purple", "Desert", "Rainbow",
+        "Art Deco", "Northern Lights", "Moroccan Tiles", "Bioluminescence", "Fossil",
+        "Silk Road", "Digital Glitch", "Botanical", "Jazz Age", "Steampunk", "USA"
+    };
+    
+    for (int i = 0; i < 31; i++) {
+        app->themeMenuItems[i] = themeMenu->addAction(themeNames[i]);
+        app->themeMenuItems[i]->setCheckable(true);
+        app->themeMenuItems[i]->setActionGroup(themeGroup);
+        if (i == currentThemeIndex) {
+            app->themeMenuItems[i]->setChecked(true);
+        }
+        QObject::connect(app->themeMenuItems[i], &QAction::triggered, [app, i]() {
+            onThemeChanged(app, i);
         });
     }
     
-    // Sound Menu
-    QMenu* soundMenu = gameMenu->addMenu("&Sound");
-    app->soundToggleMenuItem = soundMenu->addAction("&Enabled");
+    graphicsMenu->addSeparator();
+    
+    // Display options
+    app->ghostPieceMenuItem = graphicsMenu->addAction("&Show Ghost Piece");
+    app->ghostPieceMenuItem->setCheckable(true);
+    if (app->board) {
+        app->ghostPieceMenuItem->setChecked(app->board->isGhostPieceEnabled());
+    }
+    QObject::connect(app->ghostPieceMenuItem, &QAction::triggered, [app](bool checked) {
+        onGhostPieceToggled(app, checked);
+    });
+    
+    app->gridLinesMenuItem = graphicsMenu->addAction("&Grid Lines");
+    app->gridLinesMenuItem->setCheckable(true);
+    if (app->board) {
+        app->gridLinesMenuItem->setChecked(app->board->isShowingGridLines());
+    }
+    QObject::connect(app->gridLinesMenuItem, &QAction::triggered, [app](bool checked) {
+        onGridLinesToggled(app, checked);
+    });
+    
+    app->blockTrailsMenuItem = graphicsMenu->addAction("&Block Trails");
+    app->blockTrailsMenuItem->setCheckable(true);
+    if (app->board) {
+        app->blockTrailsMenuItem->setChecked(app->board->isTrailsEnabled());
+    }
+    QObject::connect(app->blockTrailsMenuItem, &QAction::triggered, [app](bool checked) {
+        onBlockTrailsToggled(app, checked);
+    });
+    
+    app->blockTrailsConfigMenuItem = graphicsMenu->addAction("&Block Trails Settings...");
+    QObject::connect(app->blockTrailsConfigMenuItem, &QAction::triggered, [app]() {
+        onBlockTrailsConfig(app);
+    });
+    
+    app->simpleBlocksMenuItem = graphicsMenu->addAction("&Simple Blocks (No 3D)");
+    app->simpleBlocksMenuItem->setCheckable(true);
+    if (app->board) {
+        app->simpleBlocksMenuItem->setChecked(app->board->simpleBlocksActive);
+    }
+    QObject::connect(app->simpleBlocksMenuItem, &QAction::triggered, [app](bool checked) {
+        onSimpleBlocksToggled(app, checked);
+    });
+    
+    graphicsMenu->addSeparator();
+    
+    // Rendering mode (TODO)
+    QMenu* renderMenu = graphicsMenu->addMenu("&Rendering Mode");
+    QActionGroup* renderGroup = new QActionGroup(renderMenu);
+    
+    QAction* cairoAction = renderMenu->addAction("&Cairo");
+    cairoAction->setCheckable(true);
+    cairoAction->setActionGroup(renderGroup);
+    cairoAction->setChecked(true);
+    app->renderModeMenuItems[0] = cairoAction;
+    
+    QAction* openglAction = renderMenu->addAction("&OpenGL");
+    openglAction->setCheckable(true);
+    openglAction->setActionGroup(renderGroup);
+    app->renderModeMenuItems[1] = openglAction;
+    
+    // ===== SOUND MENU =====
+    QMenu* soundMenu = app->menuBar->addMenu("&Sound");
+    
+    app->soundToggleMenuItem = soundMenu->addAction("&Enable Sound");
     app->soundToggleMenuItem->setCheckable(true);
     app->soundToggleMenuItem->setChecked(true);
-    
     QObject::connect(app->soundToggleMenuItem, &QAction::triggered, [app](bool checked) {
         onSoundToggleAction(app, checked);
     });
     
-    // View Menu
-    QMenu* viewMenu = app->menuBar->addMenu("&View");
-    
-    QAction* fullscreenAction = viewMenu->addAction("&Fullscreen");
-    QObject::connect(fullscreenAction, &QAction::triggered, [app]() {
-        if (app->window->isFullScreen()) {
-            app->window->showNormal();
-        } else {
-            app->window->showFullScreen();
-        }
+    app->volumeMenuItem = soundMenu->addAction("&Volume Settings...");
+    QObject::connect(app->volumeMenuItem, &QAction::triggered, [app]() {
+        onVolumeDialog(app);
     });
     
-    viewMenu->addSeparator();
+    soundMenu->addSeparator();
     
-    // Ghost piece toggle
-    app->backgroundToggleMenuItem = viewMenu->addAction("&Ghost Piece");
-    app->backgroundToggleMenuItem->setCheckable(true);
-    app->backgroundToggleMenuItem->setChecked(true);
-    QObject::connect(app->backgroundToggleMenuItem, &QAction::triggered, [app](bool checked) {
-        if (app->board) {
-            app->board->setGhostPieceEnabled(checked);
-        }
-        updateDisplay(app);
+    // Music tracks submenu
+    QMenu* musicMenu = soundMenu->addMenu("&Music Tracks");
+    for (int i = 0; i < 5; i++) {
+        QString label = QString("&Track %1").arg(i + 1);
+        app->trackMenuItems[i] = musicMenu->addAction(label);
+        app->trackMenuItems[i]->setCheckable(true);
+        app->trackMenuItems[i]->setChecked(true);
+        
+        QObject::connect(app->trackMenuItems[i], &QAction::triggered, [app, i](bool checked) {
+            onTrackToggled(app, i, checked);
+        });
+    }
+    
+    soundMenu->addSeparator();
+    
+    app->retroMusicMenuItem = soundMenu->addAction("&Use Retro Music");
+    app->retroMusicMenuItem->setCheckable(true);
+    if (app->board) {
+        app->retroMusicMenuItem->setChecked(app->board->retroMusicActive);
+    }
+    QObject::connect(app->retroMusicMenuItem, &QAction::triggered, [app](bool checked) {
+        onRetroMusicToggled(app, checked);
     });
     
-    // Grid lines toggle
-    QAction* gridAction = viewMenu->addAction("&Grid Lines");
-    gridAction->setCheckable(true);
-    gridAction->setChecked(false);
-    QObject::connect(gridAction, &QAction::triggered, [app](bool checked) {
-        if (app->board) {
-            app->board->setShowGridLines(checked);
-        }
-        updateDisplay(app);
+    // ===== INPUT MENU (TODO) =====
+    QMenu* inputMenu = app->menuBar->addMenu("&Input");
+    
+    app->joystickConfigMenuItem = inputMenu->addAction("&Joystick Configuration...");
+    QObject::connect(app->joystickConfigMenuItem, &QAction::triggered, [app]() {
+        onJoystickConfig(app);
     });
     
-    // Help Menu
+    // ===== HELP MENU =====
     QMenu* helpMenu = app->menuBar->addMenu("&Help");
     
     QAction* aboutAction = helpMenu->addAction("&About");
@@ -874,82 +1858,144 @@ void setupMenuBar(TetrimoneApp* app) {
 void setupGameUI(TetrimoneApp* app, int width, int height) {
     if (!app) return;
     
-    // Create the game board if it doesn't exist
     if (!app->board) {
         app->board = new TetrimoneBoard();
         app->board->app = app;
     }
     
-    // Create main window
     app->window = new TetrimoneWindow(app);
     app->window->setWindowTitle("Tetrimone");
-    app->window->resize(width, height);
     
-    // Create menu bar
+    // Get screen size
+    QScreen* screen = QApplication::primaryScreen();
+    QRect screenGeometry = screen->availableGeometry();
+    int screenWidth = screenGeometry.width();
+    int screenHeight = screenGeometry.height();
+    
+    // Calculate window size: smaller for playability
+    int windowWidth = std::min(900, (screenWidth * 70) / 100);
+    int windowHeight = std::min(750, (screenHeight * 70) / 100);
+    app->window->resize(windowWidth, windowHeight);
+    
     app->menuBar = new QMenuBar(app->window);
     
-    // Create main layout
     QVBoxLayout* mainLayout = new QVBoxLayout(app->window);
     mainLayout->setMenuBar(app->menuBar);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+    mainLayout->setSpacing(0);
     
-    // Create horizontal layout for game area and info
-    QHBoxLayout* gameLayout = new QHBoxLayout();
-    gameLayout->setSpacing(10);
+    // Center container for game
+    QWidget* centerWidget = new QWidget();
+    QHBoxLayout* centerLayout = new QHBoxLayout(centerWidget);
+    centerLayout->setSpacing(15);
+    centerLayout->setContentsMargins(0, 0, 0, 0);
+    centerLayout->addStretch(1);
     
-    // Game area
-    app->gameArea = new GameAreaWidget(app->board, app);
-    gameLayout->addWidget(app->gameArea, 1);
+    // LEFT: Stats + Board
+    QVBoxLayout* gamePanel = new QVBoxLayout();
+    gamePanel->setSpacing(10);
+    gamePanel->setContentsMargins(0, 0, 0, 0);
+    gamePanel->setAlignment(Qt::AlignCenter);
     
-    // Info panel
-    QVBoxLayout* infoLayout = new QVBoxLayout();
+    // Stats (LEFT of board)
+    QHBoxLayout* statsLayout = new QHBoxLayout();
+    statsLayout->setSpacing(15);
+    statsLayout->setContentsMargins(0, 0, 0, 0);
+    statsLayout->setAlignment(Qt::AlignCenter);
     
+    QVBoxLayout* statsColumn = new QVBoxLayout();
+    statsColumn->setSpacing(5);
     app->scoreLabel = new QLabel("Score: 0");
     app->levelLabel = new QLabel("Level: 1");
     app->linesLabel = new QLabel("Lines: 0");
     app->difficultyLabel = new QLabel("Difficulty: Easy");
     
     QFont labelFont;
-    labelFont.setPointSize(11);
+    labelFont.setPointSize(10);
     labelFont.setBold(true);
     app->scoreLabel->setFont(labelFont);
     app->levelLabel->setFont(labelFont);
     app->linesLabel->setFont(labelFont);
     app->difficultyLabel->setFont(labelFont);
     
-    infoLayout->addWidget(app->scoreLabel);
-    infoLayout->addWidget(app->levelLabel);
-    infoLayout->addWidget(app->linesLabel);
-    infoLayout->addWidget(app->difficultyLabel);
+    statsColumn->addWidget(app->scoreLabel);
+    statsColumn->addWidget(app->levelLabel);
+    statsColumn->addWidget(app->linesLabel);
+    statsColumn->addWidget(app->difficultyLabel);
     
-    infoLayout->addSpacing(20);
+    // Add propaganda/freedom message label
+    app->sequenceLabel = new QLabel("");
+    QFont messageFont;
+    messageFont.setPointSize(9);
+    messageFont.setItalic(true);
+    app->sequenceLabel->setFont(messageFont);
+    app->sequenceLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+    app->sequenceLabel->setWordWrap(true);
+    app->sequenceLabel->setMaximumHeight(80);
+    statsColumn->addWidget(app->sequenceLabel);
     
-    // Next piece label
-    app->controlsHeaderLabel = new QLabel("Next Piece:");
-    app->controlsHeaderLabel->setFont(labelFont);
-    infoLayout->addWidget(app->controlsHeaderLabel);
+    statsColumn->setAlignment(Qt::AlignTop);
     
-    // Next piece area
-    app->nextPieceArea = new NextPieceWidget(app->board);
-    infoLayout->addWidget(app->nextPieceArea);
+    statsLayout->addLayout(statsColumn);
     
-    infoLayout->addSpacing(20);
+    // Game board
+    app->gameArea = new GameAreaWidget(app->board, app);
+    statsLayout->addWidget(app->gameArea, 1, Qt::AlignCenter);
     
-    // Controls info
+    gamePanel->addLayout(statsLayout, 1);
+    centerLayout->addLayout(gamePanel, 2);
+    
+    // RIGHT: Next pieces + controls
+    QVBoxLayout* rightPanel = new QVBoxLayout();
+    rightPanel->setSpacing(12);
+    rightPanel->setContentsMargins(0, 0, 0, 0);
+    rightPanel->setAlignment(Qt::AlignTop);
+    
+    // Next piece area (SDL rendered)
+    app->nextPieceArea = new NextPieceWidget(app->board, app);
+    rightPanel->addWidget(app->nextPieceArea, 0, Qt::AlignCenter);
+    
+    // Controls info + Stats - ALL in one label like GTK3
     app->controlsLabel = new QLabel(
-        "Controls:\n"
-        "Arrows - Move\n"
-        "Space - Rotate\n"
-        "Z - Rot. Counter\n"
-        "P - Pause"
+        "Score: 0\n"
+        "Level: 1\n"
+        "Lines: 0\n"
+        "Sequence: 0 (Max: 0)\n"
+        "Difficulty: Easy\n\n"
+        "Keyboard Controls:\n"
+        "• Left/Right/A/D: Move block\n"
+        "• Up/W: Rotate clockwise\n"
+        "• Z: Rotate counter-clockwise\n"
+        "• Down/S: Soft drop\n"
+        "• Space: Hard drop\n"
+        "• P: Pause/Resume game\n"
+        "• R: Restart game\n"
+        "• M: Toggle music\n\n"
+        "Controller support is available.\n"
+        "Configure in Controls menu."
     );
-    app->controlsLabel->setStyleSheet("QLabel { font-size: 9px; }");
-    infoLayout->addWidget(app->controlsLabel);
+    QFont controlsFont;
+    controlsFont.setPointSize(9);
+    controlsFont.setFamily("Courier");
+    app->controlsLabel->setFont(controlsFont);
+    app->controlsLabel->setAlignment(Qt::AlignCenter);
+    app->controlsLabel->setStyleSheet(
+        "QLabel { "
+        "background-color: white; "
+        "color: black; "
+        "padding: 10px; "
+        "border-radius: 3px; "
+        "border: 1px solid #999999; "
+        "}"
+    );
+    rightPanel->addWidget(app->controlsLabel);
     
-    infoLayout->addStretch();
+    rightPanel->addStretch();
     
-    gameLayout->addLayout(infoLayout, 0);
-    mainLayout->addLayout(gameLayout);
+    centerLayout->addLayout(rightPanel, 1);
+    centerLayout->addStretch(1);
+    
+    mainLayout->addWidget(centerWidget, 1);
     
     // Setup menus
     setupMenuBar(app);
@@ -967,40 +2013,174 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
 // Application Entry Point - Qt5
 // ============================================================================
 
-int main_qt5(int argc, char* argv[], TetrimoneApp* app) {
-    QApplication qapp(argc, argv);
-    
-    if (!app) {
-        app = new TetrimoneApp();
-    }
-    
-    app->app = &qapp;
-    app->difficulty = 1; // Easy
-    app->dropSpeed = 500;
-    app->backgroundMusicPlaying = false;
-    
-    // Initialize SDL for joystick support if needed
-    SDL_Init(SDL_INIT_JOYSTICK);
-    
-    // Setup the game UI
-    setupGameUI(app, 800, 600);
-    
-    // Show window and splash screen
-    if (app->window) {
-        app->window->show();
-        if (app->board) {
-            app->board->setSplashScreenActive(true);
-        }
-        updateDisplay(app);
-    }
-    
-    int result = qapp.exec();
-    
-    // Cleanup
-    cleanupApp(app);
-    SDL_Quit();
-    
-    return result;
+// Note: main_qt5() is not used in the current build. 
+// ui_run_application() in tetrimone.cpp calls onAppActivate() which handles Qt5 initialization.
+// This function is kept for reference but is superseded by ui_run_application().
+
+// ============================================================================
+// TODO: Menu Callback Implementations (from GTK3)
+// ============================================================================
+
+void onBlockSizeDialog(TetrimoneApp* app) {
+    // TODO: Implement block size configuration dialog
 }
 
-// MOC not needed - using lambda connections instead of Q_OBJECT macro
+void onBlockSizeValueChanged(int value, TetrimoneApp* app) {
+    // TODO: Implement block size value change
+}
+
+void onResizeWindowButtonClicked(TetrimoneApp* app) {
+    // TODO: Implement window resize
+}
+
+void onJoystickConfig(TetrimoneApp* app) {
+    // TODO: Implement joystick configuration dialog
+}
+
+void onJoystickRescan(TetrimoneApp* app) {
+    // TODO: Implement joystick rescan
+}
+
+void updateJoystickInfo(TetrimoneApp* app) {
+    // TODO: Update joystick info display
+}
+
+void onJoystickMapApply(TetrimoneApp* app) {
+    // TODO: Apply joystick mapping
+}
+
+void onJoystickMapReset(TetrimoneApp* app) {
+    // TODO: Reset joystick mapping
+}
+
+void onBackgroundImageDialog(TetrimoneApp* app) {
+    // TODO: Implement background image selection dialog
+}
+
+void onBackgroundToggled(TetrimoneApp* app, bool enabled) {
+    // TODO: Implement background toggle
+}
+
+void onBackgroundOpacityDialog(TetrimoneApp* app) {
+    // TODO: Implement background opacity dialog
+}
+
+void onOpacityValueChanged(int value, TetrimoneApp* app) {
+    // TODO: Implement opacity value change
+}
+
+void updateSizeValueLabel(int value, TetrimoneApp* app) {
+    // TODO: Update size value label
+}
+
+void onBackgroundZipDialog(TetrimoneApp* app) {
+    // TODO: Implement background ZIP loading dialog
+}
+
+void onVolumeDialog(TetrimoneApp* app) {
+    // TODO: Implement volume settings dialog
+}
+
+void onVolumeValueChanged(int value, TetrimoneApp* app) {
+    // TODO: Implement volume value change
+}
+
+void onMusicVolumeValueChanged(int value, TetrimoneApp* app) {
+    // TODO: Implement music volume value change
+}
+
+void onTrackToggled(TetrimoneApp* app, int trackIndex, bool enabled) {
+    // TODO: Implement music track toggle
+}
+
+void onBlockSizeRulesChanged(TetrimoneApp* app, int mode) {
+    // TODO: Implement block size rules change
+}
+
+void onGameSizeDialog(TetrimoneApp* app) {
+    // TODO: Implement game size configuration dialog
+}
+
+void onGridLinesToggled(TetrimoneApp* app, bool enabled) {
+    if (app->board) {
+        app->board->setShowGridLines(enabled);
+        updateDisplay(app);
+    }
+}
+
+void updateWidthValueLabel(int value, TetrimoneApp* app) {
+    // TODO: Update width value label
+}
+
+void updateHeightValueLabel(int value, TetrimoneApp* app) {
+    // TODO: Update height value label
+}
+
+void onGhostPieceToggled(TetrimoneApp* app, bool enabled) {
+    if (app->board) {
+        app->board->setGhostPieceEnabled(enabled);
+        updateDisplay(app);
+    }
+}
+
+void onViewHighScores(TetrimoneApp* app) {
+    // TODO: Implement high scores view dialog
+}
+
+void onBackgroundImagesDialog(TetrimoneApp* app) {
+    // TODO: Implement background images browser dialog
+}
+
+void onSimpleBlocksToggled(TetrimoneApp* app, bool enabled) {
+    if (app->board) {
+        app->board->simpleBlocksActive = enabled;
+        updateDisplay(app);
+    }
+}
+
+void onRetroMusicToggled(TetrimoneApp* app, bool enabled) {
+    if (app->board) {
+        app->board->retroMusicActive = enabled;
+    }
+}
+
+void onTestSound(TetrimoneApp* app) {
+    // TODO: Implement test sound
+}
+
+void onGameSetupDialog(TetrimoneApp* app) {
+    // TODO: Implement game setup dialog
+}
+
+void onResetSettings(TetrimoneApp* app) {
+    // TODO: Implement settings reset
+}
+
+void onThemeChanged(TetrimoneApp* app, int themeIndex) {
+    // TODO: Implement theme change
+    currentThemeIndex = themeIndex;
+    updateDisplay(app);
+}
+
+void onBlockTrailsToggled(TetrimoneApp* app, bool enabled) {
+    if (app->board) {
+        app->board->setTrailsEnabled(enabled);
+        updateDisplay(app);
+    }
+}
+
+void onBlockTrailsConfig(TetrimoneApp* app) {
+    // TODO: Implement block trails configuration dialog
+}
+
+void onTrailOpacityChanged(int value, TetrimoneApp* app) {
+    // TODO: Implement trail opacity value change
+}
+
+void onTrailDurationChanged(int value, TetrimoneApp* app) {
+    // TODO: Implement trail duration value change
+}
+
+void onRenderModeChanged(TetrimoneApp* app, int mode) {
+    // TODO: Implement rendering mode change
+}
