@@ -681,6 +681,124 @@ jobs:
           exit 1
         }
 
+    - name: Generate Advanced MSI Installer QT3
+      working-directory: artifacts/build/windows_qt5
+      run: |
+        # Generate component entries for all DLLs
+        $dllEntries = Get-ChildItem -Name "*.dll" | ForEach-Object {
+          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
+          "          <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
+        }
+        
+        # Create advanced WXS installer
+        @"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+          
+          <Product Id="*" 
+                   Name="Tetrimone QT5" 
+                   Language="1033" 
+                   Version="${{ needs.build-linux.outputs.version }}" 
+                   Manufacturer="Jason Hall" 
+                   UpgradeCode="${{ env.UPGRADE_CODE_QT5 }}"> 
+            
+            <Package InstallerVersion="500" 
+                     Compressed="yes" 
+                     InstallScope="perMachine" 
+                     Description="Tetrimone QT5 - Modern Block Falling Game"
+                     Comments="Built with GitHub Actions"
+                     Manufacturer="Jason Hall" />
+            
+            <!-- Major upgrade configuration -->
+            <MajorUpgrade 
+              DowngradeErrorMessage="A newer version of Tetrimone QT5 is already installed. Please uninstall it first." 
+              Schedule="afterInstallInitialize" />
+            
+            <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+            
+            <!-- License agreement -->
+            <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+            
+            <!-- Custom properties -->
+            <Property Id="ARPPRODUCTICON" Value="TetrimoneIcon" />
+            <Property Id="ARPURLINFOABOUT" Value="https://github.com/jasonbrianhall/tetrimone" />
+            <Property Id="ARPNOREPAIR" Value="yes" />
+            <Property Id="ARPNOMODIFY" Value="yes" />
+            <Property Id="ARPHELPLINK" Value="https://github.com/jasonbrianhall/tetrimone/issues" />
+            
+            <!-- Installation scope choice -->
+            <Property Id="ApplicationFolderName" Value="Tetrimone QT5" />
+            <Property Id="INSTALL_SCOPE" Value="perMachine" />
+            
+            <!-- Directory structure -->
+            <Directory Id="TARGETDIR" Name="SourceDir">
+              <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLFOLDER" Name="Tetrimone QT5" />
+              </Directory>
+              <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="Tetrimone QT5" />
+              </Directory>
+              <Directory Id="DesktopFolder" Name="Desktop" />
+            </Directory>
+            
+            <!-- Features -->
+            <Feature Id="ProductFeature" Title="Tetrimone QT5" Level="1">
+              <ComponentRef Id="MainExecutable" />
+              <ComponentRef Id="DLLComponent" />
+              <ComponentRef Id="ProgramMenuShortcut" />
+              <ComponentRef Id="DesktopShortcut" />
+            </Feature>
+            
+            <!-- Components -->
+            <DirectoryRef Id="INSTALLFOLDER">
+              <Component Id="MainExecutable" Guid="*">
+                <File Id="MainEXE" Name="tetrimone.exe" Source="tetrimone.exe" KeyPath="yes">
+                  <Shortcut Id="StartMenuShortcut" Directory="ApplicationProgramsFolder" Name="Tetrimone QT5" />
+                  <Shortcut Id="DesktopShortcutId" Directory="DesktopFolder" Name="Tetrimone QT5" Show="normal" WorkingDirectory="INSTALLFOLDER" />
+                </File>
+              </Component>
+              <Component Id="DLLComponent" Guid="*">
+                <!-- DLLs will be included here -->
+                $($dllEntries -join "`n")
+              </Component>
+            </DirectoryRef>
+            
+            <!-- Program Menu -->
+            <DirectoryRef Id="ApplicationProgramsFolder">
+              <Component Id="ProgramMenuShortcut" Guid="*">
+                <RemoveFolder Id="ProgramMenuFolder" On="uninstall" />
+                <RegistryValue Root="HKCU" Key="Software\Tetrimone QT5" Value="installed" Type="integer" KeyPath="yes" />
+              </Component>
+            </DirectoryRef>
+            
+            <!-- Desktop Shortcut -->
+            <DirectoryRef Id="DesktopFolder">
+              <Component Id="DesktopShortcut" Guid="*">
+                <RegistryValue Root="HKCU" Key="Software\Tetrimone QT5" Value="desktop" Type="integer" />
+              </Component>
+            </DirectoryRef>
+            
+            <!-- Install Sequence -->
+            <InstallExecuteSequence>
+              <Custom Action="SetTARGETDIR" Before="CostInitialize">1</Custom>
+            </InstallExecuteSequence>
+            
+            <!-- Registry for uninstall info -->
+            <DirectoryRef Id="INSTALLFOLDER">
+              <Component Id="RegistryComponent" Guid="*">
+                <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName]" Name="DisplayIcon" Value="[INSTALLFOLDER]tetrimone.exe" Type="string" />
+              </Component>
+            </DirectoryRef>
+            
+            <!-- UI Configuration -->
+            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+            <UIRef Id="WixUI_FeatureTree" />
+            <UIRef Id="WixUI_ErrorProgressText" />
+            
+          </Product>
+        </Wix>
+        "@ | Out-File -FilePath "installer.wxs" -Encoding UTF8
+
     - name: Build MSI Installer QT5
       working-directory: artifacts/build/windows_qt5
       run: |
@@ -730,7 +848,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Tetrimone-QT5.msi
-        path: artifacts/build/windows/Tetrimone-QT5.msi
+        path: artifacts/build/windows_qt5/Tetrimone-QT5.msi
 
 
     - name: Upload Portable ZIP GTK
