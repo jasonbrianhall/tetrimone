@@ -105,7 +105,7 @@ if [ -d "$QT5_DIR/share/themes/emacs" ]; then
     cp -r "$QT5_DIR/share/themes/emacs" "$OUTPUT_DIR/share/themes/"
 fi
 
-# Create Qt5 settings file
+# Create GTK settings file
 cat > "$OUTPUT_DIR/settings.ini" << EOF
 [Settings]
 gtk-theme-name = default
@@ -116,36 +116,45 @@ gtk-button-images = true
 gtk-toolbar-style = both-horiz
 EOF
 
-# Copy Qt5 plugins (CRITICAL for Qt platform plugin initialization)
-echo "Copying Qt5 plugins..."
+# Copy Qt5 plugins - specifically copy platforms directory to root
+echo "Copying Qt5 platforms plugin..."
 
 QT5_PLUGIN_DIR="/usr/x86_64-w64-mingw32/sys-root/mingw/lib/qt5/plugins"
 
-if [ -d "$QT5_PLUGIN_DIR" ]; then
-    echo "Found Qt5 plugins at: $QT5_PLUGIN_DIR"
-    mkdir -p "$OUTPUT_DIR/plugins"
-    cp -r "$QT5_PLUGIN_DIR"/* "$OUTPUT_DIR/plugins/" 2>/dev/null
-    echo "Qt5 plugins copied successfully"
+if [ -d "$QT5_PLUGIN_DIR/platforms" ]; then
+    echo "Found Qt5 platforms at: $QT5_PLUGIN_DIR/platforms/"
+    cp -r "$QT5_PLUGIN_DIR/platforms" "$OUTPUT_DIR/"
+    echo "✓ Qt5 platforms directory copied to root"
 else
-    echo "ERROR: Could not find Qt5 plugins at $QT5_PLUGIN_DIR"
-    echo "Qt5 plugins are REQUIRED for the application to run."
+    echo "ERROR: Could not find Qt5 platforms at $QT5_PLUGIN_DIR/platforms"
     exit 1
 fi
 
-# Ensure critical subdirectories exist
-mkdir -p "$OUTPUT_DIR/plugins/platforms"
-mkdir -p "$OUTPUT_DIR/plugins/imageformats"
-mkdir -p "$OUTPUT_DIR/plugins/generic"
-mkdir -p "$OUTPUT_DIR/plugins/codecs"
+# Ensure platforms directory exists with correct permissions
+mkdir -p "$OUTPUT_DIR/platforms"
 
 # Copy Qt5 configuration files if they exist
 if [ -f "$QT5_DIR/bin/qt.conf" ]; then
     cp "$QT5_DIR/bin/qt.conf" "$OUTPUT_DIR/"
 fi
 
-# Explicitly add SDL3.dll and other critical DLLs
+# Explicitly copy SDL3.dll first
+echo "Copying SDL3.dll explicitly..."
+SDL3_SRC="$DLL_SOURCE_DIR/SDL3.dll"
+echo "Looking for SDL3.dll at: $SDL3_SRC"
+if [ -f "$SDL3_SRC" ]; then
+    echo "Found SDL3.dll, copying to $OUTPUT_DIR"
+    cp "$SDL3_SRC" "$OUTPUT_DIR/"
+    processed_dlls["SDL3.dll"]=1
+    echo "✓ Copied SDL3.dll to output directory"
+else
+    echo "✗ WARNING: SDL3.dll not found at $SDL3_SRC"
+fi
+
+
+
+# Add other critical DLLs to processing queue
 CRITICAL_DLLS=(
-    "SDL3.dll"
     "SDL2.dll"
     "Qt5Core.dll"
     "Qt5Gui.dll"
@@ -153,7 +162,7 @@ CRITICAL_DLLS=(
     "libwinpthread-1.dll"
 )
 
-echo "Checking for critical DLLs..."
+echo "Checking for other critical DLLs..."
 for dll in "${CRITICAL_DLLS[@]}"; do
     if dll_exists "$dll"; then
         if [ "${processed_dlls[$dll]}" != "1" ]; then
