@@ -35,6 +35,7 @@
 #include <QFont>
 #include <QFontMetrics>
 #include <QCloseEvent>
+#include <fstream>
 #include <SDL2/SDL.h>
 #include <cairo/cairo.h>
 
@@ -1059,6 +1060,7 @@ void onQuitGameAction(TetrimoneApp* app) {
 void onSoundToggleAction(TetrimoneApp* app, bool enabled) {
     if (app->board) {
         app->board->setSoundEnabled(enabled);
+        std::cout << (enabled ? "✓ Sound enabled" : "✓ Sound disabled") << std::endl;
     }
 }
 
@@ -1168,6 +1170,63 @@ void onAppActivate(TetrimoneApp* app) {
     if (!app) return;
     
     setupGameUI(app, 800, 600);
+    
+    // Initialize audio system after board is created
+    if (app->board) {
+        std::cout << "\n=== AUDIO INITIALIZATION ===" << std::endl;
+        
+        // First enable sound if it's not already
+        std::cout << "Step 1: Enabling sound..." << std::endl;
+        app->board->setSoundEnabled(true);
+        std::cout << "  Sound enabled state: " << (app->board->isSoundEnabled() ? "TRUE" : "FALSE") << std::endl;
+        
+        // Get sound zip path from command line args if available
+        std::string soundZipPath = "sound.zip";
+        if (app->cmdlineArgs && !app->cmdlineArgs->soundZip.empty()) {
+            soundZipPath = app->cmdlineArgs->soundZip;
+            std::cout << "Step 2: Using sound.zip from command line: " << soundZipPath << std::endl;
+        } else {
+            std::cout << "Step 2: No command line arg, using default: " << soundZipPath << std::endl;
+        }
+        
+        // Check if file exists
+        std::ifstream checkFile(soundZipPath);
+        if (checkFile.good()) {
+            std::cout << "Step 3: ✓ sound.zip file exists" << std::endl;
+            checkFile.close();
+        } else {
+            std::cout << "Step 3: ✗ sound.zip file NOT found at: " << soundZipPath << std::endl;
+        }
+        
+        // Set the sounds zip path
+        std::cout << "Step 4: Setting sounds zip path..." << std::endl;
+        std::cout << "  Before setSoundsZipPath - sound enabled: " << (app->board->isSoundEnabled() ? "TRUE" : "FALSE") << std::endl;
+        std::cout << "  Calling setSoundsZipPath(\"" << soundZipPath << "\")..." << std::endl;
+        
+        bool setPathResult = app->board->setSoundsZipPath(soundZipPath);
+        std::cout << "  setSoundsZipPath returned: " << (setPathResult ? "TRUE" : "FALSE") << std::endl;
+        
+        if (setPathResult) {
+            std::cout << "Step 4: ✓ setSoundsZipPath succeeded" << std::endl;
+        } else {
+            std::cout << "Step 4: ✗ setSoundsZipPath failed" << std::endl;
+            std::cout << "  This usually means initializeAudio() failed inside setSoundsZipPath" << std::endl;
+        }
+        
+        // Initialize audio
+        std::cout << "Step 5: Calling initializeAudio()..." << std::endl;
+        bool audioInit = app->board->initializeAudio();
+        std::cout << "  initializeAudio returned: " << (audioInit ? "TRUE" : "FALSE") << std::endl;
+        
+        if (audioInit) {
+            std::cout << "Step 5: ✓ Audio system initialized successfully" << std::endl;
+        } else {
+            std::cerr << "Step 5: ✗ Audio initialization failed" << std::endl;
+            std::cerr << "  Check if sound.zip is valid and contains required audio files" << std::endl;
+        }
+        
+        std::cout << "=== AUDIO INITIALIZATION COMPLETE ===" << std::endl << std::endl;
+    }
     
     if (app->window) {
         app->window->show();
@@ -1422,39 +1481,6 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
 // Application Entry Point - Qt5
 // ============================================================================
 
-int main_qt5(int argc, char* argv[], TetrimoneApp* app) {
-    QApplication qapp(argc, argv);
-    
-    if (!app) {
-        app = new TetrimoneApp();
-    }
-    
-    app->app = &qapp;
-    app->difficulty = 1;
-    app->dropSpeed = 500;
-    app->backgroundMusicPlaying = false;
-    app->useGPUAcceleration = true;
-    
-    SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_VIDEO);
-    
-    // Initialize GPU renderer with reasonable size
-    initGPURenderer(app, 500, 550);
-    
-    setupGameUI(app, 800, 600);
-    
-    if (app->window) {
-        app->window->show();
-        if (app->board) {
-            app->board->setSplashScreenActive(true);
-        }
-        updateDisplay(app);
-    }
-    
-    int result = qapp.exec();
-    
-    cleanupApp(app);
-    shutdownGPURenderer(app);
-    SDL_Quit();
-    
-    return result;
-}
+// Note: main_qt5() is not used in the current build. 
+// ui_run_application() in tetrimone.cpp calls onAppActivate() which handles Qt5 initialization.
+// This function is kept for reference but is superseded by ui_run_application().
