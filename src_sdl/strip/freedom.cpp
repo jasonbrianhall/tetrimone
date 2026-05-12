@@ -134,28 +134,34 @@ void showPatrioticPerformanceDialog(TetrimoneApp* app) {
     // Use the freedom/patriotic messages vector
     extern const std::vector<std::string> AMERICAN_PROPAGANDA_MESSAGES;
     
+    std::string message;
     if (AMERICAN_PROPAGANDA_MESSAGES.empty()) {
-        app->board->currentPropagandaMessage = "🇺🇸 YOUR BLOCKS HAVE ADVANCED FREEDOM! 🦅";
+        message = "🇺🇸 YOUR BLOCKS HAVE ADVANCED FREEDOM! 🦅";
     } else {
         static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
         std::uniform_int_distribution<int> dist(0, AMERICAN_PROPAGANDA_MESSAGES.size() - 1);
-        app->board->currentPropagandaMessage = AMERICAN_PROPAGANDA_MESSAGES[dist(rng)];
+        message = AMERICAN_PROPAGANDA_MESSAGES[dist(rng)];
     }
     
-    // Show the message
+    // Set the message in the board for drawing
+    app->board->currentPropagandaMessage = message;
     app->board->showPropagandaMessage = true;
     
-    // Force repaint of game area
-    if (app->gameArea) {
-        app->gameArea->update();
+    // Also try to set sequenceLabel if it exists
+    if (app->sequenceLabel) {
+        app->sequenceLabel->setText(QString::fromStdString(message));
     }
+    
+    // Force screen update
+    updateDisplay(app);
     
     // Set timer to clear message after 2 seconds
     QTimer::singleShot(2000, [app]() {
         app->board->showPropagandaMessage = false;
-        if (app->gameArea) {
-            app->gameArea->update();
+        if (app->sequenceLabel) {
+            app->sequenceLabel->setText("");
         }
+        updateDisplay(app);
     });
 }
 

@@ -1070,16 +1070,67 @@ void onGameTick(TetrimoneApp* app) {
 void updateLabels(TetrimoneApp* app) {
     if (!app || !app->board) return;
     
+    // Update score label with Soviet-style text in retro mode
+    QString scoreText;
+    if (app->board->retroModeActive) {
+        scoreText = QString("Партийная Лояльность: %1%").arg(app->board->getScore());
+    } else {
+        scoreText = QString("Score: %1").arg(app->board->getScore());
+    }
     if (app->scoreLabel) {
-        app->scoreLabel->setText(QString("Score: %1").arg(app->board->getScore()));
-    }
-    if (app->levelLabel) {
-        app->levelLabel->setText(QString("Level: %1").arg(app->board->getLevel()));
-    }
-    if (app->linesLabel) {
-        app->linesLabel->setText(QString("Lines: %1").arg(app->board->getLinesCleared()));
+        app->scoreLabel->setText(scoreText);
     }
     
+    // Update level label with Soviet-style text in retro mode
+    QString levelText;
+    if (app->board->retroModeActive) {
+        levelText = QString("Пятилетка: %1").arg(app->board->getLevel());
+    } else {
+        levelText = QString("Level: %1").arg(app->board->getLevel());
+    }
+    if (app->levelLabel) {
+        app->levelLabel->setText(levelText);
+    }
+    
+    // Update lines label with Soviet propaganda in retro mode
+    QString linesText;
+    if (app->board->retroModeActive) {
+        linesText = QString("Уничтожено врагов народа: %1").arg(app->board->getLinesCleared());
+    } else {
+        linesText = QString("Lines: %1").arg(app->board->getLinesCleared());
+    }
+    if (app->linesLabel) {
+        app->linesLabel->setText(linesText);
+    }
+    
+    // Update sequence label
+    QString sequenceText;
+    if (app->board->isSequenceActive() && app->board->getConsecutiveClears() > 1) {
+        if (app->board->retroModeActive) {
+            sequenceText = QString("Коллективная эффективность: %1 (Рекорд: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        } else {
+            sequenceText = QString("Sequence: %1 (Max: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        }
+    } else {
+        if (app->board->retroModeActive) {
+            sequenceText = QString("Коллективная эффективность: %1 (Рекорд: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        } else {
+            sequenceText = QString("Sequence: %1 (Max: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        }
+    }
+    if (app->sequenceLabel) {
+        app->sequenceLabel->setText(sequenceText);
+    }
+    
+    // Update difficulty label
     if (app->difficultyLabel) {
         QString difficulty;
         switch (app->difficulty) {
@@ -1091,6 +1142,93 @@ void updateLabels(TetrimoneApp* app) {
             default: difficulty = "Unknown"; break;
         }
         app->difficultyLabel->setText(QString("Difficulty: %1").arg(difficulty));
+    }
+    
+    // Update controls label with all stats and controls like GTK3
+    if (app->controlsLabel) {
+        QString difficulty;
+        switch (app->difficulty) {
+            case 0: difficulty = "Zen"; break;
+            case 1: difficulty = "Easy"; break;
+            case 2: difficulty = "Medium"; break;
+            case 3: difficulty = "Hard"; break;
+            case 4: difficulty = "Extreme"; break;
+            default: difficulty = "Unknown"; break;
+        }
+        
+        QString scoreText;
+        if (app->board->retroModeActive) {
+            scoreText = QString("Партийная Лояльность: %1%").arg(app->board->getScore());
+        } else {
+            scoreText = QString("Score: %1").arg(app->board->getScore());
+        }
+        
+        QString levelText;
+        if (app->board->retroModeActive) {
+            levelText = QString("Пятилетка: %1").arg(app->board->getLevel());
+        } else {
+            levelText = QString("Level: %1").arg(app->board->getLevel());
+        }
+        
+        QString linesText;
+        if (app->board->retroModeActive) {
+            linesText = QString("Уничтожено врагов народа: %1").arg(app->board->getLinesCleared());
+        } else {
+            linesText = QString("Lines: %1").arg(app->board->getLinesCleared());
+        }
+        
+        QString sequenceText;
+        if (app->board->retroModeActive) {
+            sequenceText = QString("Коллективная эффективность: %1 (Рекорд: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        } else {
+            sequenceText = QString("Sequence: %1 (Max: %2)")
+                .arg(app->board->getConsecutiveClears())
+                .arg(app->board->getMaxConsecutiveClears());
+        }
+        
+        QString controlsText;
+        if (app->board->retroModeActive) {
+            controlsText = QString(
+                "%1\n"
+                "%2\n"
+                "%3\n"
+                "%4\n"
+                "Партийные Директивы: %5\n\n"
+                "Управление клавиатурой:\n"
+                "• Влево/Вправо/A/D: Переместить блок\n"
+                "• Вверх/W: Повернуть по часовой\n"
+                "• Z: Повернуть против часовой\n"
+                "• Вниз/S: Мягкое падение\n"
+                "• Пробел: Жёсткое падение\n"
+                "• P: Пауза/Возобновить\n"
+                "• R: Перезагрузить игру\n"
+                "• M: Включить музыку\n\n"
+                "Поддержка контроллера доступна.\n"
+                "Настройте в меню управления."
+            ).arg(scoreText, levelText, linesText, sequenceText, difficulty);
+        } else {
+            controlsText = QString(
+                "%1\n"
+                "%2\n"
+                "%3\n"
+                "%4\n"
+                "Difficulty: %5\n\n"
+                "Keyboard Controls:\n"
+                "• Left/Right/A/D: Move block\n"
+                "• Up/W: Rotate clockwise\n"
+                "• Z: Rotate counter-clockwise\n"
+                "• Down/S: Soft drop\n"
+                "• Space: Hard drop\n"
+                "• P: Pause/Resume game\n"
+                "• R: Restart game\n"
+                "• M: Toggle music\n\n"
+                "Controller support is available.\n"
+                "Configure in Controls menu."
+            ).arg(scoreText, levelText, linesText, sequenceText, difficulty);
+        }
+        app->controlsLabel->setText(controlsText);
     }
 }
 
@@ -1536,6 +1674,18 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     statsColumn->addWidget(app->levelLabel);
     statsColumn->addWidget(app->linesLabel);
     statsColumn->addWidget(app->difficultyLabel);
+    
+    // Add propaganda/freedom message label
+    app->sequenceLabel = new QLabel("");
+    QFont messageFont;
+    messageFont.setPointSize(9);
+    messageFont.setItalic(true);
+    app->sequenceLabel->setFont(messageFont);
+    app->sequenceLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+    app->sequenceLabel->setWordWrap(true);
+    app->sequenceLabel->setMaximumHeight(80);
+    statsColumn->addWidget(app->sequenceLabel);
+    
     statsColumn->setAlignment(Qt::AlignTop);
     
     statsLayout->addLayout(statsColumn);
@@ -1557,15 +1707,24 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     app->nextPieceArea = new NextPieceWidget(app->board, app);
     rightPanel->addWidget(app->nextPieceArea, 0, Qt::AlignCenter);
     
-    // Controls info as normal Qt label - WHITE background with BLACK text
+    // Controls info + Stats - ALL in one label like GTK3
     app->controlsLabel = new QLabel(
-        "CONTROLS\n\n"
-        "← → Move\n"
-        "↑ Rotate\n"
-        "↓ Drop\n"
-        "Space Hard\n"
-        "Z Rotate\n"
-        "P Pause"
+        "Score: 0\n"
+        "Level: 1\n"
+        "Lines: 0\n"
+        "Sequence: 0 (Max: 0)\n"
+        "Difficulty: Easy\n\n"
+        "Keyboard Controls:\n"
+        "• Left/Right/A/D: Move block\n"
+        "• Up/W: Rotate clockwise\n"
+        "• Z: Rotate counter-clockwise\n"
+        "• Down/S: Soft drop\n"
+        "• Space: Hard drop\n"
+        "• P: Pause/Resume game\n"
+        "• R: Restart game\n"
+        "• M: Toggle music\n\n"
+        "Controller support is available.\n"
+        "Configure in Controls menu."
     );
     QFont controlsFont;
     controlsFont.setPointSize(9);
