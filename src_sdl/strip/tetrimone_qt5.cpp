@@ -427,51 +427,63 @@ void drawPlacedBlocks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app) {
 }
 
 // ============================================================================
-// Qt5 Game Area Widget with Full Rendering
+// Qt5 Game Area Widget with Full SDL Rendering (Dynamic Scaling)
 // ============================================================================
 
 class GameAreaWidget : public QWidget {
 public:
     explicit GameAreaWidget(TetrimoneBoard* board, TetrimoneApp* app, QWidget* parent = nullptr)
         : QWidget(parent), board(board), app(app), backgroundPixmap(nullptr) {
-        int boardWidth = GRID_WIDTH * BLOCK_SIZE;
-        int boardHeight = GRID_HEIGHT * BLOCK_SIZE;
-        setMinimumSize(boardWidth, boardHeight);
-        setMaximumSize(boardWidth, boardHeight);
-        setFixedSize(boardWidth, boardHeight);
         setFocusPolicy(Qt::StrongFocus);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        setMinimumSize(200, 440);
+        setAttribute(Qt::WA_StyledBackground);
     }
 
     ~GameAreaWidget() {
         if (backgroundPixmap) delete backgroundPixmap;
     }
 
+    QSize sizeHint() const override {
+        return QSize(300, 660);
+    }
+
 protected:
     void paintEvent(QPaintEvent* event) override {
-        if (!board) return;
+        if (!board || !app) return;
         
         int w = width();
         int h = height();
         
+        if (w <= 0 || h <= 0) return;
+        
+        // Calculate scaling factor based on widget size
+        int blockSize = w / 10;
+        double scale = blockSize / 30.0;
+        
         // Use GPU renderer if available
-        if (app && app->sdlCairoRenderer) {
+        if (app->sdlCairoRenderer) {
             app->sdlCairoRenderer->clearCairoSurface(0, 0, 0, 1.0);
             cairo_t* cr = app->sdlCairoRenderer->getCairoContext();
             
-            drawGridLines(cr, board);
-            drawPlacedBlocks(cr, board, app);
-            drawCurrentPiece(cr, board);
-            drawGhostPiece(cr, board);
-            drawBlockTrails(cr, board);
-            drawGameOver(cr, board);
-            drawPauseMenu(cr, board);
-            if (board->isSplashScreenActive()) {
-                drawSplashScreen(cr, board, app);
+            if (cr) {
+                cairo_scale(cr, scale, scale);
+                
+                drawGridLines(cr, board);
+                drawPlacedBlocks(cr, board, app);
+                drawCurrentPiece(cr, board);
+                drawGhostPiece(cr, board);
+                drawBlockTrails(cr, board);
+                drawGameOver(cr, board);
+                drawPauseMenu(cr, board);
+                if (board->isSplashScreenActive()) {
+                    drawSplashScreen(cr, board, app);
+                }
+                drawFireworks(cr, board, app);
+                
+                app->sdlCairoRenderer->syncSurfaceToTexture();
+                app->sdlCairoRenderer->present();
             }
-            drawFireworks(cr, board, app);
-            
-            app->sdlCairoRenderer->syncSurfaceToTexture();
-            app->sdlCairoRenderer->present();
         } else {
             // Fallback: CPU rendering with Qt
             SDL_Surface* surface = SDL_CreateRGBSurface(0, w, h, 32,
@@ -491,6 +503,8 @@ protected:
             cairo_set_source_rgb(cr, 0, 0, 0);
             cairo_rectangle(cr, 0, 0, w, h);
             cairo_fill(cr);
+            
+            cairo_scale(cr, scale, scale);
             
             drawGridLines(cr, board);
             drawPlacedBlocks(cr, board, app);
@@ -514,6 +528,11 @@ protected:
         }
         
         (void)event;
+    }
+
+    void resizeEvent(QResizeEvent* event) override {
+        QWidget::resizeEvent(event);
+        update();
     }
 
     void keyPressEvent(QKeyEvent* event) override {
@@ -609,13 +628,13 @@ private:
 };
 
 // ============================================================================
-// Qt5 Next Piece Widget
+// Qt5 Next Piece Widget with SDL Rendering (3D Blocks)
 // ============================================================================
 
 class NextPieceWidget : public QWidget {
 public:
-    explicit NextPieceWidget(TetrimoneBoard* board, QWidget* parent = nullptr)
-        : QWidget(parent), board(board) {
+    explicit NextPieceWidget(TetrimoneBoard* board, TetrimoneApp* app, QWidget* parent = nullptr)
+        : QWidget(parent), board(board), app(app) {
         setMinimumSize(150, 350);
         setMaximumSize(150, 350);
     }
@@ -624,66 +643,177 @@ protected:
     void paintEvent(QPaintEvent* event) override {
         if (!board) return;
         
-        QPainter painter(this);
-        painter.fillRect(rect(), Qt::black);
+        int w = width();
+        int h = height();
         
-        painter.setPen(Qt::white);
-        QFont font = painter.font();
-        font.setPointSize(10);
-        font.setBold(true);
-        painter.setFont(font);
-        
-        painter.drawText(10, 20, "Next Pieces:");
-        
-        int previewStartY = 40;
-        int spaceBetween = 110;
-        int blockSize = 20;
-        int previewX = 20;
-        
-        int validPieceCount = 0;
-        for (int pieceIndex = 0; pieceIndex < 3; pieceIndex++) {
-            const TetrimoneBlock* nextBlock = board->getNextPiece(pieceIndex);
-            if (!nextBlock || !nextBlock->isValid()) {
-                continue;
-            }
+        // Use GPU renderer if available
+        if (app && app->sdlCairoRenderer) {
+            app->sdlCairoRenderer->clearCairoSurface(0.15, 0.15, 0.2, 1.0);
+            cairo_t* cr = app->sdlCairoRenderer->getCairoContext();
             
-            int nextType = nextBlock->getType();
-            std::vector<std::vector<int>> nextShape = nextBlock->getShape();
+            // Draw title
+            cairo_set_source_rgb(cr, 1, 1, 1);
+            cairo_select_font_face(cr, "monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+            cairo_set_font_size(cr, 16);
+            cairo_move_to(cr, 10, 25);
+            cairo_show_text(cr, "Next:");
             
-            int previewY = previewStartY + (validPieceCount * spaceBetween);
+            int previewStartY = 50;
+            int spaceBetween = 80;
+            int blockSize = 15;
+            int previewX = 25;
             
-            painter.setPen(Qt::white);
-            painter.setFont(font);
-            std::string label = "#" + std::to_string(validPieceCount + 1);
-            painter.drawText(10, previewY - 10, QString::fromStdString(label));
-            
-            for (size_t row = 0; row < nextShape.size(); row++) {
-                for (size_t col = 0; col < nextShape[row].size(); col++) {
-                    if (nextShape[row][col]) {
-                        int px = previewX + col * blockSize;
-                        int py = previewY + row * blockSize;
-                        
-                        std::array<double, 3> color = getTetrimineColor(nextType);
-                        QColor blockColor(
-                            static_cast<int>(color[0] * 255),
-                            static_cast<int>(color[1] * 255),
-                            static_cast<int>(color[2] * 255)
-                        );
-                        
-                        painter.fillRect(px, py, blockSize, blockSize, blockColor);
-                        painter.setPen(QColor(0, 0, 0, 128));
-                        painter.drawRect(px, py, blockSize, blockSize);
+            int validPieceCount = 0;
+            for (int pieceIndex = 0; pieceIndex < 3; pieceIndex++) {
+                const TetrimoneBlock* nextBlock = board->getNextPiece(pieceIndex);
+                if (!nextBlock || !nextBlock->isValid()) {
+                    continue;
+                }
+                
+                int nextType = nextBlock->getType();
+                std::vector<std::vector<int>> nextShape = nextBlock->getShape();
+                
+                int previewY = previewStartY + (validPieceCount * spaceBetween);
+                
+                // Draw label
+                cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
+                cairo_set_font_size(cr, 10);
+                std::string label = "#" + std::to_string(validPieceCount + 1);
+                cairo_move_to(cr, 10, previewY + 5);
+                cairo_show_text(cr, label.c_str());
+                
+                // Draw piece with 3D effect
+                for (size_t row = 0; row < nextShape.size(); row++) {
+                    for (size_t col = 0; col < nextShape[row].size(); col++) {
+                        if (nextShape[row][col]) {
+                            int px = previewX + col * blockSize;
+                            int py = previewY + row * blockSize;
+                            
+                            std::array<double, 3> color = getTetrimineColor(nextType);
+                            
+                            // Main block
+                            cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+                            cairo_rectangle(cr, px + 1, py + 1, blockSize - 2, blockSize - 2);
+                            cairo_fill(cr);
+                            
+                            // 3D highlight
+                            cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
+                            cairo_move_to(cr, px + 1, py + 1);
+                            cairo_line_to(cr, px + blockSize - 1, py + 1);
+                            cairo_line_to(cr, px + 1, py + blockSize - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                            
+                            // 3D shadow
+                            cairo_set_source_rgba(cr, 0, 0, 0, 0.3);
+                            cairo_move_to(cr, px + blockSize - 1, py + 1);
+                            cairo_line_to(cr, px + blockSize - 1, py + blockSize - 1);
+                            cairo_line_to(cr, px + 1, py + blockSize - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                        }
                     }
                 }
+                validPieceCount++;
             }
-            validPieceCount++;
+            
+            app->sdlCairoRenderer->syncSurfaceToTexture();
+            app->sdlCairoRenderer->present();
+        } else {
+            // Fallback: Qt rendering
+            SDL_Surface* surface = SDL_CreateRGBSurface(0, w, h, 32,
+                0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+            
+            if (!surface) return;
+            
+            cairo_surface_t* cairo_surface = cairo_image_surface_create_for_data(
+                (unsigned char*)surface->pixels,
+                CAIRO_FORMAT_ARGB32,
+                w, h,
+                surface->pitch
+            );
+            
+            cairo_t* cr = cairo_create(cairo_surface);
+            
+            cairo_set_source_rgb(cr, 0.15, 0.15, 0.2);
+            cairo_rectangle(cr, 0, 0, w, h);
+            cairo_fill(cr);
+            
+            cairo_set_source_rgb(cr, 1, 1, 1);
+            cairo_select_font_face(cr, "monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+            cairo_set_font_size(cr, 16);
+            cairo_move_to(cr, 10, 25);
+            cairo_show_text(cr, "Next:");
+            
+            int previewStartY = 50;
+            int spaceBetween = 80;
+            int blockSize = 15;
+            int previewX = 25;
+            
+            int validPieceCount = 0;
+            for (int pieceIndex = 0; pieceIndex < 3; pieceIndex++) {
+                const TetrimoneBlock* nextBlock = board->getNextPiece(pieceIndex);
+                if (!nextBlock || !nextBlock->isValid()) {
+                    continue;
+                }
+                
+                int nextType = nextBlock->getType();
+                std::vector<std::vector<int>> nextShape = nextBlock->getShape();
+                
+                int previewY = previewStartY + (validPieceCount * spaceBetween);
+                
+                cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
+                cairo_set_font_size(cr, 10);
+                std::string label = "#" + std::to_string(validPieceCount + 1);
+                cairo_move_to(cr, 10, previewY + 5);
+                cairo_show_text(cr, label.c_str());
+                
+                for (size_t row = 0; row < nextShape.size(); row++) {
+                    for (size_t col = 0; col < nextShape[row].size(); col++) {
+                        if (nextShape[row][col]) {
+                            int px = previewX + col * blockSize;
+                            int py = previewY + row * blockSize;
+                            
+                            std::array<double, 3> color = getTetrimineColor(nextType);
+                            
+                            cairo_set_source_rgb(cr, color[0], color[1], color[2]);
+                            cairo_rectangle(cr, px + 1, py + 1, blockSize - 2, blockSize - 2);
+                            cairo_fill(cr);
+                            
+                            cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
+                            cairo_move_to(cr, px + 1, py + 1);
+                            cairo_line_to(cr, px + blockSize - 1, py + 1);
+                            cairo_line_to(cr, px + 1, py + blockSize - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                            
+                            cairo_set_source_rgba(cr, 0, 0, 0, 0.3);
+                            cairo_move_to(cr, px + blockSize - 1, py + 1);
+                            cairo_line_to(cr, px + blockSize - 1, py + blockSize - 1);
+                            cairo_line_to(cr, px + 1, py + blockSize - 1);
+                            cairo_close_path(cr);
+                            cairo_fill(cr);
+                        }
+                    }
+                }
+                validPieceCount++;
+            }
+            
+            QImage img((uchar*)surface->pixels, w, h, surface->pitch, QImage::Format_ARGB32);
+            QPainter painter(this);
+            painter.drawImage(0, 0, img);
+            
+            cairo_destroy(cr);
+            cairo_surface_destroy(cairo_surface);
+            SDL_FreeSurface(surface);
         }
-
+        
         (void)event;
     }
 
 private:
     TetrimoneBoard* board;
+    TetrimoneApp* app;
 
     std::array<double, 3> getTetrimineColor(int type) {
         const std::array<double, 3> colors[] = {
@@ -1165,69 +1295,121 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     
     app->window = new TetrimoneWindow(app);
     app->window->setWindowTitle("Tetrimone");
-    app->window->resize(width, height);
+    
+    // Get screen size
+    QScreen* screen = QApplication::primaryScreen();
+    QRect screenGeometry = screen->availableGeometry();
+    int screenWidth = screenGeometry.width();
+    int screenHeight = screenGeometry.height();
+    
+    // Calculate window size: smaller for playability
+    int windowWidth = std::min(900, (screenWidth * 70) / 100);
+    int windowHeight = std::min(750, (screenHeight * 70) / 100);
+    app->window->resize(windowWidth, windowHeight);
     
     app->menuBar = new QMenuBar(app->window);
     
     QVBoxLayout* mainLayout = new QVBoxLayout(app->window);
     mainLayout->setMenuBar(app->menuBar);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+    mainLayout->setSpacing(0);
     
-    QHBoxLayout* gameLayout = new QHBoxLayout();
-    gameLayout->setSpacing(10);
+    // Center container for game
+    QWidget* centerWidget = new QWidget();
+    QHBoxLayout* centerLayout = new QHBoxLayout(centerWidget);
+    centerLayout->setSpacing(15);
+    centerLayout->setContentsMargins(0, 0, 0, 0);
+    centerLayout->addStretch(1);
     
-    app->gameArea = new GameAreaWidget(app->board, app);
-    gameLayout->addWidget(app->gameArea, 1);
+    // LEFT: Stats + Board
+    QVBoxLayout* gamePanel = new QVBoxLayout();
+    gamePanel->setSpacing(10);
+    gamePanel->setContentsMargins(0, 0, 0, 0);
+    gamePanel->setAlignment(Qt::AlignCenter);
     
-    QVBoxLayout* infoLayout = new QVBoxLayout();
+    // Stats (LEFT of board)
+    QHBoxLayout* statsLayout = new QHBoxLayout();
+    statsLayout->setSpacing(15);
+    statsLayout->setContentsMargins(0, 0, 0, 0);
+    statsLayout->setAlignment(Qt::AlignCenter);
     
+    QVBoxLayout* statsColumn = new QVBoxLayout();
+    statsColumn->setSpacing(5);
     app->scoreLabel = new QLabel("Score: 0");
     app->levelLabel = new QLabel("Level: 1");
     app->linesLabel = new QLabel("Lines: 0");
     app->difficultyLabel = new QLabel("Difficulty: Easy");
     
     QFont labelFont;
-    labelFont.setPointSize(11);
+    labelFont.setPointSize(10);
     labelFont.setBold(true);
     app->scoreLabel->setFont(labelFont);
     app->levelLabel->setFont(labelFont);
     app->linesLabel->setFont(labelFont);
     app->difficultyLabel->setFont(labelFont);
     
-    infoLayout->addWidget(app->scoreLabel);
-    infoLayout->addWidget(app->levelLabel);
-    infoLayout->addWidget(app->linesLabel);
-    infoLayout->addWidget(app->difficultyLabel);
+    statsColumn->addWidget(app->scoreLabel);
+    statsColumn->addWidget(app->levelLabel);
+    statsColumn->addWidget(app->linesLabel);
+    statsColumn->addWidget(app->difficultyLabel);
+    statsColumn->setAlignment(Qt::AlignTop);
     
-    infoLayout->addSpacing(20);
+    statsLayout->addLayout(statsColumn);
     
-    app->controlsHeaderLabel = new QLabel("Next Piece:");
-    app->controlsHeaderLabel->setFont(labelFont);
-    infoLayout->addWidget(app->controlsHeaderLabel);
+    // Game board
+    app->gameArea = new GameAreaWidget(app->board, app);
+    statsLayout->addWidget(app->gameArea, 1, Qt::AlignCenter);
     
-    app->nextPieceArea = new NextPieceWidget(app->board);
-    infoLayout->addWidget(app->nextPieceArea);
+    gamePanel->addLayout(statsLayout, 1);
+    centerLayout->addLayout(gamePanel, 2);
     
-    infoLayout->addSpacing(20);
+    // RIGHT: Next pieces + controls
+    QVBoxLayout* rightPanel = new QVBoxLayout();
+    rightPanel->setSpacing(12);
+    rightPanel->setContentsMargins(0, 0, 0, 0);
+    rightPanel->setAlignment(Qt::AlignTop);
     
+    // Next piece area (SDL rendered)
+    app->nextPieceArea = new NextPieceWidget(app->board, app);
+    rightPanel->addWidget(app->nextPieceArea, 0, Qt::AlignCenter);
+    
+    // Controls info as normal Qt label - WHITE background with BLACK text
     app->controlsLabel = new QLabel(
-        "Controls:\n"
-        "Left/Right - Move\n"
-        "Up - Rotate\n"
-        "Down - Soft Drop\n"
-        "Space - Hard Drop\n"
-        "P - Pause"
+        "CONTROLS\n\n"
+        "← → Move\n"
+        "↑ Rotate\n"
+        "↓ Drop\n"
+        "Space Hard\n"
+        "Z Rotate\n"
+        "P Pause"
     );
-    app->controlsLabel->setStyleSheet("QLabel { font-size: 9px; }");
-    infoLayout->addWidget(app->controlsLabel);
+    QFont controlsFont;
+    controlsFont.setPointSize(9);
+    controlsFont.setFamily("Courier");
+    app->controlsLabel->setFont(controlsFont);
+    app->controlsLabel->setAlignment(Qt::AlignCenter);
+    app->controlsLabel->setStyleSheet(
+        "QLabel { "
+        "background-color: white; "
+        "color: black; "
+        "padding: 10px; "
+        "border-radius: 3px; "
+        "border: 1px solid #999999; "
+        "}"
+    );
+    rightPanel->addWidget(app->controlsLabel);
     
-    infoLayout->addStretch();
+    rightPanel->addStretch();
     
-    gameLayout->addLayout(infoLayout, 0);
-    mainLayout->addLayout(gameLayout);
+    centerLayout->addLayout(rightPanel, 1);
+    centerLayout->addStretch(1);
     
+    mainLayout->addWidget(centerWidget, 1);
+    
+    // Setup menus
     setupMenuBar(app);
     
+    // Setup game timer for piece falling
     QTimer* gameTimer = new QTimer(app->window);
     QObject::connect(gameTimer, &QTimer::timeout, [app]() {
         onGameTick(app);
@@ -1255,8 +1437,8 @@ int main_qt5(int argc, char* argv[], TetrimoneApp* app) {
     
     SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_VIDEO);
     
-    // Initialize GPU renderer
-    initGPURenderer(app, 300, 660);
+    // Initialize GPU renderer with reasonable size
+    initGPURenderer(app, 500, 550);
     
     setupGameUI(app, 800, 600);
     
