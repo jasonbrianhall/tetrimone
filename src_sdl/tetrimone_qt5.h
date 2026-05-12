@@ -10,6 +10,7 @@
 #include <QActionGroup>
 #include <QTimer>
 #include <SDL2/SDL.h>
+#include <cairo/cairo.h>
 #include "audiomanager.h"
 #include "tetrimone_core.h"
 
@@ -19,9 +20,44 @@ class GameAreaWidget;
 class NextPieceWidget;
 
 // ============================================================================
-// Qt5-specific TetrimoneApp structure
+// SDL/Cairo GPU-Accelerated Renderer
 // ============================================================================
 
+class SDLCairoRenderer {
+private:
+    SDL_Window* window;
+    SDL_Renderer* sdlRenderer;
+    SDL_Texture* texture;
+    cairo_surface_t* cairoSurface;
+    cairo_t* cairoContext;
+    int width, height;
+    Uint32 pixelFormat;
+    int pitch;
+    void* pixelBuffer;
+
+public:
+    SDLCairoRenderer(int w, int h);
+    ~SDLCairoRenderer();
+    
+    bool init(const char* title, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    cairo_t* getCairoContext() { return cairoContext; }
+    cairo_surface_t* getCairoSurface() { return cairoSurface; }
+    void clearCairoSurface(double r, double g, double b, double a = 1.0);
+    void syncSurfaceToTexture();
+    void present();
+    bool resize(int newWidth, int newHeight);
+    int getWidth() const { return width; }
+    int getHeight() const { return height; }
+    SDL_Window* getSDLWindow() { return window; }
+    SDL_Renderer* getSDLRenderer() { return sdlRenderer; }
+    bool saveFrameToPNG(const char* filename);
+    void* getPixelBuffer() { return pixelBuffer; }
+    void cleanup();
+};
+
+// ============================================================================
+// Qt5-specific TetrimoneApp structure
+// ============================================================================
 
 struct TetrimoneApp {
     QApplication* app = nullptr;
@@ -83,6 +119,10 @@ struct TetrimoneApp {
     QAction*      renderModeMenuItems[2] = {nullptr};
 
     CommandLineArgs* cmdlineArgs = nullptr;
+    
+    // GPU-accelerated SDL/Cairo renderer
+    SDLCairoRenderer* sdlCairoRenderer = nullptr;
+    bool useGPUAcceleration = true;
 };
 
 // ============================================================================
@@ -126,6 +166,11 @@ void onDifficultyChanged(TetrimoneApp* app, int difficulty);
 // UI setup
 void setupMenuBar(TetrimoneApp* app);
 void setupGameUI(TetrimoneApp* app, int width, int height);
+
+// GPU rendering initialization and functions
+void initGPURenderer(TetrimoneApp* app, int width, int height);
+void shutdownGPURenderer(TetrimoneApp* app);
+void renderFrameGPU(TetrimoneApp* app);
 
 // Application entry point
 int main_qt5(int argc, char* argv[], TetrimoneApp* app);
