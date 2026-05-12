@@ -436,7 +436,7 @@ public:
     explicit GameAreaWidget(TetrimoneBoard* board, TetrimoneApp* app, QWidget* parent = nullptr)
         : QWidget(parent), board(board), app(app), backgroundPixmap(nullptr) {
         setFocusPolicy(Qt::StrongFocus);
-        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         setMinimumSize(200, 440);
     }
 
@@ -445,11 +445,8 @@ public:
     }
 
     QSize sizeHint() const override {
-        // Return proper 10:22 aspect ratio (board width : board height)
-        // Calculate based on available width from parent
-        int w = parentWidget() ? parentWidget()->width() / 2 : 300;
-        int h = (w / 10) * 22;  // 10 blocks wide, 22 blocks tall
-        return QSize(w, h);
+        // Will expand to fill available space
+        return QSize(400, 880);
     }
 
 protected:
@@ -461,9 +458,10 @@ protected:
         
         if (w <= 0 || h <= 0) return;
         
-        // Calculate scaling factor based on widget size
-        int blockSize = w / 10;
-        double scale = blockSize / 30.0;
+        // Calculate scaling factor - make blocks fill the HEIGHT (22 blocks)
+        int blockSize = h / 22;  // Fill the full height with 22 blocks
+        
+        double scale = blockSize / 30.0;  // 30 is the base block size
         
         // Use GPU renderer if available
         if (app->sdlCairoRenderer) {
@@ -587,6 +585,12 @@ protected:
         } else if (key == Qt::Key_P) {
             pauseGame(app);
             updateDisplay(app);
+        } else if (key == Qt::Key_R) {
+            // Restart game on 'r' key
+            if (board->isGameOver()) {
+                onRestartGameAction(app);
+                updateDisplay(app);
+            }
         } else if (key == Qt::Key_Escape) {
             if (board->isSplashScreenActive()) {
                 board->setSplashScreenActive(false);
