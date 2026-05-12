@@ -58,7 +58,7 @@ jobs:
 
     - name: Build Windows QT5 Version
       run: |
-        make windows.qt5
+        make -f Makefile.qt5 windows
 
     - name: Prepare Build Artifacts for GTK version
       working-directory: build/windows
