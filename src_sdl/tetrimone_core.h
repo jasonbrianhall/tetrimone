@@ -97,6 +97,7 @@ private:
     std::deque<std::unique_ptr<TetrimoneBlock>> nextPieces;
     int score, level, linesCleared;
     bool gameOver, paused;
+    bool gameOverSoundPlayed = false;  // Ensures game over sound plays only once
     std::mt19937 rng;
     bool splashScreenActive;
     std::atomic<bool> musicStopFlag{false};
