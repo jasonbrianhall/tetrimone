@@ -591,6 +591,28 @@ protected:
                 onRestartGameAction(app);
                 updateDisplay(app);
             }
+        } else if (key == Qt::Key_Comma) {
+            // Toggle retro/propaganda mode with comma key
+            board->retroModeActive = !board->retroModeActive;
+            if (board->retroModeActive) {
+                std::cout << "✓ Retro mode ACTIVATED - БЛОЧНАЯ РЕВОЛЮЦИЯ" << std::endl;
+                app->window->setWindowTitle("БЛОЧНАЯ РЕВОЛЮЦИЯ");
+            } else {
+                std::cout << "✓ Retro mode deactivated" << std::endl;
+                app->window->setWindowTitle("Tetrimone");
+            }
+            updateDisplay(app);
+        } else if (key == Qt::Key_Period) {
+            // Toggle patriot mode with period key
+            board->patrioticModeActive = !board->patrioticModeActive;
+            if (board->patrioticModeActive) {
+                std::cout << "✓ Patriot mode ACTIVATED - GOD BLESS AMERICA" << std::endl;
+                app->window->setWindowTitle("TETRIMONE - PATRIOT MODE");
+            } else {
+                std::cout << "✓ Patriot mode deactivated" << std::endl;
+                app->window->setWindowTitle("Tetrimone");
+            }
+            updateDisplay(app);
         } else if (key == Qt::Key_Escape) {
             if (board->isSplashScreenActive()) {
                 board->setSplashScreenActive(false);
