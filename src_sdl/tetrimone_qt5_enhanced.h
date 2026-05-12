@@ -9,6 +9,7 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QTimer>
+#include <QDialog>
 #include <SDL2/SDL.h>
 #include <cairo/cairo.h>
 #include "audiomanager.h"
@@ -18,6 +19,7 @@
 struct TetrimoneApp;
 class GameAreaWidget;
 class NextPieceWidget;
+class TetrimoneWindow;
 
 // ============================================================================
 // SDL/Cairo GPU-Accelerated Renderer
@@ -56,12 +58,45 @@ public:
 };
 
 // ============================================================================
-// Qt5-specific TetrimoneApp structure
+// Enhanced Game Window with Focus Tracking
+// ============================================================================
+
+class TetrimoneWindow : public QWidget {
+    Q_OBJECT
+public:
+    explicit TetrimoneWindow(TetrimoneApp* app);
+    
+protected:
+    void focusInEvent(QFocusEvent *event) override;
+    void focusOutEvent(QFocusEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
+    
+private:
+    TetrimoneApp* app;
+};
+
+// ============================================================================
+// Modal Dialog Base Class - Auto-pauses game
+// ============================================================================
+
+class GamePausingDialog : public QDialog {
+    Q_OBJECT
+public:
+    explicit GamePausingDialog(TetrimoneApp* app, QWidget* parent = nullptr);
+    ~GamePausingDialog();
+    
+protected:
+    TetrimoneApp* app;
+    bool wasGameRunning;
+};
+
+// ============================================================================
+// Qt5-specific TetrimoneApp structure (Enhanced)
 // ============================================================================
 
 struct TetrimoneApp {
     QApplication* app = nullptr;
-    QWidget*      window = nullptr;
+    TetrimoneWindow* window = nullptr;
     QWidget*      mainBox = nullptr;
     QWidget*      gameArea = nullptr;
     QWidget*      nextPieceArea = nullptr;
@@ -79,12 +114,17 @@ struct TetrimoneApp {
 
     QAction*      backgroundToggleMenuItem = nullptr;
 
-    // Menu related widgets
+    // ========== Game Control Menu ==========
     QMenuBar*     menuBar = nullptr;
     QAction*      startMenuItem = nullptr;
     QAction*      pauseMenuItem = nullptr;
     QAction*      restartMenuItem = nullptr;
+
+    // ========== Sound Menu ==========
     QAction*      soundToggleMenuItem = nullptr;
+    QAction*      trackMenuItems[5] = {nullptr};
+
+    // ========== Difficulty Menu ==========
     QAction*      zenMenuItem = nullptr;
     QAction*      easyMenuItem = nullptr;
     QAction*      mediumMenuItem = nullptr;
@@ -92,56 +132,39 @@ struct TetrimoneApp {
     QAction*      extremeMenuItem = nullptr;
     QAction*      insaneMenuItem = nullptr;
 
-    QAction*      trackMenuItems[5] = {nullptr};
+    // ========== Theme Menu ==========
     QAction*      themeMenuItems[31] = {nullptr};
 
-    // Additional menu items from GTK3 version
-    QAction*      blockSizeMenuItem = nullptr;
-    QAction*      joystickConfigMenuItem = nullptr;
-    QAction*      backgroundImageMenuItem = nullptr;
-    QAction*      backgroundToggleMenuItem_Display = nullptr;
-    QAction*      backgroundOpacityMenuItem = nullptr;
-    QAction*      backgroundZipMenuItem = nullptr;
-    QAction*      volumeMenuItem = nullptr;
-    QAction*      blockSizeRulesMenuItem = nullptr;
-    QAction*      gameSizeMenuItem = nullptr;
-    QAction*      gridLinesMenuItem = nullptr;
-    QAction*      ghostPieceMenuItem = nullptr;
-    QAction*      highScoresMenuItem = nullptr;
-    QAction*      backgroundImagesMenuItem = nullptr;
-    QAction*      simpleBlocksMenuItem = nullptr;
-    QAction*      retroMusicMenuItem = nullptr;
-    QAction*      blockTrailsMenuItem = nullptr;
-    QAction*      blockTrailsConfigMenuItem = nullptr;
-    QAction*      gameSetupMenuItem = nullptr;
-    QAction*      resetSettingsMenuItem = nullptr;
-
+    // ========== Status Labels ==========
     QLabel*       sequenceLabel = nullptr;
     QLabel*       controlsLabel = nullptr;
-
-    int           difficulty = 1; // 0=Zen, 1=Easy, 2=Medium, 3=Hard, 4=Extreme
-
     QLabel*       controlsHeaderLabel = nullptr;
 
+    // ========== Game State ==========
+    int           difficulty = 1; // 0=Zen, 1=Easy, 2=Medium, 3=Hard, 4=Extreme
+
+    // ========== Input Handling ==========
     SDL_Joystick* joystick = nullptr;
     bool          joystickEnabled = false;
     int           joystickTimerId = 0;
-
     JoystickMapping joystickMapping;
-    bool            pausedByFocusLoss = false;
 
-    // Rendering mode selection
+    // ========== Focus and Pause State ==========
+    bool          pausedByFocusLoss = false;
+    bool          pausedByDialog = false;
+
+    // ========== Rendering Mode Selection ==========
     enum RenderingMode {
         RENDER_CAIRO  = 0,
         RENDER_OPENGL = 1
     };
     RenderingMode renderingMode = RENDER_CAIRO;
-
     QAction*      renderModeMenuItems[2] = {nullptr};
 
+    // ========== Command Line Arguments ==========
     CommandLineArgs* cmdlineArgs = nullptr;
     
-    // GPU-accelerated SDL/Cairo renderer
+    // ========== GPU-accelerated SDL/Cairo Renderer ==========
     SDLCairoRenderer* sdlCairoRenderer = nullptr;
     bool useGPUAcceleration = true;
 };
@@ -168,17 +191,7 @@ void onKeyLeftTick(TetrimoneApp* app);
 void onKeyRightTick(TetrimoneApp* app);
 void onGameTick(TetrimoneApp* app);
 
-// Help dialogs
-void onAboutDialog(void* menuItem, void* userData);
-void onInstructionsDialog(void* menuItem, void* userData);
-void showIdeologicalFailureDialog(TetrimoneApp* app);
-void showPatrioticPerformanceDialog(TetrimoneApp* app);
-
-#ifdef QT5
-void onAppActivate(TetrimoneApp* app);
-#endif
-
-// Menu actions
+// Game action handlers
 void onStartGameAction(TetrimoneApp* app);
 void onPauseGameAction(TetrimoneApp* app);
 void onRestartGameAction(TetrimoneApp* app);
@@ -186,44 +199,25 @@ void onQuitGameAction(TetrimoneApp* app);
 void onSoundToggleAction(TetrimoneApp* app, bool enabled);
 void onDifficultyChanged(TetrimoneApp* app, int difficulty);
 
-// TODO: Additional menu callbacks from GTK3 version
-void onBlockSizeDialog(TetrimoneApp* app);
-void onBlockSizeValueChanged(int value, TetrimoneApp* app);
-void onResizeWindowButtonClicked(TetrimoneApp* app);
-void onJoystickConfig(TetrimoneApp* app);
-void onJoystickRescan(TetrimoneApp* app);
-void updateJoystickInfo(TetrimoneApp* app);
-void onJoystickMapApply(TetrimoneApp* app);
-void onJoystickMapReset(TetrimoneApp* app);
-void onBackgroundImageDialog(TetrimoneApp* app);
-void onBackgroundToggled(TetrimoneApp* app, bool enabled);
-void onBackgroundOpacityDialog(TetrimoneApp* app);
-void onOpacityValueChanged(int value, TetrimoneApp* app);
-void updateSizeValueLabel(int value, TetrimoneApp* app);
-void onBackgroundZipDialog(TetrimoneApp* app);
-void onVolumeDialog(TetrimoneApp* app);
-void onVolumeValueChanged(int value, TetrimoneApp* app);
-void onMusicVolumeValueChanged(int value, TetrimoneApp* app);
-void onTrackToggled(TetrimoneApp* app, int trackIndex, bool enabled);
-void onBlockSizeRulesChanged(TetrimoneApp* app, int mode);
-void onGameSizeDialog(TetrimoneApp* app);
-void onGridLinesToggled(TetrimoneApp* app, bool enabled);
-void updateWidthValueLabel(int value, TetrimoneApp* app);
-void updateHeightValueLabel(int value, TetrimoneApp* app);
-void onGhostPieceToggled(TetrimoneApp* app, bool enabled);
-void onViewHighScores(TetrimoneApp* app);
-void onBackgroundImagesDialog(TetrimoneApp* app);
-void onSimpleBlocksToggled(TetrimoneApp* app, bool enabled);
-void onRetroMusicToggled(TetrimoneApp* app, bool enabled);
-void onTestSound(TetrimoneApp* app);
-void onGameSetupDialog(TetrimoneApp* app);
-void onResetSettings(TetrimoneApp* app);
-void onThemeChanged(TetrimoneApp* app, int themeIndex);
-void onBlockTrailsToggled(TetrimoneApp* app, bool enabled);
-void onBlockTrailsConfig(TetrimoneApp* app);
-void onTrailOpacityChanged(int value, TetrimoneApp* app);
-void onTrailDurationChanged(int value, TetrimoneApp* app);
-void onRenderModeChanged(TetrimoneApp* app, int mode);
+// Help dialogs
+void onAboutDialog(void* menuItem, void* userData);
+void onInstructionsDialog(void* menuItem, void* userData);
+void showIdeologicalFailureDialog(TetrimoneApp* app);
+void showPatrioticPerformanceDialog(TetrimoneApp* app);
+
+// Dialog functions
+void showGameSetupDialog(TetrimoneApp* app);
+void showBlockSizeDialog(TetrimoneApp* app);
+void showGameSizeDialog(TetrimoneApp* app);
+void showBackgroundImageDialog(TetrimoneApp* app);
+void showJoystickConfigDialog(TetrimoneApp* app);
+void showVolumeDialog(TetrimoneApp* app);
+void showBlockTrailsDialog(TetrimoneApp* app);
+void showHighScoresDialog(TetrimoneApp* app);
+
+#ifdef QT5
+void onAppActivate(TetrimoneApp* app);
+#endif
 
 // UI setup
 void setupMenuBar(TetrimoneApp* app);

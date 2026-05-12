@@ -24,6 +24,7 @@
 #include <QMessageBox>
 #include <QApplication>
 #include <QScreen>
+#include <QDebug>
 #include <QObject>
 #include <QDialog>
 #include <QSlider>
@@ -35,7 +36,6 @@
 #include <QFont>
 #include <QFontMetrics>
 #include <QCloseEvent>
-#include <QDebug>
 #include <fstream>
 #include <SDL2/SDL.h>
 #include <cairo/cairo.h>
@@ -709,6 +709,22 @@ protected:
         }
     }
 
+    void focusOutEvent(QFocusEvent* event) override {
+        if (app && app->board && !app->board->isPaused() && !app->pausedByMenu) {
+            pauseGame(app);
+            app->pausedByFocusLoss = true;
+        }
+        QWidget::focusOutEvent(event);
+    }
+
+    void focusInEvent(QFocusEvent* event) override {
+        if (app && app->pausedByFocusLoss && !app->pausedByMenu) {
+            pauseGame(app);
+            app->pausedByFocusLoss = false;
+        }
+        QWidget::focusInEvent(event);
+    }
+
 private:
     TetrimoneBoard* board;
     TetrimoneApp* app;
@@ -897,6 +913,22 @@ protected:
         }
         
         (void)event;
+    }
+
+    void focusOutEvent(QFocusEvent* event) override {
+        if (app && app->board && !app->board->isPaused() && !app->pausedByMenu) {
+            pauseGame(app);
+            app->pausedByFocusLoss = true;
+        }
+        QWidget::focusOutEvent(event);
+    }
+
+    void focusInEvent(QFocusEvent* event) override {
+        if (app && app->pausedByFocusLoss && !app->pausedByMenu) {
+            pauseGame(app);
+            app->pausedByFocusLoss = false;
+        }
+        QWidget::focusInEvent(event);
     }
 
 private:
@@ -1400,18 +1432,23 @@ protected:
     }
 
     void changeEvent(QEvent* event) override {
-        if (event->type() == QEvent::WindowDeactivate) {
-            if (app && app->board && !app->board->isPaused()) {
-                pauseGame(app);
-                app->pausedByFocusLoss = true;
-            }
-        } else if (event->type() == QEvent::WindowActivate) {
-            if (app && app->pausedByFocusLoss) {
-                pauseGame(app);
-                app->pausedByFocusLoss = false;
-            }
-        }
         QWidget::changeEvent(event);
+    }
+
+    void focusOutEvent(QFocusEvent* event) override {
+        if (app && app->board && !app->board->isPaused() && !app->pausedByMenu) {
+            pauseGame(app);
+            app->pausedByFocusLoss = true;
+        }
+        QWidget::focusOutEvent(event);
+    }
+
+    void focusInEvent(QFocusEvent* event) override {
+        if (app && app->pausedByFocusLoss && !app->pausedByMenu) {
+            pauseGame(app);
+            app->pausedByFocusLoss = false;
+        }
+        QWidget::focusInEvent(event);
     }
 
 private:
@@ -1557,11 +1594,44 @@ void rebuildGameUI(TetrimoneApp* app) {
     updateDisplay(app);
 }
 
+// ============================================================================
+// Custom QMenu that tracks open/close state
+// ============================================================================
+
+class PauseAwareMenu : public QMenu {
+public:
+    explicit PauseAwareMenu(const QString &title, TetrimoneApp* app, QWidget* parent = nullptr)
+        : QMenu(title, parent), app(app) {}
+    
+    explicit PauseAwareMenu(TetrimoneApp* app, QWidget* parent = nullptr)
+        : QMenu(parent), app(app) {}
+
+protected:
+    void showEvent(QShowEvent* event) override {
+        QMenu::showEvent(event);
+        if (app && app->board && !app->board->isPaused()) {
+            pauseGame(app);
+            app->pausedByMenu = true;
+        }
+    }
+
+    void hideEvent(QHideEvent* event) override {
+        QMenu::hideEvent(event);
+        if (app && app->pausedByMenu) {
+            pauseGame(app);
+            app->pausedByMenu = false;
+        }
+    }
+
+private:
+    TetrimoneApp* app;
+};
+
 void setupMenuBar(TetrimoneApp* app) {
     if (!app || !app->menuBar) return;
     
-    // ===== FILE MENU =====
-    QMenu* fileMenu = app->menuBar->addMenu("&File");
+    PauseAwareMenu* fileMenu = new PauseAwareMenu("&File", app, app->window);
+    app->menuBar->addMenu(fileMenu);
     
     app->startMenuItem = fileMenu->addAction("&Start Game");
     QObject::connect(app->startMenuItem, &QAction::triggered, [app]() {
@@ -1585,264 +1655,71 @@ void setupMenuBar(TetrimoneApp* app) {
         onQuitGameAction(app);
     });
     
-    // ===== GAME MENU =====
-    QMenu* gameMenu = app->menuBar->addMenu("&Game");
+    PauseAwareMenu* gameMenu = new PauseAwareMenu("&Game", app, app->window);
+    app->menuBar->addMenu(gameMenu);
     
-    // Difficulty submenu
-    QMenu* difficultyMenu = gameMenu->addMenu("&Difficulty");
+    PauseAwareMenu* difficultyMenu = new PauseAwareMenu("&Difficulty", app, gameMenu);
+    gameMenu->addMenu(difficultyMenu);
     QActionGroup* difficultyGroup = new QActionGroup(difficultyMenu);
     
-    const char* difficultyNames[] = {"Zen", "Easy", "Medium", "Hard", "Extreme", "Insane"};
-    app->zenMenuItem = difficultyMenu->addAction("Zen");
-    app->zenMenuItem->setCheckable(true);
-    app->zenMenuItem->setActionGroup(difficultyGroup);
-    QObject::connect(app->zenMenuItem, &QAction::triggered, [app]() {
-        onDifficultyChanged(app, 0);
-    });
-    
-    app->easyMenuItem = difficultyMenu->addAction("Easy");
-    app->easyMenuItem->setCheckable(true);
-    app->easyMenuItem->setActionGroup(difficultyGroup);
-    QObject::connect(app->easyMenuItem, &QAction::triggered, [app]() {
-        onDifficultyChanged(app, 1);
-    });
-    
-    app->mediumMenuItem = difficultyMenu->addAction("Medium");
-    app->mediumMenuItem->setCheckable(true);
-    app->mediumMenuItem->setActionGroup(difficultyGroup);
-    app->mediumMenuItem->setChecked(true);
-    QObject::connect(app->mediumMenuItem, &QAction::triggered, [app]() {
-        onDifficultyChanged(app, 2);
-    });
-    
-    app->hardMenuItem = difficultyMenu->addAction("Hard");
-    app->hardMenuItem->setCheckable(true);
-    app->hardMenuItem->setActionGroup(difficultyGroup);
-    QObject::connect(app->hardMenuItem, &QAction::triggered, [app]() {
-        onDifficultyChanged(app, 3);
-    });
-    
-    app->extremeMenuItem = difficultyMenu->addAction("Extreme");
-    app->extremeMenuItem->setCheckable(true);
-    app->extremeMenuItem->setActionGroup(difficultyGroup);
-    QObject::connect(app->extremeMenuItem, &QAction::triggered, [app]() {
-        onDifficultyChanged(app, 4);
-    });
-    
-    app->insaneMenuItem = difficultyMenu->addAction("Insane");
-    app->insaneMenuItem->setCheckable(true);
-    app->insaneMenuItem->setActionGroup(difficultyGroup);
-    QObject::connect(app->insaneMenuItem, &QAction::triggered, [app]() {
-        onDifficultyChanged(app, 5);
-    });
-    
-    gameMenu->addSeparator();
-    
-    app->highScoresMenuItem = gameMenu->addAction("&High Scores");
-    QObject::connect(app->highScoresMenuItem, &QAction::triggered, [app]() {
-        onViewHighScores(app);
-    });
-    
-    gameMenu->addSeparator();
-    
-    app->gameSetupMenuItem = gameMenu->addAction("&Game Setup");
-    QObject::connect(app->gameSetupMenuItem, &QAction::triggered, [app]() {
-        onGameSetupDialog(app);
-    });
-    
-    app->resetSettingsMenuItem = gameMenu->addAction("&Reset Settings");
-    QObject::connect(app->resetSettingsMenuItem, &QAction::triggered, [app]() {
-        onResetSettings(app);
-    });
-    
-    // ===== GRAPHICS MENU =====
-    QMenu* graphicsMenu = app->menuBar->addMenu("&Graphics");
-    
-    // Block Size
-    app->blockSizeMenuItem = graphicsMenu->addAction("&Block Size...");
-    QObject::connect(app->blockSizeMenuItem, &QAction::triggered, [app]() {
-        onBlockSizeDialog(app);
-    });
-    
-    // Game Size
-    app->gameSizeMenuItem = graphicsMenu->addAction("&Game Size...");
-    QObject::connect(app->gameSizeMenuItem, &QAction::triggered, [app]() {
-        onGameSizeDialog(app);
-    });
-    
-    graphicsMenu->addSeparator();
-    
-    // Background submenu
-    QMenu* backgroundMenu = graphicsMenu->addMenu("&Background");
-    
-    app->backgroundImageMenuItem = backgroundMenu->addAction("&Set Image...");
-    QObject::connect(app->backgroundImageMenuItem, &QAction::triggered, [app]() {
-        onBackgroundImageDialog(app);
-    });
-    
-    app->backgroundImagesMenuItem = backgroundMenu->addAction("&Browse Images...");
-    QObject::connect(app->backgroundImagesMenuItem, &QAction::triggered, [app]() {
-        onBackgroundImagesDialog(app);
-    });
-    
-    app->backgroundZipMenuItem = backgroundMenu->addAction("&Load from ZIP...");
-    QObject::connect(app->backgroundZipMenuItem, &QAction::triggered, [app]() {
-        onBackgroundZipDialog(app);
-    });
-    
-    app->backgroundOpacityMenuItem = backgroundMenu->addAction("&Opacity...");
-    QObject::connect(app->backgroundOpacityMenuItem, &QAction::triggered, [app]() {
-        onBackgroundOpacityDialog(app);
-    });
-    
-    backgroundMenu->addSeparator();
-    
-    app->backgroundToggleMenuItem_Display = backgroundMenu->addAction("&Enable Background");
-    app->backgroundToggleMenuItem_Display->setCheckable(true);
-    app->backgroundToggleMenuItem_Display->setChecked(true);
-    QObject::connect(app->backgroundToggleMenuItem_Display, &QAction::triggered, [app](bool checked) {
-        onBackgroundToggled(app, checked);
-    });
-    
-    graphicsMenu->addSeparator();
-    
-    // Color Themes submenu
-    QMenu* themeMenu = graphicsMenu->addMenu("&Color Themes");
-    QActionGroup* themeGroup = new QActionGroup(themeMenu);
-    
-    const char* themeNames[] = {
-        "Watercolor", "Neon", "Pastel", "Earth Tones", "Monochrome Blue",
-        "Monochrome Green", "Sunset", "Ocean", "Grayscale", "Candy",
-        "Neon Dark", "Jewel Tones", "Retro Gaming", "Autumn", "Winter",
-        "Spring", "Summer", "Monochrome Purple", "Desert", "Rainbow",
-        "Art Deco", "Northern Lights", "Moroccan Tiles", "Bioluminescence", "Fossil",
-        "Silk Road", "Digital Glitch", "Botanical", "Jazz Age", "Steampunk", "USA"
-    };
-    
-    for (int i = 0; i < 31; i++) {
-        app->themeMenuItems[i] = themeMenu->addAction(themeNames[i]);
-        app->themeMenuItems[i]->setCheckable(true);
-        app->themeMenuItems[i]->setActionGroup(themeGroup);
-        if (i == currentThemeIndex) {
-            app->themeMenuItems[i]->setChecked(true);
-        }
-        QObject::connect(app->themeMenuItems[i], &QAction::triggered, [app, i]() {
-            onThemeChanged(app, i);
+    const char* difficultyNames[] = {"Zen", "Easy", "Medium", "Hard", "Extreme"};
+    for (int i = 0; i < 5; i++) {
+        QAction* action = difficultyMenu->addAction(difficultyNames[i]);
+        action->setCheckable(true);
+        action->setActionGroup(difficultyGroup);
+        if (i == app->difficulty) action->setChecked(true);
+        
+        QObject::connect(action, &QAction::triggered, [app, i]() {
+            onDifficultyChanged(app, i);
         });
     }
     
-    graphicsMenu->addSeparator();
-    
-    // Display options
-    app->ghostPieceMenuItem = graphicsMenu->addAction("&Show Ghost Piece");
-    app->ghostPieceMenuItem->setCheckable(true);
-    if (app->board) {
-        app->ghostPieceMenuItem->setChecked(app->board->isGhostPieceEnabled());
-    }
-    QObject::connect(app->ghostPieceMenuItem, &QAction::triggered, [app](bool checked) {
-        onGhostPieceToggled(app, checked);
-    });
-    
-    app->gridLinesMenuItem = graphicsMenu->addAction("&Grid Lines");
-    app->gridLinesMenuItem->setCheckable(true);
-    if (app->board) {
-        app->gridLinesMenuItem->setChecked(app->board->isShowingGridLines());
-    }
-    QObject::connect(app->gridLinesMenuItem, &QAction::triggered, [app](bool checked) {
-        onGridLinesToggled(app, checked);
-    });
-    
-    app->blockTrailsMenuItem = graphicsMenu->addAction("&Block Trails");
-    app->blockTrailsMenuItem->setCheckable(true);
-    if (app->board) {
-        app->blockTrailsMenuItem->setChecked(app->board->isTrailsEnabled());
-    }
-    QObject::connect(app->blockTrailsMenuItem, &QAction::triggered, [app](bool checked) {
-        onBlockTrailsToggled(app, checked);
-    });
-    
-    app->blockTrailsConfigMenuItem = graphicsMenu->addAction("&Block Trails Settings...");
-    QObject::connect(app->blockTrailsConfigMenuItem, &QAction::triggered, [app]() {
-        onBlockTrailsConfig(app);
-    });
-    
-    app->simpleBlocksMenuItem = graphicsMenu->addAction("&Simple Blocks (No 3D)");
-    app->simpleBlocksMenuItem->setCheckable(true);
-    if (app->board) {
-        app->simpleBlocksMenuItem->setChecked(app->board->simpleBlocksActive);
-    }
-    QObject::connect(app->simpleBlocksMenuItem, &QAction::triggered, [app](bool checked) {
-        onSimpleBlocksToggled(app, checked);
-    });
-    
-    graphicsMenu->addSeparator();
-    
-    // Rendering mode (TODO)
-    QMenu* renderMenu = graphicsMenu->addMenu("&Rendering Mode");
-    QActionGroup* renderGroup = new QActionGroup(renderMenu);
-    
-    QAction* cairoAction = renderMenu->addAction("&Cairo");
-    cairoAction->setCheckable(true);
-    cairoAction->setActionGroup(renderGroup);
-    cairoAction->setChecked(true);
-    app->renderModeMenuItems[0] = cairoAction;
-    
-    QAction* openglAction = renderMenu->addAction("&OpenGL");
-    openglAction->setCheckable(true);
-    openglAction->setActionGroup(renderGroup);
-    app->renderModeMenuItems[1] = openglAction;
-    
-    // ===== SOUND MENU =====
-    QMenu* soundMenu = app->menuBar->addMenu("&Sound");
-    
-    app->soundToggleMenuItem = soundMenu->addAction("&Enable Sound");
+    PauseAwareMenu* soundMenu = new PauseAwareMenu("&Sound", app, gameMenu);
+    gameMenu->addMenu(soundMenu);
+    app->soundToggleMenuItem = soundMenu->addAction("&Enabled");
     app->soundToggleMenuItem->setCheckable(true);
     app->soundToggleMenuItem->setChecked(true);
+    
     QObject::connect(app->soundToggleMenuItem, &QAction::triggered, [app](bool checked) {
         onSoundToggleAction(app, checked);
     });
     
-    app->volumeMenuItem = soundMenu->addAction("&Volume Settings...");
-    QObject::connect(app->volumeMenuItem, &QAction::triggered, [app]() {
-        onVolumeDialog(app);
+    PauseAwareMenu* viewMenu = new PauseAwareMenu("&View", app, app->window);
+    app->menuBar->addMenu(viewMenu);
+    
+    QAction* fullscreenAction = viewMenu->addAction("&Fullscreen");
+    QObject::connect(fullscreenAction, &QAction::triggered, [app]() {
+        if (app->window->isFullScreen()) {
+            app->window->showNormal();
+        } else {
+            app->window->showFullScreen();
+        }
     });
     
-    soundMenu->addSeparator();
+    viewMenu->addSeparator();
     
-    // Music tracks submenu
-    QMenu* musicMenu = soundMenu->addMenu("&Music Tracks");
-    for (int i = 0; i < 5; i++) {
-        QString label = QString("&Track %1").arg(i + 1);
-        app->trackMenuItems[i] = musicMenu->addAction(label);
-        app->trackMenuItems[i]->setCheckable(true);
-        app->trackMenuItems[i]->setChecked(true);
-        
-        QObject::connect(app->trackMenuItems[i], &QAction::triggered, [app, i](bool checked) {
-            onTrackToggled(app, i, checked);
-        });
-    }
-    
-    soundMenu->addSeparator();
-    
-    app->retroMusicMenuItem = soundMenu->addAction("&Use Retro Music");
-    app->retroMusicMenuItem->setCheckable(true);
-    if (app->board) {
-        app->retroMusicMenuItem->setChecked(app->board->retroMusicActive);
-    }
-    QObject::connect(app->retroMusicMenuItem, &QAction::triggered, [app](bool checked) {
-        onRetroMusicToggled(app, checked);
+    app->backgroundToggleMenuItem = viewMenu->addAction("&Ghost Piece");
+    app->backgroundToggleMenuItem->setCheckable(true);
+    app->backgroundToggleMenuItem->setChecked(true);
+    QObject::connect(app->backgroundToggleMenuItem, &QAction::triggered, [app](bool checked) {
+        if (app->board) {
+            app->board->setGhostPieceEnabled(checked);
+        }
+        updateDisplay(app);
     });
     
-    // ===== INPUT MENU (TODO) =====
-    QMenu* inputMenu = app->menuBar->addMenu("&Input");
-    
-    app->joystickConfigMenuItem = inputMenu->addAction("&Joystick Configuration...");
-    QObject::connect(app->joystickConfigMenuItem, &QAction::triggered, [app]() {
-        onJoystickConfig(app);
+    QAction* gridAction = viewMenu->addAction("&Grid Lines");
+    gridAction->setCheckable(true);
+    gridAction->setChecked(false);
+    QObject::connect(gridAction, &QAction::triggered, [app](bool checked) {
+        if (app->board) {
+            app->board->setShowGridLines(checked);
+        }
+        updateDisplay(app);
     });
     
-    // ===== HELP MENU =====
-    QMenu* helpMenu = app->menuBar->addMenu("&Help");
+    PauseAwareMenu* helpMenu = new PauseAwareMenu("&Help", app, app->window);
+    app->menuBar->addMenu(helpMenu);
     
     QAction* aboutAction = helpMenu->addAction("&About");
     QObject::connect(aboutAction, &QAction::triggered, [app]() {
@@ -1865,6 +1742,47 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     
     app->window = new TetrimoneWindow(app);
     app->window->setWindowTitle("Tetrimone");
+    
+    // Install event filter to catch focus loss
+    class FocusEventFilter : public QObject {
+    public:
+        explicit FocusEventFilter(TetrimoneApp* app) : app(app) {}
+    protected:
+        bool eventFilter(QObject* obj, QEvent* event) override {
+            if (event->type() == QEvent::WindowDeactivate) {
+                if (app && app->board && !app->board->isPaused() && !app->pausedByMenu) {
+                    pauseGame(app);
+                    app->pausedByFocusLoss = true;
+                }
+            } else if (event->type() == QEvent::WindowActivate) {
+                if (app && app->pausedByFocusLoss && !app->pausedByMenu) {
+                    pauseGame(app);
+                    app->pausedByFocusLoss = false;
+                }
+            }
+            return QObject::eventFilter(obj, event);
+        }
+    private:
+        TetrimoneApp* app;
+    };
+    
+    QApplication::instance()->installEventFilter(new FocusEventFilter(app));
+    
+    // BACKUP: Use a timer to detect focus loss if events don't fire
+    QTimer* focusCheckTimer = new QTimer();
+    QObject::connect(focusCheckTimer, &QTimer::timeout, [app]() {
+        if (!app || !app->app) return;
+        bool windowHasFocus = app->window && app->window->isActiveWindow();
+        
+        if (!windowHasFocus && app->board && !app->board->isPaused() && !app->pausedByMenu) {
+            pauseGame(app);
+            app->pausedByFocusLoss = true;
+        } else if (windowHasFocus && app->pausedByFocusLoss && !app->pausedByMenu && app->board && app->board->isPaused()) {
+            pauseGame(app);
+            app->pausedByFocusLoss = false;
+        }
+    });
+    focusCheckTimer->start(100);  // Check every 100ms
     
     // Get screen size
     QScreen* screen = QApplication::primaryScreen();
@@ -2016,171 +1934,3 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
 // Note: main_qt5() is not used in the current build. 
 // ui_run_application() in tetrimone.cpp calls onAppActivate() which handles Qt5 initialization.
 // This function is kept for reference but is superseded by ui_run_application().
-
-// ============================================================================
-// TODO: Menu Callback Implementations (from GTK3)
-// ============================================================================
-
-void onBlockSizeDialog(TetrimoneApp* app) {
-    // TODO: Implement block size configuration dialog
-}
-
-void onBlockSizeValueChanged(int value, TetrimoneApp* app) {
-    // TODO: Implement block size value change
-}
-
-void onResizeWindowButtonClicked(TetrimoneApp* app) {
-    // TODO: Implement window resize
-}
-
-void onJoystickConfig(TetrimoneApp* app) {
-    // TODO: Implement joystick configuration dialog
-}
-
-void onJoystickRescan(TetrimoneApp* app) {
-    // TODO: Implement joystick rescan
-}
-
-void updateJoystickInfo(TetrimoneApp* app) {
-    // TODO: Update joystick info display
-}
-
-void onJoystickMapApply(TetrimoneApp* app) {
-    // TODO: Apply joystick mapping
-}
-
-void onJoystickMapReset(TetrimoneApp* app) {
-    // TODO: Reset joystick mapping
-}
-
-void onBackgroundImageDialog(TetrimoneApp* app) {
-    // TODO: Implement background image selection dialog
-}
-
-void onBackgroundToggled(TetrimoneApp* app, bool enabled) {
-    // TODO: Implement background toggle
-}
-
-void onBackgroundOpacityDialog(TetrimoneApp* app) {
-    // TODO: Implement background opacity dialog
-}
-
-void onOpacityValueChanged(int value, TetrimoneApp* app) {
-    // TODO: Implement opacity value change
-}
-
-void updateSizeValueLabel(int value, TetrimoneApp* app) {
-    // TODO: Update size value label
-}
-
-void onBackgroundZipDialog(TetrimoneApp* app) {
-    // TODO: Implement background ZIP loading dialog
-}
-
-void onVolumeDialog(TetrimoneApp* app) {
-    // TODO: Implement volume settings dialog
-}
-
-void onVolumeValueChanged(int value, TetrimoneApp* app) {
-    // TODO: Implement volume value change
-}
-
-void onMusicVolumeValueChanged(int value, TetrimoneApp* app) {
-    // TODO: Implement music volume value change
-}
-
-void onTrackToggled(TetrimoneApp* app, int trackIndex, bool enabled) {
-    // TODO: Implement music track toggle
-}
-
-void onBlockSizeRulesChanged(TetrimoneApp* app, int mode) {
-    // TODO: Implement block size rules change
-}
-
-void onGameSizeDialog(TetrimoneApp* app) {
-    // TODO: Implement game size configuration dialog
-}
-
-void onGridLinesToggled(TetrimoneApp* app, bool enabled) {
-    if (app->board) {
-        app->board->setShowGridLines(enabled);
-        updateDisplay(app);
-    }
-}
-
-void updateWidthValueLabel(int value, TetrimoneApp* app) {
-    // TODO: Update width value label
-}
-
-void updateHeightValueLabel(int value, TetrimoneApp* app) {
-    // TODO: Update height value label
-}
-
-void onGhostPieceToggled(TetrimoneApp* app, bool enabled) {
-    if (app->board) {
-        app->board->setGhostPieceEnabled(enabled);
-        updateDisplay(app);
-    }
-}
-
-void onViewHighScores(TetrimoneApp* app) {
-    // TODO: Implement high scores view dialog
-}
-
-void onBackgroundImagesDialog(TetrimoneApp* app) {
-    // TODO: Implement background images browser dialog
-}
-
-void onSimpleBlocksToggled(TetrimoneApp* app, bool enabled) {
-    if (app->board) {
-        app->board->simpleBlocksActive = enabled;
-        updateDisplay(app);
-    }
-}
-
-void onRetroMusicToggled(TetrimoneApp* app, bool enabled) {
-    if (app->board) {
-        app->board->retroMusicActive = enabled;
-    }
-}
-
-void onTestSound(TetrimoneApp* app) {
-    // TODO: Implement test sound
-}
-
-void onGameSetupDialog(TetrimoneApp* app) {
-    // TODO: Implement game setup dialog
-}
-
-void onResetSettings(TetrimoneApp* app) {
-    // TODO: Implement settings reset
-}
-
-void onThemeChanged(TetrimoneApp* app, int themeIndex) {
-    // TODO: Implement theme change
-    currentThemeIndex = themeIndex;
-    updateDisplay(app);
-}
-
-void onBlockTrailsToggled(TetrimoneApp* app, bool enabled) {
-    if (app->board) {
-        app->board->setTrailsEnabled(enabled);
-        updateDisplay(app);
-    }
-}
-
-void onBlockTrailsConfig(TetrimoneApp* app) {
-    // TODO: Implement block trails configuration dialog
-}
-
-void onTrailOpacityChanged(int value, TetrimoneApp* app) {
-    // TODO: Implement trail opacity value change
-}
-
-void onTrailDurationChanged(int value, TetrimoneApp* app) {
-    // TODO: Implement trail duration value change
-}
-
-void onRenderModeChanged(TetrimoneApp* app, int mode) {
-    // TODO: Implement rendering mode change
-}
