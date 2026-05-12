@@ -27,11 +27,11 @@ SDL_CFLAGS_LINUX := $(shell sdl2-config --cflags)
 SDL_LIBS_LINUX := $(shell sdl2-config --libs)
 
 ifeq ($(AUDIO_BACKEND),pulse)
-  AUDIO_SRCS_LINUX = src_sdl/pulseaudioplayer.cpp
+  AUDIO_SRCS_LINUX = src/pulseaudioplayer.cpp
   AUDIO_FLAGS_LINUX = -DUSE_PULSEAUDIO $(shell pkg-config --cflags libpulse libpulse-simple) -DUSE_SDL
   AUDIO_LIBS_LINUX = $(shell pkg-config --libs libpulse libpulse-simple) -lSDL2_mixer
 else
-  AUDIO_SRCS_LINUX = src_sdl/sdlaudioplayer.cpp
+  AUDIO_SRCS_LINUX = src/sdlaudioplayer.cpp
   AUDIO_FLAGS_LINUX = -DUSE_SDL
   AUDIO_LIBS_LINUX = -lSDL2_mixer
 endif
@@ -76,9 +76,9 @@ ZIP_LIBS_WIN := $(shell mingw64-pkg-config --libs libzip 2>/dev/null || echo "")
 SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2 2>/dev/null || echo "")
 SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2 2>/dev/null || echo "")
 
-SRCS_COMMON = src_sdl/strip/tetrimone_qt5.cpp src_sdl/strip/tetrimone.cpp src_sdl/audiomanager.cpp src_sdl/sound.cpp src_sdl/audioconverter.cpp src_sdl/strip/volume.cpp src_sdl/strip/ghostpiece.cpp src_sdl/strip/highscores.cpp src_sdl/strip/icon.cpp src_sdl/dbopl.cpp src_sdl/dbopl_wrapper.cpp src_sdl/instruments.cpp src_sdl/midiplayer.cpp src_sdl/virtual_mixer.cpp src_sdl/wav_converter.cpp src_sdl/convertmidi.cpp src_sdl/strip/junklines.cpp src_sdl/strip/propaganda.cpp src_sdl/strip/help.cpp src_sdl/strip/saveloadsettings.cpp src_sdl/drawgame.cpp src_sdl/strip/tetrimone_main.cpp src_sdl/heat.cpp src_sdl/strip/freedom.cpp src_sdl/drawgame_cairo.cpp src_sdl/strip/qt5_dialog_helpers.cpp src_sdl/strip/qt5_dialog_helpers_moc.cpp src_sdl/strip/drawgame_cairo_gridblocks.cpp  
+SRCS_COMMON = src/tetrimone_qt5.cpp src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp src/junklines.cpp src/propaganda.cpp src/help.cpp src/saveloadsettings.cpp src/drawgame.cpp src/tetrimone_main.cpp src/heat.cpp src/freedom.cpp src/drawgame_cairo.cpp src/qt5_dialog_helpers.cpp src/qt5_dialog_helpers_moc.cpp src/drawgame_cairo_gridblocks.cpp  
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
-SRCS_WIN = src_sdl/sdlaudioplayer.cpp
+SRCS_WIN = src/sdlaudioplayer.cpp
 
 # Platform-specific settings
 CXXFLAGS_LINUX = $(CXXFLAGS_COMMON) $(QT5_CFLAGS_LINUX) $(SDL_CFLAGS_LINUX) $(AUDIO_FLAGS_LINUX) $(ZIP_CFLAGS_LINUX) $(CAIRO_CFLAGS_LINUX) $(JPEG_CFLAGS_LINUX) -DLINUX
@@ -262,12 +262,12 @@ convert-wav-to-mp3: convert-midi $(MP3_FROM_WAV)
 .PHONY: tetrimone-collect-dlls
 tetrimone-collect-dlls: $(BUILD_DIR_WIN)/$(TARGET_WIN)
 	@echo "Collecting DLLs for Tetrimone..."
-	@build/windows/collect_dlls.sh $(BUILD_DIR_WIN)/$(TARGET_WIN) $(DLL_SOURCE_DIR) $(BUILD_DIR_WIN)
+	@build/windows_qt5/collect_dlls.sh $(BUILD_DIR_WIN)/$(TARGET_WIN) $(DLL_SOURCE_DIR) $(BUILD_DIR_WIN)
 
 .PHONY: tetrimone-collect-debug-dlls
 tetrimone-collect-debug-dlls: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG)
 	@echo "Collecting Debug DLLs for Tetrimone..."
-	@build/windows/collect_dlls.sh $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) $(DLL_SOURCE_DIR) $(BUILD_DIR_WIN_DEBUG)
+	@build/windows_qt5/collect_dlls.sh $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG) $(DLL_SOURCE_DIR) $(BUILD_DIR_WIN_DEBUG)
 
 #
 # Background image packing

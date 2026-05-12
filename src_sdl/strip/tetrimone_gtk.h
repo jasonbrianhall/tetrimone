@@ -1,1 +1,0 @@
-../tetrimone_gtk.h

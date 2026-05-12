@@ -1,1 +1,0 @@
-../tetrimone_qt5.h

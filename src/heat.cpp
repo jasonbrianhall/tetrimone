@@ -1,19 +1,46 @@
-#include "tetrimone.h"
+#ifdef GTK3
+#include "tetrimone_gtk.h"
+#include <glib.h>
+#else
+#include "tetrimone_qt5.h"
+#include <QObject>
+#include <QTimer>
+#endif
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
+#ifdef GTK3
 void TetrimoneBoard::updateHeat() {
-        heatDecayTimer = g_timeout_add(1000, [](gpointer data) -> gboolean {
+    // Only create timer if it doesn't already exist
+    if (heatDecayTimer == 0) {
+        heatDecayTimer = g_timeout_add(100, [](gpointer data) -> gboolean {
             TetrimoneBoard* board = static_cast<TetrimoneBoard*>(data);
             board->coolDown();
             return TRUE; // Keep timer running
         }, this);
-
+    }
 }
+#else  // QT5
+void TetrimoneBoard::updateHeat() {
+    if (!heatDecayTimer) {
+        heatDecayTimer = new QTimer(nullptr);
+        heatDecayTimer->setInterval(100); // 100 ms for more responsive heat changes
+        QObject::connect(heatDecayTimer, &QTimer::timeout, [this]() {
+            this->coolDown();
+        });
+        heatDecayTimer->start();
+    }
+}
+#endif
 
 void TetrimoneBoard::coolDown() {
+    // Don't cool down if game is paused
+    if (paused) {
+        return;
+    }
+    
     // Base cooling rate per 100ms (independent of game timer speed)
     float baseCoolingRate = 0.005f;
     
@@ -37,10 +64,23 @@ void TetrimoneBoard::coolDown() {
     
     // Round to nearest hundredth
     heatLevel = round(heatLevel * 10000.0f) / 10000.0f;
-    //printf("Heat level %f\n", heatLevel);
-    #ifdef DEBUG
-    printf("Heat level %f\n", heatLevel);
-    #endif
+}
+
+void TetrimoneBoard::increaseHeat(float amount) {
+    heatLevel += amount;
+    
+    // Cap heat at 1.0
+    if (heatLevel > 1.0f) {
+        heatLevel = 1.0f;
+    }
+}
+
+void TetrimoneBoard::decreaseHeat(float amount) {
+    heatLevel -= amount;
+    
+    if (heatLevel < 0) {
+        heatLevel = 0.0f;
+    }
 }
 
 
@@ -95,6 +135,3 @@ float TetrimoneBoard::getHeatLevel() {
 void TetrimoneBoard::setHeatLevel(float heatLevelData) {
     heatLevel=heatLevelData;
 }
-
-
-

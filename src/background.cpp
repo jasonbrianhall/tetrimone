@@ -1,4 +1,4 @@
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
 #include <iostream>
 #include <string>
 #include "zip.h"
@@ -9,98 +9,6 @@
 #include <commdlg.h>
 #include <direct.h>
 #endif
-
-void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
-    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
-    
-    // Pause the game if it's running
-    bool wasPaused = app->board->isPaused();
-    if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
-        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
-    }
-    
-    std::string filePath;
-    
-#ifdef _WIN32
-    // Use Windows native dialog
-    OPENFILENAME ofn;
-    char szFile[260] = {0};
-    
-    ZeroMemory(&ofn, sizeof(ofn));
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = NULL;  // Ideally get the HWND from GTK window
-    ofn.lpstrFile = szFile;
-    ofn.nMaxFile = sizeof(szFile);
-    ofn.lpstrFilter = "ZIP Files\0*.zip\0All Files\0*.*\0";
-    ofn.nFilterIndex = 1;
-    ofn.lpstrFileTitle = NULL;
-    ofn.nMaxFileTitle = 0;
-    ofn.lpstrInitialDir = NULL;
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
-    
-    if (GetOpenFileName(&ofn)) {
-        filePath = ofn.lpstrFile;
-    }
-#else
-    // Use GTK dialog on other platforms
-    GtkWidget* dialog = gtk_file_chooser_dialog_new(
-        "Select Background Images ZIP File",
-        GTK_WINDOW(app->window),
-        GTK_FILE_CHOOSER_ACTION_OPEN,
-        "_Cancel", GTK_RESPONSE_CANCEL,
-        "_Open", GTK_RESPONSE_ACCEPT,
-        NULL
-    );
-    
-    // Add filter for ZIP files only
-    GtkFileFilter* filter = gtk_file_filter_new();
-    gtk_file_filter_set_name(filter, "ZIP Files");
-    gtk_file_filter_add_pattern(filter, "*.zip");
-    gtk_file_filter_add_mime_type(filter, "application/zip");
-    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
-    
-    // Run the dialog
-    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-        char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-        filePath = filename;
-        g_free(filename);
-    }
-    
-    gtk_widget_destroy(dialog);
-#endif
-    
-    // Process the selected file path
-    if (!filePath.empty()) {
-        if (app->board->loadBackgroundImagesFromZip(filePath)) {
-            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), TRUE);
-            
-            // Process any pending events before showing opacity dialog
-            while (gtk_events_pending())
-                gtk_main_iteration();
-                
-            // Now show the opacity dialog
-            onBackgroundOpacityDialog(NULL, app);
-        } else {
-            GtkWidget* errorDialog = gtk_message_dialog_new(
-                GTK_WINDOW(app->window),
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_OK,
-                "Failed to load background images from ZIP: %s", filePath.c_str()
-            );
-            gtk_dialog_run(GTK_DIALOG(errorDialog));
-            gtk_widget_destroy(errorDialog);
-        }
-    }
-    
-    // Redraw the game area
-    gtk_widget_queue_draw(app->gameArea);
-    
-    // Resume the game if it wasn't paused before
-    if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
-        onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
-    }
-}
 
 // Update the background toggle handler to handle ZIP mode
 void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
@@ -116,63 +24,104 @@ void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
     }
     
     // Redraw the game area
-    gtk_widget_queue_draw(app->gameArea);
+    updateDisplay(app);
 }
 
-void onBackgroundOpacityDialog(GtkMenuItem *menuItem, gpointer userData) {
-  TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
+void drawBackground(cairo_t *cr, TetrimoneBoard *board, int width, int height) {
+  // Draw solid background color
+  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
+  cairo_rectangle(cr, 0, 0, width, height);
+  cairo_fill(cr);
 
-  // Create dialog
-  GtkWidget *dialog = gtk_dialog_new_with_buttons(
-      "Background Opacity", GTK_WINDOW(app->window), GTK_DIALOG_MODAL, "_OK",
-      GTK_RESPONSE_OK, NULL);
+  // Draw background image if enabled
+  if ((board->isUsingBackgroundImage() || board->isUsingBackgroundZip()) &&
+      board->getBackgroundImage() != nullptr) {
+    // Save the current state
+    cairo_save(cr);
 
-  // Make it a reasonable size
-  gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 150);
+    // Check if we're in a transition
+    if (board->isInBackgroundTransition()) {
+      // If fading out, draw old background first
+      if (board->getTransitionDirection() == -1 &&
+          board->getOldBackground() != nullptr) {
+        // Get the image dimensions
+        int imgWidth = cairo_image_surface_get_width(board->getOldBackground());
+        int imgHeight =
+            cairo_image_surface_get_height(board->getOldBackground());
 
-  // Create content area
-  GtkWidget *contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-  gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
+        // Calculate scaling to fill the game area while maintaining aspect
+        // ratio
+        double scaleX = static_cast<double>(width) / imgWidth;
+        double scaleY = static_cast<double>(height) / imgHeight;
+        double scale = std::max(scaleX, scaleY);
 
-  // Create a vertical box for content
-  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
-  gtk_container_add(GTK_CONTAINER(contentArea), vbox);
+        // Calculate position to center the image
+        double x = (width - imgWidth * scale) / 2;
+        double y = (height - imgHeight * scale) / 2;
 
-  // Add a label
-  GtkWidget *label = gtk_label_new("Adjust background opacity:");
-  gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+        // Apply the transformation
+        cairo_translate(cr, x, y);
+        cairo_scale(cr, scale, scale);
 
-  // Create a horizontal scale (slider)
-  GtkWidget *scale =
-      gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 1.0, 0.05);
-  gtk_range_set_value(GTK_RANGE(scale), app->board->getBackgroundOpacity());
-  gtk_scale_set_digits(GTK_SCALE(scale), 2); // 2 decimal places
-  gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
-  gtk_box_pack_start(GTK_BOX(vbox), scale, FALSE, FALSE, 0);
+        // Draw the old image with current transition opacity
+        cairo_set_source_surface(cr, board->getOldBackground(), 0, 0);
+        cairo_paint_with_alpha(cr, board->getTransitionOpacity());
 
-  // Add min/max labels
-  GtkWidget *rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_pack_start(GTK_BOX(vbox), rangeBox, FALSE, FALSE, 0);
+        // Reset transformation for next drawing
+        cairo_restore(cr);
+        cairo_save(cr);
+      } else if (board->getTransitionDirection() == 1) {
+        // Fading in - draw new background with transition opacity
+        // Get the image dimensions
+        int imgWidth =
+            cairo_image_surface_get_width(board->getBackgroundImage());
+        int imgHeight =
+            cairo_image_surface_get_height(board->getBackgroundImage());
 
-  GtkWidget *minLabel = gtk_label_new("Transparent");
-  gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
+        // Calculate scaling to fill the game area while maintaining aspect
+        // ratio
+        double scaleX = static_cast<double>(width) / imgWidth;
+        double scaleY = static_cast<double>(height) / imgHeight;
+        double scale = std::max(scaleX, scaleY);
 
-  GtkWidget *maxLabel = gtk_label_new("Opaque");
-  gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
-  gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
+        // Calculate position to center the image
+        double x = (width - imgWidth * scale) / 2;
+        double y = (height - imgHeight * scale) / 2;
 
-  // Connect value-changed signal to update the opacity in real-time
-  g_signal_connect(G_OBJECT(scale), "value-changed",
-                   G_CALLBACK(onOpacityValueChanged), app);
+        // Apply the transformation
+        cairo_translate(cr, x, y);
+        cairo_scale(cr, scale, scale);
 
-  // Show all dialog widgets
-  gtk_widget_show_all(dialog);
+        // Draw the new image with transition opacity
+        cairo_set_source_surface(cr, board->getBackgroundImage(), 0, 0);
+        cairo_paint_with_alpha(cr, board->getTransitionOpacity());
+      }
+    } else {
+      // Normal drawing (no transition)
+      // Get the image dimensions
+      int imgWidth = cairo_image_surface_get_width(board->getBackgroundImage());
+      int imgHeight =
+          cairo_image_surface_get_height(board->getBackgroundImage());
 
-  // Run the dialog
-  gtk_dialog_run(GTK_DIALOG(dialog));
+      // Calculate scaling to fill the game area while maintaining aspect ratio
+      double scaleX = static_cast<double>(width) / imgWidth;
+      double scaleY = static_cast<double>(height) / imgHeight;
+      double scale = std::max(scaleX, scaleY);
 
-  // Destroy dialog
-  gtk_widget_destroy(dialog);
+      // Calculate position to center the image
+      double x = (width - imgWidth * scale) / 2;
+      double y = (height - imgHeight * scale) / 2;
+
+      // Apply the transformation
+      cairo_translate(cr, x, y);
+      cairo_scale(cr, scale, scale);
+
+      // Draw the image with normal opacity
+      cairo_set_source_surface(cr, board->getBackgroundImage(), 0, 0);
+      cairo_paint_with_alpha(cr, board->getBackgroundOpacity());
+    }
+
+    // Restore the original state
+    cairo_restore(cr);
+  }
 }

@@ -1,4 +1,3 @@
-#include "tetrimone.h"
 #include <iostream>
 #include <string>
 #include <iomanip>
@@ -8,52 +7,17 @@ static float s_lastSfxVolume = 0.50f;    // Default to 50% if not set
 static float s_lastMusicVolume = 0.50f;  // Default to 50% if not set
 static bool s_volumesInitialized = false;
 
+#ifdef GTK3
+#include "tetrimone_gtk.h"
+#include "gtk3_dialog_helpers.h"
+
+using namespace GTK3Helpers;
+
 void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // Check if retro mode is active
     bool isRetroMode = app->board->retroModeActive;
-    
-    // Create dialog with appropriate title based on mode
-    GtkWidget* dialog = gtk_dialog_new_with_buttons(
-        isRetroMode ? "ЦЕНТРАЛЬНЫЙ КОНТРОЛЬ ЗВУКА" : "Volume Control", // "Central Sound Control"
-        GTK_WINDOW(app->window),
-        GTK_DIALOG_MODAL,
-        isRetroMode ? "_ПРИНЯТО" : "_OK", // "Accepted"
-        GTK_RESPONSE_OK,
-        NULL
-    );
-    
-    // Make it a reasonable size
-    gtk_window_set_default_size(GTK_WINDOW(dialog), 350, 250);
-    
-    // Create content area
-    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 15);
-    
-    // Create a vertical box for content
-    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    gtk_container_add(GTK_CONTAINER(contentArea), vbox);
-    
-    // Add Soviet-themed header for retro mode
-    if (isRetroMode) {
-        GtkWidget* headerLabel = gtk_label_new(NULL);
-        gtk_label_set_markup(GTK_LABEL(headerLabel), 
-            "<span size='x-large' weight='bold'>★ РЕГУЛИРОВКА ГРОМКОСТИ ★</span>");
-        gtk_box_pack_start(GTK_BOX(vbox), headerLabel, FALSE, FALSE, 5);
-        
-        GtkWidget* subtitleLabel = gtk_label_new(
-            "ПРОТОКОЛ ЗВУКОВОГО КОНТРОЛЯ № 1984/ZB-3");
-        gtk_box_pack_start(GTK_BOX(vbox), subtitleLabel, FALSE, FALSE, 5);
-    }
-    
-    // === SOUND EFFECTS VOLUME CONTROLS ===
-    // Add a label for sound effects with appropriate text based on mode
-    GtkWidget* sfxLabel = gtk_label_new(
-        isRetroMode ? "ГРОМКОСТЬ ЭФФЕКТОВ ГОСУДАРСТВЕННОЙ ВАЖНОСТИ:" : "Sound Effects Volume:");
-        // "Volume of Effects of State Importance"
-    gtk_widget_set_halign(sfxLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(vbox), sfxLabel, FALSE, FALSE, 0);
     
     // Current sound effects volume
     float currentVolume = AudioManager::getInstance().getVolume();
@@ -79,45 +43,6 @@ void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData) {
     
     // Convert to percentage for UI
     int volumePercent = static_cast<int>(currentVolume * 100.0);
-    std::cout << "Setting SFX slider to: " << volumePercent << "%" << std::endl;
-    
-    // Create a horizontal scale (slider) for sound effects using percentage (0-100)
-    GtkWidget* sfxScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 
-                                               0.0, 100.0, 10.0);
-    gtk_range_set_value(GTK_RANGE(sfxScale), volumePercent);
-    gtk_scale_set_digits(GTK_SCALE(sfxScale), 0); // No decimal places for percentage
-    gtk_scale_set_value_pos(GTK_SCALE(sfxScale), GTK_POS_RIGHT);
-    gtk_box_pack_start(GTK_BOX(vbox), sfxScale, FALSE, FALSE, 0);
-    
-    // Add min/max labels for sound effects with retro theme text
-    GtkWidget* sfxRangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_box_pack_start(GTK_BOX(vbox), sfxRangeBox, FALSE, FALSE, 0);
-    
-    GtkWidget* sfxMinLabel = gtk_label_new(
-        isRetroMode ? "ОТКЛЮЧЕНО" : "Mute"); // "Disabled"
-    gtk_widget_set_halign(sfxMinLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(sfxRangeBox), sfxMinLabel, TRUE, TRUE, 0);
-    
-    GtkWidget* sfxMaxLabel = gtk_label_new(
-        isRetroMode ? "МАКСИМАЛЬНАЯ ГРОМКОСТЬ" : "Max"); // "Maximum Volume"
-    gtk_widget_set_halign(sfxMaxLabel, GTK_ALIGN_END);
-    gtk_box_pack_end(GTK_BOX(sfxRangeBox), sfxMaxLabel, TRUE, TRUE, 0);
-    
-    // Connect value-changed signal to update the volume in real-time
-    g_signal_connect(G_OBJECT(sfxScale), "value-changed", 
-                   G_CALLBACK(onVolumeValueChanged), app);
-    
-    // Add a separator
-    GtkWidget* separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_box_pack_start(GTK_BOX(vbox), separator, FALSE, FALSE, 5);
-    
-    // === MUSIC VOLUME CONTROLS ===
-    // Add a label for music with retro theme
-    GtkWidget* musicLabel = gtk_label_new(
-        isRetroMode ? "ГРОМКОСТЬ ПАТРИОТИЧЕСКОЙ МУЗЫКИ:" : "Music Volume:"); 
-        // "Volume of Patriotic Music"
-    gtk_widget_set_halign(musicLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(vbox), musicLabel, FALSE, FALSE, 0);
     
     // Current music volume
     float currentMusicVolume = AudioManager::getInstance().getMusicVolume();
@@ -140,80 +65,19 @@ void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData) {
     // Convert to percentage for UI
     int musicVolumePercent = static_cast<int>(currentMusicVolume * 100.0);
     
-    // Create a horizontal scale (slider) for music using percentage (0-100)
-    GtkWidget* musicScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 
-                                                 0.0, 100.0, 10.0);
-    gtk_range_set_value(GTK_RANGE(musicScale), musicVolumePercent);
-    gtk_scale_set_digits(GTK_SCALE(musicScale), 0); // No decimal places for percentage
-    gtk_scale_set_value_pos(GTK_SCALE(musicScale), GTK_POS_RIGHT);
-    gtk_box_pack_start(GTK_BOX(vbox), musicScale, FALSE, FALSE, 0);
+    // Create config
+    VolumeControlConfig config{
+        .title = isRetroMode ? "ЦЕНТРАЛЬНЫЙ КОНТРОЛЬ ЗВУКА" : "Volume Control",
+        .okButtonLabel = isRetroMode ? "_ПРИНЯТО" : "_OK",
+        .isRetroMode = isRetroMode,
+        .sfxVolume = volumePercent,
+        .musicVolume = musicVolumePercent,
+        .width = 350,
+        .height = 250
+    };
     
-    // Add min/max labels for music with retro theme text
-    GtkWidget* musicRangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_box_pack_start(GTK_BOX(vbox), musicRangeBox, FALSE, FALSE, 0);
-    
-    GtkWidget* musicMinLabel = gtk_label_new(
-        isRetroMode ? "ТИШИНА" : "Mute"); // "Silence"
-    gtk_widget_set_halign(musicMinLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(musicRangeBox), musicMinLabel, TRUE, TRUE, 0);
-    
-    GtkWidget* musicMaxLabel = gtk_label_new(
-        isRetroMode ? "СЛАВА РОДИНЕ!" : "Max"); // "Glory to the Motherland!"
-    gtk_widget_set_halign(musicMaxLabel, GTK_ALIGN_END);
-    gtk_box_pack_end(GTK_BOX(musicRangeBox), musicMaxLabel, TRUE, TRUE, 0);
-    
-    // Connect value-changed signal to update the music volume in real-time
-    g_signal_connect(G_OBJECT(musicScale), "value-changed", 
-                   G_CALLBACK(onMusicVolumeValueChanged), app);
-    
-    // Add test sound button for retro mode
-    /*if (isRetroMode) {
-        // Add a separator
-        GtkWidget* separator2 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-        gtk_box_pack_start(GTK_BOX(vbox), separator2, FALSE, FALSE, 5);
-        
-        // Add test button
-        GtkWidget* testButton = gtk_button_new_with_label("ПРОВЕРКА СИСТЕМЫ"); // "System Test"
-        gtk_box_pack_start(GTK_BOX(vbox), testButton, FALSE, FALSE, 5);
-        g_signal_connect(G_OBJECT(testButton), "clicked",
-                       G_CALLBACK(onTestSound), app);
-        
-        // Add warning note
-        GtkWidget* warningLabel = gtk_label_new(NULL);
-        gtk_label_set_markup(GTK_LABEL(warningLabel), 
-            "<span foreground='red'>ВНИМАНИЕ! Неправильная настройка громкости\n"
-            "является государственным преступлением!</span>");
-            // "WARNING! Improper volume adjustment is a state crime!"
-        gtk_box_pack_start(GTK_BOX(vbox), warningLabel, FALSE, FALSE, 10);
-    }
-    else {
-        // Add a separator
-        GtkWidget* separator2 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-        gtk_box_pack_start(GTK_BOX(vbox), separator2, FALSE, FALSE, 5);
-        
-        // Add test button
-        GtkWidget* testButton = gtk_button_new_with_label("Test Volume"); // "System Test"
-        gtk_box_pack_start(GTK_BOX(vbox), testButton, FALSE, FALSE, 5);
-        g_signal_connect(G_OBJECT(testButton), "clicked",
-                       G_CALLBACK(onTestSound), app);
-        
-        // Add warning note
-        GtkWidget* warningLabel = gtk_label_new(NULL);
-        gtk_label_set_markup(GTK_LABEL(warningLabel), 
-            "<span foreground='red'>100% volume can be very loud\n</span>");
-        gtk_box_pack_start(GTK_BOX(vbox), warningLabel, FALSE, FALSE, 10);
-    }*/
-
-    
-    
-    // Show all dialog widgets
-    gtk_widget_show_all(dialog);
-    
-    // Run the dialog
-    gtk_dialog_run(GTK_DIALOG(dialog));
-    
-    // Destroy dialog
-    gtk_widget_destroy(dialog);
+    // Create and run dialog via helper
+    createVolumeControlDialog(GTK_WINDOW(app->window), config, app);
 }
 
 void onTestSound(GtkButton* button, gpointer userData) {
@@ -284,3 +148,40 @@ void onMusicVolumeValueChanged(GtkRange* range, gpointer userData) {
     // Update the AudioManager music volume
     AudioManager::getInstance().setMusicVolume(musicVolume);
 }
+
+#endif  // GTK3
+
+#ifdef QT5
+#include "tetrimone_qt5.h"
+
+// Qt5 volume dialog implementation would go here
+// For now, stub out the functions for Qt5
+
+void onVolumeDialog(void* menuItem, void* userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    
+    // TODO: Implement Qt5 volume dialog
+    // For now, just get the volumes like GTK3 does
+    
+    float currentVolume = AudioManager::getInstance().getVolume();
+    float currentMusicVolume = AudioManager::getInstance().getMusicVolume();
+    
+    if (!s_volumesInitialized) {
+        if (currentVolume > 0.0f) {
+            s_lastSfxVolume = currentVolume;
+        }
+        s_volumesInitialized = true;
+    }
+    
+    if (currentVolume <= 0.0f && s_lastSfxVolume > 0.0f) {
+        currentVolume = s_lastSfxVolume;
+        AudioManager::getInstance().setVolume(currentVolume);
+    }
+    
+    if (currentMusicVolume <= 0.0f && s_lastMusicVolume > 0.0f) {
+        currentMusicVolume = s_lastMusicVolume;
+        AudioManager::getInstance().setMusicVolume(currentMusicVolume);
+    }
+}
+
+#endif  // QT5

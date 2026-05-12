@@ -1,19 +1,20 @@
-# Last modification 04/04/2025
+# Last modification 05/07/2025
 
-# Makefile for Tetrimone with Windows and Linux Support
+# Makefile for Tetrimone with GTK3 GUI Backend
+# Windows and Linux Support
 # Configurable audio backend (SDL or PulseAudio)
 # Extended with FFMPEG support for MIDI to WAV conversion
 # Modified to convert WAV to MP3 and only pack MP3 files
 
 # MIDI Conversion
 FLUIDSYNTH = fluidsynth
-SOUNDFONT = /usr/share/sounds/sf2/default.sf2  # Default soundfont path, adjust as needed
+SOUNDFONT = /usr/share/sounds/sf2/default.sf2
 FLUIDSYNTH_OPTS = -ni -g 1 -F
 
 # Compiler settings
 CXX_LINUX = g++
 CXX_WIN = x86_64-w64-mingw32-gcc
-CXXFLAGS_COMMON = -std=c++17 -Wall -Wextra -s -fpermissive
+CXXFLAGS_COMMON = -std=c++17 -Wall -Wextra -s -fpermissive -DGTK3
 
 # Debug flags
 DEBUG_FLAGS = -g -DDEBUG
@@ -21,7 +22,7 @@ DEBUG_FLAGS = -g -DDEBUG
 # Audio backend selection - default to SDL
 AUDIO_BACKEND ?= sdl
 
-# Common SDL flags for joystick support (needed for both audio backends)
+# Common SDL flags for joystick support
 SDL_CFLAGS_LINUX := $(shell sdl2-config --cflags)
 SDL_LIBS_LINUX := $(shell sdl2-config --libs)
 
@@ -35,17 +36,7 @@ else
   AUDIO_LIBS_LINUX = -lSDL2_mixer
 endif
 
-# Source files
-SRCS_COMMON = src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick.cpp src/background.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp src/junklines.cpp src/propaganda.cpp src/help.cpp src/saveloadsettings.cpp src/drawgame.cpp src/tetrimone_main.cpp src/heat.cpp src/freedom.cpp src/drawgame_cairo.cpp
-SRCS_LINUX = $(AUDIO_SRCS_LINUX)
-SRCS_WIN = src/sdlaudioplayer.cpp
-SRCS_WIN_SDL = src/sdlaudioplayer.cpp
-
-# Windows SDL flags
-SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2)
-SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2)
-
-# GTK flags
+# GTK3 flags
 GTK_CFLAGS_LINUX := $(shell pkg-config --cflags gtk+-3.0)
 GTK_LIBS_LINUX := $(shell pkg-config --libs gtk+-3.0)
 GTK_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags gtk+-3.0)
@@ -55,7 +46,16 @@ GTK_LIBS_WIN := $(shell mingw64-pkg-config --libs gtk+-3.0)
 ZIP_CFLAGS_LINUX := $(shell pkg-config --cflags libzip)
 ZIP_LIBS_LINUX := $(shell pkg-config --libs libzip)
 ZIP_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags libzip)
-ZIP_LIBS_WIN := $(shell mingw64-pkg-config --libs libzip)
+ZIP_LIBS_WIN := $(shell pkg-config --libs libzip)
+
+# Windows SDL flags
+SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2)
+SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2)
+
+# Source files
+SRCS_COMMON = src/tetrimone_gtk3.cpp src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick_core.cpp src/joystick_gtk.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp src/junklines.cpp src/propaganda.cpp src/help.cpp src/saveloadsettings.cpp src/drawgame.cpp src/tetrimone_main.cpp src/heat.cpp src/freedom.cpp src/drawgame_cairo.cpp src/gtkstuff.cpp src/gtk3_dialog_helpers.cpp src/background.cpp
+SRCS_LINUX = $(AUDIO_SRCS_LINUX)
+SRCS_WIN = src/sdlaudioplayer.cpp
 
 # Platform-specific settings
 CXXFLAGS_LINUX = $(CXXFLAGS_COMMON) $(GTK_CFLAGS_LINUX) $(SDL_CFLAGS_LINUX) $(AUDIO_FLAGS_LINUX) $(ZIP_CFLAGS_LINUX) -DLINUX
@@ -72,14 +72,12 @@ LDFLAGS_WIN = $(GTK_LIBS_WIN) $(SDL_LIBS_WIN) $(ZIP_LIBS_WIN) -lwinmm -lstdc++ -
 # Object files
 OBJS_LINUX = $(SRCS_COMMON:.cpp=.o) $(SRCS_LINUX:.cpp=.o)
 OBJS_WIN = $(SRCS_COMMON:.cpp=.win.o) $(SRCS_WIN:.cpp=.win.o)
-OBJS_WIN_SDL = $(SRCS_COMMON:.cpp=.win.o) $(SRCS_WIN_SDL:.cpp=.win.o)
 OBJS_LINUX_DEBUG = $(SRCS_COMMON:.cpp=.debug.o) $(SRCS_LINUX:.cpp=.debug.o)
 OBJS_WIN_DEBUG = $(SRCS_COMMON:.cpp=.win.debug.o) $(SRCS_WIN:.cpp=.win.debug.o)
 
 # Target executables
 TARGET_LINUX = tetrimone
 TARGET_WIN = tetrimone.exe
-TARGET_WIN_SDL = tetrimone.exe
 TARGET_LINUX_DEBUG = tetrimone_debug
 TARGET_WIN_DEBUG = tetrimone_debug.exe
 
@@ -241,13 +239,13 @@ tetrimone-collect-debug-dlls: $(BUILD_DIR_WIN_DEBUG)/$(TARGET_WIN_DEBUG)
 #
 .PHONY: pack-backgrounds-linux
 pack-backgrounds-linux:
-	@echo "Packing background images for Windows build..."
+	@echo "Packing background images for Linux build..."
 	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP) *.jpg;
 	@echo "Background images packed to $(BUILD_DIR_LINUX)/$(BACKGROUND_ZIP)"
 
 .PHONY: pack-backgrounds-linux-debug
 pack-backgrounds-linux-debug:
-	@echo "Packing background images for Windows build..."
+	@echo "Packing background images for Linux debug build..."
 	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP) *.jpg;
 	@echo "Background images packed to $(BUILD_DIR_LINUX_DEBUG)/$(BACKGROUND_ZIP)"
 
@@ -259,7 +257,7 @@ pack-backgrounds-windows:
 	
 .PHONY: pack-backgrounds-windows-debug
 pack-backgrounds-windows-debug:
-	@echo "Packing background images for Windows build..."
+	@echo "Packing background images for Windows debug build..."
 	cd $(BACKGROUNDS_DIR) && zip -r ../../$(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP) *.jpg;
 	@echo "Background images packed to $(BUILD_DIR_WIN_DEBUG)/$(BACKGROUND_ZIP)"
 	
@@ -308,7 +306,7 @@ clean:
 	find $(BUILD_DIR) -type f -name "$(BACKGROUND_ZIP)" -delete
 	rm -f $(BUILD_DIR_LINUX)/$(TARGET_LINUX)
 	rm -f $(BUILD_DIR_LINUX_DEBUG)/$(TARGET_LINUX_DEBUG)
-	rm -f $(BUILD_DIR_WIN)/$(TARGET_WIN_SDL)
+	rm -f $(BUILD_DIR_WIN)/$(TARGET_WIN)
 	rm -f $(SOUND_DIR)/$(SOUND_ZIP)
 
 # Clean converted audio files
@@ -342,34 +340,35 @@ clean-all: clean clean-audio
 # Help target
 .PHONY: help
 help:
-	@echo "Available targets:"
-	@echo "  make               - Build Tetrimone for Linux with SDL audio (default)"
-	@echo "  make linux         - Build Tetrimone for Linux with SDL audio"
-	@echo "  make windows       - Build Tetrimone for Windows"
+	@echo "=========================================="
+	@echo "Tetrimone Build System (GTK3 Backend)"
+	@echo "=========================================="
 	@echo ""
-	@echo "  make sdl           - Build Tetrimone for Linux with SDL audio explicitly"
-	@echo "  make pulse         - Build Tetrimone for Linux with PulseAudio (still uses SDL for joystick)"
+	@echo "MAIN BUILDS:"
+	@echo "  make              - Build Linux with SDL audio (default)"
+	@echo "  make linux        - Build Linux with SDL audio"
+	@echo "  make windows      - Build Windows"
 	@echo ""
-	@echo "  make tetrimone-windows-sdl - Build Tetrimone for Windows with SDL audio"
+	@echo "AUDIO BACKENDS:"
+	@echo "  make sdl          - Build Linux with SDL audio"
+	@echo "  make pulse        - Build Linux with PulseAudio"
 	@echo ""
-	@echo "  make debug         - Build Tetrimone with debug symbols (using SDL for Linux)"
-	@echo "  make sdl-debug     - Build Tetrimone with debug symbols using SDL audio"
-	@echo "  make pulse-debug   - Build Tetrimone with debug symbols using PulseAudio"
+	@echo "DEBUG BUILDS:"
+	@echo "  make debug        - Build debug for all platforms"
+	@echo "  make sdl-debug    - Build debug with SDL audio"
+	@echo "  make pulse-debug  - Build debug with PulseAudio"
 	@echo ""
-	@echo "  make tetrimone-linux  - Build Tetrimone for Linux (with current audio backend)"
-	@echo "  make tetrimone-windows - Build Tetrimone for Windows (requires MinGW)"
+	@echo "AUDIO CONVERSION:"
+	@echo "  make convert-midi        - Convert MIDI files to WAV"
+	@echo "  make convert-wav-to-mp3  - Convert WAV files to MP3"
 	@echo ""
-	@echo "  make convert-midi  - Convert MIDI files to WAV format using ffmpeg"
-	@echo "  make convert-wav-to-mp3 - Convert WAV files to MP3 format using ffmpeg"
+	@echo "RESOURCE PACKING:"
+	@echo "  make pack-backgrounds-all - Pack backgrounds for all targets"
+	@echo "  make pack-sounds  - Pack MP3 sound files"
+	@echo "  make link-sound-all - Create symbolic links to sound.zip"
 	@echo ""
-	@echo "  make pack-backgrounds-all - Pack background images for all build targets"
-	@echo "  make pack-backgrounds-linux - Pack background images for Linux build"
-	@echo "  make pack-backgrounds-windows - Pack background images for Windows build"
+	@echo "CLEANUP:"
+	@echo "  make clean        - Remove all build files"
+	@echo "  make clean-audio  - Remove converted audio files"
+	@echo "  make clean-all    - Remove all build and audio files"
 	@echo ""
-	@echo "  make pack-sounds   - Pack MP3 sound files and create symbolic links"
-	@echo "  make link-sound-all - Create symbolic links to sound.zip in all build directories"
-	@echo ""
-	@echo "  make clean         - Remove all build files"
-	@echo "  make clean-audio   - Remove all converted audio files"
-	@echo "  make clean-all     - Remove all build files and converted audio files"
-	@echo "  make help          - Show this help message"
