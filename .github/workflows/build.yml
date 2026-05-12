@@ -24,6 +24,7 @@ on:
 env:
   PRODUCT_VERSION: "1.0.${{ github.run_number }}"
   UPGRADE_CODE: "15F96C34-8D42-417A-9E1B-CC952F7D6713"
+  UPGRADE_CODE_QT5: "15F96C34-8D42-417A-9E1B-CC952F7D6714"
 
 jobs:
   build-linux:
@@ -97,6 +98,7 @@ jobs:
         name: tetrimone-build
         path: |
           build/windows/**/*
+          build/windows_qt5/**/*
           Tetrimone-GTK-Portable.zip
           Tetrimone-QT5-Portable.zip
         retention-days: 7
@@ -167,7 +169,7 @@ jobs:
         SOFTWARE.
         "@ | Out-File -FilePath "artifacts\build\windows\LICENSE.txt" -Encoding UTF8
 
-    - name: Generate Advanced MSI Installer
+    - name: Generate Advanced MSI Installer GTK3
       working-directory: artifacts/build/windows
       run: |
         # Generate component entries for all DLLs
@@ -191,7 +193,7 @@ jobs:
             <Package InstallerVersion="500" 
                      Compressed="yes" 
                      InstallScope="perMachine" 
-                     Description="Tetrimone GTK - Modern Tetris Game"
+                     Description="Tetrimone GTK - Modern Block Falling Game"
                      Comments="Built with GitHub Actions"
                      Manufacturer="Jason Hall" />
             
@@ -396,6 +398,232 @@ jobs:
         </Wix>
         "@ | Out-File -FilePath "installer.wxs" -Encoding UTF8
 
+    - name: Generate Advanced MSI Installer QT5
+      working-directory: artifacts/build/windows_qt5
+      run: |
+        # Generate component entries for all DLLs
+        $dllEntries = Get-ChildItem -Name "*.dll" | ForEach-Object {
+          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
+          "          <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
+        }
+        
+        # Create advanced WXS installer
+        @"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+          
+          <Product Id="*" 
+                   Name="Tetrimone QT5" 
+                   Language="1033" 
+                   Version="${{ needs.build-linux.outputs.version }}" 
+                   Manufacturer="Jason Hall" 
+                   UpgradeCode="${{ env.UPGRADE_CODE_QT5 }}"> 
+            
+            <Package InstallerVersion="500" 
+                     Compressed="yes" 
+                     InstallScope="perMachine" 
+                     Description="Tetrimone QT5 - Modern Block Falling Game"
+                     Comments="Built with GitHub Actions"
+                     Manufacturer="Jason Hall" />
+            
+            <!-- Major upgrade configuration -->
+            <MajorUpgrade 
+              DowngradeErrorMessage="A newer version of Tetrimone QT5 is already installed. Please uninstall it first." 
+              Schedule="afterInstallInitialize" />
+            
+            <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+            
+            <!-- License agreement -->
+            <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+            
+            <!-- Custom properties -->
+            <Property Id="ARPPRODUCTICON" Value="TetrimoneIcon" />
+            <Property Id="ARPURLINFOABOUT" Value="https://github.com/jasonbrianhall/tetrimone" />
+            <Property Id="ARPNOREPAIR" Value="yes" />
+            <Property Id="ARPNOMODIFY" Value="yes" />
+            <Property Id="ARPHELPLINK" Value="https://github.com/jasonbrianhall/tetrimone/issues" />
+            
+            <!-- Installation scope choice -->
+            <Property Id="ApplicationFolderName" Value="Tetrimone QT5" />
+            <Property Id="WixAppFolder" Value="WixPerMachineFolder" />
+            <WixVariable Id="WixUISupportPerUser" Value="1" />
+            <WixVariable Id="WixUISupportPerMachine" Value="1" />
+            
+            <Directory Id="TARGETDIR" Name="SourceDir">
+              <!-- Program Files installation -->
+              <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLFOLDER" Name="!(bind.Property.ApplicationFolderName)">
+                  
+                  <!-- Main application component -->
+                  <Component Id="MainExecutable" 
+                           Guid="A47D52C8-3E95-48F6-B25F-1E6C9D4A8D35"
+                           Win64="no">
+                    <File Id="MainEXE" 
+                          Name="tetrimone_qt5.exe" 
+                          Source="tetrimone_qt5.exe" 
+                          KeyPath="yes">
+                      <!-- File associations could go here -->
+                    </File>
+                    
+                    <!-- Application files -->
+                    <File Id="SoundsZIP" Name="sound.zip" Source="sound.zip"/>
+                    <File Id="IconFile" Name="icon.ico" Source="icon.ico"/>
+                    <File Id="BackgroundZIP" Name="background.zip" Source="background.zip"/>
+                    <File Id="README" Name="README.md" Source="README.md"/>
+                    <File Id="LICENSE_MD" Name="LICENSE.md" Source="LICENSE.md"/>
+                    <File Id="LICENSE_TXT" Name="LICENSE.txt" Source="LICENSE.txt"/>
+                    
+                  </Component>
+                  
+                  <!-- QT5 schemas component -->
+                  <Component Id="QT5Schemas" 
+                           Guid="B58E63D9-4F06-49F7-C26F-2F7D5E5B9E46"
+                           Win64="no">
+                    <CreateFolder />
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
+                                 Name="QT5Schemas" Type="integer" Value="1" KeyPath="yes"/>
+                  </Component>
+                  
+                  <!-- GdkPixbuf component -->
+                  <Component Id="GdkPixbufDir" 
+                           Guid="C69F74EA-5F17-50F8-D37F-3F8E6F6C0F57"
+                           Win64="no">
+                    <CreateFolder />
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
+                                 Name="GdkPixbuf" Type="integer" Value="1" KeyPath="yes"/>
+                  </Component>
+                  
+                  <!-- QT5 runtime component -->
+                  <Component Id="QT53Dir" 
+                           Guid="D70F85FB-6F28-61F9-E481-4F9F7F7D1F68"
+                           Win64="no">
+                    <CreateFolder />
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
+                                 Name="QT5" Type="integer" Value="1" KeyPath="yes"/>
+                  </Component>
+                  
+                  <!-- Icons component -->
+                  <Component Id="IconsDir" 
+                           Guid="E81F96FC-7139-72F0-F59F-510F8F8E2F79"
+                           Win64="no">
+                    <CreateFolder />
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
+                                 Name="Icons" Type="integer" Value="1" KeyPath="yes"/>
+                  </Component>
+                  
+                  <!-- Themes component -->
+                  <Component Id="ThemesDir" 
+                           Guid="F92107FD-8F40-83F1-F60F-6F1F919F318A"
+                           Win64="no">
+                    <CreateFolder />
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
+                                 Name="Themes" Type="integer" Value="1" KeyPath="yes"/>
+                  </Component>
+                  
+                </Directory>
+              </Directory>
+              
+              <!-- Start Menu Folder -->
+              <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="Tetrimone QT5"/>
+              </Directory>
+              
+              <!-- Desktop Folder for shortcuts -->
+              <Directory Id="DesktopFolder" />
+            </Directory>
+            
+            <!-- Start Menu shortcuts -->
+            <DirectoryRef Id="ApplicationProgramsFolder">
+              <Component Id="ApplicationShortcuts" 
+                       Guid="E03E181E-9E51-94E2-E71E-7E210F0F4F91"
+                       Win64="no">
+                <Shortcut Id="LaunchShortcut" 
+                         Name="Tetrimone QT5" 
+                         Target="[INSTALLFOLDER]tetrimone_qt5.exe"
+                         WorkingDirectory="INSTALLFOLDER"
+                         Description="Launch Tetrimone QT5 Game"
+                         Icon="TetrimoneIcon"/>
+                <Shortcut Id="UninstallShortcut" 
+                         Name="Uninstall Tetrimone QT5" 
+                         Target="[SystemFolder]msiexec.exe"
+                         Arguments="/x [ProductCode]"
+                         Description="Uninstall Tetrimone QT5"/>
+                <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall"/>
+                <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Shortcuts" 
+                             Name="StartMenu" Type="integer" Value="1" KeyPath="yes"/>
+              </Component>
+            </DirectoryRef>
+            
+            <!-- Desktop shortcuts (optional) -->
+            <DirectoryRef Id="DesktopFolder">
+              <Component Id="DesktopShortcut" 
+                       Guid="F14A29AF-0A62-05A3-182A-8A3A1A1A5A02"
+                       Win64="no">
+                <Condition>DESKTOP_SHORTCUT</Condition>
+                <Shortcut Id="DesktopShortcut" 
+                         Name="Tetrimone QT5" 
+                         Target="[INSTALLFOLDER]tetrimone.exe"
+                         WorkingDirectory="INSTALLFOLDER"
+                         Description="Launch Tetrimone QT5 Game"
+                         Icon="TetrimoneIcon"/>
+                <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Shortcuts" 
+                             Name="Desktop" Type="integer" Value="1" KeyPath="yes"/>
+              </Component>
+            </DirectoryRef>
+            
+            <!-- Feature definitions -->
+            <Feature Id="ProductFeature" 
+                     Title="Tetrimone QT5" 
+                     Description="The main Tetrimone QT5 application and required runtime files."
+                     Level="1" 
+                     ConfigurableDirectory="INSTALLFOLDER"
+                     AllowAdvertise="no">
+              <ComponentRef Id="MainExecutable" />
+              <ComponentRef Id="ApplicationShortcuts" />
+              <ComponentRef Id="platforms" />
+            </Feature>
+            
+            <Feature Id="DesktopShortcutFeature" 
+                     Title="Desktop Shortcut" 
+                     Description="Create a shortcut on the desktop."
+                     Level="1000">
+              <ComponentRef Id="DesktopShortcut" />
+            </Feature>
+            
+            <!-- Application icon -->
+            <Icon Id="TetrimoneIcon" SourceFile="icon.ico"/>
+            
+            <!-- Custom actions for cleanup -->
+            <CustomAction Id="CleanupRegistryOnUninstall" 
+                         Script="vbscript"
+                         Execute="deferred"
+                         Impersonate="no">
+              <![CDATA[
+                On Error Resume Next
+                Set shell = CreateObject("WScript.Shell")
+                shell.RegDelete "HKLM\SOFTWARE\Tetrimone QT5\"
+                shell.RegDelete "HKCU\Software\TetrimoneT5\"
+              ]]>
+            </CustomAction>
+            
+            <InstallExecuteSequence>
+              <Custom Action="CleanupRegistryOnUninstall" Before="RemoveFiles">
+                REMOVE="ALL"
+              </Custom>
+            </InstallExecuteSequence>
+            
+            <!-- UI Configuration -->
+            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+            <Property Id="DESKTOP_SHORTCUT" Value="1" />
+            
+            <UIRef Id="WixUI_FeatureTree" />
+            <UIRef Id="WixUI_ErrorProgressText" />
+            
+          </Product>
+        </Wix>
+        "@ | Out-File -FilePath "installer.wxs" -Encoding UTF8
+
+
     - name: Create License RTF for Installer
       working-directory: artifacts/build/windows
       run: |
@@ -414,7 +642,7 @@ jobs:
         }
         "@ | Out-File -FilePath "License.rtf" -Encoding UTF8
 
-    - name: Build MSI Installer
+    - name: Build MSI Installer GTK
       working-directory: artifacts/build/windows
       run: |
         # Debug: Show current directory and files
@@ -453,11 +681,57 @@ jobs:
           exit 1
         }
 
-    - name: Upload MSI Installer
+    - name: Build MSI Installer QT5
+      working-directory: artifacts/build/windows_qt5
+      run: |
+        # Debug: Show current directory and files
+        Write-Host "=== DEBUG: Current directory ==="
+        Get-Location
+        Write-Host "=== DEBUG: Files in current directory ==="
+        Get-ChildItem
+        
+        # Compile the installer
+        Write-Host "=== Building MSI installer ==="
+        & candle.exe installer.wxs
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Candle compilation failed with exit code $LASTEXITCODE"
+          exit 1
+        }
+        
+        Write-Host "=== DEBUG: Files after candle ==="
+        Get-ChildItem
+        
+        & light.exe -ext WixUIExtension installer.wixobj -o "Tetrimone-QT5.msi"
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Light linking failed with exit code $LASTEXITCODE"
+          exit 1
+        }
+        
+        Write-Host "=== DEBUG: Files after light ==="
+        Get-ChildItem
+        
+        # Verify MSI was created
+        if (Test-Path "Tetrimone-QT5.msi") {
+          Write-Host "✅ MSI installer created successfully: Tetrimone-QT5.msi"
+          $msiSize = (Get-Item "Tetrimone-QT5.msi").Length
+          Write-Host "MSI file size: $msiSize bytes"
+        } else {
+          Write-Error "❌ MSI file was not created!"
+          exit 1
+        }
+
+    - name: Upload MSI Installer GTK3
       uses: actions/upload-artifact@v4
       with:
         name: Tetrimone-GTK.msi
         path: artifacts/build/windows/Tetrimone-GTK.msi
+
+    - name: Upload MSI Installer QT5
+      uses: actions/upload-artifact@v4
+      with:
+        name: Tetrimone-QT5.msi
+        path: artifacts/build/windows/Tetrimone-QT5.msi
+
 
     - name: Upload Portable ZIP GTK
       uses: actions/upload-artifact@v4
@@ -479,17 +753,30 @@ jobs:
     if: github.event_name == 'push'
     
     steps:
-    - name: Download MSI Artifact
+    - name: Download MSI Artifact GTK
       uses: actions/download-artifact@v4
       with:
         name: Tetrimone-GTK.msi
         path: release
 
-    - name: Download Portable Artifact
+    - name: Download Portable Artifact GTK
       uses: actions/download-artifact@v4
       with:
         name: Tetrimone-GTK-Portable.zip
         path: release
+
+    - name: Download MSI Artifact QT5
+      uses: actions/download-artifact@v4
+      with:
+        name: Tetrimone-QT5.msi
+        path: release
+
+    - name: Download Portable Artifact QT5
+      uses: actions/download-artifact@v4
+      with:
+        name: Tetrimone-QT5-Portable.zip
+        path: release
+
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
@@ -497,6 +784,9 @@ jobs:
         files: |
           release/Tetrimone-GTK.msi
           release/Tetrimone-GTK-Portable.zip
+          release/Tetrimone-QT5.msi
+          release/Tetrimone-QT5-Portable.zip
+
         tag_name: ${{ github.ref == 'refs/heads/master' && format('v{0}', github.run_number) || format('dev-v{0}', github.run_number) }}
         name: ${{ github.ref == 'refs/heads/master' && format('Release v{0}', github.run_number) || format('Dev Build v{0}', github.run_number) }}
         draft: false
@@ -512,6 +802,8 @@ jobs:
           ### 📦 Downloads
           - **Tetrimone-GTK.msi** - Windows installer with uninstall support
           - **Tetrimone-GTK-Portable.zip** - Portable version (no installation required)
+          - **Tetrimone-QT5.msi** - Windows installer with uninstall support
+          - **Tetrimone-QT5-Portable.zip** - Portable version (no installation required)
           
           ### ✨ Installer Features
           - ✅ User/Machine installation scope choice
@@ -527,6 +819,7 @@ jobs:
           - Built on: Linux (Fedora 41 container)
           - MSI compiled on: Windows Latest
           - GTK3 runtime included
+          - QT5 runtime included
           - All dependencies bundled
           
           ---
