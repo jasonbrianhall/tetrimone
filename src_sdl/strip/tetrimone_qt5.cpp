@@ -436,9 +436,8 @@ public:
     explicit GameAreaWidget(TetrimoneBoard* board, TetrimoneApp* app, QWidget* parent = nullptr)
         : QWidget(parent), board(board), app(app), backgroundPixmap(nullptr) {
         setFocusPolicy(Qt::StrongFocus);
-        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         setMinimumSize(200, 440);
-        setAttribute(Qt::WA_StyledBackground);
     }
 
     ~GameAreaWidget() {
@@ -446,7 +445,11 @@ public:
     }
 
     QSize sizeHint() const override {
-        return QSize(300, 660);
+        // Return proper 10:22 aspect ratio (board width : board height)
+        // Calculate based on available width from parent
+        int w = parentWidget() ? parentWidget()->width() / 2 : 300;
+        int h = (w / 10) * 22;  // 10 blocks wide, 22 blocks tall
+        return QSize(w, h);
     }
 
 protected:
