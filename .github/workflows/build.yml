@@ -45,11 +45,11 @@ jobs:
           mingw64-libzip mingw64-SDL2 mingw64-SDL2_mixer \
           wine wine-devel \
           binutils make zip unzip libzip-devel \
-          fluidsynth sdl12-compat-devel gcc-c++ SDL2-devel
+          fluidsynth sdl12-compat-devel gcc-c++ SDL2-devel \
           mingw64-qt5-qmake \
           mingw64-qt5-qtbase \
           mingw64-qt5-qtbase-devel \
-          mingw64-qt5-qttools-tools \
+          mingw64-qt5-qttools-tools
 
     - name: Build Windows GTK Version
       run: |
