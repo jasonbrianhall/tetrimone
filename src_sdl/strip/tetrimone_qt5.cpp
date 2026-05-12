@@ -465,8 +465,30 @@ protected:
         
         // Use GPU renderer if available
         if (app->sdlCairoRenderer) {
-            app->sdlCairoRenderer->clearCairoSurface(0, 0, 0, 1.0);
             cairo_t* cr = app->sdlCairoRenderer->getCairoContext();
+            
+            // Draw background image with transition support
+            if (board->useBackgroundImage && board->getBackgroundImage() != nullptr) {
+                cairo_surface_t* bgImage = (cairo_surface_t*)board->getBackgroundImage();
+                
+                // Draw old background during transition (fade out)
+                if (board->isInBackgroundTransition() && board->getOldBackground() != nullptr) {
+                    cairo_surface_t* oldBg = (cairo_surface_t*)board->getOldBackground();
+                    cairo_set_source_surface(cr, oldBg, 0, 0);
+                    cairo_paint_with_alpha(cr, board->getTransitionOpacity());
+                    
+                    // Draw new background on top (fade in)
+                    cairo_set_source_surface(cr, bgImage, 0, 0);
+                    cairo_paint_with_alpha(cr, 1.0 - board->getTransitionOpacity());
+                } else {
+                    // Normal drawing without transition
+                    cairo_set_source_surface(cr, bgImage, 0, 0);
+                    cairo_paint(cr);
+                }
+            } else {
+                // Fallback to black background
+                app->sdlCairoRenderer->clearCairoSurface(0, 0, 0, 1.0);
+            }
             
             if (cr) {
                 cairo_scale(cr, scale, scale);
@@ -503,9 +525,30 @@ protected:
             
             cairo_t* cr = cairo_create(cairo_surface);
             
-            cairo_set_source_rgb(cr, 0, 0, 0);
-            cairo_rectangle(cr, 0, 0, w, h);
-            cairo_fill(cr);
+            // Draw background image with transition support
+            if (board->useBackgroundImage && board->getBackgroundImage() != nullptr) {
+                cairo_surface_t* bgImage = (cairo_surface_t*)board->getBackgroundImage();
+                
+                // Draw old background during transition (fade out)
+                if (board->isInBackgroundTransition() && board->getOldBackground() != nullptr) {
+                    cairo_surface_t* oldBg = (cairo_surface_t*)board->getOldBackground();
+                    cairo_set_source_surface(cr, oldBg, 0, 0);
+                    cairo_paint_with_alpha(cr, board->getTransitionOpacity());
+                    
+                    // Draw new background on top (fade in)
+                    cairo_set_source_surface(cr, bgImage, 0, 0);
+                    cairo_paint_with_alpha(cr, 1.0 - board->getTransitionOpacity());
+                } else {
+                    // Normal drawing without transition
+                    cairo_set_source_surface(cr, bgImage, 0, 0);
+                    cairo_paint(cr);
+                }
+            } else {
+                // Fallback to black background
+                cairo_set_source_rgb(cr, 0, 0, 0);
+                cairo_rectangle(cr, 0, 0, w, h);
+                cairo_fill(cr);
+            }
             
             cairo_scale(cr, scale, scale);
             
@@ -961,6 +1004,11 @@ void onKeyRightTick(TetrimoneApp* app) {
 
 void onGameTick(TetrimoneApp* app) {
     if (!app || !app->board) return;
+    
+    // Update background transition if active
+    if (app->board->isInBackgroundTransition()) {
+        app->board->updateBackgroundTransition();
+    }
     
     if (!app->board->isPaused() && !app->board->isGameOver() && 
         !app->board->isSplashScreenActive()) {

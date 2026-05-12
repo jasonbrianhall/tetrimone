@@ -212,7 +212,6 @@ void TetrimoneBoard::restart() {
   level = initialLevel; // Use initialLevel instead of hardcoded 1
   linesCleared = 0;
   gameOver = false;
-  gameOverSoundPlayed = false;
   paused = false;
   // DON'T re-enable splash screen - let the caller control this
   // splashScreenActive = true;
@@ -231,8 +230,8 @@ void TetrimoneBoard::restart() {
 
   // Select a random background if using background images from ZIP
   if (useBackgroundZip && !backgroundImages.empty()) {
-    // Start a smooth background transition
-    startBackgroundTransition();
+    // Just select a random background without transitioning at game start
+    selectRandomBackground();
   }
 
   consecutiveClears = 0;
@@ -630,8 +629,8 @@ int TetrimoneBoard::clearLines() {
     // Check if we've reached a level up (every 10 lines)
     int newLevel = (this->linesCleared / 10) + initialLevel;
     if (newLevel > level) {
-      // Level up!
-      level = newLevel;
+      // Level up! - use setLevel to trigger background transition
+      setLevel(newLevel);
       playSound(GameSoundEvent::LevelUp);
       
       // Change theme automatically on level up
@@ -648,7 +647,8 @@ int TetrimoneBoard::clearLines() {
 bool TetrimoneBoard::isGameOver() const {
   // If this is the first time checking game over status since it became true,
   // play the game over sound
-  if (gameOver && !gameOverSoundPlayed) {
+  bool soundPlayed = false;
+  if (gameOver && !soundPlayed) {
     // Cast away const to allow calling non-const member function
     TetrimoneBoard *nonConstThis = const_cast<TetrimoneBoard *>(this);
     if (retroModeActive) {
@@ -657,12 +657,12 @@ bool TetrimoneBoard::isGameOver() const {
         nonConstThis->playSound(GameSoundEvent::Gameover);
     }    
     
-    nonConstThis->gameOverSoundPlayed = true;
+    soundPlayed = true;
   }
 
   // If game is no longer over, reset the sound played flag
   if (!gameOver) {
-    const_cast<TetrimoneBoard *>(this)->gameOverSoundPlayed = false;
+    soundPlayed = false;
   }
 
   return gameOver;
@@ -996,6 +996,9 @@ void drawBoard(TetrimoneBoard *board) {
 void TetrimoneBoard::setLevel(int newLevel) {
     if (newLevel >= 1) {
         level = newLevel;
+        
+        // Start background transition when leveling up (fade to new image)
+        startBackgroundTransition();
     }
 }
 
