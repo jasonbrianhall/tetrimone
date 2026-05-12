@@ -1,3 +1,11 @@
+#ifndef COMMANDLINE_H
+#define COMMANDLINE_H
+
+#include <string>
+
+// Forward declaration - actual definition comes from tetrimone_gtk3.h or tetrimone_qt5.h
+struct TetrimoneApp;
+
 struct CommandLineArgs {
     int difficulty = -1;           // -1 means use default
     int blockSize = -1;            // -1 means use default
@@ -57,8 +65,11 @@ enum class ArgType {
     RETRO_MUSIC,
     UNKNOWN
 };
+
 ArgType getArgType(const std::string& arg);
 void printHelp(const char* programName);
 void printVersion();
-void applyCommandLineArgs(TetrimoneApp* app, const CommandLineArgs& args) ;
+void applyCommandLineArgs(TetrimoneApp* app, const CommandLineArgs& args);
 CommandLineArgs parseCommandLine(int argc, char* argv[]);
+
+#endif // COMMANDLINE_H

@@ -1,4 +1,4 @@
-#include "tetrimone.h"
+#include "tetrimone_gtk.h"
 
     void TetrimoneBoard::placeBlock(int x, int y, int blockType) {
         // Validate grid coordinates

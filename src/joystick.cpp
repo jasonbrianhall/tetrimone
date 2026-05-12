@@ -1,4 +1,13 @@
-#include "tetrimone.h"
+#ifdef GTK3
+#include "tetrimone_gtk.h"
+#include "gtk3_dialog_helpers.h"
+#endif
+
+#ifdef QT5
+#include "tetrimone_qt5.h"
+#endif
+
+using namespace GTK3Helpers;
 
 typedef struct {
     TetrimoneApp* app;
@@ -6,6 +15,10 @@ typedef struct {
 } JoystickTestData;
 
 gboolean updateJoystickTestDisplay(gpointer userData);
+
+// Forward declaration for joystick mapping callback
+void onJoystickMappingApply(int rotate_cw, int rotate_ccw, int hard_drop, int pause_btn,
+                           int x_axis, int y_axis, bool invert_x, bool invert_y, gpointer userData);
 
 void initSDL(TetrimoneApp *app) {
   // Make sure SDL is not already initialized
@@ -203,7 +216,7 @@ gboolean pollJoystick(gpointer data) {
 
   // Skip further input processing if game is over or paused
   if (app->board->isGameOver() || app->board->isPaused()) {
-    return TRUE; // Keep the timer going but don't process movement inputs
+    return true; // Keep the timer going but don't process movement inputs
   }
 
   // Process axes with acceleration using custom mapping
@@ -476,7 +489,7 @@ gboolean pollJoystick(gpointer data) {
   gtk_widget_queue_draw(app->nextPieceArea);
   updateLabels(app);
 
-  return TRUE; // Keep the timer going
+  return true; // Keep the timer going
 }
 
 
@@ -517,63 +530,55 @@ void updateJoystickInfo(GtkLabel* infoLabel, TetrimoneApp* app) {
 void onJoystickTestButton(GtkButton* button, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
-    // Create a new dialog window
+    // Create the dialog
+    GtkWindow* parentWindow = GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button)));
     GtkWidget* testDialog = gtk_dialog_new_with_buttons(
         "Joystick Test",
-        GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))),
+        parentWindow,
         GTK_DIALOG_MODAL,
         "_Close", GTK_RESPONSE_CLOSE,
         NULL
     );
     
-    // Set size
     gtk_window_set_default_size(GTK_WINDOW(testDialog), 600, 400);
     
-    // Get content area
     GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(testDialog));
     gtk_container_set_border_width(GTK_CONTAINER(contentArea), 10);
     
-    // Create a text view for displaying joystick input
+    // Add instructions label
+    GtkWidget* instructionLabel = gtk_label_new("Move the joystick and press buttons to see the input values.");
+    gtk_box_pack_start(GTK_BOX(contentArea), instructionLabel, FALSE, FALSE, 10);
+    
+    // Create scrolled text view
     GtkWidget* textScroll = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(textScroll),
                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-    gtk_box_pack_start(GTK_BOX(contentArea), textScroll, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(contentArea), textScroll, true, true, 0);
     
     GtkWidget* textView = gtk_text_view_new();
     gtk_text_view_set_editable(GTK_TEXT_VIEW(textView), FALSE);
+    gtk_text_view_set_monospace(GTK_TEXT_VIEW(textView), true);
     gtk_container_add(GTK_CONTAINER(textScroll), textView);
-    
-    // Set monospace font
-    gtk_text_view_set_monospace(GTK_TEXT_VIEW(textView), TRUE);
     
     // Get the buffer
     GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textView));
     
-    // Add instructions
-    GtkWidget* instructionLabel = gtk_label_new("Move the joystick and press buttons to see the input values.");
-    gtk_box_pack_start(GTK_BOX(contentArea), instructionLabel, FALSE, FALSE, 10);
-    
-    // Set up data for the joystick test timer callback
+    // Set up timer data
     JoystickTestData* testData = new JoystickTestData;
     testData->app = app;
     testData->buffer = buffer;
     
-    // Set up a timer to update the text view with joystick info
+    // Set up timer to update text view
     guint testTimerId = g_timeout_add_full(G_PRIORITY_DEFAULT, 100, 
                                           updateJoystickTestDisplay, 
                                           testData, 
                                           [](gpointer data) { delete static_cast<JoystickTestData*>(data); });
     
-    // Show dialog
     gtk_widget_show_all(testDialog);
-    
-    // Run dialog
     gtk_dialog_run(GTK_DIALOG(testDialog));
     
-    // Clean up timer when dialog is closed
+    // Clean up timer
     g_source_remove(testTimerId);
-    
-    // Destroy dialog
     gtk_widget_destroy(testDialog);
 }
 
@@ -677,7 +682,7 @@ gboolean updateJoystickTestDisplay(gpointer userData) {
     TetrimoneApp* app = data->app;
     
     if (!app->joystickEnabled || !app->joystick) {
-        return TRUE; // Keep the timer going
+        return true; // Keep the timer going
     }
     
     // Update joystick state
@@ -756,14 +761,52 @@ gboolean updateJoystickTestDisplay(gpointer userData) {
     // Update the text buffer
     gtk_text_buffer_set_text(buffer, info.c_str(), -1);
     
-    return TRUE; // Keep the timer going
+    return true; // Keep the timer going
 }
 
+// Callback for joystick mapping apply - called by dialog helper
+void onJoystickMappingApply(int rotate_cw, int rotate_ccw, int hard_drop, int pause_btn,
+                           int x_axis, int y_axis, bool invert_x, bool invert_y, gpointer userData) {
+    TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
+    
+    app->joystickMapping.rotate_cw_button = rotate_cw;
+    app->joystickMapping.rotate_ccw_button = rotate_ccw;
+    app->joystickMapping.hard_drop_button = hard_drop;
+    app->joystickMapping.pause_button = pause_btn;
+    app->joystickMapping.x_axis = x_axis;
+    app->joystickMapping.y_axis = y_axis;
+    app->joystickMapping.invert_x = invert_x;
+    app->joystickMapping.invert_y = invert_y;
+    
+    saveJoystickMapping(app);
+}
 
 void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     (void)menuItem; // Avoid unused parameter warning
+    
+    if (!app->joystick) {
+        DialogConfig errorConfig{
+            .title = "Error",
+            .acceptButtonLabel = "_OK",
+            .width = 300,
+            .height = 150
+        };
+        
+        std::vector<TextConfig> errorText{
+            {
+                .content = "No joystick connected!",
+                .markup = "",
+                .isMarkup = false,
+                .marginTop = 10,
+                .marginBottom = 10
+            }
+        };
+        
+        createAndRunDialog(GTK_WINDOW(app->window), errorConfig, errorText);
+        return;
+    }
     
     // Pause the game if it's running
     bool wasPaused = app->board->isPaused();
@@ -771,346 +814,34 @@ void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData) {
         onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
     }
     
-    // Create dialog
-    GtkWidget* dialog = gtk_dialog_new_with_buttons(
-        "Joystick Configuration",
-        GTK_WINDOW(app->window),
-        GTK_DIALOG_MODAL,
-        "_Close", GTK_RESPONSE_CLOSE,
-        NULL
-    );
+    // Create joystick mapping configuration dialog
+    int numButtons = std::min(16, SDL_JoystickNumButtons(app->joystick));
+    int numAxes = std::min(6, SDL_JoystickNumAxes(app->joystick));
     
-    // Use a more reasonable size
-    gtk_window_set_default_size(GTK_WINDOW(dialog), 500, 400);
+    JoystickMappingConfig config{
+        .title = "Joystick Configuration - Mapping",
+        .numButtons = numButtons,
+        .numAxes = numAxes,
+        .rotate_cw = app->joystickMapping.rotate_cw_button,
+        .rotate_ccw = app->joystickMapping.rotate_ccw_button,
+        .hard_drop = app->joystickMapping.hard_drop_button,
+        .pause_button = app->joystickMapping.pause_button,
+        .x_axis = app->joystickMapping.x_axis,
+        .y_axis = app->joystickMapping.y_axis,
+        .invert_x = app->joystickMapping.invert_x,
+        .invert_y = app->joystickMapping.invert_y,
+        .width = 500,
+        .height = 400
+    };
     
-    // Create content area
-    GtkWidget* contentArea = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-    gtk_container_set_border_width(GTK_CONTAINER(contentArea), 8);
-    
-    // Create a notebook (tabbed interface)
-    GtkWidget* notebook = gtk_notebook_new();
-    gtk_container_add(GTK_CONTAINER(contentArea), notebook);
-    
-    // ---- TAB 1: Status ----
-    GtkWidget* statusBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    gtk_container_set_border_width(GTK_CONTAINER(statusBox), 8);
-    GtkWidget* statusLabel = gtk_label_new("Status");
-    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), statusBox, statusLabel);
-    
-    // Joystick info label
-    GtkWidget* joystickInfoLabel = gtk_label_new("");
-    gtk_widget_set_halign(joystickInfoLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(statusBox), joystickInfoLabel, FALSE, FALSE, 0);
-    
-    // Update the joystick info
-    updateJoystickInfo(GTK_LABEL(joystickInfoLabel), app);
-    
-    // Rescan button
-    GtkWidget* rescanButton = gtk_button_new_with_label("Rescan for Joysticks");
-    gtk_box_pack_start(GTK_BOX(statusBox), rescanButton, FALSE, FALSE, 5);
-    
-    // Connect signal to rescan button
-    g_object_set_data(G_OBJECT(rescanButton), "info-label", joystickInfoLabel);
-    g_signal_connect(G_OBJECT(rescanButton), "clicked", 
-                   G_CALLBACK(onJoystickRescan), app);
-    
-    // ---- TAB 2: Selection ----
-    GtkWidget* selectionBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    gtk_container_set_border_width(GTK_CONTAINER(selectionBox), 8);
-    GtkWidget* selectionLabel = gtk_label_new("Selection");
-    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), selectionBox, selectionLabel);
-    
-    // Add label
-    GtkWidget* idLabel = gtk_label_new("Select joystick device ID:");
-    gtk_widget_set_halign(idLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(selectionBox), idLabel, FALSE, FALSE, 0);
-    
-    // Create a horizontal scale (slider) for joystick ID
-    GtkWidget* idScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 
-                                               0, SDL_NumJoysticks() > 0 ? SDL_NumJoysticks() - 1 : 0, 1);
-    gtk_range_set_value(GTK_RANGE(idScale), 0); // Default to first joystick
-    gtk_scale_set_digits(GTK_SCALE(idScale), 0); // No decimal places
-    gtk_scale_set_value_pos(GTK_SCALE(idScale), GTK_POS_RIGHT);
-    gtk_box_pack_start(GTK_BOX(selectionBox), idScale, FALSE, FALSE, 0);
-    
-    // Add min/max labels
-    GtkWidget* rangeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_box_pack_start(GTK_BOX(selectionBox), rangeBox, FALSE, FALSE, 0);
-    
-    GtkWidget* minLabel = gtk_label_new("0");
-    gtk_widget_set_halign(minLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(rangeBox), minLabel, TRUE, TRUE, 0);
-    
-    char maxJoystick[8];
-    snprintf(maxJoystick, sizeof(maxJoystick), "%d", SDL_NumJoysticks() > 0 ? SDL_NumJoysticks() - 1 : 0);
-    GtkWidget* maxLabel = gtk_label_new(maxJoystick);
-    gtk_widget_set_halign(maxLabel, GTK_ALIGN_END);
-    gtk_box_pack_end(GTK_BOX(rangeBox), maxLabel, TRUE, TRUE, 0);
-    
-    // Apply button for selecting joystick
-    GtkWidget* applyButton = gtk_button_new_with_label("Apply Joystick Selection");
-    gtk_box_pack_start(GTK_BOX(selectionBox), applyButton, FALSE, FALSE, 5);
-    
-    // Set up data for the joystick selection callback
-    JoystickSelectionData* selectionData = new JoystickSelectionData;
-    selectionData->app = app;
-    selectionData->idScale = idScale;
-    selectionData->infoLabel = joystickInfoLabel;
-    selectionData->dialog = dialog;
-    
-    // Connect signal to apply button using regular callback
-    g_signal_connect_data(G_OBJECT(applyButton), "clicked", 
-                        G_CALLBACK(onJoystickSelectionApply), selectionData, 
-                        [](gpointer data, GClosure*) { delete static_cast<JoystickSelectionData*>(data); }, 
-                        (GConnectFlags)0);
-    
-    // ---- TAB 3: Testing ----
-    GtkWidget* testBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    gtk_container_set_border_width(GTK_CONTAINER(testBox), 8);
-    GtkWidget* testingLabel = gtk_label_new("Testing");
-    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), testBox, testingLabel);
-    
-    // Add instruction
-    GtkWidget* testLabel = gtk_label_new("Move joystick and press buttons to test. Input will be displayed here:");
-    gtk_widget_set_halign(testLabel, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(testBox), testLabel, FALSE, FALSE, 0);
-    
-    // Create a text view for displaying joystick input
-    GtkWidget* textScroll = gtk_scrolled_window_new(NULL, NULL);
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(textScroll),
-                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-    gtk_box_pack_start(GTK_BOX(testBox), textScroll, TRUE, TRUE, 0);
-    
-    GtkWidget* textView = gtk_text_view_new();
-    gtk_text_view_set_editable(GTK_TEXT_VIEW(textView), FALSE);
-    gtk_container_add(GTK_CONTAINER(textScroll), textView);
-    
-    // Set monospace font
-    gtk_text_view_set_monospace(GTK_TEXT_VIEW(textView), TRUE);
-    
-    // Get the buffer
-    GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textView));
-    
-    // Set up data for the joystick test timer callback
-    JoystickTestData* testData = new JoystickTestData;
-    testData->app = app;
-    testData->buffer = buffer;
-    
-    // Set up a timer to update the text view with joystick info
-    guint testTimerId = g_timeout_add_full(G_PRIORITY_DEFAULT, 100, 
-                                          updateJoystickTestDisplay, 
-                                          testData, 
-                                          [](gpointer data) { delete static_cast<JoystickTestData*>(data); });
-    
-    // ---- TAB 4: Mapping ----
-    GtkWidget* mappingBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    gtk_container_set_border_width(GTK_CONTAINER(mappingBox), 8);
-    GtkWidget* mappingLabel = gtk_label_new("Mapping");
-    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), mappingBox, mappingLabel);
-    
-    // Create a grid to lay out the mapping controls
-    GtkWidget* grid = gtk_grid_new();
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 6);
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
-    gtk_box_pack_start(GTK_BOX(mappingBox), grid, FALSE, FALSE, 0);
-    
-    // Labels for the grid headers
-    GtkWidget* actionsLabel = gtk_label_new("<b>Action</b>");
-    gtk_label_set_use_markup(GTK_LABEL(actionsLabel), TRUE);
-    gtk_grid_attach(GTK_GRID(grid), actionsLabel, 0, 0, 1, 1);
-    
-    GtkWidget* currentLabel = gtk_label_new("<b>Current</b>");
-    gtk_label_set_use_markup(GTK_LABEL(currentLabel), TRUE);
-    gtk_grid_attach(GTK_GRID(grid), currentLabel, 1, 0, 1, 1);
-    
-    GtkWidget* newLabel = gtk_label_new("<b>New</b>");
-    gtk_label_set_use_markup(GTK_LABEL(newLabel), TRUE);
-    gtk_grid_attach(GTK_GRID(grid), newLabel, 2, 0, 1, 1);
-    
-    char currentMapping[50];
-    
-    // Row 1: Rotate Clockwise
-    GtkWidget* rotateLabel = gtk_label_new("Rotate Clockwise:");
-    gtk_widget_set_halign(rotateLabel, GTK_ALIGN_START);
-    gtk_grid_attach(GTK_GRID(grid), rotateLabel, 0, 1, 1, 1);
-    
-    snprintf(currentMapping, sizeof(currentMapping), "Button %d", app->joystickMapping.rotate_cw_button);
-    GtkWidget* rotateCurrent = gtk_label_new(currentMapping);
-    gtk_grid_attach(GTK_GRID(grid), rotateCurrent, 1, 1, 1, 1);
-    
-    GtkWidget* rotateCombo = gtk_combo_box_text_new();
-    for (int i = 0; i < std::min(16, SDL_JoystickNumButtons(app->joystick)); i++) {
-        char buttonText[20];
-        snprintf(buttonText, sizeof(buttonText), "Button %d", i);
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(rotateCombo), buttonText);
-    }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(rotateCombo), app->joystickMapping.rotate_cw_button);
-    gtk_grid_attach(GTK_GRID(grid), rotateCombo, 2, 1, 1, 1);
-    
-    // Row 2: Rotate Counter-Clockwise
-    GtkWidget* rotateCCWLabel = gtk_label_new("Rotate Counter-CW:");
-    gtk_widget_set_halign(rotateCCWLabel, GTK_ALIGN_START);
-    gtk_grid_attach(GTK_GRID(grid), rotateCCWLabel, 0, 2, 1, 1);
-    
-    snprintf(currentMapping, sizeof(currentMapping), "Button %d", app->joystickMapping.rotate_ccw_button);
-    GtkWidget* rotateCCWCurrent = gtk_label_new(currentMapping);
-    gtk_grid_attach(GTK_GRID(grid), rotateCCWCurrent, 1, 2, 1, 1);
-    
-    GtkWidget* rotateCCWCombo = gtk_combo_box_text_new();
-    for (int i = 0; i < std::min(16, SDL_JoystickNumButtons(app->joystick)); i++) {
-        char buttonText[20];
-        snprintf(buttonText, sizeof(buttonText), "Button %d", i);
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(rotateCCWCombo), buttonText);
-    }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(rotateCCWCombo), app->joystickMapping.rotate_ccw_button);
-    gtk_grid_attach(GTK_GRID(grid), rotateCCWCombo, 2, 2, 1, 1);
-    
-    // Row 3: Hard Drop
-    GtkWidget* hardDropLabel = gtk_label_new("Hard Drop:");
-    gtk_widget_set_halign(hardDropLabel, GTK_ALIGN_START);
-    gtk_grid_attach(GTK_GRID(grid), hardDropLabel, 0, 3, 1, 1);
-    
-    snprintf(currentMapping, sizeof(currentMapping), "Button %d", app->joystickMapping.hard_drop_button);
-    GtkWidget* hardDropCurrent = gtk_label_new(currentMapping);
-    gtk_grid_attach(GTK_GRID(grid), hardDropCurrent, 1, 3, 1, 1);
-    
-    GtkWidget* hardDropCombo = gtk_combo_box_text_new();
-    for (int i = 0; i < std::min(16, SDL_JoystickNumButtons(app->joystick)); i++) {
-        char buttonText[20];
-        snprintf(buttonText, sizeof(buttonText), "Button %d", i);
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(hardDropCombo), buttonText);
-    }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(hardDropCombo), app->joystickMapping.hard_drop_button);
-    gtk_grid_attach(GTK_GRID(grid), hardDropCombo, 2, 3, 1, 1);
-    
-    // Row 4: Pause/Start
-    GtkWidget* pauseLabel = gtk_label_new("Pause/Start:");
-    gtk_widget_set_halign(pauseLabel, GTK_ALIGN_START);
-    gtk_grid_attach(GTK_GRID(grid), pauseLabel, 0, 4, 1, 1);
-    
-    snprintf(currentMapping, sizeof(currentMapping), "Button %d", app->joystickMapping.pause_button);
-    GtkWidget* pauseCurrent = gtk_label_new(currentMapping);
-    gtk_grid_attach(GTK_GRID(grid), pauseCurrent, 1, 4, 1, 1);
-    
-    GtkWidget* pauseCombo = gtk_combo_box_text_new();
-    for (int i = 0; i < std::min(16, SDL_JoystickNumButtons(app->joystick)); i++) {
-        char buttonText[20];
-        snprintf(buttonText, sizeof(buttonText), "Button %d", i);
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(pauseCombo), buttonText);
-    }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(pauseCombo), app->joystickMapping.pause_button);
-    gtk_grid_attach(GTK_GRID(grid), pauseCombo, 2, 4, 1, 1);
-    
-    // Row 5: X-Axis
-    GtkWidget* xAxisLabel = gtk_label_new("Horizontal Movement:");
-    gtk_widget_set_halign(xAxisLabel, GTK_ALIGN_START);
-    gtk_grid_attach(GTK_GRID(grid), xAxisLabel, 0, 5, 1, 1);
-    
-    snprintf(currentMapping, sizeof(currentMapping), "Axis %d%s", 
-          app->joystickMapping.x_axis, 
-          app->joystickMapping.invert_x ? " (Inv)" : "");
-    GtkWidget* xAxisCurrent = gtk_label_new(currentMapping);
-    gtk_grid_attach(GTK_GRID(grid), xAxisCurrent, 1, 5, 1, 1);
-    
-    GtkWidget* xAxisBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_grid_attach(GTK_GRID(grid), xAxisBox, 2, 5, 1, 1);
-    
-    GtkWidget* xAxisCombo = gtk_combo_box_text_new();
-    for (int i = 0; i < std::min(6, SDL_JoystickNumAxes(app->joystick)); i++) {
-        char axisText[20];
-        snprintf(axisText, sizeof(axisText), "Axis %d", i);
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(xAxisCombo), axisText);
-    }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(xAxisCombo), app->joystickMapping.x_axis);
-    gtk_box_pack_start(GTK_BOX(xAxisBox), xAxisCombo, TRUE, TRUE, 0);
-    
-    GtkWidget* invertXCheck = gtk_check_button_new_with_label("Invert");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(invertXCheck), 
-                              app->joystickMapping.invert_x);
-    gtk_box_pack_start(GTK_BOX(xAxisBox), invertXCheck, FALSE, FALSE, 0);
-    
-    // Row 6: Y-Axis
-    GtkWidget* yAxisLabel = gtk_label_new("Vertical Movement:");
-    gtk_widget_set_halign(yAxisLabel, GTK_ALIGN_START);
-    gtk_grid_attach(GTK_GRID(grid), yAxisLabel, 0, 6, 1, 1);
-    
-    snprintf(currentMapping, sizeof(currentMapping), "Axis %d%s", 
-          app->joystickMapping.y_axis, 
-          app->joystickMapping.invert_y ? " (Inv)" : "");
-    GtkWidget* yAxisCurrent = gtk_label_new(currentMapping);
-    gtk_grid_attach(GTK_GRID(grid), yAxisCurrent, 1, 6, 1, 1);
-    
-    GtkWidget* yAxisBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_grid_attach(GTK_GRID(grid), yAxisBox, 2, 6, 1, 1);
-    
-    GtkWidget* yAxisCombo = gtk_combo_box_text_new();
-    for (int i = 0; i < std::min(6, SDL_JoystickNumAxes(app->joystick)); i++) {
-        char axisText[20];
-        snprintf(axisText, sizeof(axisText), "Axis %d", i);
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(yAxisCombo), axisText);
-    }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(yAxisCombo), app->joystickMapping.y_axis);
-    gtk_box_pack_start(GTK_BOX(yAxisBox), yAxisCombo, TRUE, TRUE, 0);
-    
-    GtkWidget* invertYCheck = gtk_check_button_new_with_label("Invert");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(invertYCheck), 
-                              app->joystickMapping.invert_y);
-    gtk_box_pack_start(GTK_BOX(yAxisBox), invertYCheck, FALSE, FALSE, 0);
-    
-    // Add apply and reset buttons
-    GtkWidget* buttonBox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_button_box_set_layout(GTK_BUTTON_BOX(buttonBox), GTK_BUTTONBOX_END);
-    gtk_box_set_spacing(GTK_BOX(buttonBox), 10);
-    gtk_box_pack_start(GTK_BOX(mappingBox), buttonBox, FALSE, FALSE, 10);
-    
-    GtkWidget* resetButton = gtk_button_new_with_label("Reset to Defaults");
-    gtk_box_pack_start(GTK_BOX(buttonBox), resetButton, FALSE, FALSE, 0);
-    
-    GtkWidget* applyMappingButton = gtk_button_new_with_label("Apply Mapping");
-    gtk_box_pack_start(GTK_BOX(buttonBox), applyMappingButton, FALSE, FALSE, 0);
-    
-    // Store all data needed for callbacks
-    g_object_set_data(G_OBJECT(applyMappingButton), "app", app);
-    g_object_set_data(G_OBJECT(applyMappingButton), "rotate_combo", rotateCombo);
-    g_object_set_data(G_OBJECT(applyMappingButton), "rotate_ccw_combo", rotateCCWCombo);
-    g_object_set_data(G_OBJECT(applyMappingButton), "hard_drop_combo", hardDropCombo);
-    g_object_set_data(G_OBJECT(applyMappingButton), "pause_combo", pauseCombo);
-    g_object_set_data(G_OBJECT(applyMappingButton), "x_axis_combo", xAxisCombo);
-    g_object_set_data(G_OBJECT(applyMappingButton), "y_axis_combo", yAxisCombo);
-    g_object_set_data(G_OBJECT(applyMappingButton), "invert_x_check", invertXCheck);
-    g_object_set_data(G_OBJECT(applyMappingButton), "invert_y_check", invertYCheck);
-    
-    g_object_set_data(G_OBJECT(resetButton), "app", app);
-    g_object_set_data(G_OBJECT(resetButton), "rotate_combo", rotateCombo);
-    g_object_set_data(G_OBJECT(resetButton), "rotate_ccw_combo", rotateCCWCombo);
-    g_object_set_data(G_OBJECT(resetButton), "hard_drop_combo", hardDropCombo);
-    g_object_set_data(G_OBJECT(resetButton), "pause_combo", pauseCombo);
-    g_object_set_data(G_OBJECT(resetButton), "x_axis_combo", xAxisCombo);
-    g_object_set_data(G_OBJECT(resetButton), "y_axis_combo", yAxisCombo);
-    g_object_set_data(G_OBJECT(resetButton), "invert_x_check", invertXCheck);
-    g_object_set_data(G_OBJECT(resetButton), "invert_y_check", invertYCheck);
-    
-    // Connect signals with C-style callbacks
-    g_signal_connect(G_OBJECT(applyMappingButton), "clicked", G_CALLBACK(onJoystickMapApply), NULL);
-    g_signal_connect(G_OBJECT(resetButton), "clicked", G_CALLBACK(onJoystickMapReset), NULL);
-    
-    // Show all dialog widgets
-    gtk_widget_show_all(dialog);
-    
-    // Run the dialog
-    gtk_dialog_run(GTK_DIALOG(dialog));
-    
-    // Clean up the test timer
-    g_source_remove(testTimerId);
-    
-    // Destroy dialog
-    gtk_widget_destroy(dialog);
+    createJoystickMappingDialog(GTK_WINDOW(app->window), config, onJoystickMappingApply, app);
     
     // Resume the game if it wasn't paused before
     if (!wasPaused && !app->board->isGameOver() && !app->board->isSplashScreenActive()) {
         onPauseGame(GTK_MENU_ITEM(app->pauseMenuItem), app);
     }
 }
+
 
 void saveJoystickMapping(TetrimoneApp* app) {
     std::string configDir = g_get_user_config_dir();
@@ -1158,71 +889,4 @@ void loadJoystickMapping(TetrimoneApp* app) {
     }
 }
 
-void onJoystickMapApply(GtkButton* button, gpointer userData) {
-    TetrimoneApp* app = static_cast<TetrimoneApp*>(g_object_get_data(G_OBJECT(button), "app"));
-    GtkWidget* rotateCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "rotate_combo"));
-    GtkWidget* rotateCCWCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "rotate_ccw_combo"));
-    GtkWidget* hardDropCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "hard_drop_combo"));
-    GtkWidget* pauseCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "pause_combo"));
-    GtkWidget* xAxisCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "x_axis_combo"));
-    GtkWidget* yAxisCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "y_axis_combo"));
-    GtkWidget* invertXCheck = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "invert_x_check"));
-    GtkWidget* invertYCheck = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "invert_y_check"));
-    
-    // Update the joystick mapping
-    app->joystickMapping.rotate_cw_button = gtk_combo_box_get_active(GTK_COMBO_BOX(rotateCombo));
-    app->joystickMapping.rotate_ccw_button = gtk_combo_box_get_active(GTK_COMBO_BOX(rotateCCWCombo));
-    app->joystickMapping.hard_drop_button = gtk_combo_box_get_active(GTK_COMBO_BOX(hardDropCombo));
-    app->joystickMapping.pause_button = gtk_combo_box_get_active(GTK_COMBO_BOX(pauseCombo));
-    app->joystickMapping.x_axis = gtk_combo_box_get_active(GTK_COMBO_BOX(xAxisCombo));
-    app->joystickMapping.y_axis = gtk_combo_box_get_active(GTK_COMBO_BOX(yAxisCombo));
-    app->joystickMapping.invert_x = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(invertXCheck));
-    app->joystickMapping.invert_y = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(invertYCheck));
-    
-    // Save the mapping
-    saveJoystickMapping(app);
-    
-    // Show confirmation dialog
-    GtkWidget* dialog = gtk_message_dialog_new(
-        GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))),
-        GTK_DIALOG_MODAL,
-        GTK_MESSAGE_INFO,
-        GTK_BUTTONS_OK,
-        "Joystick mapping has been updated and saved."
-    );
-    gtk_dialog_run(GTK_DIALOG(dialog));
-    gtk_widget_destroy(dialog);
-}
 
-void onJoystickMapReset(GtkButton* button, gpointer userData) {
-    TetrimoneApp* app = static_cast<TetrimoneApp*>(g_object_get_data(G_OBJECT(button), "app"));
-    GtkWidget* rotateCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "rotate_combo"));
-    GtkWidget* rotateCCWCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "rotate_ccw_combo"));
-    GtkWidget* hardDropCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "hard_drop_combo"));
-    GtkWidget* pauseCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "pause_combo"));
-    GtkWidget* xAxisCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "x_axis_combo"));
-    GtkWidget* yAxisCombo = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "y_axis_combo"));
-    GtkWidget* invertXCheck = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "invert_x_check"));
-    GtkWidget* invertYCheck = static_cast<GtkWidget*>(g_object_get_data(G_OBJECT(button), "invert_y_check"));
-    
-    // Reset to defaults
-    gtk_combo_box_set_active(GTK_COMBO_BOX(rotateCombo), 0);      // A button
-    gtk_combo_box_set_active(GTK_COMBO_BOX(rotateCCWCombo), 1);   // B button
-    gtk_combo_box_set_active(GTK_COMBO_BOX(hardDropCombo), 3);    // Y button
-    gtk_combo_box_set_active(GTK_COMBO_BOX(pauseCombo), 9);       // Start button
-    gtk_combo_box_set_active(GTK_COMBO_BOX(xAxisCombo), 0);       // First axis
-    gtk_combo_box_set_active(GTK_COMBO_BOX(yAxisCombo), 1);       // Second axis
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(invertXCheck), FALSE);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(invertYCheck), FALSE);
-    
-    // Show confirmation dialog
-    GtkWidget* dialog = gtk_message_dialog_new(
-        GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))),
-        GTK_DIALOG_MODAL,
-        GTK_MESSAGE_INFO,
-        GTK_BUTTONS_OK,
-        "Joystick mapping has been reset to defaults.\nClick Apply to save these changes."
-    );
-    gtk_dialog_run(GTK_DIALOG(dialog));
-    gtk_widget_destroy(dialog);
-}
