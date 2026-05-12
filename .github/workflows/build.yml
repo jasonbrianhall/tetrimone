@@ -681,7 +681,7 @@ jobs:
           exit 1
         }
 
-    - name: Generate Advanced MSI Installer QT3
+    - name: Generate Advanced MSI Installer QT5
       working-directory: artifacts/build/windows_qt5
       run: |
         # Generate component entries for all DLLs
@@ -690,10 +690,10 @@ jobs:
           "          <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
         }
         
-        # Create advanced WXS installer
+        # Create advanced WXS installer (simplified, matching GTK3 structure)
         @"
         <?xml version="1.0" encoding="UTF-8"?>
-        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
           
           <Product Id="*" 
                    Name="Tetrimone QT5" 
@@ -709,28 +709,20 @@ jobs:
                      Comments="Built with GitHub Actions"
                      Manufacturer="Jason Hall" />
             
-            <!-- Major upgrade configuration -->
-            <MajorUpgrade 
-              DowngradeErrorMessage="A newer version of Tetrimone QT5 is already installed. Please uninstall it first." 
-              Schedule="afterInstallInitialize" />
-            
+            <MajorUpgrade DowngradeErrorMessage="A newer version of Tetrimone QT5 is already installed. Please uninstall it first." Schedule="afterInstallInitialize" />
             <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
             
-            <!-- License agreement -->
             <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
             
-            <!-- Custom properties -->
             <Property Id="ARPPRODUCTICON" Value="TetrimoneIcon" />
             <Property Id="ARPURLINFOABOUT" Value="https://github.com/jasonbrianhall/tetrimone" />
             <Property Id="ARPNOREPAIR" Value="yes" />
             <Property Id="ARPNOMODIFY" Value="yes" />
             <Property Id="ARPHELPLINK" Value="https://github.com/jasonbrianhall/tetrimone/issues" />
-            
-            <!-- Installation scope choice -->
             <Property Id="ApplicationFolderName" Value="Tetrimone QT5" />
-            <Property Id="INSTALL_SCOPE" Value="perMachine" />
+            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+            <Property Id="DESKTOP_SHORTCUT" Value="1" />
             
-            <!-- Directory structure -->
             <Directory Id="TARGETDIR" Name="SourceDir">
               <Directory Id="ProgramFilesFolder">
                 <Directory Id="INSTALLFOLDER" Name="Tetrimone QT5" />
@@ -741,57 +733,30 @@ jobs:
               <Directory Id="DesktopFolder" Name="Desktop" />
             </Directory>
             
-            <!-- Features -->
-            <Feature Id="ProductFeature" Title="Tetrimone QT5" Level="1">
+            <Feature Id="ProductFeature" Title="Tetrimone QT5" Level="1" Description="Tetrimone QT5 Game Application">
               <ComponentRef Id="MainExecutable" />
-              <ComponentRef Id="DLLComponent" />
-              <ComponentRef Id="ProgramMenuShortcut" />
-              <ComponentRef Id="DesktopShortcut" />
+              <ComponentRef Id="DLLFiles" />
+              <ComponentRef Id="StartMenuShortcut" />
             </Feature>
             
-            <!-- Components -->
             <DirectoryRef Id="INSTALLFOLDER">
               <Component Id="MainExecutable" Guid="*">
-                <File Id="MainEXE" Name="tetrimone.exe" Source="tetrimone.exe" KeyPath="yes">
-                  <Shortcut Id="StartMenuShortcut" Directory="ApplicationProgramsFolder" Name="Tetrimone QT5" />
-                  <Shortcut Id="DesktopShortcutId" Directory="DesktopFolder" Name="Tetrimone QT5" Show="normal" WorkingDirectory="INSTALLFOLDER" />
-                </File>
+                <File Id="tetrimone_exe" Name="tetrimone.exe" Source="tetrimone.exe" KeyPath="yes" />
               </Component>
-              <Component Id="DLLComponent" Guid="*">
-                <!-- DLLs will be included here -->
-                $($dllEntries -join "`n")
+              <Component Id="DLLFiles" Guid="*">
+                `$($dllEntries -join "`n")
               </Component>
             </DirectoryRef>
             
-            <!-- Program Menu -->
             <DirectoryRef Id="ApplicationProgramsFolder">
-              <Component Id="ProgramMenuShortcut" Guid="*">
-                <RemoveFolder Id="ProgramMenuFolder" On="uninstall" />
-                <RegistryValue Root="HKCU" Key="Software\Tetrimone QT5" Value="installed" Type="integer" KeyPath="yes" />
+              <Component Id="StartMenuShortcut" Guid="*">
+                <Shortcut Id="StartMenuQT5" Name="Tetrimone QT5" Target="[INSTALLFOLDER]tetrimone.exe" WorkingDirectory="INSTALLFOLDER" />
+                <Shortcut Id="UninstallQT5" Name="Uninstall Tetrimone QT5" Target="[SystemFolder]msiexec.exe" Arguments="/x [ProductCode]" />
+                <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+                <RegistryValue Root="HKCU" Key="Software\Tetrimone\QT5" Value="installed" Type="integer" KeyPath="yes" />
               </Component>
             </DirectoryRef>
             
-            <!-- Desktop Shortcut -->
-            <DirectoryRef Id="DesktopFolder">
-              <Component Id="DesktopShortcut" Guid="*">
-                <RegistryValue Root="HKCU" Key="Software\Tetrimone QT5" Value="desktop" Type="integer" />
-              </Component>
-            </DirectoryRef>
-            
-            <!-- Install Sequence -->
-            <InstallExecuteSequence>
-              <Custom Action="SetTARGETDIR" Before="CostInitialize">1</Custom>
-            </InstallExecuteSequence>
-            
-            <!-- Registry for uninstall info -->
-            <DirectoryRef Id="INSTALLFOLDER">
-              <Component Id="RegistryComponent" Guid="*">
-                <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName]" Name="DisplayIcon" Value="[INSTALLFOLDER]tetrimone.exe" Type="string" />
-              </Component>
-            </DirectoryRef>
-            
-            <!-- UI Configuration -->
-            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
             <UIRef Id="WixUI_FeatureTree" />
             <UIRef Id="WixUI_ErrorProgressText" />
             
