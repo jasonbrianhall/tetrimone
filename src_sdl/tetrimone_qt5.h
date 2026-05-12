@@ -150,6 +150,8 @@ void onGameTick(TetrimoneApp* app);
 // Help dialogs
 void onAboutDialog(void* menuItem, void* userData);
 void onInstructionsDialog(void* menuItem, void* userData);
+void showIdeologicalFailureDialog(TetrimoneApp* app);
+void showPatrioticPerformanceDialog(TetrimoneApp* app);
 
 #ifdef QT5
 void onAppActivate(TetrimoneApp* app);

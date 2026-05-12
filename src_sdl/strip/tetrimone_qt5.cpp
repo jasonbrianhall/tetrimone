@@ -482,6 +482,7 @@ protected:
                     drawSplashScreen(cr, board, app);
                 }
                 drawFireworks(cr, board, app);
+                drawPropagandaMessage(cr, board);
                 
                 app->sdlCairoRenderer->syncSurfaceToTexture();
                 app->sdlCairoRenderer->present();
@@ -519,6 +520,7 @@ protected:
                 drawSplashScreen(cr, board, app);
             }
             drawFireworks(cr, board, app);
+            drawPropagandaMessage(cr, board);
             
             QImage img((uchar*)surface->pixels, w, h, surface->pitch, QImage::Format_ARGB32);
             QPainter painter(this);
@@ -594,20 +596,32 @@ protected:
         } else if (key == Qt::Key_Comma) {
             // Toggle retro/propaganda mode with comma key
             board->retroModeActive = !board->retroModeActive;
+            board->patrioticModeActive = false;
             if (board->retroModeActive) {
                 std::cout << "✓ Retro mode ACTIVATED - БЛОЧНАЯ РЕВОЛЮЦИЯ" << std::endl;
                 app->window->setWindowTitle("БЛОЧНАЯ РЕВОЛЮЦИЯ");
+                board->setHeatLevel(0.5);  // Set heat level for retro mode
+                // Switch to Soviet Retro theme (last theme in the list)
+                extern int currentThemeIndex;
+                extern const size_t NUM_COLOR_THEMES;
+                currentThemeIndex = NUM_COLOR_THEMES - 1;
             } else {
                 std::cout << "✓ Retro mode deactivated" << std::endl;
                 app->window->setWindowTitle("Tetrimone");
+                board->setHeatLevel(0.0);  // Reset heat level
             }
             updateDisplay(app);
         } else if (key == Qt::Key_Period) {
             // Toggle patriot mode with period key
             board->patrioticModeActive = !board->patrioticModeActive;
+            board->retroModeActive = false;
             if (board->patrioticModeActive) {
                 std::cout << "✓ Patriot mode ACTIVATED - GOD BLESS AMERICA" << std::endl;
-                app->window->setWindowTitle("TETRIMONE - PATRIOT MODE");
+                app->window->setWindowTitle("FREEDOM BLOCKS - GOD BLESS AMERICA");
+                // Switch to American Patriotic theme (second-to-last theme in the list)
+                extern int currentThemeIndex;
+                extern const size_t NUM_COLOR_THEMES;
+                currentThemeIndex = NUM_COLOR_THEMES - 2;
             } else {
                 std::cout << "✓ Patriot mode deactivated" << std::endl;
                 app->window->setWindowTitle("Tetrimone");
@@ -953,8 +967,90 @@ void onGameTick(TetrimoneApp* app) {
         
         if (!app->board->movePiece(0, 1)) {
             app->board->lockPiece();
-            app->board->clearLines();
+            int linesCleared = app->board->clearLines();
             app->board->generateNewPiece();
+            
+            // Show propaganda/freedom messages when lines are cleared
+            if (linesCleared > 0) {
+                if (app->board->retroModeActive) {
+                    QTimer::singleShot(1500, [app]() {
+                        showIdeologicalFailureDialog(app);
+                    });
+                }
+                if (app->board->patrioticModeActive) {
+                    QTimer::singleShot(1500, [app]() {
+                        showPatrioticPerformanceDialog(app);
+                    });
+                }
+            }
+        }
+        
+        // Random KGB inspection during retro mode
+        if (!app->board->isPaused() && !app->board->isGameOver() && app->board->retroModeActive) {
+            static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
+            std::uniform_int_distribution<int> dist(1, 1000);
+            
+            if (dist(rng) == 1) {
+                app->board->setPaused(true);
+                
+                QMessageBox* dialog = new QMessageBox(QMessageBox::Warning,
+                    "КГБ ИНСПЕКЦИЯ",
+                    "КГБ ИНСПЕКЦИЯ В ПРОЦЕССЕ...\n(KGB INSPECTION IN PROGRESS...)",
+                    QMessageBox::NoButton,
+                    qobject_cast<QWidget*>(app->window));
+                dialog->show();
+                
+                QTimer::singleShot(2000, [dialog]() {
+                    dialog->close();
+                    dialog->deleteLater();
+                });
+                
+                QTimer::singleShot(2100, [app]() {
+                    app->board->setPaused(false);
+                });
+            }
+        }
+        
+        // Random freedom inspection during patriotic mode
+        if (!app->board->isPaused() && !app->board->isGameOver() && app->board->patrioticModeActive) {
+            static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
+            std::uniform_int_distribution<int> dist(1, 1776);
+            
+            if (dist(rng) == 1) {
+                app->board->setPaused(true);
+                
+                const char* freedomInspections[] = {
+                    "🇺🇸 FREEDOM INSPECTION IN PROGRESS! 🦅\n(Checking your liberty levels...)",
+                    "📺 COMMERCIAL BREAK! 🍔\n(This freedom brought to you by sponsors!)",
+                    "🏈 TOUCHDOWN! AMERICA SCORES! 🎯\n(Brief patriotic celebration pause!)",
+                    "☕ COFFEE BREAK TIME! ⏰\n(Even freedom fighters need caffeine!)",
+                    "📱 SOCIAL MEDIA NOTIFICATION! 💬\n(Someone liked your freedom post!)",
+                    "🛒 FLASH SALE ALERT! 💳\n(50% off freedom accessories!)",
+                    "🎬 MOVIE TRAILER PREVIEW! 🍿\n(Coming soon: BLOCKS 2: FREEDOM EDITION!)",
+                    "🚗 TRAFFIC UPDATE! 🛣️\n(Highway to freedom temporarily slowed!)",
+                    "🌮 FOOD TRUCK ALERT! 🚚\n(Taco Tuesday freedom fuel available!)",
+                    "📺 BREAKING NEWS! 📰\n(Local gamer achieves blocks and liberty!)"
+                };
+                
+                std::uniform_int_distribution<int> msgDist(0, 9);
+                const char* selectedMessage = freedomInspections[msgDist(rng)];
+                
+                QMessageBox* dialog = new QMessageBox(QMessageBox::Information,
+                    "FREEDOM INSPECTION",
+                    selectedMessage,
+                    QMessageBox::NoButton,
+                    qobject_cast<QWidget*>(app->window));
+                dialog->show();
+                
+                QTimer::singleShot(2500, [dialog]() {
+                    dialog->close();
+                    dialog->deleteLater();
+                });
+                
+                QTimer::singleShot(2600, [app]() {
+                    app->board->setPaused(false);
+                });
+            }
         }
         
         if (app->board->isGameOver()) {

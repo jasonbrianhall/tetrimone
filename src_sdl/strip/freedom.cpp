@@ -2,11 +2,14 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <chrono>
+#include <random>
 
 #ifdef QT5
 #include "qt5_dialog_helpers.h"
 #include "tetrimone_qt5.h"
 #include <QApplication>
+#include <QMessageBox>
 #endif
 
 #ifdef GTK3
@@ -29,6 +32,8 @@ using namespace GTK3Helpers;
 #ifdef QT5
 using namespace Qt5Helpers;
 #endif
+
+#ifdef GTK3
 
 void showPatrioticPerformanceDialog(TetrimoneApp* app) {
     // Only show in patriotic mode
@@ -106,8 +111,7 @@ void showPatrioticPerformanceDialog(TetrimoneApp* app) {
         .defaultSelectedIndex = 0
     };
     
-    // Create and run dialog - works with both GTK3 and Qt5
-    #ifdef GTK3
+    // Create and run dialog - works with GTK3
     createAndRunDialog(
         GTK_WINDOW(app->window),
         dialogConfig,
@@ -115,18 +119,44 @@ void showPatrioticPerformanceDialog(TetrimoneApp* app) {
         &radioConfig,
         footerElements
     );
-    #endif
-    
-    #ifdef QT5
-    createAndRunDialog(
-        nullptr,  // Qt5 uses QApplication's active window
-        dialogConfig,
-        textElements,
-        &radioConfig,
-        footerElements
-    );
-    #endif
     
     // Restart game with renewed American spirit!
     app->board->restart();
 }
+
+#endif  // GTK3
+
+#ifdef QT5
+
+void showPatrioticPerformanceDialog(TetrimoneApp* app) {
+    if (!app || !app->board) return;
+    
+    // Use the freedom/patriotic messages vector
+    extern const std::vector<std::string> AMERICAN_PROPAGANDA_MESSAGES;
+    
+    if (AMERICAN_PROPAGANDA_MESSAGES.empty()) {
+        app->board->currentPropagandaMessage = "🇺🇸 YOUR BLOCKS HAVE ADVANCED FREEDOM! 🦅";
+    } else {
+        static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
+        std::uniform_int_distribution<int> dist(0, AMERICAN_PROPAGANDA_MESSAGES.size() - 1);
+        app->board->currentPropagandaMessage = AMERICAN_PROPAGANDA_MESSAGES[dist(rng)];
+    }
+    
+    // Show the message
+    app->board->showPropagandaMessage = true;
+    
+    // Force repaint of game area
+    if (app->gameArea) {
+        app->gameArea->update();
+    }
+    
+    // Set timer to clear message after 2 seconds
+    QTimer::singleShot(2000, [app]() {
+        app->board->showPropagandaMessage = false;
+        if (app->gameArea) {
+            app->gameArea->update();
+        }
+    });
+}
+
+#endif  // QT5
