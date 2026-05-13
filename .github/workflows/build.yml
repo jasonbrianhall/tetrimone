@@ -427,6 +427,12 @@ jobs:
     - name: Generate Advanced MSI Installer QT5
       working-directory: artifacts/build/windows_qt5
       run: |
+        # Generate component entries for all root DLLs
+        $dllEntries = Get-ChildItem -Name "*.dll" | ForEach-Object {
+          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
+          "                    <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
+        } | Out-String
+        
         # Create advanced WXS installer
         @"
         <?xml version="1.0" encoding="UTF-8"?>
