@@ -602,7 +602,7 @@ jobs:
                 On Error Resume Next
                 Set shell = CreateObject("WScript.Shell")
                 shell.RegDelete "HKLM\SOFTWARE\Tetrimone QT5\"
-                shell.RegDelete "HKCU\Software\TetrimoneT5\"
+                shell.RegDelete "HKCU\Software\Tetrimone QT5\"
               ]]>
             </CustomAction>
             
@@ -622,6 +622,7 @@ jobs:
           </Product>
         </Wix>
         "@ | Out-File -FilePath "installer.wxs" -Encoding UTF8
+ -FilePath "installer.wxs" -Encoding UTF8
 
 
     - name: Create License RTF for Installer
