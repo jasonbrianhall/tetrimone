@@ -744,7 +744,7 @@ jobs:
                 <File Id="tetrimone_exe" Name="tetrimone.exe" Source="tetrimone.exe" KeyPath="yes" />
               </Component>
               <Component Id="DLLFiles" Guid="*">
-                `$($dllEntries -join "`n")
+                $($dllEntries -join "`n")
               </Component>
             </DirectoryRef>
             
