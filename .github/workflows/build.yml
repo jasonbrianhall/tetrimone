@@ -440,7 +440,7 @@ jobs:
         $dllString = $dllEntries -join "`n"
         
         # Create advanced WXS installer
-        @"
+        $wxsContent = @"
         <?xml version="1.0" encoding="UTF-8"?>
         <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
           
@@ -511,7 +511,7 @@ jobs:
                   <Component Id="RuntimeDLLs" 
                            Guid="B58E63D9-4F06-49F7-C26F-2F7D5E5B9E46"
                            Win64="no">
-$dllString
+"@ + $dllString + @"
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
                                  Name="RuntimeDLLs" Type="integer" Value="1" KeyPath="yes"/>
                   </Component>
@@ -657,7 +657,10 @@ $dllString
             
           </Product>
         </Wix>
-        "@ | Out-File -FilePath "installer.wxs" -Encoding UTF8
+"@
+        
+        # Write the WXS file
+        $wxsContent | Out-File -FilePath "installer.wxs" -Encoding UTF8
 
 
     - name: Create License RTF for Installer
