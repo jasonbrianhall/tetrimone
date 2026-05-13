@@ -524,6 +524,7 @@ jobs:
                            Guid="D70F85FB-6F28-61F9-E481-4F9F7F7D1F68"
                            Win64="no">
                     <CreateFolder />
+                    $($dllEntries -join "`r`n                    ")
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
                                  Name="QT5" Type="integer" Value="1" KeyPath="yes"/>
                   </Component>
