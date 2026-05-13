@@ -172,23 +172,11 @@ jobs:
     - name: Generate Advanced MSI Installer GTK3
       working-directory: artifacts/build/windows
       run: |
-        # Generate component entries for all DLLs (each DLL in its own component)
-        $dllComponents = Get-ChildItem -Name "*.dll" | ForEach-Object {
+        # Generate component entries for all DLLs
+        $dllEntries = Get-ChildItem -Name "*.dll" | ForEach-Object {
           $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
-          @"
-              <Component Id="Component_$safeId" Guid="*">
-                <File Id="File_$safeId" Name="$_" Source="$_" KeyPath="yes" />
-              </Component>
-"@
+          "          <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
         }
-        $dllComponentsString = $dllComponents -join ""
-        
-        # Generate component references for the Feature section
-        $dllRefs = Get-ChildItem -Name "*.dll" | ForEach-Object {
-          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
-          "              <ComponentRef Id=`"Component_$safeId`" />`n"
-        }
-        $dllRefString = $dllRefs -join ""
         
         # Create advanced WXS installer
         @"
@@ -592,7 +580,11 @@ jobs:
                      AllowAdvertise="no">
               <ComponentRef Id="MainExecutable" />
               <ComponentRef Id="ApplicationShortcuts" />
-              <ComponentRef Id="platforms" />
+              <ComponentRef Id="QT5Schemas" />
+              <ComponentRef Id="GdkPixbufDir" />
+              <ComponentRef Id="QT53Dir" />
+              <ComponentRef Id="IconsDir" />
+              <ComponentRef Id="ThemesDir" />
             </Feature>
             
             <Feature Id="DesktopShortcutFeature" 
@@ -711,98 +703,6 @@ jobs:
           Write-Error "❌ MSI file was not created!"
           exit 1
         }
-
-    - name: Generate Advanced MSI Installer QT5
-      working-directory: artifacts/build/windows_qt5
-      run: |
-        # Generate component entries for all DLLs (each DLL in its own component)
-        $dllComponents = Get-ChildItem -Name "*.dll" | ForEach-Object {
-          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
-          @"
-              <Component Id="Component_$safeId" Guid="*">
-                <File Id="File_$safeId" Name="$_" Source="$_" KeyPath="yes" />
-              </Component>
-"@
-        }
-        $dllComponentsString = $dllComponents -join ""
-        
-        # Generate component references for the Feature section
-        $dllRefs = Get-ChildItem -Name "*.dll" | ForEach-Object {
-          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
-          "              <ComponentRef Id=`"Component_$safeId`" />`n"
-        }
-        $dllRefString = $dllRefs -join ""
-        
-        # Create advanced WXS installer (simplified, matching GTK3 structure)
-        @"
-        <?xml version="1.0" encoding="UTF-8"?>
-        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-          
-          <Product Id="*" 
-                   Name="Tetrimone QT5" 
-                   Language="1033" 
-                   Version="${{ needs.build-linux.outputs.version }}" 
-                   Manufacturer="Jason Hall" 
-                   UpgradeCode="${{ env.UPGRADE_CODE_QT5 }}"> 
-            
-            <Package InstallerVersion="500" 
-                     Compressed="yes" 
-                     InstallScope="perMachine" 
-                     Description="Tetrimone QT5 - Modern Block Falling Game"
-                     Comments="Built with GitHub Actions"
-                     Manufacturer="Jason Hall" />
-            
-            <MajorUpgrade DowngradeErrorMessage="A newer version of Tetrimone QT5 is already installed. Please uninstall it first." Schedule="afterInstallInitialize" />
-            <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
-            
-            <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
-            
-            <Property Id="ARPPRODUCTICON" Value="TetrimoneIcon" />
-            <Property Id="ARPURLINFOABOUT" Value="https://github.com/jasonbrianhall/tetrimone" />
-            <Property Id="ARPNOREPAIR" Value="yes" />
-            <Property Id="ARPNOMODIFY" Value="yes" />
-            <Property Id="ARPHELPLINK" Value="https://github.com/jasonbrianhall/tetrimone/issues" />
-            <Property Id="ApplicationFolderName" Value="Tetrimone QT5" />
-            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
-            <Property Id="DESKTOP_SHORTCUT" Value="1" />
-            
-            <Directory Id="TARGETDIR" Name="SourceDir">
-              <Directory Id="ProgramFilesFolder">
-                <Directory Id="INSTALLFOLDER" Name="Tetrimone QT5" />
-              </Directory>
-              <Directory Id="ProgramMenuFolder">
-                <Directory Id="ApplicationProgramsFolder" Name="Tetrimone QT5" />
-              </Directory>
-              <Directory Id="DesktopFolder" Name="Desktop" />
-            </Directory>
-            
-            <Feature Id="ProductFeature" Title="Tetrimone QT5" Level="1" Description="Tetrimone QT5 Game Application">
-              <ComponentRef Id="MainExecutable" />
-              $($dllRefString)<ComponentRef Id="StartMenuShortcut" />
-            </Feature>
-            
-            <DirectoryRef Id="INSTALLFOLDER">
-              <Component Id="MainExecutable" Guid="*">
-                <File Id="tetrimone_exe" Name="tetrimone_qt5.exe" Source="tetrimone_qt5.exe" KeyPath="yes" />
-              </Component>
-              $($dllComponentsString)
-            </DirectoryRef>
-            
-            <DirectoryRef Id="ApplicationProgramsFolder">
-              <Component Id="StartMenuShortcut" Guid="*">
-                <Shortcut Id="StartMenuQT5" Name="Tetrimone QT5" Target="[INSTALLFOLDER]tetrimone_qt5.exe" WorkingDirectory="INSTALLFOLDER" />
-                <Shortcut Id="UninstallQT5" Name="Uninstall Tetrimone QT5" Target="[SystemFolder]msiexec.exe" Arguments="/x [ProductCode]" />
-                <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
-                <RegistryValue Root="HKCU" Key="Software\Tetrimone\QT5" Value="installed" Type="integer" KeyPath="yes" />
-              </Component>
-            </DirectoryRef>
-            
-            <UIRef Id="WixUI_FeatureTree" />
-            <UIRef Id="WixUI_ErrorProgressText" />
-            
-          </Product>
-        </Wix>
-        "@ | Out-File -FilePath "installer.wxs" -Encoding UTF8
 
     - name: Build MSI Installer QT5
       working-directory: artifacts/build/windows_qt5
