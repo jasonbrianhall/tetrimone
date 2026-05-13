@@ -30,7 +30,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     container: 
-      image: fedora:43
+      image: fedora:41
     outputs:
       version: ${{ env.PRODUCT_VERSION }}
 
@@ -427,20 +427,14 @@ jobs:
     - name: Generate Advanced MSI Installer QT5
       working-directory: artifacts/build/windows_qt5
       run: |
-        # Generate component entries for all DLLs (including subdirectories)
-        $dllEntries = @()
-        $counter = 0
-        Get-ChildItem -Recurse -Include "*.dll" | ForEach-Object {
-          $counter++
-          $relativePath = $_.FullName -replace [regex]::Escape((Get-Location).Path + '\'), ''
-          $safeId = ($_.BaseName -replace '[^a-zA-Z0-9]', '_') + "_dll_$counter"
-          $sourceAttr = "Source=`"$relativePath`""
-          $dllEntries += "          <File Id=`"$safeId`" Name=`"$($_.Name)`" $sourceAttr/>"
+        # Generate component entries for all DLLs
+        $dllEntries = Get-ChildItem -Name "*.dll" | ForEach-Object {
+          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
+          "          <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
         }
-        $dllString = $dllEntries -join "`n"
         
-        # Build WXS in parts to properly insert DLL entries
-        $part1 = @"
+        # Create advanced WXS installer
+        @"
         <?xml version="1.0" encoding="UTF-8"?>
         <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
           
@@ -507,12 +501,13 @@ jobs:
                     
                   </Component>
                   
-                  <!-- Runtime DLLs component -->
-                  <Component Id="RuntimeDLLs" 
+                  <!-- QT5 schemas component -->
+                  <Component Id="QT5Schemas" 
                            Guid="B58E63D9-4F06-49F7-C26F-2F7D5E5B9E46"
                            Win64="no">
-                   <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
-                                 Name="RuntimeDLLs" Type="integer" Value="1" KeyPath="yes"/>
+                    <CreateFolder />
+                    <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
+                                 Name="QT5Schemas" Type="integer" Value="1" KeyPath="yes"/>
                   </Component>
                   
                   <!-- GdkPixbuf component -->
@@ -611,7 +606,7 @@ jobs:
                      AllowAdvertise="no">
               <ComponentRef Id="MainExecutable" />
               <ComponentRef Id="ApplicationShortcuts" />
-              <ComponentRef Id="RuntimeDLLs" />
+              <ComponentRef Id="QT5Schemas" />
               <ComponentRef Id="GdkPixbufDir" />
               <ComponentRef Id="QT53Dir" />
               <ComponentRef Id="IconsDir" />
@@ -656,13 +651,7 @@ jobs:
             
           </Product>
         </Wix>
-"@
-        
-        # Assemble the final WXS content
-        $wxsContent = $part1 + $dllString + $part2
-        
-        # Write the WXS file
-        $wxsContent | Out-File -FilePath "installer.wxs" -Encoding UTF8
+        "@ | Out-File -FilePath "installer.wxs" -Encoding UTF8
 
 
     - name: Create License RTF for Installer
