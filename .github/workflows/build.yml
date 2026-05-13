@@ -479,9 +479,9 @@ jobs:
                     <Component Id="PlatformsDLLs" 
                              Guid="E81F96FC-7139-72F0-F59F-510F8F8E2F80"
                              Win64="no">
-                      <File Id="QWindowsDLL" Name="qwindows.dll" Source="platform\qwindows.dll"/>
-                      <File Id="QMinimalDLL" Name="qminimal.dll" Source="platform\qminimal.dll"/>
-                      <File Id="QOffscreenDLL" Name="qoffscreen.dll" Source="platform\qoffscreen.dll"/>
+                      <File Id="QWindowsDLL" Name="qwindows.dll" Source="platforms\qwindows.dll"/>
+                      <File Id="QMinimalDLL" Name="qminimal.dll" Source="platforms\qminimal.dll"/>
+                      <File Id="QOffscreenDLL" Name="qoffscreen.dll" Source="platforms\qoffscreen.dll"/>
                       <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
                                    Name="PlatformsDLLs" Type="integer" Value="1" KeyPath="yes"/>
                     </Component>
