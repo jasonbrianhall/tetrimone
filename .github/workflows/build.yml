@@ -427,11 +427,17 @@ jobs:
     - name: Generate Advanced MSI Installer QT5
       working-directory: artifacts/build/windows_qt5
       run: |
-        # Generate component entries for all DLLs
-        $dllEntries = Get-ChildItem -Name "*.dll" | ForEach-Object {
-          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
-          "          <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
+        # Generate component entries for all DLLs (including subdirectories)
+        $dllEntries = @()
+        $counter = 0
+        Get-ChildItem -Recurse -Include "*.dll" | ForEach-Object {
+          $counter++
+          $relativePath = $_.FullName -replace [regex]::Escape((Get-Location).Path + '\'), ''
+          $safeId = ($_.BaseName -replace '[^a-zA-Z0-9]', '_') + "_dll_$counter"
+          $sourceAttr = "Source=`"$relativePath`""
+          $dllEntries += "          <File Id=`"$safeId`" Name=`"$($_.Name)`" $sourceAttr/>"
         }
+        $dllString = $dllEntries -join "`n"
         
         # Create advanced WXS installer
         @"
@@ -501,13 +507,13 @@ jobs:
                     
                   </Component>
                   
-                  <!-- QT5 schemas component -->
-                  <Component Id="QT5Schemas" 
+                  <!-- Runtime DLLs component -->
+                  <Component Id="RuntimeDLLs" 
                            Guid="B58E63D9-4F06-49F7-C26F-2F7D5E5B9E46"
                            Win64="no">
-                    <CreateFolder />
+$dllString
                     <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
-                                 Name="QT5Schemas" Type="integer" Value="1" KeyPath="yes"/>
+                                 Name="RuntimeDLLs" Type="integer" Value="1" KeyPath="yes"/>
                   </Component>
                   
                   <!-- GdkPixbuf component -->
@@ -606,7 +612,7 @@ jobs:
                      AllowAdvertise="no">
               <ComponentRef Id="MainExecutable" />
               <ComponentRef Id="ApplicationShortcuts" />
-              <ComponentRef Id="QT5Schemas" />
+              <ComponentRef Id="RuntimeDLLs" />
               <ComponentRef Id="GdkPixbufDir" />
               <ComponentRef Id="QT53Dir" />
               <ComponentRef Id="IconsDir" />
