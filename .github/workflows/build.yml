@@ -430,6 +430,7 @@ jobs:
         # Generate directory structure and file entries for all DLLs recursively
         $dirs = @{}
         $files = @()
+        $platformFiles = @()
         
         Get-ChildItem -Recurse -File -Filter "*.dll" | ForEach-Object {
           $relPath = $_.FullName -replace [regex]::Escape((Get-Location).Path + "\"), ""
@@ -442,10 +443,17 @@ jobs:
           }
           
           $safeId = ($_.Name -replace '[^a-zA-Z0-9]', '_') + "_" + (Get-Random)
-          $files += "          <File Id=`"$safeId`" Name=`"$($_.Name)`" Source=`"$relPath`"/>"
+          
+          # Separate platform DLLs from root DLLs
+          if ($relPath -like "platform\*") {
+            $platformFiles += "                      <File Id=`"$safeId`" Name=`"$($_.Name)`" Source=`"$relPath`"/>"
+          } else {
+            $files += "          <File Id=`"$safeId`" Name=`"$($_.Name)`" Source=`"$relPath`"/>"
+          }
         }
         
         $dllEntries = $files -join "`r`n"
+        $platformDllEntries = $platformFiles -join "`r`n"
         
         # Create advanced WXS installer
         @"
@@ -493,6 +501,18 @@ jobs:
               <!-- Program Files installation -->
               <Directory Id="ProgramFilesFolder">
                 <Directory Id="INSTALLFOLDER" Name="!(bind.Property.ApplicationFolderName)">
+                  
+                  <!-- Platform subdirectory for platform-specific DLLs -->
+                  <Directory Id="PlatformDir" Name="platform">
+                    <Component Id="PlatformDLLs" 
+                             Guid="E81F96FC-7139-72F0-F59F-510F8F8E2F80"
+                             Win64="no">
+                      <!-- Platform DLLs will be injected here -->
+                      $($platformDllEntries -join "`r`n                      ")
+                      <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
+                                   Name="PlatformDLLs" Type="integer" Value="1" KeyPath="yes"/>
+                    </Component>
+                  </Directory>
                   
                   <!-- Main application component -->
                   <Component Id="MainExecutable" 
@@ -624,6 +644,7 @@ jobs:
               <ComponentRef Id="QT5Schemas" />
               <ComponentRef Id="GdkPixbufDir" />
               <ComponentRef Id="QT53Dir" />
+              <ComponentRef Id="PlatformDLLs" />
               <ComponentRef Id="IconsDir" />
               <ComponentRef Id="ThemesDir" />
             </Feature>
