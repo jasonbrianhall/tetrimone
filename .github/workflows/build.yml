@@ -760,7 +760,7 @@ jobs:
             
             <DirectoryRef Id="INSTALLFOLDER">
               <Component Id="MainExecutable" Guid="*">
-                <File Id="tetrimone_exe" Name="tetrimone.exe" Source="tetrimone.exe" KeyPath="yes" />
+                <File Id="tetrimone_exe" Name="tetrimone_qt5.exe" Source="tetrimone_qt5.exe" KeyPath="yes" />
               </Component>
               <Component Id="DLLFiles" Guid="*">
                 $($dllEntries -join "`n")
@@ -769,7 +769,7 @@ jobs:
             
             <DirectoryRef Id="ApplicationProgramsFolder">
               <Component Id="StartMenuShortcut" Guid="*">
-                <Shortcut Id="StartMenuQT5" Name="Tetrimone QT5" Target="[INSTALLFOLDER]tetrimone.exe" WorkingDirectory="INSTALLFOLDER" />
+                <Shortcut Id="StartMenuQT5" Name="Tetrimone QT5" Target="[INSTALLFOLDER]tetrimone_qt5.exe" WorkingDirectory="INSTALLFOLDER" />
                 <Shortcut Id="UninstallQT5" Name="Uninstall Tetrimone QT5" Target="[SystemFolder]msiexec.exe" Arguments="/x [ProductCode]" />
                 <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
                 <RegistryValue Root="HKCU" Key="Software\Tetrimone\QT5" Value="installed" Type="integer" KeyPath="yes" />
