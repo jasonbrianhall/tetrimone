@@ -30,7 +30,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     container: 
-      image: fedora:41
+      image: fedora:43
     outputs:
       version: ${{ env.PRODUCT_VERSION }}
 
@@ -865,7 +865,7 @@ jobs:
           - ✅ Add/Remove Programs integration
           
           ### 🛠️ Technical Details
-          - Built on: Linux (Fedora 41 container)
+          - Built on: Linux (Fedora 43 container)
           - MSI compiled on: Windows Latest
           - GTK3 runtime included
           - QT5 runtime included
