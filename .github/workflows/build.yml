@@ -172,11 +172,23 @@ jobs:
     - name: Generate Advanced MSI Installer GTK3
       working-directory: artifacts/build/windows
       run: |
-        # Generate component entries for all DLLs
-        $dllEntries = Get-ChildItem -Name "*.dll" | ForEach-Object {
+        # Generate component entries for all DLLs (each DLL in its own component)
+        $dllComponents = Get-ChildItem -Name "*.dll" | ForEach-Object {
           $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
-          "          <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
+          @"
+              <Component Id="Component_$safeId" Guid="*">
+                <File Id="File_$safeId" Name="$_" Source="$_" KeyPath="yes" />
+              </Component>
+"@
         }
+        $dllComponentsString = $dllComponents -join ""
+        
+        # Generate component references for the Feature section
+        $dllRefs = Get-ChildItem -Name "*.dll" | ForEach-Object {
+          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
+          "              <ComponentRef Id=`"Component_$safeId`" />`n"
+        }
+        $dllRefString = $dllRefs -join ""
         
         # Create advanced WXS installer
         @"
@@ -703,11 +715,23 @@ jobs:
     - name: Generate Advanced MSI Installer QT5
       working-directory: artifacts/build/windows_qt5
       run: |
-        # Generate component entries for all DLLs
-        $dllEntries = Get-ChildItem -Name "*.dll" | ForEach-Object {
+        # Generate component entries for all DLLs (each DLL in its own component)
+        $dllComponents = Get-ChildItem -Name "*.dll" | ForEach-Object {
           $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
-          "          <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
+          @"
+              <Component Id="Component_$safeId" Guid="*">
+                <File Id="File_$safeId" Name="$_" Source="$_" KeyPath="yes" />
+              </Component>
+"@
         }
+        $dllComponentsString = $dllComponents -join ""
+        
+        # Generate component references for the Feature section
+        $dllRefs = Get-ChildItem -Name "*.dll" | ForEach-Object {
+          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
+          "              <ComponentRef Id=`"Component_$safeId`" />`n"
+        }
+        $dllRefString = $dllRefs -join ""
         
         # Create advanced WXS installer (simplified, matching GTK3 structure)
         @"
@@ -754,17 +778,14 @@ jobs:
             
             <Feature Id="ProductFeature" Title="Tetrimone QT5" Level="1" Description="Tetrimone QT5 Game Application">
               <ComponentRef Id="MainExecutable" />
-              <ComponentRef Id="DLLFiles" />
-              <ComponentRef Id="StartMenuShortcut" />
+              $($dllRefString)<ComponentRef Id="StartMenuShortcut" />
             </Feature>
             
             <DirectoryRef Id="INSTALLFOLDER">
               <Component Id="MainExecutable" Guid="*">
                 <File Id="tetrimone_exe" Name="tetrimone_qt5.exe" Source="tetrimone_qt5.exe" KeyPath="yes" />
               </Component>
-              <Component Id="DLLFiles" Guid="*">
-                $($dllEntries -join "`n")
-              </Component>
+              $($dllComponentsString)
             </DirectoryRef>
             
             <DirectoryRef Id="ApplicationProgramsFolder">
