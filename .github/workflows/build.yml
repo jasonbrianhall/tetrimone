@@ -562,7 +562,7 @@ jobs:
                 <Condition>DESKTOP_SHORTCUT</Condition>
                 <Shortcut Id="DesktopShortcut" 
                          Name="Tetrimone QT5" 
-                         Target="[INSTALLFOLDER]tetrimone.exe"
+                         Target="[INSTALLFOLDER]tetrimone_qt5.exe"
                          WorkingDirectory="INSTALLFOLDER"
                          Description="Launch Tetrimone QT5 Game"
                          Icon="TetrimoneIcon"/>
