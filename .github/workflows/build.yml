@@ -427,34 +427,6 @@ jobs:
     - name: Generate Advanced MSI Installer QT5
       working-directory: artifacts/build/windows_qt5
       run: |
-        # Generate directory structure and file entries for all DLLs recursively
-        $dirs = @{}
-        $files = @()
-        $platformFiles = @()
-        
-        Get-ChildItem -Recurse -File -Filter "*.dll" | ForEach-Object {
-          $relPath = $_.FullName -replace [regex]::Escape((Get-Location).Path + "\"), ""
-          $dirPath = Split-Path -Parent $relPath
-          
-          if ($dirPath -and $dirPath -ne ".") {
-            if (-not $dirs.ContainsKey($dirPath)) {
-              $dirs[$dirPath] = $true
-            }
-          }
-          
-          $safeId = ($_.Name -replace '[^a-zA-Z0-9]', '_') + "_" + (Get-Random)
-          
-          # Separate platform DLLs from root DLLs
-          if ($relPath -like "platform\*") {
-            $platformFiles += "                      <File Id=`"$safeId`" Name=`"$($_.Name)`" Source=`"$relPath`"/>"
-          } else {
-            $files += "          <File Id=`"$safeId`" Name=`"$($_.Name)`" Source=`"$relPath`"/>"
-          }
-        }
-        
-        $dllEntries = $files -join "`r`n"
-        $platformDllEntries = $platformFiles -join "`r`n"
-        
         # Create advanced WXS installer
         @"
         <?xml version="1.0" encoding="UTF-8"?>
@@ -502,15 +474,16 @@ jobs:
               <Directory Id="ProgramFilesFolder">
                 <Directory Id="INSTALLFOLDER" Name="!(bind.Property.ApplicationFolderName)">
                   
-                  <!-- Platform subdirectory for platform-specific DLLs -->
-                  <Directory Id="PlatformDir" Name="platform">
-                    <Component Id="PlatformDLLs" 
+                  <!-- Platforms subdirectory for qwindows.dll and other platform plugins -->
+                  <Directory Id="PlatformsDir" Name="platforms">
+                    <Component Id="PlatformsDLLs" 
                              Guid="E81F96FC-7139-72F0-F59F-510F8F8E2F80"
                              Win64="no">
-                      <!-- Platform DLLs will be injected here -->
-                      $($platformDllEntries -join "`r`n                      ")
+                      <File Id="QWindowsDLL" Name="qwindows.dll" Source="qwindows.dll"/>
+                      <File Id="QMinimalDLL" Name="qminimal.dll" Source="qminimal.dll"/>
+                      <File Id="QOffscreenDLL" Name="qoffscreen.dll" Source="qoffscreen.dll"/>
                       <RegistryValue Root="HKCU" Key="Software\TetrimoneQT5\Components" 
-                                   Name="PlatformDLLs" Type="integer" Value="1" KeyPath="yes"/>
+                                   Name="PlatformsDLLs" Type="integer" Value="1" KeyPath="yes"/>
                     </Component>
                   </Directory>
                   
@@ -644,7 +617,7 @@ jobs:
               <ComponentRef Id="QT5Schemas" />
               <ComponentRef Id="GdkPixbufDir" />
               <ComponentRef Id="QT53Dir" />
-              <ComponentRef Id="PlatformDLLs" />
+              <ComponentRef Id="PlatformsDLLs" />
               <ComponentRef Id="IconsDir" />
               <ComponentRef Id="ThemesDir" />
             </Feature>
