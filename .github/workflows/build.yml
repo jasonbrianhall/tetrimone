@@ -427,11 +427,25 @@ jobs:
     - name: Generate Advanced MSI Installer QT5
       working-directory: artifacts/build/windows_qt5
       run: |
-        # Generate component entries for all DLLs
-        $dllEntries = Get-ChildItem -Name "*.dll" | ForEach-Object {
-          $safeId = $_ -replace '[^a-zA-Z0-9]', '_'
-          "          <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
+        # Generate directory structure and file entries for all DLLs recursively
+        $dirs = @{}
+        $files = @()
+        
+        Get-ChildItem -Recurse -File -Filter "*.dll" | ForEach-Object {
+          $relPath = $_.FullName -replace [regex]::Escape((Get-Location).Path + "\"), ""
+          $dirPath = Split-Path -Parent $relPath
+          
+          if ($dirPath -and $dirPath -ne ".") {
+            if (-not $dirs.ContainsKey($dirPath)) {
+              $dirs[$dirPath] = $true
+            }
+          }
+          
+          $safeId = ($_.Name -replace '[^a-zA-Z0-9]', '_') + "_" + (Get-Random)
+          $files += "          <File Id=`"$safeId`" Name=`"$($_.Name)`" Source=`"$relPath`"/>"
         }
+        
+        $dllEntries = $files -join "`r`n"
         
         # Create advanced WXS installer
         @"
