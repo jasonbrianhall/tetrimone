@@ -76,6 +76,7 @@ struct TetrimoneApp {
 
     int           timerId = 0;
     int           dropSpeed = 500;
+    QTimer*       gameTimer = nullptr;  // Pointer to the game timer for updating speed
 
     QAction*      backgroundToggleMenuItem = nullptr;
 

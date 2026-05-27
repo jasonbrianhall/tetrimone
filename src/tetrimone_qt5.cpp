@@ -1298,6 +1298,11 @@ void startGame(TetrimoneApp* app) {
     // Adjust drop speed based on difficulty and level
     adjustDropSpeed(app);
     
+    // Update the game timer interval with new speed
+    if (app->gameTimer) {
+        app->gameTimer->setInterval(app->dropSpeed);
+    }
+    
     if (!app->backgroundMusicPlaying) {
         app->board->resumeBackgroundMusic();
         app->backgroundMusicPlaying = true;
@@ -2027,6 +2032,7 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
         onGameTick(app);
     });
     gameTimer->start(app->dropSpeed);
+    app->gameTimer = gameTimer;  // Store the pointer directly
     app->timerId = gameTimer->timerId();
 }
 
