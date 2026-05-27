@@ -37,6 +37,7 @@
 #include <QFontMetrics>
 #include <QCloseEvent>
 #include <QDebug>
+#include <QGroupBox>
 #include <fstream>
 #include <SDL2/SDL.h>
 #include <cairo/cairo.h>
@@ -2213,7 +2214,116 @@ void onTestSound(TetrimoneApp* app) {
 }
 
 void onGameSetupDialog(TetrimoneApp* app) {
-    // TODO: Implement game setup dialog
+    if (!app || !app->board) return;
+    
+    QDialog dialog(nullptr);
+    dialog.setWindowTitle("Game Setup");
+    dialog.setMinimumSize(400, 400);
+    
+    QVBoxLayout* mainLayout = new QVBoxLayout(&dialog);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+    mainLayout->setSpacing(10);
+    
+    // Initial Junk Lines percentage
+    QGroupBox* junkGroup = new QGroupBox("Initial Junk Lines", &dialog);
+    QVBoxLayout* junkLayout = new QVBoxLayout(junkGroup);
+    
+    QSlider* junkSlider = new QSlider(Qt::Horizontal, &dialog);
+    junkSlider->setMinimum(0);
+    junkSlider->setMaximum(50);
+    junkSlider->setValue(app->board->getJunkLinesPercentage());
+    junkSlider->setTickPosition(QSlider::TicksBelow);
+    junkSlider->setTickInterval(5);
+    
+    QLabel* junkValueLabel = new QLabel(QString::number(app->board->getJunkLinesPercentage()) + "%", &dialog);
+    
+    QObject::connect(junkSlider, &QSlider::valueChanged, [junkValueLabel](int value) {
+        junkValueLabel->setText(QString::number(value) + "%");
+    });
+    
+    junkLayout->addWidget(junkSlider);
+    junkLayout->addWidget(junkValueLabel);
+    junkLayout->addWidget(new QLabel("Percentage of board to fill with junk lines (0-50%)", &dialog));
+    junkLayout->addWidget(new QLabel("Junk lines contain random blocks with at least 4 empty spaces per row.", &dialog));
+    
+    mainLayout->addWidget(junkGroup);
+    
+    // Junk Lines Per Level
+    QGroupBox* junkPerLevelGroup = new QGroupBox("Junk Lines Per Level", &dialog);
+    QVBoxLayout* junkPerLevelLayout = new QVBoxLayout(junkPerLevelGroup);
+    
+    QSlider* junkPerLevelSlider = new QSlider(Qt::Horizontal, &dialog);
+    junkPerLevelSlider->setMinimum(0);
+    junkPerLevelSlider->setMaximum(5);
+    junkPerLevelSlider->setValue(app->board->getJunkLinesPerLevel());
+    junkPerLevelSlider->setTickPosition(QSlider::TicksBelow);
+    junkPerLevelSlider->setTickInterval(1);
+    
+    QLabel* junkPerLevelValueLabel = new QLabel(QString::number(app->board->getJunkLinesPerLevel()), &dialog);
+    
+    QObject::connect(junkPerLevelSlider, &QSlider::valueChanged, [junkPerLevelValueLabel](int value) {
+        junkPerLevelValueLabel->setText(QString::number(value));
+    });
+    
+    junkPerLevelLayout->addWidget(junkPerLevelSlider);
+    junkPerLevelLayout->addWidget(junkPerLevelValueLabel);
+    junkPerLevelLayout->addWidget(new QLabel("Number of junk lines to add per level (0-5)", &dialog));
+    junkPerLevelLayout->addWidget(new QLabel("These junk lines push up from the bottom when advancing levels.", &dialog));
+    
+    mainLayout->addWidget(junkPerLevelGroup);
+    
+    // Starting Level
+    QGroupBox* levelGroup = new QGroupBox("Starting Level", &dialog);
+    QVBoxLayout* levelLayout = new QVBoxLayout(levelGroup);
+    
+    QSlider* levelSlider = new QSlider(Qt::Horizontal, &dialog);
+    levelSlider->setMinimum(1);
+    levelSlider->setMaximum(99);
+    levelSlider->setValue(app->board->getLevel());
+    levelSlider->setTickPosition(QSlider::TicksBelow);
+    levelSlider->setTickInterval(5);
+    
+    QLabel* levelValueLabel = new QLabel(QString::number(app->board->getLevel()), &dialog);
+    
+    QObject::connect(levelSlider, &QSlider::valueChanged, [levelValueLabel](int value) {
+        levelValueLabel->setText(QString::number(value));
+    });
+    
+    levelLayout->addWidget(levelSlider);
+    levelLayout->addWidget(levelValueLabel);
+    levelLayout->addWidget(new QLabel("Start at higher levels for increased difficulty and points", &dialog));
+    
+    mainLayout->addWidget(levelGroup);
+    
+    // Warning
+    QLabel* warningLabel = new QLabel("Note: Applying these settings will restart the current game.", &dialog);
+    warningLabel->setStyleSheet("color: red;");
+    mainLayout->addWidget(warningLabel);
+    
+    mainLayout->addStretch();
+    
+    // Buttons
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->addStretch();
+    
+    QPushButton* applyBtn = new QPushButton("Apply", &dialog);
+    QPushButton* cancelBtn = new QPushButton("Cancel", &dialog);
+    
+    QObject::connect(applyBtn, &QPushButton::clicked, [&]() {
+        app->board->setJunkLinesPercentage(junkSlider->value());
+        app->board->setJunkLinesPerLevel(junkPerLevelSlider->value());
+        app->board->setLevel(levelSlider->value());
+        startGame(app);
+        dialog.accept();
+    });
+    
+    QObject::connect(cancelBtn, &QPushButton::clicked, &dialog, &QDialog::reject);
+    
+    buttonLayout->addWidget(applyBtn);
+    buttonLayout->addWidget(cancelBtn);
+    mainLayout->addLayout(buttonLayout);
+    
+    dialog.exec();
 }
 
 void onResetSettings(TetrimoneApp* app) {
