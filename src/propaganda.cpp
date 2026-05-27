@@ -109,42 +109,95 @@ void showIdeologicalFailureDialog(TetrimoneApp* app) {
 #endif  // GTK3
 
 #ifdef QT5
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QRadioButton>
+#include <QButtonGroup>
+#include <QGroupBox>
+#include <QTimer>
 
 void showIdeologicalFailureDialog(TetrimoneApp* app) {
     if (!app || !app->board) return;
     
-    // Use the propaganda messages vector
-    extern const std::vector<std::string> PROPAGANDA_MESSAGES;
+    QDialog dialog(app->window);
+    dialog.setWindowTitle("ОБЪЯСНЕНИЕ ИДЕОЛОГИЧЕСКОГО ПРОВАЛА");
+    dialog.setMinimumSize(500, 400);
     
-    std::string message;
-    if (PROPAGANDA_MESSAGES.empty()) {
-        message = "YOUR BLOCKS HAVE FAILED THE STATE!";
-    } else {
-        static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
-        std::uniform_int_distribution<int> dist(0, PROPAGANDA_MESSAGES.size() - 1);
-        message = PROPAGANDA_MESSAGES[dist(rng)];
+    QVBoxLayout* mainLayout = new QVBoxLayout(&dialog);
+    mainLayout->setContentsMargins(15, 15, 15, 15);
+    mainLayout->setSpacing(15);
+    
+    // Title
+    QLabel* titleLabel = new QLabel(&dialog);
+    titleLabel->setText("ВНИМАНИЕ, ГРАЖДАНИН!\nВАШ ИДЕОЛОГИЧЕСКИЙ ПРОВАЛ ТРЕБУЕТ ОБЪЯСНЕНИЯ");
+    QFont titleFont = titleLabel->font();
+    titleFont.setPointSize(12);
+    titleFont.setBold(true);
+    titleLabel->setFont(titleFont);
+    titleLabel->setStyleSheet("color: red;");
+    titleLabel->setAlignment(Qt::AlignCenter);
+    mainLayout->addWidget(titleLabel);
+    
+    // Instruction
+    QLabel* instructionLabel = new QLabel("Укажите основную причину вашего антиреволюционного поведения:\n"
+                                          "(Indicate the main reason for your counter-revolutionary behavior:)", &dialog);
+    mainLayout->addWidget(instructionLabel);
+    
+    // Radio buttons
+    QGroupBox* optionsGroup = new QGroupBox("Самокритика (Self-Criticism)", &dialog);
+    QVBoxLayout* optionsLayout = new QVBoxLayout(optionsGroup);
+    
+    QButtonGroup* buttonGroup = new QButtonGroup(&dialog);
+    
+    std::vector<QString> options = {
+        "Недостаточная преданность Партии (Insufficient Party loyalty)",
+        "Буржуазные наклонности к неэффективности (Bourgeois tendencies toward inefficiency)",
+        "Западный шпионаж повлиял на мои движения (Western espionage influenced my movements)",
+        "Слишком много времени тратил на чтение непартийной литературы (Too much time spent reading non-Party literature)",
+        "Идеологическая диверсия со стороны капиталистических блоков (Ideological subversion from capitalist blocks)",
+        "Недостаточное потребление пропаганды в свободное время (Insufficient consumption of propaganda during free time)",
+        "Контрреволюционное мышление (Counter-revolutionary thinking)"
+    };
+    
+    for (size_t i = 0; i < options.size(); ++i) {
+        QRadioButton* radio = new QRadioButton(options[i], &dialog);
+        if (i == 0) radio->setChecked(true);
+        buttonGroup->addButton(radio, i);
+        optionsLayout->addWidget(radio);
     }
     
-    // Set the message in the board for drawing
-    app->board->currentPropagandaMessage = message;
-    app->board->showPropagandaMessage = true;
+    mainLayout->addWidget(optionsGroup);
     
-    // Also try to set sequenceLabel if it exists
-    if (app->sequenceLabel) {
-        app->sequenceLabel->setText(QString::fromStdString(message));
-    }
+    // Footer
+    QLabel* footerLabel = new QLabel("Внимание: Ваш ответ будет записан в ваше личное дело\n"
+                                      "(Warning: Your answer will be recorded in your personal file)", &dialog);
+    footerLabel->setStyleSheet("color: red; font-style: italic;");
+    footerLabel->setAlignment(Qt::AlignCenter);
+    mainLayout->addWidget(footerLabel);
     
-    // Force screen update
-    updateDisplay(app);
+    mainLayout->addStretch();
     
-    // Set timer to clear message after 2 seconds
-    QTimer::singleShot(2000, [app]() {
-        app->board->showPropagandaMessage = false;
-        if (app->sequenceLabel) {
-            app->sequenceLabel->setText("");
-        }
-        updateDisplay(app);
+    // Buttons
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->addStretch();
+    
+    QPushButton* acceptBtn = new QPushButton("Принять наказание (Accept)", &dialog);
+    QPushButton* cancelBtn = new QPushButton("Cancel", &dialog);
+    
+    QObject::connect(acceptBtn, &QPushButton::clicked, [&dialog]() {
+        dialog.accept();
     });
+    
+    QObject::connect(cancelBtn, &QPushButton::clicked, &dialog, &QDialog::reject);
+    
+    buttonLayout->addWidget(acceptBtn);
+    buttonLayout->addWidget(cancelBtn);
+    mainLayout->addLayout(buttonLayout);
+    
+    dialog.exec();
 }
 
 #endif  // QT5

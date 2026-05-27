@@ -127,42 +127,105 @@ void showPatrioticPerformanceDialog(TetrimoneApp* app) {
 #endif  // GTK3
 
 #ifdef QT5
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QRadioButton>
+#include <QButtonGroup>
+#include <QGroupBox>
+#include <QTimer>
 
 void showPatrioticPerformanceDialog(TetrimoneApp* app) {
     if (!app || !app->board) return;
     
-    // Use the freedom/patriotic messages vector
-    extern const std::vector<std::string> AMERICAN_PROPAGANDA_MESSAGES;
+    QDialog dialog(app->window);
+    dialog.setWindowTitle("FREEDOM PERFORMANCE EVALUATION");
+    dialog.setMinimumSize(550, 500);
     
-    std::string message;
-    if (AMERICAN_PROPAGANDA_MESSAGES.empty()) {
-        message = "🇺🇸 YOUR BLOCKS HAVE ADVANCED FREEDOM! 🦅";
-    } else {
-        static std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
-        std::uniform_int_distribution<int> dist(0, AMERICAN_PROPAGANDA_MESSAGES.size() - 1);
-        message = AMERICAN_PROPAGANDA_MESSAGES[dist(rng)];
+    QVBoxLayout* mainLayout = new QVBoxLayout(&dialog);
+    mainLayout->setContentsMargins(15, 15, 15, 15);
+    mainLayout->setSpacing(15);
+    
+    // Title
+    QLabel* titleLabel = new QLabel(&dialog);
+    titleLabel->setText("ATTENTION, CITIZEN!\nYOUR FREEDOM PERFORMANCE REQUIRES EVALUATION");
+    QFont titleFont = titleLabel->font();
+    titleFont.setPointSize(12);
+    titleFont.setBold(true);
+    titleLabel->setFont(titleFont);
+    titleLabel->setStyleSheet("color: blue;");
+    titleLabel->setAlignment(Qt::AlignCenter);
+    mainLayout->addWidget(titleLabel);
+    
+    // Instruction
+    QLabel* instructionLabel = new QLabel("Please indicate the primary reason for your un-American block performance:\n"
+                                          "(Your response helps us serve you better!)", &dialog);
+    mainLayout->addWidget(instructionLabel);
+    
+    // Radio buttons
+    QGroupBox* optionsGroup = new QGroupBox("Personal Accountability Assessment", &dialog);
+    QVBoxLayout* optionsLayout = new QVBoxLayout(optionsGroup);
+    
+    QButtonGroup* buttonGroup = new QButtonGroup(&dialog);
+    
+    std::vector<QString> options = {
+        "🇺🇸 Insufficient consumption of freedom during gameplay",
+        "🍔 Too much fast food affecting hand-eye coordination",
+        "📺 Distracted by the latest Netflix series during play",
+        "🏈 Still thinking about last night's football game",
+        "💼 Work-life balance priorities shifted toward actual work",
+        "🎬 Hollywood movies set unrealistic block-stacking expectations",
+        "☕ Not enough coffee to maintain peak performance",
+        "🚗 Traffic on the commute affected my gaming mindset",
+        "📱 Social media notifications broke my concentration",
+        "🛒 Worried about credit card bills instead of focusing on blocks",
+        "🏠 HOA meeting stressed me out before playing",
+        "🌮 Taco Tuesday made me hungry instead of focused"
+    };
+    
+    for (size_t i = 0; i < options.size(); ++i) {
+        QRadioButton* radio = new QRadioButton(options[i], &dialog);
+        if (i == 0) radio->setChecked(true);
+        buttonGroup->addButton(radio, i);
+        optionsLayout->addWidget(radio);
     }
     
-    // Set the message in the board for drawing
-    app->board->currentPropagandaMessage = message;
-    app->board->showPropagandaMessage = true;
+    mainLayout->addWidget(optionsGroup);
     
-    // Also try to set sequenceLabel if it exists
-    if (app->sequenceLabel) {
-        app->sequenceLabel->setText(QString::fromStdString(message));
-    }
+    // Footer
+    QLabel* footerLabel = new QLabel("Remember: In America, failure is just another opportunity to succeed!\n"
+                                      "Your data helps us optimize your gaming experience. Privacy policy available online.", &dialog);
+    footerLabel->setStyleSheet("color: blue; font-style: italic;");
+    footerLabel->setAlignment(Qt::AlignCenter);
+    mainLayout->addWidget(footerLabel);
     
-    // Force screen update
-    updateDisplay(app);
+    QLabel* patriotLabel = new QLabel("🦅 GOD BLESS AMERICA AND GOD BLESS YOUR BLOCKS! 🦅", &dialog);
+    patriotLabel->setStyleSheet("color: red; font-weight: bold;");
+    patriotLabel->setAlignment(Qt::AlignCenter);
+    mainLayout->addWidget(patriotLabel);
     
-    // Set timer to clear message after 2 seconds
-    QTimer::singleShot(2000, [app]() {
-        app->board->showPropagandaMessage = false;
-        if (app->sequenceLabel) {
-            app->sequenceLabel->setText("");
-        }
-        updateDisplay(app);
+    mainLayout->addStretch();
+    
+    // Buttons
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->addStretch();
+    
+    QPushButton* acceptBtn = new QPushButton("Accept Responsibility", &dialog);
+    QPushButton* cancelBtn = new QPushButton("Cancel", &dialog);
+    
+    QObject::connect(acceptBtn, &QPushButton::clicked, [&dialog]() {
+        dialog.accept();
     });
+    
+    QObject::connect(cancelBtn, &QPushButton::clicked, &dialog, &QDialog::reject);
+    
+    buttonLayout->addWidget(acceptBtn);
+    buttonLayout->addWidget(cancelBtn);
+    mainLayout->addLayout(buttonLayout);
+    
+    dialog.exec();
 }
 
 #endif  // QT5

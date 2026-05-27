@@ -571,7 +571,16 @@ protected:
             
             QImage img((uchar*)surface->pixels, w, h, surface->pitch, QImage::Format_ARGB32);
             QPainter painter(this);
-            painter.drawImage(0, 0, img);
+            
+            // Calculate content dimensions
+            int contentWidth = w;   // The cairo surface is already the full size
+            int contentHeight = h;  // The cairo surface is already the full size
+            
+            // Calculate centering offset (usually content fills the space, but just in case)
+            int offsetX = (width() - contentWidth) / 2;
+            int offsetY = (height() - contentHeight) / 2;
+            
+            painter.drawImage(offsetX, offsetY, img);
             
             cairo_destroy(cr);
             cairo_surface_destroy(cairo_surface);
@@ -892,7 +901,16 @@ protected:
             
             QImage img((uchar*)surface->pixels, w, h, surface->pitch, QImage::Format_ARGB32);
             QPainter painter(this);
-            painter.drawImage(0, 0, img);
+            
+            // Calculate content dimensions
+            int contentWidth = w;   // The cairo surface is already the full size
+            int contentHeight = h;  // The cairo surface is already the full size
+            
+            // Calculate centering offset (usually content fills the space, but just in case)
+            int offsetX = (width() - contentWidth) / 2;
+            int offsetY = (height() - contentHeight) / 2;
+            
+            painter.drawImage(offsetX, offsetY, img);
             
             cairo_destroy(cr);
             cairo_surface_destroy(cairo_surface);
@@ -1107,6 +1125,18 @@ void onGameTick(TetrimoneApp* app) {
         
         if (app->board->isGameOver()) {
             if (app->board->isSoundEnabled()) {
+            }
+            
+            // Show interrogation dialogs when game is over in special modes
+            if (app->board->retroModeActive) {
+                QTimer::singleShot(1500, [app]() {
+                    showIdeologicalFailureDialog(app);
+                });
+            }
+            if (app->board->patrioticModeActive) {
+                QTimer::singleShot(1500, [app]() {
+                    showPatrioticPerformanceDialog(app);
+                });
             }
         }
     }
