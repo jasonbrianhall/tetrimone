@@ -438,7 +438,8 @@ public:
         : QWidget(parent), board(board), app(app), backgroundPixmap(nullptr) {
         setFocusPolicy(Qt::StrongFocus);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        setMinimumSize(200, 440);
+        setMinimumSize(280, 560);
+        setMaximumSize(500, 1200);  // Larger to stretch and fill screen
     }
 
     ~GameAreaWidget() {
@@ -1898,36 +1899,39 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     int screenWidth = screenGeometry.width();
     int screenHeight = screenGeometry.height();
     
-    // Calculate window size: smaller for playability
-    int windowWidth = std::min(900, (screenWidth * 70) / 100);
-    int windowHeight = std::min(750, (screenHeight * 70) / 100);
+    // Calculate window size to stretch board to fill screen
+    int windowWidth = std::min(1200, (screenWidth * 90) / 100);
+    int windowHeight = std::min(1000, (screenHeight * 95) / 100);
     app->window->resize(windowWidth, windowHeight);
+    
+    // Center window on screen
+    int x = (screenWidth - windowWidth) / 2;
+    int y = (screenHeight - windowHeight) / 2;
+    app->window->move(screenGeometry.left() + x, screenGeometry.top() + y);
     
     app->menuBar = new QMenuBar(app->window);
     
     QVBoxLayout* mainLayout = new QVBoxLayout(app->window);
     mainLayout->setMenuBar(app->menuBar);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
+    mainLayout->setContentsMargins(5, 5, 5, 5);
     mainLayout->setSpacing(0);
     
     // Center container for game
     QWidget* centerWidget = new QWidget();
     QHBoxLayout* centerLayout = new QHBoxLayout(centerWidget);
-    centerLayout->setSpacing(15);
+    centerLayout->setSpacing(10);
     centerLayout->setContentsMargins(0, 0, 0, 0);
-    centerLayout->addStretch(1);
     
     // LEFT: Stats + Board
     QVBoxLayout* gamePanel = new QVBoxLayout();
     gamePanel->setSpacing(10);
     gamePanel->setContentsMargins(0, 0, 0, 0);
-    gamePanel->setAlignment(Qt::AlignCenter);
     
     // Stats (LEFT of board)
     QHBoxLayout* statsLayout = new QHBoxLayout();
     statsLayout->setSpacing(15);
     statsLayout->setContentsMargins(0, 0, 0, 0);
-    statsLayout->setAlignment(Qt::AlignCenter);
+    statsLayout->addStretch();  // Add stretch before stats column
     
     QVBoxLayout* statsColumn = new QVBoxLayout();
     statsColumn->setSpacing(5);
@@ -1959,27 +1963,27 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     app->sequenceLabel->setWordWrap(true);
     app->sequenceLabel->setMaximumHeight(80);
     statsColumn->addWidget(app->sequenceLabel);
+    statsColumn->addStretch();
     
-    statsColumn->setAlignment(Qt::AlignTop);
+    statsLayout->addLayout(statsColumn, 0);
     
-    statsLayout->addLayout(statsColumn);
-    
-    // Game board
+    // Game board - centered
     app->gameArea = new GameAreaWidget(app->board, app);
-    statsLayout->addWidget(app->gameArea, 1, Qt::AlignCenter);
+    statsLayout->addWidget(app->gameArea, 0, Qt::AlignCenter);
+    
+    statsLayout->addStretch();  // Add stretch after board to center it
     
     gamePanel->addLayout(statsLayout, 1);
-    centerLayout->addLayout(gamePanel, 2);
+    centerLayout->addLayout(gamePanel, 1);
     
     // RIGHT: Next pieces + controls
     QVBoxLayout* rightPanel = new QVBoxLayout();
     rightPanel->setSpacing(12);
     rightPanel->setContentsMargins(0, 0, 0, 0);
-    rightPanel->setAlignment(Qt::AlignTop);
     
     // Next piece area (SDL rendered)
     app->nextPieceArea = new NextPieceWidget(app->board, app);
-    rightPanel->addWidget(app->nextPieceArea, 0, Qt::AlignCenter);
+    rightPanel->addWidget(app->nextPieceArea, 0, Qt::AlignHCenter);
     
     // Controls info + Stats - ALL in one label like GTK3
     app->controlsLabel = new QLabel(
@@ -2014,12 +2018,11 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
         "border: 1px solid #999999; "
         "}"
     );
-    rightPanel->addWidget(app->controlsLabel);
+    rightPanel->addWidget(app->controlsLabel, 0);
     
-    rightPanel->addStretch();
+    rightPanel->addStretch(1);
     
-    centerLayout->addLayout(rightPanel, 1);
-    centerLayout->addStretch(1);
+    centerLayout->addLayout(rightPanel, 0);
     
     mainLayout->addWidget(centerWidget, 1);
     
