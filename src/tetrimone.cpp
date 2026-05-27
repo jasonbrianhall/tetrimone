@@ -213,6 +213,7 @@ void TetrimoneBoard::restart() {
   linesCleared = 0;
   gameOver = false;
   paused = false;
+  gameOverSoundPlayed = false;  // Reset the sound played flag
   // DON'T re-enable splash screen - let the caller control this
   // splashScreenActive = true;
 
@@ -647,8 +648,7 @@ int TetrimoneBoard::clearLines() {
 bool TetrimoneBoard::isGameOver() const {
   // If this is the first time checking game over status since it became true,
   // play the game over sound
-  bool soundPlayed = false;
-  if (gameOver && !soundPlayed) {
+  if (gameOver && !gameOverSoundPlayed) {
     // Cast away const to allow calling non-const member function
     TetrimoneBoard *nonConstThis = const_cast<TetrimoneBoard *>(this);
     if (retroModeActive) {
@@ -657,12 +657,7 @@ bool TetrimoneBoard::isGameOver() const {
         nonConstThis->playSound(GameSoundEvent::Gameover);
     }    
     
-    soundPlayed = true;
-  }
-
-  // If game is no longer over, reset the sound played flag
-  if (!gameOver) {
-    soundPlayed = false;
+    nonConstThis->gameOverSoundPlayed = true;
   }
 
   return gameOver;
