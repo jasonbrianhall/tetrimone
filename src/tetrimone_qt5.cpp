@@ -1295,6 +1295,9 @@ void startGame(TetrimoneApp* app) {
     
     app->board->restart();
     
+    // Adjust drop speed based on difficulty and level
+    adjustDropSpeed(app);
+    
     if (!app->backgroundMusicPlaying) {
         app->board->resumeBackgroundMusic();
         app->backgroundMusicPlaying = true;
@@ -1375,10 +1378,28 @@ void onSoundToggleAction(TetrimoneApp* app, bool enabled) {
 }
 
 void onDifficultyChanged(TetrimoneApp* app, int difficulty) {
-    app->difficulty = difficulty;
-    app->board->setSplashScreenActive(true);
-    updateLabels(app);
-    updateDisplay(app);
+    if (!app || !app->board) return;
+    
+    int previousDifficulty = app->difficulty;
+    
+    // Only proceed if difficulty actually changed
+    if (difficulty != previousDifficulty) {
+        // Apply the new difficulty
+        app->difficulty = difficulty;
+        app->board->setDifficultyFromGUI(difficulty);
+        
+        // Adjust drop speed based on new difficulty and current level
+        adjustDropSpeed(app);
+        
+        // Show splash screen and reset game
+        app->board->setSplashScreenActive(true);
+        app->board->restart();
+        resetUI(app);
+        
+        // Update labels and display
+        updateLabels(app);
+        updateDisplay(app);
+    }
 }
 
 // ============================================================================

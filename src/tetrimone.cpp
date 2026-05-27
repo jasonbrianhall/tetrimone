@@ -919,6 +919,41 @@ void TetrimoneBoard::createBlockTrail() {
     }
 }
 
+void adjustDropSpeed(TetrimoneApp* app) {
+    if (!app || !app->board) return;
+    
+    // Base speed based on level
+    int baseSpeed = INITIAL_SPEED - (app->board->getLevel() - 1) * 50;
+
+    // Apply difficulty modifier
+    switch (app->difficulty) {
+    case 0: // Zen
+        app->dropSpeed = 1000;
+        break;
+    case 1: // Easy
+        app->dropSpeed = baseSpeed * 1.5;
+        break;
+    case 2: // Medium
+        app->dropSpeed = baseSpeed;
+        break;
+    case 3: // Hard
+        app->dropSpeed = baseSpeed * 0.7;
+        break;
+    case 4: // Extreme
+        app->dropSpeed = baseSpeed * 0.3;
+        break;
+    case 5: // Insane
+        app->dropSpeed = baseSpeed * 0.1;
+        break;
+    default:
+        app->dropSpeed = baseSpeed;
+    }
+
+    // Enforce minimum speed
+    if (app->dropSpeed < 10) {
+        app->dropSpeed = 10;
+    }
+}
 
 bool TetrimoneBoard::rotatePiece(bool clockwise) {
     if (gameOver || paused)
