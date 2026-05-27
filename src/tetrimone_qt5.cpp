@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstring>
 #include "highscores.h"
+#include "qt5_dialog_helpers.h"
 #include "propaganda_messages.h"
 #include "freedom_messages.h"
 #include "commandline.h"
@@ -2154,7 +2155,40 @@ void onGhostPieceToggled(TetrimoneApp* app, bool enabled) {
 }
 
 void onViewHighScores(TetrimoneApp* app) {
-    // TODO: Implement high scores view dialog
+    if (!app || !app->board) return;
+    
+    // Get all scores
+    const std::vector<Score>& allScores = app->board->getHighScores().getScores();
+    
+    // Difficulty levels to create tabs for
+    const std::vector<std::string> difficulties = {
+        "All", "Zen", "Easy", "Medium", "Hard", "Extreme", "Insane"
+    };
+    
+    // Build tab data
+    std::vector<Qt5Helpers::ScoreTabData> tabs;
+    for (const auto& difficulty : difficulties) {
+        Qt5Helpers::ScoreTabData tabData;
+        tabData.tabName = difficulty;
+        
+        if (difficulty == "All") {
+            tabData.scores = allScores;
+        } else {
+            tabData.scores = app->board->getHighScores().getScoresByDifficulty(difficulty);
+        }
+        
+        tabs.push_back(tabData);
+    }
+    
+    // Configure and display tabulator
+    Qt5Helpers::ScoreTabulatorConfig config{
+        .title = "High Scores",
+        .tabs = tabs,
+        .width = 900,
+        .height = 600
+    };
+    
+    Qt5Helpers::createScoreTabulatorDialog(app->window, config);
 }
 
 void onBackgroundImagesDialog(TetrimoneApp* app) {

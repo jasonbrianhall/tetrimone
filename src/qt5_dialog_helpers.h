@@ -5,6 +5,7 @@
 #include <QButtonGroup>
 #include <vector>
 #include <string>
+#include "highscores.h"
 
 // Forward declarations
 struct TetrimoneApp;
@@ -34,6 +35,18 @@ struct RadioGroupConfig {
     std::string frameTitle;
     std::vector<std::string> options;
     int defaultSelectedIndex;
+};
+
+struct ScoreTabData {
+    std::string tabName;
+    std::vector<Score> scores;
+};
+
+struct ScoreTabulatorConfig {
+    std::string title;
+    std::vector<ScoreTabData> tabs;
+    int width;
+    int height;
 };
 
 // ============================================================================
@@ -71,6 +84,12 @@ int createAndRunDialog(
     const std::vector<TextConfig>& textElements,
     const RadioGroupConfig* radioConfig = nullptr,
     const std::vector<TextConfig>& footerElements = std::vector<TextConfig>()
+);
+
+// Create and run high scores dialog (tabbed view of all scores)
+void createScoreTabulatorDialog(
+    void* parent,
+    const ScoreTabulatorConfig& config
 );
 
 }  // namespace Qt5Helpers
