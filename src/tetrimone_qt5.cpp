@@ -1344,10 +1344,7 @@ void cleanupApp(TetrimoneApp* app) {
 // ============================================================================
 
 void onStartGameAction(TetrimoneApp* app) {
-    if (app->board->isSplashScreenActive()) {
-        app->board->setSplashScreenActive(false);
-    }
-    startGame(app);
+    app->board->setSplashScreenActive(true);
     updateDisplay(app);
 }
 
@@ -1357,6 +1354,7 @@ void onPauseGameAction(TetrimoneApp* app) {
 }
 
 void onRestartGameAction(TetrimoneApp* app) {
+    app->board->setSplashScreenActive(true);
     startGame(app);
     updateDisplay(app);
     updateLabels(app);
@@ -1378,7 +1376,9 @@ void onSoundToggleAction(TetrimoneApp* app, bool enabled) {
 
 void onDifficultyChanged(TetrimoneApp* app, int difficulty) {
     app->difficulty = difficulty;
+    app->board->setSplashScreenActive(true);
     updateLabels(app);
+    updateDisplay(app);
 }
 
 // ============================================================================
@@ -1563,7 +1563,7 @@ void setupMenuBar(TetrimoneApp* app) {
     // ===== FILE MENU =====
     QMenu* fileMenu = app->menuBar->addMenu("&File");
     
-    app->startMenuItem = fileMenu->addAction("&Start Game");
+    app->startMenuItem = fileMenu->addAction("&New Game");
     QObject::connect(app->startMenuItem, &QAction::triggered, [app]() {
         onStartGameAction(app);
     });
