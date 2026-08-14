@@ -1,7 +1,7 @@
 #ifndef TETRIMONE_SETTINGS_H
 #define TETRIMONE_SETTINGS_H
 
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #endif
 
@@ -523,7 +523,7 @@ void resetGameSettings(TetrimoneApp* app) {
     rebuildGameUI(app);
 }
 
-#ifdef GTK3
+#ifdef GTK4
 void onResetSettings(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     

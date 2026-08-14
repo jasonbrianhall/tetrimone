@@ -1,7 +1,7 @@
 #include <cstring>
 #include <iostream>
 #include <vector>
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #endif
 

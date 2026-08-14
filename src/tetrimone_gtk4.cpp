@@ -45,6 +45,7 @@ extern int BLOCK_SIZE;
 extern int currentThemeIndex;
 extern int GRID_WIDTH;
 extern int GRID_HEIGHT;
+extern int fireworksTimer;
 
 gboolean onKeyDownTick(gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
@@ -151,7 +152,7 @@ gboolean onKeyRightTick(gpointer userData) {
 }
 
 // ----------------------------------------------------------------------------
-// Firework particle system - no GTK3 API usage here beyond g_timeout_add /
+// Firework particle system - no GTK4 API usage here beyond g_timeout_add /
 // g_source_remove, both of which are unchanged in GTK4 (they're GLib, not
 // GTK). Left as-is.
 // ----------------------------------------------------------------------------
@@ -937,7 +938,7 @@ void onScreenSizeChanged(TetrimoneApp *app) {
 // GTK4 changes exercised here:
 //  - "delete-event" -> GtkWindow::close-request (gboolean handler; return
 //    TRUE to prevent the close, FALSE to allow it - opposite convention from
-//    GTK3's delete-event where TRUE meant "don't destroy").
+//    GTK4's delete-event where TRUE meant "don't destroy").
 //  - "focus-in-event"/"focus-out-event" on a plain widget are gone; window
 //    focus is tracked with a GtkEventControllerFocus's "enter"/"leave".
 //  - gtk_container_add() -> gtk_window_set_child() / gtk_frame_set_child().
@@ -1548,7 +1549,7 @@ void createMenu(TetrimoneApp *app) {
 // menu item's visual check/radio state to actually change. If a handler
 // returns without calling it (e.g. the user declined a confirmation dialog),
 // the item snaps back to its previous state automatically - which replaces
-// the old GTK3 "block signal handler, reselect previous item" dance.
+// the old GTK4 "block signal handler, reselect previous item" dance.
 // ----------------------------------------------------------------------------
 
 void onGridLinesToggled(GSimpleAction *action, GVariant *value, gpointer userData) {
@@ -1687,7 +1688,7 @@ void onTrackToggled(GSimpleAction *action, GVariant *value, gpointer userData) {
 // ----------------------------------------------------------------------------
 // Game flow: start/pause/restart/quit.
 //
-// NOTE: The GTK3 sources call a toggle-style "onPauseGame(GtkMenuItem*,...)"
+// NOTE: The GTK4 sources call a toggle-style "onPauseGame(GtkMenuItem*,...)"
 // throughout, but that function's actual body was never defined in
 // tetrimone_gtk3.cpp - it must live in one of the other translation units
 // (gtk3_dialog_helpers.cpp / gtkstuff.cpp per the Makefile's SRCS_COMMON

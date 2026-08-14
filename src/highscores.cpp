@@ -222,11 +222,11 @@ std::string getDifficultyName(int difficulty) {
 // Framework-Specific High Score Dialogs
 // ============================================================================
 
-#ifdef GTK3
+#ifdef GTK4
 #include "gtk3_dialog_helpers.h"
 #include "tetrimone_gtk.h"
 
-using namespace GTK3Helpers;
+using namespace GTK4Helpers;
 
 // Version that takes app parameter and shows dialog
 bool TetrimoneBoard::checkAndRecordHighScore(TetrimoneApp* app) {
@@ -306,7 +306,7 @@ void onViewHighScores(GtkMenuItem* menuItem, gpointer userData) {
     createScoreTabulatorDialog(GTK_WINDOW(app->window), config);
 }
 
-#endif  // GTK3
+#endif  // GTK4
 
 #ifdef QT5
 #include "tetrimone_qt5.h"

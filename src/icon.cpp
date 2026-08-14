@@ -1,7 +1,7 @@
 #include <vector>
 #include <algorithm>
 
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #endif
@@ -43,10 +43,10 @@ std::vector<IconBlock> getIBlocksData() {
 }
 
 // ============================================================================
-// GTK3 Implementation
+// GTK4 Implementation
 // ============================================================================
 
-#ifdef GTK3
+#ifdef GTK4
 
 void drawIconBlock(guchar* pixels, int rowstride, int width, int height, const IconBlock& block) {
     // Main block fill
@@ -110,7 +110,7 @@ void drawIconBlock(guchar* pixels, int rowstride, int width, int height, const I
     }
 }
 
-// Function to create a Tetrimone icon programmatically (GTK3)
+// Function to create a Tetrimone icon programmatically (GTK4)
 void setWindowIcon(GtkWindow* window) {
     // Create a 64x64 pixel icon with RGBA format (32 bits)
     int width = 64;
@@ -153,7 +153,7 @@ void setWindowIcon(GtkWindow* window) {
     g_object_unref(icon);
 }
 
-#endif  // GTK3
+#endif  // GTK4
 
 // ============================================================================
 // Qt5 Implementation

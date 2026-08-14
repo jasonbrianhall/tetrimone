@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <algorithm>
 
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #include "gtk3_dialog_helpers.h"
 #endif
@@ -92,12 +92,12 @@ void initSDL(TetrimoneApp *app) {
   };
 
   // Framework-specific timer setup is delegated to framework layer
-  // (e.g., g_timeout_add for GTK3, QTimer for Qt5)
+  // (e.g., g_timeout_add for GTK4, QTimer for Qt5)
 }
 
 void shutdownSDL(TetrimoneApp *app) {
   // Framework-specific timer cleanup should be done before this
-  // (e.g., g_source_remove for GTK3)
+  // (e.g., g_source_remove for GTK4)
   if (app->joystickTimerId > 0) {
     // Note: This assumes the framework layer has a compatible timer ID
     // Otherwise, framework-specific shutdown should call this before removing timer

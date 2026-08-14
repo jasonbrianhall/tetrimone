@@ -12,7 +12,7 @@
 #include <QMessageBox>
 #endif
 
-#ifdef GTK3
+#ifdef GTK4
 #include "gtk3_dialog_helpers.h"
 #include "tetrimone_gtk.h"
 #ifdef _WIN32
@@ -25,15 +25,15 @@
 #include "highscores.h"
 #include "freedom_messages.h"
 
-#ifdef GTK3
-using namespace GTK3Helpers;
+#ifdef GTK4
+using namespace GTK4Helpers;
 #endif
 
 #ifdef QT5
 using namespace Qt5Helpers;
 #endif
 
-#ifdef GTK3
+#ifdef GTK4
 
 void showPatrioticPerformanceDialog(TetrimoneApp* app) {
     // Only show in patriotic mode
@@ -111,7 +111,7 @@ void showPatrioticPerformanceDialog(TetrimoneApp* app) {
         .defaultSelectedIndex = 0
     };
     
-    // Create and run dialog - works with GTK3
+    // Create and run dialog - works with GTK4
     createAndRunDialog(
         GTK_WINDOW(app->window),
         dialogConfig,
@@ -124,7 +124,7 @@ void showPatrioticPerformanceDialog(TetrimoneApp* app) {
     app->board->restart();
 }
 
-#endif  // GTK3
+#endif  // GTK4
 
 #ifdef QT5
 

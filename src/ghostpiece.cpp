@@ -1,4 +1,4 @@
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #endif
 
@@ -35,7 +35,7 @@ int TetrimoneBoard::getGhostPieceY() const {
 // Framework-Specific Ghost Piece Toggle
 // ============================================================================
 
-#ifdef GTK3
+#ifdef GTK4
 
 void onGhostPieceToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
@@ -43,7 +43,7 @@ void onGhostPieceToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
     gtk_widget_queue_draw(app->gameArea);
 }
 
-#endif  // GTK3
+#endif  // GTK4
 
 #ifdef QT5
 

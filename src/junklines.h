@@ -91,7 +91,7 @@ void ensureValidPiecePosition();
 // Framework-Specific Handlers (Conditional Compilation)
 // ============================================================================
 
-#ifdef GTK3
+#ifdef GTK4
 
 /**
  * Callback for game setup dialog apply button.
@@ -100,7 +100,7 @@ void ensureValidPiecePosition();
 void onGameSetupApply(int junkPercentage, int junkPerLevel, int initialLevel, gpointer userData);
 
 /**
- * Confirm game restart with user via GTK3 dialog.
+ * Confirm game restart with user via GTK4 dialog.
  * 
  * @param app Application pointer
  * @return true if user clicked Yes, false otherwise
@@ -115,10 +115,10 @@ void applyGameSetupSettings(TetrimoneApp* app, int junkPercentage, int junkPerLe
 
 /**
  * Menu callback to open the game setup dialog.
- * GTK3-specific implementation.
+ * GTK4-specific implementation.
  */
 void onGameSetupDialog(GtkMenuItem* menuItem, gpointer userData);
 
-#endif // GTK3
+#endif // GTK4
 
 #endif // JUNKLINES_H

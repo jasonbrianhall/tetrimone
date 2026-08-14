@@ -95,7 +95,7 @@ struct TetrimoneApp {
     QAction*      trackMenuItems[5] = {nullptr};
     QAction*      themeMenuItems[31] = {nullptr};
 
-    // Additional menu items from GTK3 version
+    // Additional menu items from GTK4 version
     QAction*      blockSizeMenuItem = nullptr;
     QAction*      joystickConfigMenuItem = nullptr;
     QAction*      backgroundImageMenuItem = nullptr;
@@ -186,7 +186,7 @@ void onQuitGameAction(TetrimoneApp* app);
 void onSoundToggleAction(TetrimoneApp* app, bool enabled);
 void onDifficultyChanged(TetrimoneApp* app, int difficulty);
 
-// TODO: Additional menu callbacks from GTK3 version
+// TODO: Additional menu callbacks from GTK4 version
 void onBlockSizeDialog(TetrimoneApp* app);
 void onBlockSizeValueChanged(int value, TetrimoneApp* app);
 void onResizeWindowButtonClicked(TetrimoneApp* app);

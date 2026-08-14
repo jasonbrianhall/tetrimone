@@ -1,16 +1,16 @@
 // ============================================================================
-// joystick_gtk.cpp - GTK3-specific UI and event handling for joystick
+// joystick_gtk.cpp - GTK4-specific UI and event handling for joystick
 // Interfaces with joystick_core.cpp for input processing
 // ============================================================================
 
-#ifdef GTK3
+#ifdef GTK4
 
 #include "tetrimone_gtk.h"
 #include "gtk3_dialog_helpers.h"
 #include <gtk/gtk.h>
 #include <algorithm>
 
-using namespace GTK3Helpers;
+using namespace GTK4Helpers;
 
 // ============================================================================
 // Forward Declarations - Core Functions (defined in joystick_core.cpp)
@@ -34,7 +34,7 @@ extern void loadJoystickMapping(TetrimoneApp* app);
 const int AXIS_REPEAT_DELAY = 150;  // ms between repeated movement inputs
 
 // ============================================================================
-// GTK3-Specific Input Processing
+// GTK4-Specific Input Processing
 // ============================================================================
 
 typedef struct {
@@ -50,7 +50,7 @@ typedef struct {
   GtkTextBuffer* buffer;
 } JoystickTestData;
 
-// Callbacks for button inputs - GTK3 specific
+// Callbacks for button inputs - GTK4 specific
 static void onJoystickPause(TetrimoneApp* app, bool shouldPause) {
   if (app->board->isSplashScreenActive()) {
     app->board->dismissSplashScreen();
@@ -77,7 +77,7 @@ static void onJoystickHardDrop(TetrimoneApp* app) {
 }
 
 // ============================================================================
-// Joystick Polling Timer - GTK3 Implementation
+// Joystick Polling Timer - GTK4 Implementation
 // ============================================================================
 
 gboolean pollJoystick(gpointer data) {
@@ -329,4 +329,4 @@ void onJoystickConfig(GtkMenuItem* menuItem, gpointer userData) {
   }
 }
 
-#endif  // GTK3
+#endif  // GTK4

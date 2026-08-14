@@ -1,5 +1,5 @@
-#ifndef GTK3_DIALOG_HELPERS_H
-#define GTK3_DIALOG_HELPERS_H
+#ifndef GTK4_DIALOG_HELPERS_H
+#define GTK4_DIALOG_HELPERS_H
 
 #include <gtk/gtk.h>
 #include <vector>
@@ -9,7 +9,7 @@
 // Forward declarations
 struct TetrimoneApp;
 
-namespace GTK3Helpers {
+namespace GTK4Helpers {
 
 // ============================================================================
 // Configuration Structures
@@ -135,15 +135,15 @@ public:
 };
 
 // ============================================================================
-// GTK3 Implementation of FileDialogInterface
+// GTK4 Implementation of FileDialogInterface
 // ============================================================================
 
-class GTK3FileDialog : public FileDialogInterface {
+class GTK4FileDialog : public FileDialogInterface {
 private:
     GtkWindow* parentWindow;
 
 public:
-    explicit GTK3FileDialog(GtkWindow* parent) : parentWindow(parent) {}
+    explicit GTK4FileDialog(GtkWindow* parent) : parentWindow(parent) {}
     
     std::string openFile(
         const std::string& title,
@@ -257,6 +257,6 @@ void createVolumeControlDialog(
     gpointer userData
 );
 
-}  // namespace GTK3Helpers
+}  // namespace GTK4Helpers
 
-#endif  // GTK3_DIALOG_HELPERS_H
+#endif  // GTK4_DIALOG_HELPERS_H

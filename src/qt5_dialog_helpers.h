@@ -66,7 +66,7 @@ private:
 // High-level function: create and run dialog in one call
 // Returns QDialog::Accepted or QDialog::Rejected
 int createAndRunDialog(
-    void* parent,  // Unused in Qt5, kept for API compatibility with GTK3 version
+    void* parent,  // Unused in Qt5, kept for API compatibility with GTK4 version
     const DialogConfig& dialogConfig,
     const std::vector<TextConfig>& textElements,
     const RadioGroupConfig* radioConfig = nullptr,

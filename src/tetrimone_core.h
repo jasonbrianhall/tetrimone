@@ -13,7 +13,7 @@
 #include <SDL2/SDL.h>
 #include <cairo/cairo.h>
 
-#ifdef GTK3
+#ifdef GTK4
     #include <glib.h>
 #else
     class QTimer;
@@ -89,7 +89,7 @@ private:
         QTimer* heatDecayTimer = nullptr;
     #endif
     
-    #ifdef GTK3
+    #ifdef GTK4
         unsigned int heatDecayTimer;
     #endif
     std::vector<std::vector<int>> grid;
@@ -152,7 +152,7 @@ private:
     void* oldBackground;
 
     // Platform-specific timer members (declared in tetrimone_gtk.h or tetrimone_qt5.h)
-    #ifdef GTK3
+    #ifdef GTK4
         unsigned int smoothMovementTimer = 0;
         unsigned int lineClearAnimationTimer = 0;
         unsigned int themeTransitionTimer = 0;

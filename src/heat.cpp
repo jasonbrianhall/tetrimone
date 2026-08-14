@@ -1,4 +1,4 @@
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #include <glib.h>
 #else
@@ -11,7 +11,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#ifdef GTK3
+#ifdef GTK4
 void TetrimoneBoard::updateHeat() {
     // Only create timer if it doesn't already exist
     if (heatDecayTimer == 0) {

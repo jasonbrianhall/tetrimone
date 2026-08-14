@@ -1,4 +1,4 @@
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #include <glib.h>
 #endif
@@ -1122,7 +1122,7 @@ void TetrimoneBoard::cleanupBackgroundImages() {
     patriotBackgroundImages.clear();
 }
 
-#ifdef GTK3
+#ifdef GTK4
 cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename) {
     // Read the file into memory first
     GFile* file = g_file_new_for_path(filename);
@@ -1212,7 +1212,7 @@ cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t
     
     return surface;
 }
-#endif  // GTK3
+#endif  // GTK4
 
 #ifdef QT5
 extern "C" {
@@ -1476,7 +1476,7 @@ void TetrimoneBoard::startBackgroundTransition() {
     }
     
     // If already transitioning, cancel the current transition
-#ifdef GTK3
+#ifdef GTK4
     if (isTransitioning && transitionTimerId > 0) {
         g_source_remove(transitionTimerId);
         transitionTimerId = 0;
@@ -1520,7 +1520,7 @@ void TetrimoneBoard::startBackgroundTransition() {
     // We'll call selectRandomBackground() when we're fully faded out
     
     // Start the transition timer - update 20 times per second
-#ifdef GTK3
+#ifdef GTK4
     transitionTimerId = g_timeout_add(50, 
         [](gpointer data) -> gboolean {
             TetrimoneBoard* board = static_cast<TetrimoneBoard*>(data);
@@ -1571,7 +1571,7 @@ void TetrimoneBoard::updateBackgroundTransition() {
         }
         
         // Clean up the timer
-#ifdef GTK3
+#ifdef GTK4
         if (transitionTimerId > 0) {
             g_source_remove(transitionTimerId);
             transitionTimerId = 0;
@@ -1587,7 +1587,7 @@ void TetrimoneBoard::updateBackgroundTransition() {
 }
 
 void TetrimoneBoard::cancelBackgroundTransition() {
-#ifdef GTK3
+#ifdef GTK4
     if (isTransitioning && transitionTimerId > 0) {
         g_source_remove(transitionTimerId);
         transitionTimerId = 0;

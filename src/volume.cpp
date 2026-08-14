@@ -7,11 +7,11 @@ static float s_lastSfxVolume = 0.50f;    // Default to 50% if not set
 static float s_lastMusicVolume = 0.50f;  // Default to 50% if not set
 static bool s_volumesInitialized = false;
 
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #include "gtk3_dialog_helpers.h"
 
-using namespace GTK3Helpers;
+using namespace GTK4Helpers;
 
 void onVolumeDialog(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
@@ -149,7 +149,7 @@ void onMusicVolumeValueChanged(GtkRange* range, gpointer userData) {
     AudioManager::getInstance().setMusicVolume(musicVolume);
 }
 
-#endif  // GTK3
+#endif  // GTK4
 
 #ifdef QT5
 #include "tetrimone_qt5.h"
@@ -161,7 +161,7 @@ void onVolumeDialog(void* menuItem, void* userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     
     // TODO: Implement Qt5 volume dialog
-    // For now, just get the volumes like GTK3 does
+    // For now, just get the volumes like GTK4 does
     
     float currentVolume = AudioManager::getInstance().getVolume();
     float currentMusicVolume = AudioManager::getInstance().getMusicVolume();

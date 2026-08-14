@@ -12,7 +12,7 @@
 #include "propaganda_messages.h"
 
 // Include framework headers FIRST so TetrimoneApp is declared
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #include "gtk3_dialog_helpers.h"
 #endif
@@ -26,9 +26,9 @@
 // Framework-Specific Propaganda Dialogs
 // ============================================================================
 
-#ifdef GTK3
+#ifdef GTK4
 
-using namespace GTK3Helpers;
+using namespace GTK4Helpers;
 
 void showIdeologicalFailureDialog(TetrimoneApp* app) {
     // Only show in retro mode
@@ -93,7 +93,7 @@ void showIdeologicalFailureDialog(TetrimoneApp* app) {
         .defaultSelectedIndex = 0
     };
     
-    // Create and run dialog - all GTK3 calls delegated to helper
+    // Create and run dialog - all GTK4 calls delegated to helper
     createAndRunDialog(
         GTK_WINDOW(app->window),
         dialogConfig,
@@ -106,7 +106,7 @@ void showIdeologicalFailureDialog(TetrimoneApp* app) {
     onRestartGame(GTK_MENU_ITEM(app->restartMenuItem), app);
 }
 
-#endif  // GTK3
+#endif  // GTK4
 
 #ifdef QT5
 

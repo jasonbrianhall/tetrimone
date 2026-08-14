@@ -1,4 +1,4 @@
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #endif
 

@@ -152,7 +152,7 @@ void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
     }
     
     // Create dialog interface
-    GTK3Helpers::GTK3FileDialog fileDialog(GTK_WINDOW(app->window));
+    GTK4Helpers::GTK4FileDialog fileDialog(GTK_WINDOW(app->window));
     
     // Open file dialog
     std::string filePath = fileDialog.openFile(
@@ -192,7 +192,7 @@ void onBackgroundZipDialog(GtkMenuItem* menuItem, gpointer userData) {
 void onBackgroundOpacityDialog(GtkMenuItem *menuItem, gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);
 
-  GTK3Helpers::OpacitySliderConfig config{
+  GTK4Helpers::OpacitySliderConfig config{
       .title = "Background Opacity",
       .minValue = 0.0,
       .maxValue = 1.0,
@@ -202,7 +202,7 @@ void onBackgroundOpacityDialog(GtkMenuItem *menuItem, gpointer userData) {
       .height = 150
   };
 
-  GTK3Helpers::createOpacitySliderDialog(
+  GTK4Helpers::createOpacitySliderDialog(
       GTK_WINDOW(app->window),
       config,
       G_CALLBACK(onOpacityValueChanged),

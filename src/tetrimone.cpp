@@ -1,6 +1,4 @@
-#ifdef GTK3
 #include "tetrimone_gtk.h"
-#endif
 
 #ifdef QT5
 #include "tetrimone_qt5.h"
@@ -197,7 +195,7 @@ void TetrimoneBoard::restart() {
     std::fill(row.begin(), row.end(), 0);
   }
   heatLevel = 0.5f;
-#ifdef GTK3
+#ifdef GTK4
   heatDecayTimer = 0;
 #endif
 #ifdef QT5
@@ -246,7 +244,7 @@ TetrimoneBoard::~TetrimoneBoard() {
     cancelBackgroundTransition();
 
     // Cancel propaganda message timers
-#ifdef GTK3
+#ifdef GTK4
     if (propagandaTimerId > 0) {
         g_source_remove(propagandaTimerId);
         propagandaTimerId = 0;
@@ -277,7 +275,7 @@ TetrimoneBoard::~TetrimoneBoard() {
         backgroundImage = nullptr;
     }
 
-#ifdef GTK3
+#ifdef GTK4
     if (themeTransitionTimer > 0) {
         g_source_remove(themeTransitionTimer);
         themeTransitionTimer = 0;
@@ -386,7 +384,7 @@ int TetrimoneBoard::clearLines() {
       currentPropagandaMessage = message;
       showPropagandaMessage = true;
       
-#ifdef GTK3
+#ifdef GTK4
       // Cancel existing timer if any
       if (propagandaTimerId > 0) {
           g_source_remove(propagandaTimerId);
@@ -502,7 +500,7 @@ int TetrimoneBoard::clearLines() {
         currentPropagandaMessage = message;
         showPropagandaMessage = true;
         
-#ifdef GTK3
+#ifdef GTK4
         // Cancel existing timer if any
         if (propagandaTimerId > 0) {
             g_source_remove(propagandaTimerId);
@@ -886,7 +884,7 @@ void TetrimoneBoard::createBlockTrail() {
     
     // Start update timer if not running
     if (trailUpdateTimer == 0) {
-#ifdef GTK3
+#ifdef GTK4
         trailUpdateTimer = g_timeout_add(TRAIL_UPDATE_INTERVAL,
             [](gpointer userData) -> gboolean {
                 TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
@@ -899,7 +897,7 @@ void TetrimoneBoard::createBlockTrail() {
                 
                 return true; // Keep timer running
             }, this);
-#endif // GTK3
+#endif // GTK4
 
 #ifdef QT5
         TetrimoneApp* qtApp = static_cast<TetrimoneApp*>(app);
@@ -942,8 +940,8 @@ void TetrimoneBoard::updateBlockTrails() {
     if (!trailsEnabled) {
         blockTrails.clear();
         
-#ifdef GTK3
-        // GTK3: Remove g_source timer
+#ifdef GTK4
+        // GTK4: Remove g_source timer
         if (trailUpdateTimer != 0) {
             g_source_remove(trailUpdateTimer);
             trailUpdateTimer = 0;
@@ -967,8 +965,8 @@ void TetrimoneBoard::updateBlockTrails() {
     }
     
     if (blockTrails.empty() && trailUpdateTimer != 0) {
-#ifdef GTK3
-        // GTK3: Remove timer
+#ifdef GTK4
+        // GTK4: Remove timer
         g_source_remove(trailUpdateTimer);
         trailUpdateTimer = 0;
 #endif
@@ -984,7 +982,7 @@ int TetrimoneBoard::getGridValue(int x, int y) const {
 }
 
 void drawBoard(TetrimoneBoard *board) {
-#ifdef GTK3
+#ifdef GTK4
      gtk_widget_queue_draw(board->app->gameArea);
 #endif
 
@@ -1024,7 +1022,7 @@ void TetrimoneBoard::setMinBlock(int size) {
 
 void ui_set_active_theme(TetrimoneApp *app, int index)
 {
-#ifdef GTK3
+#ifdef GTK4
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->themeMenuItems[index]), true);
 #endif
 
@@ -1036,7 +1034,7 @@ void ui_set_active_theme(TetrimoneApp *app, int index)
 
 void ui_window_fullscreen(TetrimoneApp *app)
 {
-#ifdef GTK3
+#ifdef GTK4
     gtk_window_fullscreen(GTK_WINDOW(app->window));
 #endif
 
@@ -1047,7 +1045,7 @@ void ui_window_fullscreen(TetrimoneApp *app)
 
 void ui_set_sound_enabled(TetrimoneApp *app, bool enabled)
 {
-#ifdef GTK3
+#ifdef GTK4
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem), enabled);
 #endif
 
@@ -1057,7 +1055,7 @@ void ui_set_sound_enabled(TetrimoneApp *app, bool enabled)
 }
 
 void ui_set_sound_enabled(TetrimoneApp *app) {
-#ifdef GTK3
+#ifdef GTK4
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->soundToggleMenuItem),  app->board->sound_enabled_);
 #endif
 
@@ -1069,7 +1067,7 @@ void ui_set_sound_enabled(TetrimoneApp *app) {
 }
 
 void ui_set_isusingbackgroundimage_enabled(TetrimoneApp *app) {
-#ifdef GTK3
+#ifdef GTK4
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), app->board->isUsingBackgroundImage());
 #endif
 
@@ -1080,7 +1078,7 @@ void ui_set_isusingbackgroundimage_enabled(TetrimoneApp *app) {
 
 void ui_set_background_enabled(TetrimoneApp *app, bool enabled)
 {
-#ifdef GTK3
+#ifdef GTK4
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->backgroundToggleMenuItem), enabled);
 #endif
 
@@ -1096,7 +1094,7 @@ void set_difficulty_menu(TetrimoneApp *app, int difficulty)
         "Zen", "Easy", "Medium", "Hard", "Extreme", "Insane"
     };
 
-#ifdef GTK3
+#ifdef GTK4
     GtkWidget *items[] = {
         app->zenMenuItem,
         app->easyMenuItem,
@@ -1127,7 +1125,7 @@ void set_difficulty_menu(TetrimoneApp *app, int difficulty)
 
     printf("DEBUG: Setting %s difficulty\n", labels[difficulty]);
 
-#ifdef GTK3
+#ifdef GTK4
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(items[difficulty]), true);
 #endif
 
@@ -1139,7 +1137,7 @@ void set_difficulty_menu(TetrimoneApp *app, int difficulty)
 
 void ui_set_mediumMenuItem_enabled(TetrimoneApp *app, bool enabled)
 {
-#ifdef GTK3
+#ifdef GTK4
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->mediumMenuItem), enabled);
 #endif
 
@@ -1150,7 +1148,7 @@ void ui_set_mediumMenuItem_enabled(TetrimoneApp *app, bool enabled)
 
 void ui_set_window_title(TetrimoneApp *app, const char *title)
 {
-#ifdef GTK3
+#ifdef GTK4
     gtk_window_set_title(GTK_WINDOW(app->window), title);
 #endif
 
@@ -1161,7 +1159,7 @@ void ui_set_window_title(TetrimoneApp *app, const char *title)
 
 void ui_set_difficulty_label(TetrimoneApp *app, const char *markup)
 {
-#ifdef GTK3
+#ifdef GTK4
     gtk_label_set_markup(GTK_LABEL(app->difficultyLabel), markup);
 #endif
 
@@ -1174,7 +1172,7 @@ void ui_set_difficulty_label(TetrimoneApp *app, const char *markup)
 
 void ui_set_pause_menu_label(TetrimoneApp *app, const char *text)
 {
-#ifdef GTK3
+#ifdef GTK4
     gtk_menu_item_set_label(GTK_MENU_ITEM(app->pauseMenuItem), text);
 #endif
 
@@ -1187,7 +1185,7 @@ void ui_set_pause_menu_label(TetrimoneApp *app, const char *text)
 void ui_update_track_menu(TetrimoneApp *app)
 {
     for (int i = 0; i < 5; i++) {
-#ifdef GTK3
+#ifdef GTK4
         gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]), app->board->enabledTracks[i]);
 #endif
 
@@ -1200,7 +1198,7 @@ void ui_update_track_menu(TetrimoneApp *app)
 
 void app_set_track_items_active(TetrimoneApp* app, int count, bool active)
 {
-#ifdef GTK3
+#ifdef GTK4
     for (int i = 0; i < count; i++) {
         gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(app->trackMenuItems[i]), active);
     }
@@ -1214,7 +1212,7 @@ void app_set_track_items_active(TetrimoneApp* app, int count, bool active)
 }
 
 void drawNextPieceArea(TetrimoneBoard *board) {
-#ifdef GTK3
+#ifdef GTK4
      gtk_widget_queue_draw(board->app->nextPieceArea); // For theme color changes
 #endif
 
@@ -1263,7 +1261,7 @@ std::string TetrimoneBoard::getDifficultyText(int difficulty) const {
 
 int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args)
 {
-#ifdef GTK3
+#ifdef GTK4
     GtkApplication *gtkApp = gtk_application_new("org.gtk.tetrimone", G_APPLICATION_DEFAULT_FLAGS);
 
     g_object_set_data(G_OBJECT(gtkApp), "tetrimone-app", app);

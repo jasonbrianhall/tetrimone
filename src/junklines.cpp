@@ -8,10 +8,10 @@
 #include <string>
 #include <algorithm>
 
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #include "gtk3_dialog_helpers.h"
-using namespace GTK3Helpers;
+using namespace GTK4Helpers;
 #endif
 
 #ifdef QT5
@@ -292,10 +292,10 @@ void TetrimoneBoard::repositionPieceAboveJunk(TetrimoneBlock* piece, int junkSta
 }
 
 // ============================================================================
-// GTK3-Specific: Game Setup Dialog Handler
+// GTK4-Specific: Game Setup Dialog Handler
 // ============================================================================
 
-#ifdef GTK3
+#ifdef GTK4
 
 // Forward declarations
 bool confirmGameRestart(TetrimoneApp* app);
@@ -303,7 +303,7 @@ void applyGameSetupSettings(TetrimoneApp* app, int junkPercentage, int junkPerLe
 
 /**
  * Apply callback for game setup dialog.
- * Handles GTK3-specific confirmation dialog logic.
+ * Handles GTK4-specific confirmation dialog logic.
  */
 void onGameSetupApply(int junkPercentage, int junkPerLevel, int initialLevel, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
@@ -328,7 +328,7 @@ void onGameSetupApply(int junkPercentage, int junkPerLevel, int initialLevel, gp
 
 /**
  * Confirm with user before restarting game.
- * GTK3-specific implementation.
+ * GTK4-specific implementation.
  * 
  * @return true if user confirmed, false otherwise
  */
@@ -375,7 +375,7 @@ void applyGameSetupSettings(TetrimoneApp* app, int junkPercentage, int junkPerLe
 
 /**
  * Open game setup dialog from menu.
- * GTK3-specific menu callback.
+ * GTK4-specific menu callback.
  */
 void onGameSetupDialog(GtkMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
@@ -392,4 +392,4 @@ void onGameSetupDialog(GtkMenuItem* menuItem, gpointer userData) {
     createGameSetupDialog(GTK_WINDOW(app->window), config, onGameSetupApply, app);
 }
 
-#endif // GTK3
+#endif // GTK4

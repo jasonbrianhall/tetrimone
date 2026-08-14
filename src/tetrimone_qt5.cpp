@@ -1193,7 +1193,7 @@ void updateLabels(TetrimoneApp* app) {
         app->difficultyLabel->setText(QString("Difficulty: %1").arg(difficulty));
     }
     
-    // Update controls label with all stats and controls like GTK3
+    // Update controls label with all stats and controls like GTK4
     if (app->controlsLabel) {
         QString difficulty;
         switch (app->difficulty) {
@@ -1955,7 +1955,7 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
     app->nextPieceArea = new NextPieceWidget(app->board, app);
     rightPanel->addWidget(app->nextPieceArea, 0, Qt::AlignCenter);
     
-    // Controls info + Stats - ALL in one label like GTK3
+    // Controls info + Stats - ALL in one label like GTK4
     app->controlsLabel = new QLabel(
         "Score: 0\n"
         "Level: 1\n"
@@ -2018,7 +2018,7 @@ void setupGameUI(TetrimoneApp* app, int width, int height) {
 // This function is kept for reference but is superseded by ui_run_application().
 
 // ============================================================================
-// TODO: Menu Callback Implementations (from GTK3)
+// TODO: Menu Callback Implementations (from GTK4)
 // ============================================================================
 
 void onBlockSizeDialog(TetrimoneApp* app) {

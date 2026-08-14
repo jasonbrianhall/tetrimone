@@ -6,13 +6,13 @@
 void onVolumeValueChanged(GtkRange* range, gpointer userData);
 void onMusicVolumeValueChanged(GtkRange* range, gpointer userData);
 
-namespace GTK3Helpers {
+namespace GTK4Helpers {
 
 // ============================================================================
-// GTK3FileDialog Implementation
+// GTK4FileDialog Implementation
 // ============================================================================
 
-std::string GTK3FileDialog::openFile(
+std::string GTK4FileDialog::openFile(
     const std::string& title,
     const std::string& filter,
     const std::string& filterDescription
@@ -49,7 +49,7 @@ std::string GTK3FileDialog::openFile(
     return filePath;
 }
 
-std::vector<std::string> GTK3FileDialog::openFiles(
+std::vector<std::string> GTK4FileDialog::openFiles(
     const std::string& title,
     const std::string& filter,
     const std::string& filterDescription
@@ -89,7 +89,7 @@ std::vector<std::string> GTK3FileDialog::openFiles(
     return filePaths;
 }
 
-void GTK3FileDialog::showError(
+void GTK4FileDialog::showError(
     const std::string& title,
     const std::string& message
 ) {
@@ -237,7 +237,7 @@ GtkWidget* createDialog(
     return dialog;
 }
 
-// Run dialog and handle cleanup - encapsulates all GTK3 interaction
+// Run dialog and handle cleanup - encapsulates all GTK4 interaction
 gint runDialog(GtkWidget* dialog) {
     gint result = gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
@@ -995,4 +995,4 @@ void createVolumeControlDialog(
     gtk_widget_destroy(dialog);
 }
 
-}  // namespace GTK3Helpers
+}  // namespace GTK4Helpers

@@ -1,4 +1,4 @@
-#ifdef GTK3
+#ifdef GTK4
 #include "tetrimone_gtk.h"
 #include "gtk3_dialog_helpers.h"
 #endif
@@ -7,7 +7,7 @@
 #include "tetrimone_qt5.h"
 #endif
 
-using namespace GTK3Helpers;
+using namespace GTK4Helpers;
 
 typedef struct {
     TetrimoneApp* app;
