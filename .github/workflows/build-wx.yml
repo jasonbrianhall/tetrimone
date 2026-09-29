@@ -31,9 +31,9 @@ env:
   PRODUCT_VERSION: "1.0.${{ github.run_number }}.0"
   # Separate from the GTK (...6713) and Qt5 (...6714) installers so all three can coexist
   UPGRADE_CODE: "15F96C34-8D42-417A-9E1B-CC952F7D6715"
-  # Replace with the values from Partner Center before submitting to the Store
+  # Partner Center identity (Product identity page for Tetrimone)
   MSIX_IDENTITY_NAME: "JasonBrianHall.Tetrimone"
-  MSIX_PUBLISHER: "CN=Jason Brian Hall"
+  MSIX_PUBLISHER: "CN=7A3CF65F-504C-42F2-BABD-6A0512A0A017"
   MSIX_PUBLISHER_DISPLAY: "Jason Brian Hall"
   VCPKG_TAG: "2026.07.29"
 
