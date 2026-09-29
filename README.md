@@ -199,6 +199,25 @@ make
 # make pulse-debug   # Debug build with PulseAudio
 ```
 
+### wxWidgets Build (recommended for Windows)
+
+`Makefile.wx` builds the same game with a wxWidgets frontend: native Win32 menus and dialogs on Windows, GTK on Linux, with the shared Cairo renderer so the board looks identical. It has the full GTK3 feature set and needs no GTK runtime on Windows.
+
+```bash
+# Linux (Debian/Ubuntu)
+sudo apt-get install libwxgtk3.2-dev libcairo2-dev libsdl2-dev libsdl2-mixer-dev libzip-dev zip fluidsynth fluid-soundfont-gm ffmpeg
+make -f Makefile.wx            # -> build/linux_wx/tetrimone
+
+# Windows, inside an MSYS2 MINGW64 (or UCRT64) shell
+pacman -S --needed make zip $MINGW_PACKAGE_PREFIX-{gcc,pkgconf,wxwidgets3.2-msw,cairo,SDL2,SDL2_mixer,libzip,fluidsynth,ffmpeg}
+make -f Makefile.wx            # -> build/windows_wx/tetrimone.exe (+ DLLs copied next to it)
+
+# Windows, cross-compiled from Linux (needs a MinGW build of wxWidgets 3.2)
+make -f Makefile.wx windows WX_CONFIG_WIN=/path/to/mingw/bin/wx-config
+```
+
+`make -f Makefile.wx debug` builds with symbols (and a console window on Windows for the debug output). The build also renders the music with FluidSynth and FFmpeg into `sound.zip` next to the executable (pass `SOUNDFONT=/path/to/file.sf2` if no General MIDI SoundFont is found). The window can be resized or maximized and the board scales with it; F11 toggles full screen.
+
 ## Scoring: The Tetrimone Triumph Scale
 
 - **1 line**: 40 × level (Appetizer)

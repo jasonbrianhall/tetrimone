@@ -1658,10 +1658,12 @@ void onRetroMusicToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
     app->board->retroMusicActive = gtk_check_menu_item_get_active(menuItem);
     
-    // If music is playing, restart it to apply the change
-    if (app->backgroundMusicPlaying && app->board->sound_enabled_) {
+    // Switch playlists right away. (pause + play left the music paused and
+    // muted, so nothing played.) While paused, the choice applies on resume.
+    if (app->board->sound_enabled_ && !app->board->isPaused()) {
         app->board->pauseBackgroundMusic();
-        app->board->playBackgroundMusic();  // This will use retroMusicActive
+        app->board->resumeBackgroundMusic();  // This will use retroMusicActive
+        app->backgroundMusicPlaying = true;
     }
 }
 

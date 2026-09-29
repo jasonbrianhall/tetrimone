@@ -13,6 +13,12 @@
 #include <QPainter>
 #endif
 
+#ifdef WXWIDGETS
+#include "tetrimone_wx.h"
+#include <wx/wx.h>
+#include <wx/iconbndl.h>
+#endif
+
 // ============================================================================
 // Core Icon Data (Framework-Independent)
 // ============================================================================
@@ -219,3 +225,61 @@ void setWindowIcon(void* window) {
 }
 
 #endif  // QT5
+
+// ============================================================================
+// wxWidgets Implementation
+// ============================================================================
+
+#ifdef WXWIDGETS
+
+void setWindowIcon(wxWindow* window) {
+    wxTopLevelWindow* tlw = wxDynamicCast(window, wxTopLevelWindow);
+    if (!tlw) return;
+
+    const int width = 64;
+    const int height = 64;
+    wxImage image(width, height, true);  // black
+    image.InitAlpha();
+    unsigned char* rgb = image.GetData();
+    unsigned char* alpha = image.GetAlpha();
+    std::fill(alpha, alpha + width * height, 0);  // fully transparent
+
+    auto put = [&](int x, int y, int r, int g, int b) {
+        if (x < 0 || x >= width || y < 0 || y >= height) return;
+        int i = y * width + x;
+        rgb[i * 3 + 0] = static_cast<unsigned char>(std::clamp(r, 0, 255));
+        rgb[i * 3 + 1] = static_cast<unsigned char>(std::clamp(g, 0, 255));
+        rgb[i * 3 + 2] = static_cast<unsigned char>(std::clamp(b, 0, 255));
+        alpha[i] = 255;
+    };
+
+    // Same 3D block look as the GTK3 pixbuf version
+    auto drawBlock = [&](const IconBlock& block) {
+        for (int y = 0; y < block.size; y++)
+            for (int x = 0; x < block.size; x++)
+                put(block.x + x, block.y + y, block.r, block.g, block.b);
+        for (int i = 0; i < block.size; i++) {
+            put(block.x + i, block.y, block.r + 70, block.g + 70, block.b + 70);     // top
+            put(block.x, block.y + i, block.r + 50, block.g + 50, block.b + 50);     // left
+            int bottom = block.y + block.size - 1;
+            int right = block.x + block.size - 1;
+            put(block.x + i, bottom, block.r - 50, block.g - 50, block.b - 50);      // bottom
+            put(right, block.y + i, block.r - 40, block.g - 40, block.b - 40);       // right
+        }
+    };
+
+    for (const auto& block : getTBlocksData()) drawBlock(block);
+    for (const auto& block : getIBlocksData()) drawBlock(block);
+
+    // Offer a few sizes so the title bar and taskbar don't have to rescale
+    wxIconBundle bundle;
+    for (int size : {16, 24, 32, 48, 64}) {
+        wxImage scaled = (size == width) ? image : image.Scale(size, size, wxIMAGE_QUALITY_HIGH);
+        wxIcon icon;
+        icon.CopyFromBitmap(wxBitmap(scaled));
+        bundle.AddIcon(icon);
+    }
+    tlw->SetIcons(bundle);
+}
+
+#endif  // WXWIDGETS

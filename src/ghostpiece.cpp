@@ -6,6 +6,10 @@
 #include "tetrimone_qt5.h"
 #endif
 
+#ifdef WXWIDGETS
+#include "tetrimone_wx.h"
+#endif
+
 int TetrimoneBoard::getGhostPieceY() const {
     if (!currentPiece || !ghostPieceEnabled) {
         return -1; // No current piece or ghost disabled

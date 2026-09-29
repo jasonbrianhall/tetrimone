@@ -1,0 +1,297 @@
+# Makefile for Tetrimone with the wxWidgets frontend
+#
+# Uses native widgets on every platform (Win32 on Windows, GTK on Linux)
+# while keeping the shared Cairo renderer, so the game looks the same.
+#
+# Linux:
+#   make -f Makefile.wx                 # build/linux_wx/tetrimone
+#
+# Windows, native (MSYS2 MINGW64 or UCRT64 shell):
+#   pacman -S --needed make $MINGW_PACKAGE_PREFIX-{gcc,pkgconf,wxwidgets3.2-msw,cairo,SDL2,SDL2_mixer,libzip}
+#   make -f Makefile.wx                 # build/windows_wx/tetrimone.exe + DLLs
+#
+# Windows, cross-compiled from Linux (needs a MinGW build of wxWidgets >= 3.2):
+#   make -f Makefile.wx windows WX_CONFIG_WIN=/path/to/mingw/wx-config
+#
+# Audio backend on Linux: AUDIO_BACKEND=sdl (default) or AUDIO_BACKEND=pulse
+
+# ---------------------------------------------------------------------------
+# Toolchains
+# ---------------------------------------------------------------------------
+
+CXX_LINUX ?= g++
+
+# Native Windows (MSYS2) is detected automatically
+ifeq ($(OS),Windows_NT)
+  NATIVE_WINDOWS := 1
+  CXX_WIN        ?= g++
+  WINDRES        ?= windres
+  WX_CONFIG_WIN  ?= wx-config
+  PKG_CONFIG_WIN ?= pkg-config
+  DLL_SOURCE_DIR ?= $(MINGW_PREFIX)/bin
+else
+  CXX_WIN        ?= x86_64-w64-mingw32-g++
+  WINDRES        ?= x86_64-w64-mingw32-windres
+  MINGW_SYSROOT  ?= /usr/x86_64-w64-mingw32/sys-root/mingw
+  WX_CONFIG_WIN  ?= $(MINGW_SYSROOT)/bin/wx-config
+  PKG_CONFIG_WIN ?= mingw64-pkg-config
+  DLL_SOURCE_DIR ?= $(MINGW_SYSROOT)/bin
+endif
+
+WX_CONFIG_LINUX ?= wx-config
+PKG_CONFIG_LINUX ?= pkg-config
+
+# ---------------------------------------------------------------------------
+# Flags
+# ---------------------------------------------------------------------------
+
+# -fpermissive: the shared game code relies on it (void* -> cairo_surface_t*),
+# exactly as the GTK3 and Qt5 builds do.
+CXXFLAGS_COMMON = -std=c++17 -Wall -Wextra -O2 -fpermissive -DWXWIDGETS -Isrc
+DEBUG_FLAGS = -g -O0 -DDEBUG
+
+AUDIO_BACKEND ?= sdl
+ifeq ($(AUDIO_BACKEND),pulse)
+  AUDIO_SRCS_LINUX  = src/pulseaudioplayer.cpp
+  AUDIO_FLAGS_LINUX = -DUSE_PULSEAUDIO -DUSE_SDL $(shell $(PKG_CONFIG_LINUX) --cflags libpulse libpulse-simple)
+  AUDIO_LIBS_LINUX  = $(shell $(PKG_CONFIG_LINUX) --libs libpulse libpulse-simple) -lSDL2_mixer
+else
+  AUDIO_SRCS_LINUX  = src/sdlaudioplayer.cpp
+  AUDIO_FLAGS_LINUX = -DUSE_SDL
+  AUDIO_LIBS_LINUX  = -lSDL2_mixer
+endif
+
+# Evaluated lazily (=) so a Linux build never runs the Windows tools and vice versa
+LINUX_PKGS = cairo sdl2 libzip
+WIN_PKGS   = cairo sdl2 libzip
+
+CXXFLAGS_LINUX = $(CXXFLAGS_COMMON) -DLINUX \
+                 $(shell $(WX_CONFIG_LINUX) --cxxflags) \
+                 $(shell $(PKG_CONFIG_LINUX) --cflags $(LINUX_PKGS)) \
+                 $(AUDIO_FLAGS_LINUX)
+LDFLAGS_LINUX  = $(shell $(WX_CONFIG_LINUX) --libs core,base) \
+                 $(shell $(PKG_CONFIG_LINUX) --libs $(LINUX_PKGS)) \
+                 $(AUDIO_LIBS_LINUX) -pthread
+
+# -mwindows: GUI subsystem (no console window). Use WIN_CONSOLE=1 to keep
+# the console for the game's debug output.
+ifeq ($(WIN_CONSOLE),1)
+  WIN_SUBSYSTEM = -mconsole
+else
+  WIN_SUBSYSTEM = -mwindows
+endif
+
+# wxWidgets owns WinMain/main, so keep SDL from renaming main() to SDL_main
+SDL_MAIN_BITS = -Dmain=SDL_main -lSDL2main -mwindows -mconsole
+
+CXXFLAGS_WIN = $(CXXFLAGS_COMMON) -DWIN32 -DUSE_SDL -DSDL_MAIN_HANDLED \
+               $(shell $(WX_CONFIG_WIN) --cxxflags) \
+               $(filter-out $(SDL_MAIN_BITS),$(shell $(PKG_CONFIG_WIN) --cflags $(WIN_PKGS)))
+LDFLAGS_WIN  = $(WIN_SUBSYSTEM) \
+               $(shell $(WX_CONFIG_WIN) --libs core,base) \
+               $(filter-out $(SDL_MAIN_BITS),$(shell $(PKG_CONFIG_WIN) --libs $(WIN_PKGS))) \
+               -lSDL2_mixer -lwinmm
+
+# wx-config --rescomp prints the full windres command line (with wx's
+# include dirs and defines); fall back to plain windres if it doesn't.
+RC_CMD = $(or $(shell $(WX_CONFIG_WIN) --rescomp),$(WINDRES))
+
+# ---------------------------------------------------------------------------
+# Sources
+# ---------------------------------------------------------------------------
+
+SRCS_COMMON = \
+    src/tetrimone_wx.cpp src/wx_dialog_helpers.cpp src/wx_glib_compat.cpp \
+    src/tetrimone.cpp src/tetrimone_main.cpp src/drawgame.cpp src/drawgame_cairo.cpp \
+    src/drawgame_board.cpp src/background.cpp src/heat.cpp src/ghostpiece.cpp \
+    src/junklines.cpp src/propaganda.cpp src/freedom.cpp src/help.cpp \
+    src/highscores.cpp src/saveloadsettings.cpp src/icon.cpp src/joystick_core.cpp \
+    src/audiomanager.cpp src/sound.cpp src/audioconverter.cpp src/dbopl.cpp \
+    src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp \
+    src/wav_converter.cpp src/convertmidi.cpp
+
+SRCS_LINUX = $(SRCS_COMMON) $(AUDIO_SRCS_LINUX)
+SRCS_WIN   = $(SRCS_COMMON) src/sdlaudioplayer.cpp
+RC_WIN     = src/tetrimone_wx.rc
+
+# ---------------------------------------------------------------------------
+# Output layout
+# ---------------------------------------------------------------------------
+
+BUILD_DIR       = build
+BUILD_LINUX     = $(BUILD_DIR)/linux_wx
+BUILD_WIN       = $(BUILD_DIR)/windows_wx
+BUILD_LINUX_DBG = $(BUILD_DIR)/linux_wx_debug
+BUILD_WIN_DBG   = $(BUILD_DIR)/windows_wx_debug
+
+TARGET_LINUX = tetrimone
+TARGET_WIN   = tetrimone.exe
+
+OBJS_LINUX     = $(addprefix $(BUILD_LINUX)/,$(SRCS_LINUX:.cpp=.o))
+OBJS_LINUX_DBG = $(addprefix $(BUILD_LINUX_DBG)/,$(SRCS_LINUX:.cpp=.o))
+OBJS_WIN       = $(addprefix $(BUILD_WIN)/,$(SRCS_WIN:.cpp=.o)) $(BUILD_WIN)/src/tetrimone_wx_rc.o
+OBJS_WIN_DBG   = $(addprefix $(BUILD_WIN_DBG)/,$(SRCS_WIN:.cpp=.o)) $(BUILD_WIN_DBG)/src/tetrimone_wx_rc.o
+
+BACKGROUNDS_DIR = images/Tetrimone_backgrounds
+BACKGROUND_ZIP  = background.zip
+SOUND_DIR       = sound
+SOUND_ZIP       = sound.zip
+
+# ---------------------------------------------------------------------------
+# Top-level targets
+# ---------------------------------------------------------------------------
+
+.PHONY: all linux windows debug linux-debug windows-debug assets clean help
+
+ifdef NATIVE_WINDOWS
+all: windows
+else
+all: linux
+endif
+
+linux: $(BUILD_LINUX)/$(TARGET_LINUX) assets-linux
+windows: $(BUILD_WIN)/$(TARGET_WIN) assets-windows collect-dlls
+linux-debug: $(BUILD_LINUX_DBG)/$(TARGET_LINUX)
+windows-debug: $(BUILD_WIN_DBG)/$(TARGET_WIN)
+
+ifdef NATIVE_WINDOWS
+debug: windows-debug
+else
+debug: linux-debug
+endif
+
+# ---------------------------------------------------------------------------
+# Linux
+# ---------------------------------------------------------------------------
+
+$(BUILD_LINUX)/$(TARGET_LINUX): $(OBJS_LINUX)
+	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
+
+$(BUILD_LINUX)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX_LINUX) $(CXXFLAGS_LINUX) -MMD -MP -c $< -o $@
+
+$(BUILD_LINUX_DBG)/$(TARGET_LINUX): $(OBJS_LINUX_DBG)
+	$(CXX_LINUX) $^ -o $@ $(LDFLAGS_LINUX)
+
+$(BUILD_LINUX_DBG)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX_LINUX) $(CXXFLAGS_LINUX) $(DEBUG_FLAGS) -MMD -MP -c $< -o $@
+
+# ---------------------------------------------------------------------------
+# Windows
+# ---------------------------------------------------------------------------
+
+$(BUILD_WIN)/$(TARGET_WIN): $(OBJS_WIN)
+	$(CXX_WIN) $^ -o $@ $(LDFLAGS_WIN)
+
+$(BUILD_WIN)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX_WIN) $(CXXFLAGS_WIN) -MMD -MP -c $< -o $@
+
+$(BUILD_WIN)/src/tetrimone_wx_rc.o: $(RC_WIN) icon.ico
+	@mkdir -p $(dir $@)
+	$(RC_CMD) -I. -i $< -o $@
+
+$(BUILD_WIN_DBG)/$(TARGET_WIN): $(OBJS_WIN_DBG)
+	$(CXX_WIN) $^ -o $@ $(subst -mwindows,-mconsole,$(LDFLAGS_WIN))
+
+$(BUILD_WIN_DBG)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX_WIN) $(CXXFLAGS_WIN) $(DEBUG_FLAGS) -MMD -MP -c $< -o $@
+
+$(BUILD_WIN_DBG)/src/tetrimone_wx_rc.o: $(RC_WIN) icon.ico
+	@mkdir -p $(dir $@)
+	$(RC_CMD) -I. -i $< -o $@
+
+# Copy every non-system DLL the executable needs next to it
+.PHONY: collect-dlls
+collect-dlls: $(BUILD_WIN)/$(TARGET_WIN)
+ifdef NATIVE_WINDOWS
+	@echo "Collecting DLLs from $(DLL_SOURCE_DIR)..."
+	@ldd $< | awk '{print $$3}' | grep -i '^/$(notdir $(MINGW_PREFIX))/' | sort -u | \
+		xargs -r -I{} cp -u {} $(BUILD_WIN)/
+else
+	@echo "Collecting DLLs from $(DLL_SOURCE_DIR)..."
+	@build/windows/collect_dlls.sh $< $(DLL_SOURCE_DIR) $(BUILD_WIN)
+endif
+
+# ---------------------------------------------------------------------------
+# Game assets (background images and sounds next to the executable)
+# ---------------------------------------------------------------------------
+
+.PHONY: assets-linux assets-windows
+assets-linux: $(BUILD_LINUX)/$(BACKGROUND_ZIP) $(BUILD_LINUX)/$(SOUND_ZIP)
+assets-windows: $(BUILD_WIN)/$(BACKGROUND_ZIP) $(BUILD_WIN)/$(SOUND_ZIP)
+
+$(BUILD_DIR)/%/$(BACKGROUND_ZIP):
+	@mkdir -p $(dir $@)
+	cd $(BACKGROUNDS_DIR) && zip -q -r $(CURDIR)/$@ *.jpg
+
+# sound.zip: every .mid is rendered to .wav with FluidSynth, every .wav is
+# encoded to .mp3 with FFmpeg (theme.mid -> theme.mp3 is the music the game
+# needs), then the .mp3 and .mid files are zipped next to the executable.
+# The zip is always rebuilt from scratch so a stale or placeholder
+# sound/sound.zip can't leave the game silent.
+FLUIDSYNTH      ?= fluidsynth
+FLUIDSYNTH_OPTS ?= -ni -g 1 -F
+FFMPEG          ?= ffmpeg
+FFMPEG_MP3_OPTS ?= -af "silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB" -codec:a libmp3lame -qscale:a 2
+SOUNDFONT       ?= $(firstword $(wildcard \
+                     /usr/share/sounds/sf2/default.sf2 \
+                     /usr/share/sounds/sf2/default-GM.sf2 \
+                     /usr/share/sounds/sf2/FluidR3_GM.sf2 \
+                     /usr/share/soundfonts/default.sf2 \
+                     /usr/share/soundfonts/FluidR3_GM.sf2 \
+                     $(MINGW_PREFIX)/share/soundfonts/*.sf2))
+
+SOUND_MIDI := $(wildcard $(SOUND_DIR)/*.mid)
+SOUND_WAV  := $(sort $(wildcard $(SOUND_DIR)/*.wav) $(SOUND_MIDI:.mid=.wav))
+# Plus MP3s that are checked in without a source (gameoverretro, levelupretro)
+SOUND_MP3  := $(sort $(wildcard $(SOUND_DIR)/*.mp3) $(SOUND_WAV:.wav=.mp3))
+
+# Keep the rendered .wav files around like the GTK3 Makefile does
+.SECONDARY: $(SOUND_MIDI:.mid=.wav)
+
+$(SOUND_DIR)/%.wav: $(SOUND_DIR)/%.mid
+	@if [ -z "$(SOUNDFONT)" ] || [ ! -f "$(SOUNDFONT)" ]; then \
+		echo "Error: no SoundFont found; install one (e.g. fluid-soundfont-gm) or pass SOUNDFONT=/path/to/file.sf2"; \
+		exit 1; \
+	fi
+	@command -v $(FLUIDSYNTH) >/dev/null || { echo "Error: '$(FLUIDSYNTH)' not found; install FluidSynth to build the music"; exit 1; }
+	@echo "Rendering $< -> $@"
+	@$(FLUIDSYNTH) $(FLUIDSYNTH_OPTS) $@ $(SOUNDFONT) $<
+
+$(SOUND_DIR)/%.mp3: $(SOUND_DIR)/%.wav
+	@command -v $(FFMPEG) >/dev/null || { echo "Error: '$(FFMPEG)' not found; install FFmpeg to build the sounds"; exit 1; }
+	@echo "Encoding $< -> $@"
+	@$(FFMPEG) -y -loglevel error -i $< $(FFMPEG_MP3_OPTS) $@
+
+$(BUILD_DIR)/%/$(SOUND_ZIP): $(SOUND_MP3) $(SOUND_MIDI) Makefile.wx
+	@mkdir -p $(dir $@)
+	@rm -f $@
+	cd $(SOUND_DIR) && zip -q $(CURDIR)/$@ $(notdir $(SOUND_MP3) $(SOUND_MIDI))
+	@for f in theme.mp3 gameoverretro.mp3 levelupretro.mp3; do \
+		unzip -l $@ | grep -q " $$f$$" || { echo "Error: $$f missing from $@"; exit 1; }; \
+	done
+
+.PHONY: sounds
+sounds: $(SOUND_MP3)
+
+# ---------------------------------------------------------------------------
+
+clean:
+	rm -rf $(BUILD_LINUX) $(BUILD_WIN) $(BUILD_LINUX_DBG) $(BUILD_WIN_DBG)
+
+help:
+	@echo "Tetrimone - wxWidgets frontend"
+	@echo ""
+	@echo "  make -f Makefile.wx               Build for this platform"
+	@echo "  make -f Makefile.wx linux         Linux build     -> $(BUILD_LINUX)/"
+	@echo "  make -f Makefile.wx windows       Windows build   -> $(BUILD_WIN)/"
+	@echo "  make -f Makefile.wx debug         Debug build (console output on Windows)"
+	@echo "  make -f Makefile.wx clean"
+	@echo ""
+	@echo "Variables: AUDIO_BACKEND=sdl|pulse  WX_CONFIG_WIN=...  PKG_CONFIG_WIN=...  WIN_CONSOLE=1"
+
+-include $(OBJS_LINUX:.o=.d) $(OBJS_LINUX_DBG:.o=.d) $(OBJS_WIN:.o=.d) $(OBJS_WIN_DBG:.o=.d)

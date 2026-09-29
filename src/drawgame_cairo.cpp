@@ -9,6 +9,10 @@
 #include <QTimer>
 #endif
 
+#ifdef WXWIDGETS
+#include "tetrimone_wx.h"
+#endif
+
 #include "audiomanager.h"
 #include <iostream>
 #include <string>
@@ -1476,7 +1480,7 @@ void TetrimoneBoard::startBackgroundTransition() {
     }
     
     // If already transitioning, cancel the current transition
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
     if (isTransitioning && transitionTimerId > 0) {
         g_source_remove(transitionTimerId);
         transitionTimerId = 0;
@@ -1520,7 +1524,7 @@ void TetrimoneBoard::startBackgroundTransition() {
     // We'll call selectRandomBackground() when we're fully faded out
     
     // Start the transition timer - update 20 times per second
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
     transitionTimerId = g_timeout_add(50, 
         [](gpointer data) -> gboolean {
             TetrimoneBoard* board = static_cast<TetrimoneBoard*>(data);
@@ -1571,7 +1575,7 @@ void TetrimoneBoard::updateBackgroundTransition() {
         }
         
         // Clean up the timer
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
         if (transitionTimerId > 0) {
             g_source_remove(transitionTimerId);
             transitionTimerId = 0;
@@ -1587,7 +1591,7 @@ void TetrimoneBoard::updateBackgroundTransition() {
 }
 
 void TetrimoneBoard::cancelBackgroundTransition() {
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
     if (isTransitioning && transitionTimerId > 0) {
         g_source_remove(transitionTimerId);
         transitionTimerId = 0;

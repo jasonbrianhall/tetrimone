@@ -9,6 +9,10 @@
 #include "tetrimone_qt5.h"
 #endif
 
+#ifdef WXWIDGETS
+#include "tetrimone_wx.h"
+#endif
+
 #include "commandline.h"
 
 void printHelp(const char* programName) {

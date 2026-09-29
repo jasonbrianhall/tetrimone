@@ -19,6 +19,10 @@ using namespace GTK3Helpers;
 #include "qt5_dialog_helpers.h"
 #endif
 
+#ifdef WXWIDGETS
+#include "tetrimone_wx.h"
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #include <commdlg.h>

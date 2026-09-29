@@ -53,7 +53,7 @@ SDL_CFLAGS_WIN := $(shell mingw64-pkg-config --cflags sdl2)
 SDL_LIBS_WIN := $(shell mingw64-pkg-config --libs sdl2)
 
 # Source files
-SRCS_COMMON = src/tetrimone_gtk3.cpp src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick_core.cpp src/joystick_gtk.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp src/junklines.cpp src/propaganda.cpp src/help.cpp src/saveloadsettings.cpp src/drawgame.cpp src/tetrimone_main.cpp src/heat.cpp src/freedom.cpp src/drawgame_cairo.cpp src/gtkstuff.cpp src/gtk3_dialog_helpers.cpp src/background.cpp
+SRCS_COMMON = src/tetrimone_gtk3.cpp src/tetrimone.cpp src/audiomanager.cpp src/sound.cpp src/joystick_core.cpp src/joystick_gtk.cpp src/audioconverter.cpp src/volume.cpp src/ghostpiece.cpp src/highscores.cpp src/icon.cpp src/dbopl.cpp src/dbopl_wrapper.cpp src/instruments.cpp src/midiplayer.cpp src/virtual_mixer.cpp src/wav_converter.cpp src/convertmidi.cpp src/junklines.cpp src/propaganda.cpp src/help.cpp src/saveloadsettings.cpp src/drawgame.cpp src/tetrimone_main.cpp src/heat.cpp src/freedom.cpp src/drawgame_cairo.cpp src/gtkstuff.cpp src/gtk3_dialog_helpers.cpp src/background.cpp src/drawgame_board.cpp
 SRCS_LINUX = $(AUDIO_SRCS_LINUX)
 SRCS_WIN = src/sdlaudioplayer.cpp
 

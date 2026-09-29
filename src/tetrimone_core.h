@@ -13,10 +13,17 @@
 #include <SDL2/SDL.h>
 #include <cairo/cairo.h>
 
-#ifdef GTK3
+#if defined(GTK3)
     #include <glib.h>
+#elif defined(WXWIDGETS)
+    #include "wx_glib_compat.h"  // g_timeout_add & co. on top of wxTimer
 #else
     class QTimer;
+#endif
+
+// GTK3 and wxWidgets share the GLib-style timer code paths
+#if defined(GTK3) || defined(WXWIDGETS)
+    #define TETRIMONE_GLIB_TIMERS 1
 #endif
 
 #include "themes.h"
@@ -89,7 +96,7 @@ private:
         QTimer* heatDecayTimer = nullptr;
     #endif
     
-    #ifdef GTK3
+    #ifdef TETRIMONE_GLIB_TIMERS
         unsigned int heatDecayTimer;
     #endif
     std::vector<std::vector<int>> grid;
@@ -152,7 +159,7 @@ private:
     void* oldBackground;
 
     // Platform-specific timer members (declared in tetrimone_gtk.h or tetrimone_qt5.h)
-    #ifdef GTK3
+    #ifdef TETRIMONE_GLIB_TIMERS
         unsigned int smoothMovementTimer = 0;
         unsigned int lineClearAnimationTimer = 0;
         unsigned int themeTransitionTimer = 0;
@@ -502,6 +509,13 @@ void drawSplashScreen(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app);
 void drawGhostPiece(cairo_t *cr, TetrimoneBoard *board);
 void drawCurrentPiece(cairo_t *cr, TetrimoneBoard *board);
 void drawPropagandaMessage(cairo_t *cr, TetrimoneBoard *board);
+
+// Whole-scene Cairo drawing shared by the GTK3 and wxWidgets frontends
+// (drawgame_board.cpp, background.cpp)
+void drawBackground(cairo_t *cr, TetrimoneBoard *board, int width, int height);
+void drawPlacedBlocks(cairo_t *cr, TetrimoneBoard *board, TetrimoneApp *app);
+void OnDrawGameAreaCairo(cairo_t *cr, TetrimoneApp *app, int width, int height);
+void onDrawNextPieceCairo(cairo_t *cr, TetrimoneApp *app, int width, int height);
 
 // GTK JPEG image loading utilities
 cairo_surface_t* cairo_image_surface_create_from_jpeg(const char* filename);
