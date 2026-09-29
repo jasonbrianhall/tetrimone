@@ -1355,7 +1355,7 @@ cairo_surface_t* cairo_image_surface_create_from_memory(const void* data, size_t
 bool TetrimoneBoard::loadBackgroundImage(const std::string& imagePath) {
     // Clean up previous image if it exists
     if (backgroundImage != nullptr) {
-        cairo_surface_destroy(backgroundImage);
+        cairo_surface_destroy((cairo_surface_t*)backgroundImage);
         backgroundImage = nullptr;
     }
     
@@ -1381,20 +1381,20 @@ bool TetrimoneBoard::loadBackgroundImage(const std::string& imagePath) {
         return false;
     }
     
-    cairo_status_t status = cairo_surface_status(backgroundImage);
+    cairo_status_t status = cairo_surface_status((cairo_surface_t*)backgroundImage);
     if (status != CAIRO_STATUS_SUCCESS) {
         std::cerr << "Failed to load background image (status error): " << imagePath 
                   << " - " << cairo_status_to_string(status) << std::endl;
         
-        cairo_surface_destroy(backgroundImage);
+        cairo_surface_destroy((cairo_surface_t*)backgroundImage);
         backgroundImage = nullptr;
         return false;
     }
     
     // Log successful loading
     std::cout << "Successfully loaded background image: " << imagePath 
-              << " (" << cairo_image_surface_get_width(backgroundImage) << "x" 
-              << cairo_image_surface_get_height(backgroundImage) << ")" << std::endl;
+              << " (" << cairo_image_surface_get_width((cairo_surface_t*)backgroundImage) << "x" 
+              << cairo_image_surface_get_height((cairo_surface_t*)backgroundImage) << ")" << std::endl;
     
     // Store the path and set flag
     backgroundImagePath = imagePath;
@@ -1432,7 +1432,7 @@ void TetrimoneBoard::selectRandomBackground() {
     
     // Update the current background image
     if (backgroundImage != nullptr) {
-        cairo_surface_destroy(backgroundImage);
+        cairo_surface_destroy((cairo_surface_t*)backgroundImage);
     }
     
     // Clone the selected surface to avoid double-free issues
@@ -1446,7 +1446,7 @@ void TetrimoneBoard::selectRandomBackground() {
         width, height);
     
     // Copy the surface data
-    cairo_t* cr = cairo_create(backgroundImage);
+    cairo_t* cr = cairo_create((cairo_surface_t*)backgroundImage);
     cairo_set_source_surface(cr, selectedSurface, 0, 0);
     cairo_paint(cr);
     cairo_destroy(cr);

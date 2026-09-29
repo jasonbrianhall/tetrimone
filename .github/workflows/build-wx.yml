@@ -1,0 +1,670 @@
+name: Build Tetrimone wxWidgets (MSVC)
+
+on:
+  push:
+    branches: [ master, dev ]
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - '**.rc'
+      - 'CMakeLists.txt'
+      - 'vcpkg.json'
+      - 'Makefile.wx'
+      - 'sound/**'
+      - 'images/Tetrimone_backgrounds/**'
+      - '.github/workflows/build-wx.yml'
+  pull_request:
+    branches: [ master, dev ]
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - '**.rc'
+      - 'CMakeLists.txt'
+      - 'vcpkg.json'
+      - 'Makefile.wx'
+      - 'sound/**'
+      - 'images/Tetrimone_backgrounds/**'
+      - '.github/workflows/build-wx.yml'
+  workflow_dispatch:
+
+env:
+  PRODUCT_VERSION: "1.0.${{ github.run_number }}.0"
+  # Separate from the GTK (...6713) and Qt5 (...6714) installers so all three can coexist
+  UPGRADE_CODE: "15F96C34-8D42-417A-9E1B-CC952F7D6715"
+  # Partner Center identity (Product identity page for Tetrimone)
+  MSIX_IDENTITY_NAME: "JasonBrianHall.Tetrimone"
+  MSIX_PUBLISHER: "CN=7A3CF65F-504C-42F2-BABD-6A0512A0A017"
+  MSIX_PUBLISHER_DISPLAY: "Jason Brian Hall"
+  VCPKG_TAG: "2026.07.29"
+
+jobs:
+  # sound.zip (MIDI rendered with FluidSynth, encoded to MP3) and background.zip.
+  # Built once on Linux with the rules already in Makefile.wx, reused by every package.
+  build-assets:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install asset tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y fluidsynth fluid-soundfont-gm ffmpeg zip unzip
+
+    - name: Build sound.zip and background.zip
+      run: |
+        make -f Makefile.wx build/assets/sound.zip build/assets/background.zip
+        ls -la build/assets
+
+    - name: Upload assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: tetrimone-wx-assets
+        path: |
+          build/assets/sound.zip
+          build/assets/background.zip
+        retention-days: 7
+
+  build-windows:
+    needs: build-assets
+    runs-on: windows-latest
+    outputs:
+      version: ${{ env.PRODUCT_VERSION }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: x64
+            cmake_arch: x64
+            triplet: x64-windows
+            redist_arch: x64
+          - name: arm64
+            cmake_arch: ARM64
+            triplet: arm64-windows
+            redist_arch: arm64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Bootstrap vcpkg
+      run: |
+        git clone --branch ${{ env.VCPKG_TAG }} --depth 1 https://github.com/microsoft/vcpkg.git C:\vcpkg
+        C:\vcpkg\bootstrap-vcpkg.bat
+        echo "VCPKG_ROOT=C:\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "VCPKG_BINARY_SOURCES=clear;files,C:\vcpkg_bincache,readwrite" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+    - name: Restore vcpkg binary cache
+      uses: actions/cache/restore@v4
+      with:
+        path: C:\vcpkg_bincache
+        key: vcpkg-bincache-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          vcpkg-bincache-${{ matrix.triplet }}-
+
+    - name: Install Dependencies (vcpkg)
+      run: |
+        C:\vcpkg\vcpkg.exe install --triplet ${{ matrix.triplet }} --x-install-root=C:\vcpkg\installed
+
+    - name: Save vcpkg binary cache
+      if: always()
+      continue-on-error: true
+      uses: actions/cache/save@v4
+      with:
+        path: C:\vcpkg_bincache
+        key: vcpkg-bincache-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}
+
+    - name: Configure (CMake, MSVC)
+      run: |
+        cmake -S . -B build-msvc -A ${{ matrix.cmake_arch }} -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} -DVCPKG_INSTALLED_DIR=C:\vcpkg\installed
+
+    - name: Build
+      run: |
+        cmake --build build-msvc --config Release --parallel
+
+    - name: Download assets
+      uses: actions/download-artifact@v4
+      with:
+        name: tetrimone-wx-assets
+        path: assets
+
+    - name: Prepare Portable Package
+      run: |
+        New-Item -ItemType Directory -Force -Path dist | Out-Null
+
+        if (-not (Test-Path "build-msvc\Release\tetrimone.exe")) {
+          Write-Error "tetrimone.exe not found!"; exit 1
+        }
+        Copy-Item "build-msvc\Release\tetrimone.exe" dist\
+        Copy-Item "C:\vcpkg\installed\${{ matrix.triplet }}\bin\*.dll" dist\
+        Copy-Item assets\sound.zip, assets\background.zip dist\
+        Copy-Item icon.ico, README.md, LICENSE.md dist\ -ErrorAction SilentlyContinue
+
+        # App-local MSVC runtime so the zip and MSIX run without the VC++ redistributable
+        $vsRoot = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+        $crtDir = Get-ChildItem "$vsRoot\VC\Redist\MSVC" -Directory | Sort-Object Name -Descending |
+                  ForEach-Object { Get-ChildItem (Join-Path $_.FullName "${{ matrix.redist_arch }}") -Directory -Filter "Microsoft.VC*.CRT" -ErrorAction SilentlyContinue } |
+                  Select-Object -First 1
+        if ($crtDir) {
+          Write-Host "Using MSVC runtime from $($crtDir.FullName)"
+          Copy-Item "$($crtDir.FullName)\*.dll" dist\ -Force
+        } else {
+          Write-Warning "MSVC runtime redist not found -- users will need the VC++ redistributable."
+        }
+
+        Write-Host "Portable package contents:"
+        Get-ChildItem dist | Format-Table Name, Length
+
+        Compress-Archive -Path dist\* -DestinationPath Tetrimone-wx-Portable-${{ matrix.name }}.zip -Force
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: tetrimone-wx-build-${{ matrix.name }}
+        path: Tetrimone-wx-Portable-${{ matrix.name }}.zip
+        retention-days: 7
+
+  build-debug-standalone:
+    needs: build-assets
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Bootstrap vcpkg
+      run: |
+        git clone --branch ${{ env.VCPKG_TAG }} --depth 1 https://github.com/microsoft/vcpkg.git C:\vcpkg
+        C:\vcpkg\bootstrap-vcpkg.bat
+        echo "VCPKG_ROOT=C:\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "VCPKG_BINARY_SOURCES=clear;files,C:\vcpkg_bincache,readwrite" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+    - name: Restore vcpkg binary cache
+      uses: actions/cache/restore@v4
+      with:
+        path: C:\vcpkg_bincache
+        key: vcpkg-bincache-x64-windows-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          vcpkg-bincache-x64-windows-
+
+    - name: Install Dependencies (vcpkg)
+      run: |
+        C:\vcpkg\vcpkg.exe install --triplet x64-windows --x-install-root=C:\vcpkg\installed
+
+    - name: Save vcpkg binary cache
+      if: always()
+      continue-on-error: true
+      uses: actions/cache/save@v4
+      with:
+        path: C:\vcpkg_bincache
+        key: vcpkg-bincache-x64-windows-${{ hashFiles('vcpkg.json') }}
+
+    - name: Configure (CMake, MSVC, Debug + ASan)
+      # /RTC1 and incremental linking (CMake's Debug defaults) are incompatible with ASan.
+      # Debug is built as a console app, like `make -f Makefile.wx debug`.
+      run: |
+        cmake -S . -B build-debug -A x64 -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows -DVCPKG_INSTALLED_DIR=C:\vcpkg\installed "-DCMAKE_CXX_FLAGS=/DWIN32 /D_WINDOWS /EHsc /fsanitize=address /DDEBUG" "-DCMAKE_CXX_FLAGS_DEBUG=/Zi /Ob0 /Od" "-DCMAKE_EXE_LINKER_FLAGS_DEBUG=/debug /INCREMENTAL:NO"
+
+    - name: Build (Debug)
+      run: |
+        cmake --build build-debug --config Debug --parallel
+
+    - name: Download assets
+      uses: actions/download-artifact@v4
+      with:
+        name: tetrimone-wx-assets
+        path: build-debug\Debug
+
+    - name: Stage Debug Artifacts
+      working-directory: build-debug\Debug
+      run: |
+        # Release DLLs first, then the debug ones on top: C libraries such as cairo and
+        # libzip use the same DLL name for both, and the exe was linked against the debug set.
+        Copy-Item "C:\vcpkg\installed\x64-windows\bin\*.dll" . -ErrorAction SilentlyContinue
+        Copy-Item "C:\vcpkg\installed\x64-windows\debug\bin\*.dll" . -Force -ErrorAction SilentlyContinue
+
+        $vsRoot = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+
+        # Debug CRT (VCRUNTIME140D.dll, msvcp140d.dll, ucrtbased.dll, vcruntime140_1d.dll)
+        # is NOT redistributable, so it isn't installed on end-user machines and can't be
+        # grabbed via vcredist. Copy it straight from the VS Build Tools on this runner.
+        $debugCrtDir = Get-ChildItem "$vsRoot\VC\Redist\MSVC" -Recurse -Directory -Filter "Microsoft.VC*.DebugCRT" -ErrorAction SilentlyContinue |
+                       Where-Object { $_.FullName -match '\\x64\\' } |
+                       Select-Object -First 1
+        if ($debugCrtDir) {
+          Write-Host "Found Debug CRT at $($debugCrtDir.FullName)"
+          Copy-Item "$($debugCrtDir.FullName)\*.dll" . -Force
+        } else {
+          Write-Warning "Debug CRT redist folder not found -- VCRUNTIME140D.dll etc. will be missing from the zip."
+        }
+        $ucrtDebug = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+        $ucrtbased = Get-ChildItem $ucrtDebug -Recurse -Filter "ucrtbased.dll" -ErrorAction SilentlyContinue |
+                     Where-Object { $_.FullName -match '\\x64\\ucrt\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+        if ($ucrtbased) { Copy-Item $ucrtbased.FullName . -Force }
+
+        # Release MSVC runtime for any release-only DLLs pulled in above
+        $crtDir = Get-ChildItem "$vsRoot\VC\Redist\MSVC" -Directory | Sort-Object Name -Descending |
+                  ForEach-Object { Get-ChildItem (Join-Path $_.FullName "x64") -Directory -Filter "Microsoft.VC*.CRT" -ErrorAction SilentlyContinue } |
+                  Select-Object -First 1
+        if ($crtDir) { Copy-Item "$($crtDir.FullName)\*.dll" . -Force }
+
+        # ASan (/fsanitize=address) needs its runtime DLL next to the exe.
+        $asanDll = Get-ChildItem "$vsRoot\VC\Tools\MSVC" -Recurse -Filter "clang_rt.asan_dynamic-x86_64.dll" -ErrorAction SilentlyContinue |
+                   Where-Object { $_.FullName -match '\\Hostx64\\x64\\' } |
+                   Select-Object -First 1
+        if ($asanDll) {
+          Write-Host "Found ASan runtime at $($asanDll.FullName)"
+          Copy-Item $asanDll.FullName . -Force
+        } else {
+          Write-Warning "ASan runtime DLL not found -- instrumented exe likely won't launch."
+        }
+
+        Get-ChildItem *.exe, *.pdb, *.dll, *.zip | Format-Table Name, Length
+        Compress-Archive -Path *.exe, *.pdb, *.dll, *.zip -DestinationPath ..\..\Tetrimone-wx-Debug-x64.zip -Force
+
+    - name: Upload Debug Build
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: tetrimone-wx-debug-x64
+        path: Tetrimone-wx-Debug-x64.zip
+        retention-days: 7
+
+  build-msi-windows:
+    # WiX v3 (used below) has no ARM64 target support, so the MSI stays x64-only.
+    needs: build-windows
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download Build Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: tetrimone-wx-build-x64
+        path: .
+
+    - name: Extract Build Files
+      run: |
+        Expand-Archive -Path "Tetrimone-wx-Portable-x64.zip" -DestinationPath "artifacts/build/windows_wx/" -Force
+
+    - name: Setup WiX Toolset
+      run: |
+        Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip" -OutFile "wix.zip"
+        Expand-Archive -Path "wix.zip" -DestinationPath "wix"
+        echo "$env:GITHUB_WORKSPACE\wix" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Generate MSI Installer
+      working-directory: artifacts/build/windows_wx
+      run: |
+        $version = "${{ env.PRODUCT_VERSION }}"
+        $upgradeCode = "${{ env.UPGRADE_CODE }}"
+
+        # Every DLL (wxWidgets, cairo, SDL2, MSVC runtime, ...) goes next to the exe
+        $dllEntries = Get-ChildItem -Name "*.dll" | ForEach-Object {
+          $safeId = "dll_" + ($_ -replace '[^a-zA-Z0-9]', '_')
+          "                <File Id=`"$safeId`" Name=`"$_`" Source=`"$_`"/>"
+        }
+
+        @"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+          <Product Id="*"
+                   Name="Tetrimone wx"
+                   Language="1033"
+                   Version="$version"
+                   Manufacturer="Jason Hall"
+                   UpgradeCode="$upgradeCode">
+
+            <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine"
+                     Description="Tetrimone - block puzzle game (wxWidgets)"
+                     Manufacturer="Jason Hall" />
+
+            <MajorUpgrade DowngradeErrorMessage="A newer version of Tetrimone wx is already installed."
+                          Schedule="afterInstallInitialize" />
+            <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+            <Icon Id="TetrimoneIcon" SourceFile="icon.ico" />
+            <Property Id="ARPPRODUCTICON" Value="TetrimoneIcon" />
+            <Property Id="ARPHELPLINK" Value="https://github.com/jasonbrianhall/tetrimone" />
+            <Property Id="ARPURLINFOABOUT" Value="https://github.com/jasonbrianhall/tetrimone" />
+            <Property Id="ARPCOMMENTS" Value="Tetrimone block puzzle game, native wxWidgets frontend" />
+
+            <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+            <Property Id="DESKTOP_SHORTCUT" Value="1" />
+
+            <Directory Id="TARGETDIR" Name="SourceDir">
+              <Directory Id="ProgramFiles64Folder">
+                <Directory Id="INSTALLFOLDER" Name="Tetrimone wx" />
+              </Directory>
+              <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="Tetrimone wx" />
+              </Directory>
+              <Directory Id="DesktopFolder" />
+            </Directory>
+
+            <DirectoryRef Id="INSTALLFOLDER">
+              <Component Id="MainExecutable" Guid="6A1E2B3C-4D5E-4F60-8172-93A4B5C6D7E8" Win64="yes">
+                <File Id="tetrimone_exe" Name="tetrimone.exe" Source="tetrimone.exe" />
+                <File Id="SoundZIP" Name="sound.zip" Source="sound.zip" />
+                <File Id="BackgroundZIP" Name="background.zip" Source="background.zip" />
+                <File Id="IconFile" Name="icon.ico" Source="icon.ico" />
+                <File Id="README" Name="README.md" Source="README.md" />
+                <File Id="LICENSE_MD" Name="LICENSE.md" Source="LICENSE.md" />
+
+                <Shortcut Id="StartMenuShortcut"
+                          Directory="ApplicationProgramsFolder"
+                          Name="Tetrimone wx"
+                          Description="Tetrimone block puzzle game"
+                          Target="[INSTALLFOLDER]tetrimone.exe"
+                          WorkingDirectory="INSTALLFOLDER"
+                          Icon="TetrimoneIcon"
+                          IconIndex="0" />
+
+                <!-- Registry KeyPath required for non-advertised shortcuts -->
+                <RegistryValue Root="HKCU" Key="Software\TetrimoneWx" Name="installed"
+                               Type="integer" Value="1" KeyPath="yes" />
+
+                <!-- DLL dependencies -->
+                $($dllEntries -join "`r`n")
+              </Component>
+            </DirectoryRef>
+
+            <!-- Start Menu folder cleanup on uninstall (fixes ICE64) -->
+            <DirectoryRef Id="ApplicationProgramsFolder">
+              <Component Id="StartMenuFolder" Guid="7B2F3C4D-5E6F-4071-9283-A4B5C6D7E8F9" Win64="yes">
+                <RemoveFolder Id="ApplicationProgramsFolderRemove" On="uninstall" />
+                <RegistryValue Root="HKCU" Key="Software\TetrimoneWx\Shortcuts" Name="StartMenu"
+                               Type="integer" Value="1" KeyPath="yes" />
+              </Component>
+            </DirectoryRef>
+
+            <DirectoryRef Id="DesktopFolder">
+              <Component Id="DesktopShortcut" Guid="8C3A4D5E-6F70-4182-A394-B5C6D7E8F90A" Win64="yes">
+                <Condition>DESKTOP_SHORTCUT=1</Condition>
+                <Shortcut Id="DesktopShortcutMain"
+                          Directory="DesktopFolder"
+                          Name="Tetrimone wx"
+                          Description="Tetrimone block puzzle game"
+                          Target="[INSTALLFOLDER]tetrimone.exe"
+                          WorkingDirectory="INSTALLFOLDER"
+                          Icon="TetrimoneIcon"
+                          IconIndex="0" />
+                <RegistryValue Root="HKCU" Key="Software\TetrimoneWx\Shortcuts" Name="Desktop"
+                               Type="integer" Value="1" KeyPath="yes" />
+              </Component>
+            </DirectoryRef>
+
+            <Feature Id="MainFeature" Title="Tetrimone wx" Level="1">
+              <ComponentRef Id="MainExecutable" />
+              <ComponentRef Id="StartMenuFolder" />
+              <ComponentRef Id="DesktopShortcut" />
+            </Feature>
+
+            <UIRef Id="WixUI_InstallDir" />
+            <UIRef Id="WixUI_ErrorProgressText" />
+
+            <InstallExecuteSequence>
+              <Custom Action="SetARPINSTALLLOCATION" After="InstallValidate" />
+            </InstallExecuteSequence>
+            <CustomAction Id="SetARPINSTALLLOCATION" Property="ARPINSTALLLOCATION" Value="[INSTALLFOLDER]" />
+
+          </Product>
+        </Wix>
+        "@ | Out-File -FilePath "tetrimone_wx.wxs" -Encoding UTF8
+
+        @"
+        {\rtf1\ansi\ansicpg1252
+        {\fonttbl\f0\fswiss Helvetica;}
+        \f0\fs20 MIT License\par
+        \par
+        Copyright (c) 2025 Jason Hall\par
+        \par
+        Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\par
+        \par
+        The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\par
+        \par
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\par
+        }
+        "@ | Out-File -FilePath "License.rtf" -Encoding ASCII
+
+        Write-Host "Compiling WXS..."
+        & candle.exe -out "tetrimone_wx.wixobj" -arch x64 "tetrimone_wx.wxs"
+        if ($LASTEXITCODE -ne 0) { Write-Error "Candle failed"; exit 1 }
+
+        Write-Host "Linking MSI..."
+        & light.exe -out "Tetrimone-wx.msi" -ext WixUIExtension -ext WixUtilExtension "tetrimone_wx.wixobj"
+        if ($LASTEXITCODE -ne 0) { Write-Error "Light failed"; exit 1 }
+
+        if (Test-Path "Tetrimone-wx.msi") {
+          Write-Host "MSI created: Tetrimone-wx.msi ($((Get-Item 'Tetrimone-wx.msi').Length) bytes)"
+        } else {
+          Write-Error "MSI not created"; exit 1
+        }
+
+    - name: Upload MSI
+      uses: actions/upload-artifact@v4
+      with:
+        name: Tetrimone-wx.msi
+        path: artifacts/build/windows_wx/Tetrimone-wx.msi
+        retention-days: 7
+
+  build-msix-windows:
+    needs: build-windows
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: x64
+            processor_architecture: x64
+          - name: arm64
+            processor_architecture: arm64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download Build Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: tetrimone-wx-build-${{ matrix.name }}
+        path: .
+
+    - name: Extract Build Files
+      run: |
+        Expand-Archive -Path "Tetrimone-wx-Portable-${{ matrix.name }}.zip" -DestinationPath "msix-source\" -Force
+
+    - name: Prepare MSIX Package Structure
+      run: |
+        New-Item -ItemType Directory -Force -Path "msix-package/Assets" | Out-Null
+        New-Item -ItemType Directory -Force -Path "msix-package/Files" | Out-Null
+
+        Copy-Item "msix-source/*" -Destination "msix-package/Files/" -Recurse -Force
+
+        foreach ($f in "tetrimone.exe", "sound.zip", "background.zip") {
+          if (-not (Test-Path "msix-package/Files/$f")) { Write-Error "$f not found in package!"; exit 1 }
+        }
+
+        Get-ChildItem "msix-package/Files/" -File | ForEach-Object {
+          Write-Host ("  - {0} ({1:N0} bytes)" -f $_.Name, $_.Length)
+        }
+
+    - name: Create MSIX Store Compliant Assets
+      run: |
+        # First frame of icon.ico is the 256x256 one
+        $iconPath = "icon.ico[0]"
+        $bg = "#1a1a2e"
+        $a = "msix-package/Assets"
+
+        & magick "$iconPath" -resize 50x50   "$a/StoreLogo.scale-100.png"
+        & magick "$iconPath" -resize 63x63   "$a/StoreLogo.scale-125.png"
+        & magick "$iconPath" -resize 75x75   "$a/StoreLogo.scale-150.png"
+        & magick "$iconPath" -resize 100x100 "$a/StoreLogo.scale-200.png"
+
+        & magick "$iconPath" -resize 44x44 "$a/Tetrimone44x44.scale-100.png"
+        & magick "$iconPath" -resize 55x55 "$a/Tetrimone44x44.scale-125.png"
+        & magick "$iconPath" -resize 66x66 "$a/Tetrimone44x44.scale-150.png"
+        & magick "$iconPath" -resize 88x88 "$a/Tetrimone44x44.scale-200.png"
+
+        & magick "$iconPath" -resize 150x150 "$a/TetrimoneLogo.scale-100.png"
+        & magick "$iconPath" -resize 188x188 "$a/TetrimoneLogo.scale-125.png"
+        & magick "$iconPath" -resize 225x225 "$a/TetrimoneLogo.scale-150.png"
+        & magick "$iconPath" -resize 300x300 "$a/TetrimoneLogo.scale-200.png"
+
+        & magick "$iconPath" -resize 150x150 -background $bg -gravity center -extent 310x150 "$a/TetrimoneWide.scale-100.png"
+        & magick "$iconPath" -resize 188x188 -background $bg -gravity center -extent 388x188 "$a/TetrimoneWide.scale-125.png"
+        & magick "$iconPath" -resize 225x225 -background $bg -gravity center -extent 465x225 "$a/TetrimoneWide.scale-150.png"
+        & magick "$iconPath" -resize 300x300 -background $bg -gravity center -extent 620x300 "$a/TetrimoneWide.scale-200.png"
+
+        $missing = Get-ChildItem $a -Filter *.png | Measure-Object
+        if ($missing.Count -ne 16) { Write-Error "Expected 16 Store assets, got $($missing.Count)"; exit 1 }
+
+    - name: Create MSIX Manifest
+      working-directory: msix-package
+      run: |
+        @"
+        <?xml version="1.0" encoding="utf-8"?>
+        <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+                 xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+                 xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+
+          <Identity
+            Name="${{ env.MSIX_IDENTITY_NAME }}"
+            Publisher="${{ env.MSIX_PUBLISHER }}"
+            Version="${{ needs.build-windows.outputs.version }}"
+            ProcessorArchitecture="${{ matrix.processor_architecture }}" />
+
+          <Properties>
+            <DisplayName>Tetrimone</DisplayName>
+            <PublisherDisplayName>${{ env.MSIX_PUBLISHER_DISPLAY }}</PublisherDisplayName>
+            <Description>Tetrimone block puzzle game.</Description>
+            <Logo>Assets\StoreLogo.scale-100.png</Logo>
+          </Properties>
+
+          <Dependencies>
+            <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+          </Dependencies>
+
+          <Resources>
+            <Resource Language="en-us" />
+          </Resources>
+
+          <Applications>
+            <Application Id="Tetrimone" Executable="Files\tetrimone.exe" EntryPoint="Windows.FullTrustApplication">
+              <uap:VisualElements DisplayName="Tetrimone"
+                                  Description="Tetrimone block puzzle game."
+                                  Square150x150Logo="Assets\TetrimoneLogo.scale-100.png"
+                                  Square44x44Logo="Assets\Tetrimone44x44.scale-100.png"
+                                  BackgroundColor="#1a1a2e">
+                <uap:DefaultTile Wide310x150Logo="Assets\TetrimoneWide.scale-100.png"
+                                 ShortName="Tetrimone">
+                  <uap:ShowNameOnTiles>
+                    <uap:ShowOn Tile="square150x150Logo"/>
+                    <uap:ShowOn Tile="wide310x150Logo"/>
+                  </uap:ShowNameOnTiles>
+                </uap:DefaultTile>
+                <uap:SplashScreen Image="Assets\TetrimoneLogo.scale-100.png" />
+              </uap:VisualElements>
+            </Application>
+          </Applications>
+
+          <Capabilities>
+            <rescap:Capability Name="runFullTrust" />
+          </Capabilities>
+        </Package>
+        "@ | Out-File -FilePath "AppxManifest.xml" -Encoding UTF8
+
+    - name: Build MSIX Package
+      run: |
+        $makeAppxPath = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\" -Directory |
+          Where-Object { $_.Name -match "^10\.0\.\d+\.\d+$" } |
+          Sort-Object { [version]$_.Name } -Descending |
+          ForEach-Object { "$($_.FullName)\x64\makeappx.exe" } |
+          Where-Object { Test-Path $_ } |
+          Select-Object -First 1
+
+        if (-not $makeAppxPath) { Write-Error "MakeAppx.exe not found."; exit 1 }
+
+        Write-Host "Using MakeAppx at: $makeAppxPath"
+        & "$makeAppxPath" pack /d "msix-package" /p "Tetrimone-wx-${{ matrix.name }}.msix" /o
+        if ($LASTEXITCODE -ne 0) { Write-Error "MSIX creation failed"; exit 1 }
+
+        Write-Host "MSIX created: Tetrimone-wx-${{ matrix.name }}.msix ($((Get-Item "Tetrimone-wx-${{ matrix.name }}.msix").Length) bytes), unsigned"
+
+    - name: Upload MSIX
+      uses: actions/upload-artifact@v4
+      with:
+        name: Tetrimone-wx-${{ matrix.name }}.msix
+        path: Tetrimone-wx-${{ matrix.name }}.msix
+        retention-days: 7
+
+  create-release:
+    needs: [build-windows, build-msi-windows, build-msix-windows, build-debug-standalone]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: github.event_name == 'push'
+
+    steps:
+    - name: Download MSI Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: Tetrimone-wx.msi
+        path: release
+
+    - name: Download MSIX Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: Tetrimone-wx-*.msix
+        path: release
+        merge-multiple: true
+
+    - name: Download Portable Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: tetrimone-wx-build-*
+        path: release
+        merge-multiple: true
+
+    - name: Download Debug Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: tetrimone-wx-debug-x64
+        path: release
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          release/Tetrimone-wx.msi
+          release/Tetrimone-wx-x64.msix
+          release/Tetrimone-wx-arm64.msix
+          release/Tetrimone-wx-Portable-x64.zip
+          release/Tetrimone-wx-Portable-arm64.zip
+          release/Tetrimone-wx-Debug-x64.zip
+        # wx- prefix: this workflow has its own run_number, so plain v{n} would collide
+        # with the tags from build.yml (GTK/Qt5 releases)
+        tag_name: ${{ github.ref == 'refs/heads/master' && format('wx-v{0}', github.run_number) || format('wx-dev-v{0}', github.run_number) }}
+        name: ${{ github.ref == 'refs/heads/master' && format('wxWidgets Release v{0}', github.run_number) || format('wxWidgets Dev Build v{0}', github.run_number) }}
+        draft: false
+        prerelease: ${{ github.ref != 'refs/heads/master' }}
+        make_latest: false
+        body: |
+          ## Tetrimone wxWidgets (MSVC) ${{ github.ref == 'refs/heads/master' && 'Release' || 'Development Build' }}
+
+          **Version:** ${{ needs.build-windows.outputs.version }}
+          **Commit:** ${{ github.sha }}
+          **Build:** #${{ github.run_number }}
+
+          Native Windows controls via wxWidgets, built with MSVC.
+
+          ### Downloads
+          - **Tetrimone-wx.msi**: Windows installer (x64) with Start Menu and optional desktop shortcut
+          - **Tetrimone-wx-x64.msix** / **Tetrimone-wx-arm64.msix**: unsigned packages for Microsoft Store submission
+          - **Tetrimone-wx-Portable-x64.zip** / **Tetrimone-wx-Portable-arm64.zip**: no installation required, includes the MSVC runtime
+          - **Tetrimone-wx-Debug-x64.zip**: debug build with AddressSanitizer and PDBs (console window shows log output)
+
+          ### Silent Installation (MSI)
+          ```cmd
+          msiexec /i Tetrimone-wx.msi /quiet /norestart
+          msiexec /i Tetrimone-wx.msi /quiet /norestart DESKTOP_SHORTCUT=0
+          msiexec /x Tetrimone-wx.msi /quiet /norestart
+          ```

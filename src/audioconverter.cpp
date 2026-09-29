@@ -3,7 +3,9 @@
 #include <vector>
 #include <iostream>
 #include <cstring>
+#ifndef _WIN32
 #include <unistd.h>  // for mkstemp
+#endif
 #include "midiplayer.h"
 #include "dbopl_wrapper.h"
 

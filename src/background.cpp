@@ -52,9 +52,9 @@ void drawBackground(cairo_t *cr, TetrimoneBoard *board, int width, int height) {
       if (board->getTransitionDirection() == -1 &&
           board->getOldBackground() != nullptr) {
         // Get the image dimensions
-        int imgWidth = cairo_image_surface_get_width(board->getOldBackground());
+        int imgWidth = cairo_image_surface_get_width((cairo_surface_t*)board->getOldBackground());
         int imgHeight =
-            cairo_image_surface_get_height(board->getOldBackground());
+            cairo_image_surface_get_height((cairo_surface_t*)board->getOldBackground());
 
         // Calculate scaling to fill the game area while maintaining aspect
         // ratio
@@ -71,7 +71,7 @@ void drawBackground(cairo_t *cr, TetrimoneBoard *board, int width, int height) {
         cairo_scale(cr, scale, scale);
 
         // Draw the old image with current transition opacity
-        cairo_set_source_surface(cr, board->getOldBackground(), 0, 0);
+        cairo_set_source_surface(cr, (cairo_surface_t*)board->getOldBackground(), 0, 0);
         cairo_paint_with_alpha(cr, board->getTransitionOpacity());
 
         // Reset transformation for next drawing
@@ -81,9 +81,9 @@ void drawBackground(cairo_t *cr, TetrimoneBoard *board, int width, int height) {
         // Fading in - draw new background with transition opacity
         // Get the image dimensions
         int imgWidth =
-            cairo_image_surface_get_width(board->getBackgroundImage());
+            cairo_image_surface_get_width((cairo_surface_t*)board->getBackgroundImage());
         int imgHeight =
-            cairo_image_surface_get_height(board->getBackgroundImage());
+            cairo_image_surface_get_height((cairo_surface_t*)board->getBackgroundImage());
 
         // Calculate scaling to fill the game area while maintaining aspect
         // ratio
@@ -100,15 +100,15 @@ void drawBackground(cairo_t *cr, TetrimoneBoard *board, int width, int height) {
         cairo_scale(cr, scale, scale);
 
         // Draw the new image with transition opacity
-        cairo_set_source_surface(cr, board->getBackgroundImage(), 0, 0);
+        cairo_set_source_surface(cr, (cairo_surface_t*)board->getBackgroundImage(), 0, 0);
         cairo_paint_with_alpha(cr, board->getTransitionOpacity());
       }
     } else {
       // Normal drawing (no transition)
       // Get the image dimensions
-      int imgWidth = cairo_image_surface_get_width(board->getBackgroundImage());
+      int imgWidth = cairo_image_surface_get_width((cairo_surface_t*)board->getBackgroundImage());
       int imgHeight =
-          cairo_image_surface_get_height(board->getBackgroundImage());
+          cairo_image_surface_get_height((cairo_surface_t*)board->getBackgroundImage());
 
       // Calculate scaling to fill the game area while maintaining aspect ratio
       double scaleX = static_cast<double>(width) / imgWidth;
@@ -124,7 +124,7 @@ void drawBackground(cairo_t *cr, TetrimoneBoard *board, int width, int height) {
       cairo_scale(cr, scale, scale);
 
       // Draw the image with normal opacity
-      cairo_set_source_surface(cr, board->getBackgroundImage(), 0, 0);
+      cairo_set_source_surface(cr, (cairo_surface_t*)board->getBackgroundImage(), 0, 0);
       cairo_paint_with_alpha(cr, board->getBackgroundOpacity());
     }
 

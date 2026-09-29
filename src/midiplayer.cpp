@@ -97,7 +97,7 @@ int readString(FILE* f, int len, char* str);
 unsigned long convertInteger(char* str, int len);
 
 // Cross-platform kbhit implementation
-int kbhit() {
+int midi_kbhit() {
 #ifdef _WIN32
     return _kbhit();
 #else
@@ -127,7 +127,7 @@ int kbhit() {
 }
 
 // Cross-platform getch implementation
-int getch() {
+int midi_getch() {
 #ifdef _WIN32
     return _getch();
 #else
@@ -837,8 +837,8 @@ void playMidiFile() {
     // Main loop - handle console input
     while (isPlaying && keep_running) {
         // Check for key press without blocking
-        if (kbhit()) {
-            int ch = getch();  // Use our cross-platform getch function
+        if (midi_kbhit()) {
+            int ch = midi_getch();  // Use our cross-platform getch function
             switch (ch) {
                 case ' ':
                     paused = !paused;

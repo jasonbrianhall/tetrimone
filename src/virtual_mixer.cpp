@@ -12,7 +12,7 @@ static inline int16_t clamp_sample(float sample) {
 
 // Initialize the virtual mixer
 VirtualMixer* mixer_init(int sample_rate, int num_channels, bool normalize) {
-    VirtualMixer* mixer = calloc(1, sizeof(VirtualMixer));
+    VirtualMixer* mixer = (VirtualMixer*)calloc(1, sizeof(VirtualMixer));
     if (!mixer) return NULL;
 
     mixer->sample_rate = sample_rate > 0 ? sample_rate : MIXER_SAMPLE_RATE;
@@ -21,7 +21,7 @@ VirtualMixer* mixer_init(int sample_rate, int num_channels, bool normalize) {
 
     // Allocate output buffer
     mixer->output_buffer_size = MIXER_BUFFER_SIZE * sizeof(int16_t) * mixer->num_channels;
-    mixer->output_buffer = malloc(mixer->output_buffer_size);
+    mixer->output_buffer = (int16_t*)malloc(mixer->output_buffer_size);
     
     if (!mixer->output_buffer) {
         free(mixer);
@@ -64,7 +64,7 @@ int mixer_allocate_channel(VirtualMixer* mixer) {
 
     for (int i = 0; i < MAX_MIXER_CHANNELS; i++) {
         if (!mixer->channels[i].active) {
-            mixer->channels[i].buffer = malloc(MIXER_BUFFER_SIZE * sizeof(int16_t));
+            mixer->channels[i].buffer = (int16_t*)malloc(MIXER_BUFFER_SIZE * sizeof(int16_t));
             if (!mixer->channels[i].buffer) return -1;
 
             mixer->channels[i].buffer_size = MIXER_BUFFER_SIZE;
@@ -106,7 +106,7 @@ void mixer_write_channel(VirtualMixer* mixer, int channel_id,
     // Resize buffer if needed
     if (channel->write_pos + size > channel->buffer_size) {
         size_t new_size = channel->buffer_size * 2;
-        int16_t* new_buffer = realloc(channel->buffer, new_size * sizeof(int16_t));
+        int16_t* new_buffer = (int16_t*)realloc(channel->buffer, new_size * sizeof(int16_t));
         
         if (!new_buffer) return;  // Allocation failed
 

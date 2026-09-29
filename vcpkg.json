@@ -1,0 +1,25 @@
+{
+  "name": "tetrimone",
+  "version-string": "1.0",
+  "description": "Tetrimone - wxWidgets frontend (MSVC build dependencies)",
+  "dependencies": [
+    {
+      "name": "wxwidgets",
+      "default-features": false
+    },
+    {
+      "name": "cairo",
+      "default-features": false
+    },
+    "sdl2",
+    {
+      "name": "sdl2-mixer",
+      "default-features": false,
+      "features": [ "mpg123" ]
+    },
+    {
+      "name": "libzip",
+      "default-features": false
+    }
+  ]
+}

@@ -278,7 +278,7 @@ TetrimoneBoard::~TetrimoneBoard() {
 #endif
 
     if (backgroundImage != nullptr) {
-        cairo_surface_destroy(backgroundImage);
+        cairo_surface_destroy((cairo_surface_t*)backgroundImage);
         backgroundImage = nullptr;
     }
 
