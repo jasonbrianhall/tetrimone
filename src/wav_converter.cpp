@@ -13,7 +13,7 @@ WAVConverter* wav_converter_init(const char* filename,
     }
 
     // Allocate converter
-    WAVConverter* converter = calloc(1, sizeof(WAVConverter));
+    WAVConverter* converter = (WAVConverter*)calloc(1, sizeof(WAVConverter));
     if (!converter) {
         return NULL;
     }

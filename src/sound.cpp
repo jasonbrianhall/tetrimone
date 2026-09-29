@@ -18,6 +18,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <sys/stat.h>
 #include <thread>
