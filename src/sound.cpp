@@ -7,6 +7,10 @@
 #include "tetrimone_qt5.h"
 #endif
 
+#ifdef WXWIDGETS
+#include "tetrimone_wx.h"
+#endif
+
 
 #include <algorithm>
 #include <cctype> // Added for std::tolower

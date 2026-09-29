@@ -1,6 +1,8 @@
-#ifdef GTK3
+#if defined(GTK3)
 #include "tetrimone_gtk.h"
 #include <glib.h>
+#elif defined(WXWIDGETS)
+#include "tetrimone_wx.h"
 #else
 #include "tetrimone_qt5.h"
 #include <QObject>
@@ -11,7 +13,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
 void TetrimoneBoard::updateHeat() {
     // Only create timer if it doesn't already exist
     if (heatDecayTimer == 0) {

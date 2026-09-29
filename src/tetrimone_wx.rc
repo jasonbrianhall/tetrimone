@@ -1,0 +1,9 @@
+// Windows resources for the wxWidgets build of Tetrimone.
+// Compiled by Makefile.wx with the command from `wx-config --rescomp`.
+
+// Listed first (and named to sort first) so Explorer uses it for the .exe
+aaaa_tetrimone ICON "icon.ico"
+
+// Per-monitor (v2) DPI awareness: crisp text and controls on scaled displays
+#define wxUSE_DPI_AWARE_MANIFEST 2
+#include "wx/msw/wx.rc"

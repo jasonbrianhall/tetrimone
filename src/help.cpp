@@ -9,11 +9,16 @@
 #include "highscores.h"
 #include "propaganda_messages.h"
 
+#if defined(GTK3) || defined(WXWIDGETS)
 #ifdef GTK3
 #include "tetrimone_gtk.h"
 #include "gtk3_dialog_helpers.h"
-
 using namespace GTK3Helpers;
+#else
+#include "tetrimone_wx.h"
+#include "wx_dialog_helpers.h"
+using namespace WXHelpers;
+#endif
 
 void onAboutDialog(GtkMenuItem *menuItem, gpointer userData) {
   TetrimoneApp *app = static_cast<TetrimoneApp *>(userData);

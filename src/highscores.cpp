@@ -222,11 +222,16 @@ std::string getDifficultyName(int difficulty) {
 // Framework-Specific High Score Dialogs
 // ============================================================================
 
+#if defined(GTK3) || defined(WXWIDGETS)
 #ifdef GTK3
 #include "gtk3_dialog_helpers.h"
 #include "tetrimone_gtk.h"
-
 using namespace GTK3Helpers;
+#else
+#include "wx_dialog_helpers.h"
+#include "tetrimone_wx.h"
+using namespace WXHelpers;
+#endif
 
 // Version that takes app parameter and shows dialog
 bool TetrimoneBoard::checkAndRecordHighScore(TetrimoneApp* app) {

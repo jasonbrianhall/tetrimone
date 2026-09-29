@@ -6,6 +6,10 @@
 #include "tetrimone_qt5.h"
 #endif
 
+#ifdef WXWIDGETS
+#include "tetrimone_wx.h"
+#endif
+
 #include "audiomanager.h"
 #include <iostream>
 #include <string>
@@ -197,7 +201,7 @@ void TetrimoneBoard::restart() {
     std::fill(row.begin(), row.end(), 0);
   }
   heatLevel = 0.5f;
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
   heatDecayTimer = 0;
 #endif
 #ifdef QT5
@@ -212,6 +216,7 @@ void TetrimoneBoard::restart() {
   level = initialLevel; // Use initialLevel instead of hardcoded 1
   linesCleared = 0;
   gameOver = false;
+  gameOverSoundPlayed = false;
   paused = false;
   // DON'T re-enable splash screen - let the caller control this
   // splashScreenActive = true;
@@ -246,7 +251,7 @@ TetrimoneBoard::~TetrimoneBoard() {
     cancelBackgroundTransition();
 
     // Cancel propaganda message timers
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
     if (propagandaTimerId > 0) {
         g_source_remove(propagandaTimerId);
         propagandaTimerId = 0;
@@ -277,7 +282,7 @@ TetrimoneBoard::~TetrimoneBoard() {
         backgroundImage = nullptr;
     }
 
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
     if (themeTransitionTimer > 0) {
         g_source_remove(themeTransitionTimer);
         themeTransitionTimer = 0;
@@ -386,7 +391,7 @@ int TetrimoneBoard::clearLines() {
       currentPropagandaMessage = message;
       showPropagandaMessage = true;
       
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
       // Cancel existing timer if any
       if (propagandaTimerId > 0) {
           g_source_remove(propagandaTimerId);
@@ -502,7 +507,7 @@ int TetrimoneBoard::clearLines() {
         currentPropagandaMessage = message;
         showPropagandaMessage = true;
         
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
         // Cancel existing timer if any
         if (propagandaTimerId > 0) {
             g_source_remove(propagandaTimerId);
@@ -645,24 +650,22 @@ int TetrimoneBoard::clearLines() {
 }
 
 bool TetrimoneBoard::isGameOver() const {
-  // If this is the first time checking game over status since it became true,
-  // play the game over sound
-  bool soundPlayed = false;
-  if (gameOver && !soundPlayed) {
-    // Cast away const to allow calling non-const member function
-    TetrimoneBoard *nonConstThis = const_cast<TetrimoneBoard *>(this);
+  // Play the game over sound only the first time game over is seen.
+  // (This is called many times a second - timers, input, drawing - so the
+  // flag has to live in the board, not in a local variable.)
+  TetrimoneBoard *nonConstThis = const_cast<TetrimoneBoard *>(this);
+  if (gameOver && !gameOverSoundPlayed) {
+    nonConstThis->gameOverSoundPlayed = true;
     if (retroModeActive) {
         nonConstThis->playSound(GameSoundEvent::GameoverRetro);
     } else {
         nonConstThis->playSound(GameSoundEvent::Gameover);
-    }    
-    
-    soundPlayed = true;
+    }
   }
 
-  // If game is no longer over, reset the sound played flag
+  // Once a new game starts, arm the sound again
   if (!gameOver) {
-    soundPlayed = false;
+    nonConstThis->gameOverSoundPlayed = false;
   }
 
   return gameOver;
@@ -886,7 +889,7 @@ void TetrimoneBoard::createBlockTrail() {
     
     // Start update timer if not running
     if (trailUpdateTimer == 0) {
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
         trailUpdateTimer = g_timeout_add(TRAIL_UPDATE_INTERVAL,
             [](gpointer userData) -> gboolean {
                 TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
@@ -942,7 +945,7 @@ void TetrimoneBoard::updateBlockTrails() {
     if (!trailsEnabled) {
         blockTrails.clear();
         
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
         // GTK3: Remove g_source timer
         if (trailUpdateTimer != 0) {
             g_source_remove(trailUpdateTimer);
@@ -967,7 +970,7 @@ void TetrimoneBoard::updateBlockTrails() {
     }
     
     if (blockTrails.empty() && trailUpdateTimer != 0) {
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
         // GTK3: Remove timer
         g_source_remove(trailUpdateTimer);
         trailUpdateTimer = 0;
@@ -983,6 +986,7 @@ int TetrimoneBoard::getGridValue(int x, int y) const {
   return grid[y][x];
 }
 
+#ifndef WXWIDGETS
 void drawBoard(TetrimoneBoard *board) {
 #ifdef GTK3
      gtk_widget_queue_draw(board->app->gameArea);
@@ -992,6 +996,7 @@ void drawBoard(TetrimoneBoard *board) {
     board->app->gameArea->update();
 #endif
 }
+#endif  // !WXWIDGETS (drawBoard lives in tetrimone_wx.cpp)
 
 void TetrimoneBoard::setLevel(int newLevel) {
     if (newLevel >= 1) {
@@ -1022,6 +1027,7 @@ void TetrimoneBoard::setMinBlock(int size) {
     
 }
 
+#ifndef WXWIDGETS
 void ui_set_active_theme(TetrimoneApp *app, int index)
 {
 #ifdef GTK3
@@ -1222,6 +1228,7 @@ void drawNextPieceArea(TetrimoneBoard *board) {
      board->app->nextPieceArea->update();
 #endif
 }
+#endif  // !WXWIDGETS (ui_* helpers live in tetrimone_wx.cpp)
 
 std::string TetrimoneBoard::getDifficultyText(int difficulty) const {
   if (retroModeActive) {
@@ -1261,6 +1268,7 @@ std::string TetrimoneBoard::getDifficultyText(int difficulty) const {
   }
 }
 
+#ifndef WXWIDGETS
 int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandLineArgs *args)
 {
 #ifdef GTK3
@@ -1289,5 +1297,6 @@ int ui_run_application(int argc, char *argv[], TetrimoneApp *app, const CommandL
 #endif
 
 }
+#endif  // !WXWIDGETS (ui_run_application lives in tetrimone_wx.cpp)
 
 

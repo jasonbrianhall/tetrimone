@@ -17,6 +17,11 @@
 #include "gtk3_dialog_helpers.h"
 #endif
 
+#ifdef WXWIDGETS
+#include "tetrimone_wx.h"
+#include "wx_dialog_helpers.h"
+#endif
+
 #ifdef QT5
 #include "tetrimone_qt5.h"
 #include <QMessageBox>
@@ -26,9 +31,13 @@
 // Framework-Specific Propaganda Dialogs
 // ============================================================================
 
-#ifdef GTK3
+#if defined(GTK3) || defined(WXWIDGETS)
 
+#ifdef GTK3
 using namespace GTK3Helpers;
+#else
+using namespace WXHelpers;
+#endif
 
 void showIdeologicalFailureDialog(TetrimoneApp* app) {
     // Only show in retro mode

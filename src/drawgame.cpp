@@ -1,7 +1,9 @@
 // Enhanced drawgame.cpp with smooth animations
-#ifdef GTK3
+#if defined(GTK3)
 #include "tetrimone_gtk.h"
 #include <glib.h>
+#elif defined(WXWIDGETS)
+#include "tetrimone_wx.h"
 #else
 #include "tetrimone_qt5.h"
 #include <QObject>
@@ -26,7 +28,7 @@
 
 void TetrimoneBoard::getCurrentPieceInterpolatedPosition(double &x, double &y) const {
   if (currentPiece) {
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
     if (smoothMovementTimer > 0 && movementProgress < 1.0) {
 #else
     if (smoothMovementTimer != nullptr && movementProgress < 1.0) {
@@ -62,7 +64,7 @@ void TetrimoneBoard::startSmoothMovement(int newX, int newY) {
 
         if (lastPieceX != newX || lastPieceY != newY) {
 
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
             if (smoothMovementTimer > 0) {
                 g_source_remove(smoothMovementTimer);
             }
@@ -108,7 +110,7 @@ void TetrimoneBoard::updateSmoothMovement() {
   
   if (movementProgress >= 1.0) {
     movementProgress = 1.0;
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
     if (smoothMovementTimer > 0) {
       g_source_remove(smoothMovementTimer);
       smoothMovementTimer = 0;
@@ -137,7 +139,7 @@ void TetrimoneBoard::startLineClearAnimation(const std::vector<int> &clearedLine
     currentAnimationType = animDist(rng);
   }
   
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
   if (lineClearAnimationTimer > 0) {
     g_source_remove(lineClearAnimationTimer);
   }
@@ -182,7 +184,7 @@ void TetrimoneBoard::updateLineClearAnimation() {
   
   if (lineClearProgress >= 1.0) {
     // Animation complete - stop timer first
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
     if (lineClearAnimationTimer > 0) {
       g_source_remove(lineClearAnimationTimer);
       lineClearAnimationTimer = 0;
@@ -250,7 +252,7 @@ void TetrimoneBoard::startThemeTransition(int targetTheme) {
     }
     
     // Cancel any existing transition
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
     if (themeTransitionTimer > 0) {
         g_source_remove(themeTransitionTimer);
     }
@@ -271,7 +273,7 @@ void TetrimoneBoard::startThemeTransition(int targetTheme) {
     // Set start time for this animation
     themeStartTime = std::chrono::high_resolution_clock::now();
     
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
     themeTransitionTimer = g_timeout_add(16, // ~60 FPS
         [](gpointer userData) -> gboolean {
             TetrimoneBoard* board = static_cast<TetrimoneBoard*>(userData);
@@ -311,7 +313,7 @@ void TetrimoneBoard::updateThemeTransition() {
         currentThemeIndex = newThemeIndex;
         
         // Clean up
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
         if (themeTransitionTimer > 0) {
             g_source_remove(themeTransitionTimer);
             themeTransitionTimer = 0;
@@ -329,7 +331,7 @@ void TetrimoneBoard::updateThemeTransition() {
 }
 
 void TetrimoneBoard::cancelThemeTransition() {
-#ifdef GTK3
+#ifdef TETRIMONE_GLIB_TIMERS
     if (themeTransitionTimer > 0) {
         g_source_remove(themeTransitionTimer);
         themeTransitionTimer = 0;

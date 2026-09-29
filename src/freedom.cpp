@@ -25,6 +25,12 @@
 #include "highscores.h"
 #include "freedom_messages.h"
 
+#ifdef WXWIDGETS
+#include "tetrimone_wx.h"
+#include "wx_dialog_helpers.h"
+using namespace WXHelpers;
+#endif
+
 #ifdef GTK3
 using namespace GTK3Helpers;
 #endif
@@ -33,7 +39,7 @@ using namespace GTK3Helpers;
 using namespace Qt5Helpers;
 #endif
 
-#ifdef GTK3
+#if defined(GTK3) || defined(WXWIDGETS)
 
 void showPatrioticPerformanceDialog(TetrimoneApp* app) {
     // Only show in patriotic mode

@@ -1,4 +1,9 @@
+#ifdef GTK3
 #include "tetrimone_gtk.h"
+#endif
+#ifdef WXWIDGETS
+#include "tetrimone_wx.h"
+#endif
 #include <iostream>
 #include <string>
 #include "zip.h"
@@ -10,6 +15,7 @@
 #include <direct.h>
 #endif
 
+#ifdef GTK3
 // Update the background toggle handler to handle ZIP mode
 void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
     TetrimoneApp* app = static_cast<TetrimoneApp*>(userData);
@@ -26,6 +32,7 @@ void onBackgroundToggled(GtkCheckMenuItem* menuItem, gpointer userData) {
     // Redraw the game area
     updateDisplay(app);
 }
+#endif  // GTK3
 
 void drawBackground(cairo_t *cr, TetrimoneBoard *board, int width, int height) {
   // Draw solid background color
